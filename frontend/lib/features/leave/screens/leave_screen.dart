@@ -26,7 +26,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
 
   Future<void> _loadLeaves() async {
     try {
-      final res = await ApiService().get('${AppConstants.leaveBase}/');
+      final res = await ApiService().get('${AppConstants.leaveBase}/leave-requests/');
       setState(() { _requests = res.data['results'] ?? res.data; _isLoading = false; });
     } catch (_) { setState(() => _isLoading = false); }
   }

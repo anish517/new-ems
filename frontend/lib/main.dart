@@ -16,7 +16,7 @@ class EmsApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'EMS — Employee Management',
+      title: 'EMS — Employee Managements',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

@@ -1,9 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
+import 'add_employee_sheet.dart';
+import '../../salary/screens/add_salary_sheet.dart';
 
 class EmployeeListScreen extends ConsumerStatefulWidget {
   const EmployeeListScreen({super.key});
@@ -36,7 +38,15 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> {
     floatingActionButton: FloatingActionButton(
       backgroundColor: AppColors.primary,
       child: const Icon(Icons.person_add),
-      onPressed: () {},
+      onPressed: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: AppColors.surfaceDark,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+          builder: (_) => AddEmployeeSheet(onSuccess: _load),
+        );
+      },
     ),
     body: Column(children: [
       Padding(padding: const EdgeInsets.all(16),
@@ -62,6 +72,15 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> {
                   subtitle: Text(e['employee_type'] ?? ''),
                   trailing: Icon(e['is_active'] == true ? Icons.circle : Icons.circle_outlined,
                     color: e['is_active'] == true ? AppColors.success : AppColors.error, size: 12),
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: AppColors.surfaceDark,
+                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                      builder: (_) => AddSalarySheet(employeeId: e['id'], employeeName: name.trim()),
+                    );
+                  },
                 ));
               }),
       ),
