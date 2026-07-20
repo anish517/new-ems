@@ -93,4 +93,33 @@ class ApiService {
   Future<Response> uploadFile(String path, FormData formData) {
     return _dio.post(path, data: formData);
   }
+
+  static String getErrorMessage(dynamic e) {
+    if (e is DioException) {
+      if (e.response?.data != null) {
+        if (e.response!.data is Map) {
+          final data = e.response!.data as Map;
+          if (data.containsKey('error')) return data['error'].toString();
+          if (data.containsKey('detail')) return data['detail'].toString();
+          if (data.containsKey('message')) return data['message'].toString();
+          if (data.containsKey('non_field_errors')) {
+            return (data['non_field_errors'] as List).join(', ');
+          }
+          // If it's a DRF field validation error, grab the first value
+          if (data.isNotEmpty) {
+            final firstValue = data.values.first;
+            if (firstValue is List && firstValue.isNotEmpty) {
+              return firstValue.first.toString();
+            }
+            return firstValue.toString();
+          }
+        } else if (e.response!.data is String) {
+          return e.response!.data.toString();
+        }
+      }
+      return 'Network Error: Please check your connection';
+    }
+    return e.toString();
+  }
 }
+

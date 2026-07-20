@@ -63,7 +63,7 @@ class EmptyStateWidget extends StatelessWidget {
       padding: const EdgeInsets.all(32),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon ?? Icons.inbox_outlined,
-            size: 64, color: AppColors.textSecondary.withOpacity(0.5)),
+            size: 64, color: AppColors.textSecondary.withValues(alpha: 0.5)),
         const SizedBox(height: 16),
         Text(title, style: const TextStyle(
             fontSize: 18, fontWeight: FontWeight.w600),
@@ -93,9 +93,9 @@ class StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
     decoration: BoxDecoration(
-      color: color.withOpacity(0.12),
+      color: color.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: color.withOpacity(0.4)),
+      border: Border.all(color: color.withValues(alpha: 0.4)),
     ),
     child: Text(label, style: TextStyle(
         color: color, fontSize: 11, fontWeight: FontWeight.w600)),

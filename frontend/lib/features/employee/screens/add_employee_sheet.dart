@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
@@ -16,7 +15,8 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
   final _formKey = GlobalKey<FormState>();
   
   String _fname = '', _lname = '', _email = '', _password = '';
-  String _phone = '', _dob = '2000-01-01', _gender = 'male';
+  String _phone = '', _gender = 'male';
+  final DateTime _dob = DateTime.now();
   bool _isLoading = false;
 
   Future<void> _submit() async {
@@ -36,7 +36,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
           },
           'post': 1, // Default seeded post
           'gender': _gender,
-          'date_of_birth': _dob,
+          'date_of_birth': "${_dob.year}-${_dob.month.toString().padLeft(2, '0')}-${_dob.day.toString().padLeft(2, '0')}",
           'father_name': 'N/A',
           'phone_no': _phone,
           'official_email': _email,
@@ -52,7 +52,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.error)
+          SnackBar(content: Text('Error: ${ApiService.getErrorMessage(e)}'), backgroundColor: AppColors.error)
         );
       }
     } finally {
@@ -110,7 +110,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: DropdownButtonFormField<String>(
-                  value: _gender,
+                  initialValue: _gender,
                   decoration: const InputDecoration(labelText: 'Gender'),
                   items: const [
                     DropdownMenuItem(value: 'male', child: Text('Male')),

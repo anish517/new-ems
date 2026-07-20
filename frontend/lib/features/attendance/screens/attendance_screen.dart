@@ -65,7 +65,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       });
       _showSnack('✅ Checked in successfully!', AppColors.success);
     } catch (e) {
-      _showSnack('❌ ${e.toString()}', AppColors.error);
+      _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -86,7 +86,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       _showSnack('✅ Checked out successfully!', AppColors.success);
       await _loadStats();
     } catch (e) {
-      _showSnack('❌ ${e.toString()}', AppColors.error);
+      _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -206,7 +206,7 @@ class _StatBox extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Column(children: [

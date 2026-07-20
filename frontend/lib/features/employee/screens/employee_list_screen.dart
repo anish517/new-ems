@@ -23,8 +23,12 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> {
   Future<void> _load() async {
     try {
       final res = await ApiService().get('${AppConstants.organizationBase}/employees/');
+      if (!mounted) return;
       setState(() { _employees = res.data['results'] ?? res.data; _loading = false; });
-    } catch (_) { setState(() => _loading = false); }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
   }
 
   List get _filtered => _employees.where((e) {
