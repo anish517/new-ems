@@ -65,51 +65,73 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                             : status == 'in_review'
                                 ? AppColors.warning
                                 : AppColors.textSecondary;
-                        return Card(
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
-                            title: Text(c['title'] ?? '',
-                                style: const TextStyle(fontWeight: FontWeight.w600)),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                if (c['description'] != null)
-                                  Text(c['description'],
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.textSecondary)),
-                              ],
-                            ),
-                            trailing: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: statusColor.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
+                        return GestureDetector(
+                          onTap: () => _showComplaintDetailsDialog(context, c),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(c['title'] ?? '',
+                                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                                        if (c['owner_name'] != null) ...[
+                                          const SizedBox(height: 4),
+                                          Text('By: ${c['owner_name']}',
+                                              style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500)),
+                                        ],
+                                        if (c['description'] != null) ...[
+                                          const SizedBox(height: 6),
+                                          Text(c['description'],
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppColors.textSecondary)),
+                                        ],
+                                      ],
+                                    ),
                                   ),
-                                  child: Text(
-                                    status.replaceAll('_', ' ').toUpperCase(),
-                                    style: TextStyle(
-                                        color: statusColor,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold),
+                                  const SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: statusColor.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          status.replaceAll('_', ' ').toUpperCase(),
+                                          style: TextStyle(
+                                              color: statusColor,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.3)),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          c['visibility'] ?? 'anonymous',
+                                          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                Chip(
-                                  label: Text(c['visibility'] ?? 'private',
-                                      style: const TextStyle(fontSize: 10)),
-                                  padding: EdgeInsets.zero,
-                                  materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         );
@@ -117,6 +139,17 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
             ),
     );
   }
+
+  void _showComplaintDetailsDialog(BuildContext ctx, Map complaint) =>
+      showModalBottomSheet(
+        context: ctx,
+        isScrollControlled: true,
+        backgroundColor: AppColors.surfaceDark,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        builder: (_) => _ComplaintDetailsSheet(
+            complaint: complaint, onReplySuccess: _loadComplaints),
+      );
 
   void _showSubmitDialog(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
@@ -207,10 +240,10 @@ class _SubmitComplaintSheetState extends State<_SubmitComplaintSheet> {
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: _visibility,
-                decoration: const InputDecoration(labelText: 'Visibility'),
+                decoration: const InputDecoration(labelText: 'Visibility to Administration'),
                 items: const [
-                  DropdownMenuItem(value: 'identified', child: Text('Private (Admin only)')),
-                  DropdownMenuItem(value: 'anonymous', child: Text('Public (All employees)')),
+                  DropdownMenuItem(value: 'identified', child: Text('Show my Name (Identified)')),
+                  DropdownMenuItem(value: 'anonymous', child: Text('Hide my Name (Anonymous)')),
                 ],
                 onChanged: (v) => setState(() => _visibility = v!),
               ),
@@ -226,4 +259,135 @@ class _SubmitComplaintSheetState extends State<_SubmitComplaintSheet> {
           ),
         ),
       );
+}
+
+// ─── Complaint Details & Replies Sheet ────────────────────────────────────────
+class _ComplaintDetailsSheet extends StatefulWidget {
+  final Map complaint;
+  final VoidCallback onReplySuccess;
+  const _ComplaintDetailsSheet({required this.complaint, required this.onReplySuccess});
+
+  @override
+  State<_ComplaintDetailsSheet> createState() => _ComplaintDetailsSheetState();
+}
+
+class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
+  final _replyController = TextEditingController();
+  bool _isReplying = false;
+
+  Future<void> _submitReply() async {
+    final text = _replyController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() => _isReplying = true);
+    try {
+      await ApiService().post(
+        '${AppConstants.feedbackBase}/${widget.complaint['id']}/reply/',
+        data: {'content': text},
+      );
+      if (mounted) {
+        _replyController.clear();
+        widget.onReplySuccess();
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('✅ Reply sent!'),
+          backgroundColor: AppColors.success,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: ${ApiService.getErrorMessage(e)}'),
+          backgroundColor: AppColors.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isReplying = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final replies = widget.complaint['replies'] as List? ?? [];
+    
+    return Padding(
+      padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(widget.complaint['title'] ?? 'Complaint',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          if (widget.complaint['owner_name'] != null) ...[
+            const SizedBox(height: 4),
+            Text('Submitted by: ${widget.complaint['owner_name']}',
+                style: const TextStyle(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w500)),
+          ],
+          const SizedBox(height: 8),
+          if (widget.complaint['description'] != null)
+            Text(widget.complaint['description'],
+                style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+          const Divider(height: 32),
+          const Text('Replies',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          if (replies.isEmpty)
+            const Text('No replies yet.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary))
+          else
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: replies.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final reply = replies[index];
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(reply['employee_name'] ?? 'Unknown',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        const SizedBox(height: 4),
+                        Text(reply['content'] ?? '', style: const TextStyle(fontSize: 14)),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _replyController,
+                  decoration: const InputDecoration(
+                    hintText: 'Write a reply...',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              IconButton(
+                onPressed: _isReplying ? null : _submitReply,
+                icon: _isReplying
+                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.send, color: AppColors.primary),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

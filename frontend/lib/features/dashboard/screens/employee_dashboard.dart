@@ -32,8 +32,8 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
       final res = await ApiService().get(
         '${AppConstants.attendanceBase}/total-working-hour/${user!.employeeId}/',
       );
-      setState(() { _attendanceData = res.data; _isLoading = false; });
-    } catch (_) { setState(() => _isLoading = false); }
+      if (mounted) setState(() { _attendanceData = res.data; _isLoading = false; });
+    } catch (_) { if (mounted) setState(() => _isLoading = false); }
   }
 
   @override
