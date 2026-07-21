@@ -1,10 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/services/api_service.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
+import 'package:nepali_utils/nepali_utils.dart';
+
+// ─── Date formatter ───────────────────────────────────────────────────────
+String _fmtDate(String? raw, {String? fallback}) {
+  DateTime? parseDate(String? s) {
+    if (s == null || s.isEmpty) return null;
+    try {
+      if (s.contains('T')) return DateTime.parse(s);
+      return NepaliDateTime.parse(s).toDateTime();
+    } catch (_) {
+      try {
+        return DateTime.parse(s);
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  final date = parseDate(raw) ?? parseDate(fallback);
+  if (date != null) {
+    return DateFormat('dd MMM yyyy').format(date);
+  }
+  return DateFormat('dd MMM yyyy').format(DateTime.now());
+}
 
 class LeaveScreen extends ConsumerStatefulWidget {
   const LeaveScreen({super.key});
@@ -23,8 +47,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
   @override
   void initState() {
     super.initState();
-    final isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
-    _tabs = TabController(length: isAdmin ? 2 : 2, vsync: this);
+    _tabs = TabController(length: 2, vsync: this);
     _loadLeaves();
   }
 
@@ -190,7 +213,7 @@ class _LeaveCard extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const SizedBox(height: 4),
-            Text('${data['from_date']} → ${data['till_date']}',
+            Text('${_fmtDate(data['from_date']?.toString())} → ${_fmtDate(data['till_date']?.toString())}',
                 style: const TextStyle(fontSize: 12)),
             const SizedBox(height: 4),
             Text(data['is_paid'] == true ? 'Paid Leave' : 'Unpaid Leave',
@@ -235,7 +258,7 @@ class _AdminLeaveCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.1),
+                  color: AppColors.warning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text('Pending',
@@ -243,12 +266,24 @@ class _AdminLeaveCard extends StatelessWidget {
                         fontWeight: FontWeight.bold)),
               ),
             ]),
-            const SizedBox(height: 8),
-            Text('${leave['from_date']} → ${leave['till_date']}',
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-            if (leave['reason'] != null) ...[
+
+            const SizedBox(height: 6),
+            Row(children: [
+              const Icon(Icons.person_outline, size: 14, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(leave['employee_name'] ?? 'Unknown Employee',
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+            ]),
+            const SizedBox(height: 4),
+            Row(children: [
+              const Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text('${_fmtDate(leave['from_date']?.toString())} → ${_fmtDate(leave['till_date']?.toString())}',
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            ]),
+            if (leave['remarks'] != null && (leave['remarks'] as String).isNotEmpty) ...[
               const SizedBox(height: 4),
-              Text(leave['reason'],
+              Text(leave['remarks'],
                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   maxLines: 2, overflow: TextOverflow.ellipsis),
             ],
@@ -366,13 +401,43 @@ class _ApplyLeaveSheet extends StatefulWidget {
 
 class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
   final _formKey = GlobalKey<FormState>();
+  final _fromCtrl = TextEditingController();
+  final _tillCtrl = TextEditingController();
   String _subject = '', _fromDate = '', _tillDate = '', _reason = '';
   bool _isPaid = true;
   bool _isLoading = false;
 
+  Future<void> _pickDate(bool isFrom) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        final dateStr = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+        if (isFrom) {
+          _fromDate = dateStr;
+          _fromCtrl.text = dateStr;
+        } else {
+          _tillDate = dateStr;
+          _tillCtrl.text = dateStr;
+        }
+      });
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
+    if (_fromDate.isEmpty || _tillDate.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Please select both From Date and Till Date'),
+        backgroundColor: AppColors.error,
+      ));
+      return;
+    }
     setState(() => _isLoading = true);
     try {
       await ApiService().post(
@@ -428,25 +493,32 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(child: TextFormField(
-                  decoration: const InputDecoration(labelText: 'From Date (YYYY-MM-DD)',
-                      hintText: '2081-04-01'),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                  onSaved: (v) => _fromDate = v!,
+                  controller: _fromCtrl,
+                  readOnly: true,
+                  onTap: () => _pickDate(true),
+                  decoration: const InputDecoration(
+                    labelText: 'From Date',
+                    suffixIcon: Icon(Icons.calendar_month),
+                  ),
+                  validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: TextFormField(
-                  decoration: const InputDecoration(labelText: 'Till Date (YYYY-MM-DD)',
-                      hintText: '2081-04-03'),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                  onSaved: (v) => _tillDate = v!,
+                  controller: _tillCtrl,
+                  readOnly: true,
+                  onTap: () => _pickDate(false),
+                  decoration: const InputDecoration(
+                    labelText: 'Till Date',
+                    suffixIcon: Icon(Icons.calendar_month),
+                  ),
+                  validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
                 )),
               ]),
               const SizedBox(height: 12),
               TextFormField(
                 maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Reason'),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-                onSaved: (v) => _reason = v!,
+                decoration: const InputDecoration(labelText: 'Reason (optional)'),
+                onSaved: (v) => _reason = v ?? '',
               ),
               const SizedBox(height: 12),
               SwitchListTile(

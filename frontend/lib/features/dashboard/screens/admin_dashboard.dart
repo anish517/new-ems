@@ -124,6 +124,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 'Post organization notices', () => context.go('/noticeboard')),
             _ManagementTile(Iconsax.calendar, 'Calendar',
                 'Manage events and holidays', () => context.go('/calendar')),
+            _ManagementTile(Iconsax.star1, 'Performance & Score',
+                'Review employee performance', () => context.go('/performance')),
             _ManagementTile(Iconsax.message_question, 'Feedback / Complaints',
                 'Review employee complaints', () => context.go('/feedback')),
           ]),

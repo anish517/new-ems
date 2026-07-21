@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:nepali_utils/nepali_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 
-/// Nepali BS Calendar months have fixed day counts per year pattern.
-/// This is a simplified static mapping for demonstration.
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
   @override
@@ -12,53 +11,65 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  // Current BS date (approximate conversion from AD)
-  late int _bsYear;
-  late int _bsMonth;
+  late NepaliDateTime
+      _viewedMonth; // day is always 1; year/month drive the view
+  late final NepaliDateTime _today;
   List _events = [];
   List _holidays = [];
   bool _loading = false;
+  String? _error;
 
-  // BS month names
   static const _monthNames = [
-    '', 'Baisakh', 'Jestha', 'Ashadh', 'Shrawan',
-    'Bhadra', 'Ashwin', 'Kartik', 'Mangsir',
-    'Poush', 'Magh', 'Falgun', 'Chaitra',
+    '',
+    'Baisakh',
+    'Jestha',
+    'Ashadh',
+    'Shrawan',
+    'Bhadra',
+    'Ashwin',
+    'Kartik',
+    'Mangsir',
+    'Poush',
+    'Magh',
+    'Falgun',
+    'Chaitra',
   ];
-
-  // Days in each month for BS year 2081 (approximate)
-  static const Map<int, List<int>> _bsDaysInMonth = {
-    2079: [0, 31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
-    2080: [0, 31, 31, 32, 32, 31, 30, 30, 30, 29, 30, 29, 30],
-    2081: [0, 31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
-    2082: [0, 31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 30],
-  };
 
   @override
   void initState() {
     super.initState();
-    // Approximate: AD 2025 ≈ BS 2082, current month shift ~3.5 months
-    final now = DateTime.now();
-    // Simple approximation: BS year = AD year + 56 or 57
-    _bsYear = now.month <= 4 ? now.year + 56 : now.year + 56;
-    _bsMonth = ((now.month + 8) % 12) + 1; // rough offset
-    // Clamp to valid range
-    _bsYear = _bsYear.clamp(2079, 2082);
-    _bsMonth = _bsMonth.clamp(1, 12);
+    _today = NepaliDateTime.now();
+    _viewedMonth = NepaliDateTime(_today.year, _today.month, 1);
     _loadEvents();
   }
 
-  int get _daysInCurrentMonth {
-    final yearData = _bsDaysInMonth[_bsYear];
-    if (yearData == null) return 30;
-    return yearData[_bsMonth];
+  /// Days in the viewed BS month, derived from the library's AD conversion
+  /// rather than a hand-maintained table — stays correct for any year the
+  /// package supports, no manual updates needed.
+  int get _daysInViewedMonth {
+    final thisMonthStartAd = _viewedMonth.toDateTime();
+    final nextMonth = _viewedMonth.month == 12
+        ? NepaliDateTime(_viewedMonth.year + 1, 1, 1)
+        : NepaliDateTime(_viewedMonth.year, _viewedMonth.month + 1, 1);
+    return nextMonth.toDateTime().difference(thisMonthStartAd).inDays;
   }
 
+  /// 0 = Sunday ... 6 = Saturday, matching the day-header row below.
+  /// NOTE: assumes NepaliDateTime.weekday follows DateTime's convention
+  /// (Monday=1...Sunday=7) — worth a quick print/debug check after adding
+  /// the dependency, since this is the one piece I couldn't verify from docs.
+  int get _startOffset => _viewedMonth.weekday % 7;
+
   Future<void> _loadEvents() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final eventsRes = await ApiService().get('${AppConstants.calendarBase}/events/');
-      final holidaysRes = await ApiService().get('${AppConstants.calendarBase}/dates/');
+      final eventsRes =
+          await ApiService().get('${AppConstants.calendarBase}/events/');
+      final holidaysRes =
+          await ApiService().get('${AppConstants.calendarBase}/dates/');
       if (!mounted) return;
       setState(() {
         _events = eventsRes.data is List
@@ -68,31 +79,44 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ? holidaysRes.data
             : (holidaysRes.data['results'] ?? []);
       });
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Could not load calendar data.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   void _prevMonth() {
     setState(() {
-      if (_bsMonth == 1) { _bsMonth = 12; _bsYear--; }
-      else { _bsMonth--; }
+      _viewedMonth = _viewedMonth.month == 1
+          ? NepaliDateTime(_viewedMonth.year - 1, 12, 1)
+          : NepaliDateTime(_viewedMonth.year, _viewedMonth.month - 1, 1);
     });
     _loadEvents();
   }
 
   void _nextMonth() {
     setState(() {
-      if (_bsMonth == 12) { _bsMonth = 1; _bsYear++; }
-      else { _bsMonth++; }
+      _viewedMonth = _viewedMonth.month == 12
+          ? NepaliDateTime(_viewedMonth.year + 1, 1, 1)
+          : NepaliDateTime(_viewedMonth.year, _viewedMonth.month + 1, 1);
     });
     _loadEvents();
   }
 
+  bool _matchesBsDay(dynamic item, int day) {
+    final raw = (item['date'] ?? item['start_date'] ?? '').toString();
+    // Assumes the API already returns BS-formatted dates (YYYY-MM-DD).
+    // If it actually returns AD dates, convert first:
+    // DateTime.parse(raw).toNepaliDateTime()
+    return raw.endsWith('-$day') ||
+        raw.endsWith('-${day.toString().padLeft(2, '0')}');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final days = _daysInCurrentMonth;
-    // BS week starts on Sunday. Day 1 of the month offset — simplified to 0
-    const startOffset = 0;
+    final days = _daysInViewedMonth;
+    final startOffset = _startOffset;
     final totalCells = days + startOffset;
     final rows = (totalCells / 7).ceil();
 
@@ -104,28 +128,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ],
       ),
       body: Column(children: [
-        // Month navigation
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           color: AppColors.surfaceDark,
           child: Row(children: [
             IconButton(
-              icon: const Icon(Icons.chevron_left),
-              onPressed: _prevMonth,
-            ),
-            Expanded(child: Text(
-              '${_monthNames[_bsMonth]} $_bsYear BS',
+                icon: const Icon(Icons.chevron_left), onPressed: _prevMonth),
+            Expanded(
+                child: Text(
+              '${_monthNames[_viewedMonth.month]} ${_viewedMonth.year} BS',
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             )),
             IconButton(
-              icon: const Icon(Icons.chevron_right),
-              onPressed: _nextMonth,
-            ),
+                icon: const Icon(Icons.chevron_right), onPressed: _nextMonth),
           ]),
         ),
-
-        // Day headers
         Container(
           color: AppColors.surfaceDark,
           padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -146,8 +164,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ),
         const Divider(height: 1),
-
-        // Calendar grid
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(children: [
+              const Icon(Icons.error_outline, color: AppColors.error, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: Text(_error!,
+                      style: const TextStyle(color: AppColors.error))),
+              TextButton(onPressed: _loadEvents, child: const Text('Retry')),
+            ]),
+          ),
         _loading
             ? const Expanded(child: Center(child: CircularProgressIndicator()))
             : Expanded(
@@ -160,21 +188,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   itemCount: rows * 7,
                   itemBuilder: (_, index) {
                     final day = index - startOffset + 1;
-                    if (day < 1 || day > days) {
-                      return const SizedBox();
-                    }
+                    if (day < 1 || day > days) return const SizedBox();
+
                     final isSaturday = index % 7 == 6;
-                    final isToday = day == 15; // placeholder — no real today mapping
-                    final hasEvent = _events.any((e) {
-                      final d = e['date'] ?? e['start_date'] ?? '';
-                      return d.toString().endsWith('-$day') ||
-                          d.toString().endsWith('-${day.toString().padLeft(2, '0')}');
-                    });
-                    final isHoliday = _holidays.any((h) {
-                      final d = h['date'] ?? '';
-                      return d.toString().endsWith('-$day') ||
-                          d.toString().endsWith('-${day.toString().padLeft(2, '0')}');
-                    });
+                    final isToday = _viewedMonth.year == _today.year &&
+                        _viewedMonth.month == _today.month &&
+                        day == _today.day;
+                    final hasEvent = _events.any((e) => _matchesBsDay(e, day));
+                    final isHoliday =
+                        _holidays.any((h) => _matchesBsDay(h, day));
 
                     return Container(
                       margin: const EdgeInsets.all(2),
@@ -193,29 +215,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            '$day',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: isToday
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: isToday
-                                  ? Colors.white
-                                  : isSaturday || isHoliday
-                                      ? AppColors.error
-                                      : null,
-                            ),
-                          ),
+                          Text('$day',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: isToday
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: isToday
+                                    ? Colors.white
+                                    : isSaturday || isHoliday
+                                        ? AppColors.error
+                                        : null,
+                              )),
                           if (hasEvent)
                             Container(
                               width: 5,
                               height: 5,
                               margin: const EdgeInsets.only(top: 2),
                               decoration: const BoxDecoration(
-                                color: AppColors.accent,
-                                shape: BoxShape.circle,
-                              ),
+                                  color: AppColors.accent,
+                                  shape: BoxShape.circle),
                             ),
                         ],
                       ),
@@ -223,18 +242,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   },
                 ),
               ),
-
-        // Events this month
         if (_events.isNotEmpty) ...[
           const Divider(height: 1),
           Container(
             height: 140,
             padding: const EdgeInsets.all(12),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Events',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: 8),
-              Expanded(child: ListView.separated(
+              Expanded(
+                  child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _events.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
@@ -246,19 +265,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.accent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: AppColors.accent.withValues(alpha: 0.3)),
                     ),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Text(e['name'] ?? e['title'] ?? '',
-                          style: const TextStyle(fontWeight: FontWeight.w600,
-                              fontSize: 12),
-                          maxLines: 2, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 4),
-                      Text(e['date'] ?? e['start_date'] ?? '',
-                          style: const TextStyle(fontSize: 10,
-                              color: AppColors.textSecondary)),
-                    ]),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(e['name'] ?? e['title'] ?? '',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 12),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 4),
+                          Text(e['date'] ?? e['start_date'] ?? '',
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.textSecondary)),
+                        ]),
                   );
                 },
               )),

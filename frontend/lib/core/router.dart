@@ -15,6 +15,7 @@ import '../features/profile/screens/profile_screen.dart';
 import '../features/employee/screens/employee_list_screen.dart';
 import '../features/feedback/screens/feedback_screen.dart';
 import '../features/calendar/screens/calendar_screen.dart';
+import '../features/performance/screens/performance_screen.dart';
 import '../shared/widgets/app_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -57,6 +58,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/employees',    builder: (_, __) => const EmployeeListScreen()),
           GoRoute(path: '/feedback',     builder: (_, __) => const FeedbackScreen()),
           GoRoute(path: '/calendar',     builder: (_, __) => const CalendarScreen()),
+          GoRoute(path: '/performance',  builder: (_, __) => const PerformanceScreen()),
         ],
       ),
     ],

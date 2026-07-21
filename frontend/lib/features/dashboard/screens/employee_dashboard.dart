@@ -108,6 +108,8 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
                     () => context.go('/noticeboard')),
                 _QuickCard('Feedback', Iconsax.message_question, AppColors.remote,
                     () => context.go('/feedback')),
+                _QuickCard('Performance', Iconsax.star1, AppColors.warning,
+                    () => context.go('/performance')),
               ],
             ),
           ]),

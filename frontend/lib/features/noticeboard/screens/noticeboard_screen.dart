@@ -1,9 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
+import 'package:nepali_utils/nepali_utils.dart';
+
+// ─── Date formatter ───────────────────────────────────────────────────────
+String _fmtDate(String? raw, {String? fallback}) {
+  DateTime? parseDate(String? s) {
+    if (s == null || s.isEmpty) return null;
+    try {
+      if (s.contains('T')) return DateTime.parse(s);
+      return NepaliDateTime.parse(s).toDateTime();
+    } catch (_) {
+      try {
+        return DateTime.parse(s);
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  final date = parseDate(raw) ?? parseDate(fallback);
+  if (date != null) {
+    return DateFormat('dd MMM yyyy').format(date);
+  }
+  return DateFormat('dd MMM yyyy').format(DateTime.now());
+}
 
 class NoticeboardScreen extends ConsumerStatefulWidget {
   const NoticeboardScreen({super.key});
@@ -62,52 +87,117 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                       padding: const EdgeInsets.all(16),
                       itemCount: _notices.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (_, i) {
+                      itemBuilder: (ctx, i) {
                         final n = _notices[i];
-                        return Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(children: [
-                                  Container(
-                                    width: 4,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary,
-                                      borderRadius: BorderRadius.circular(2),
+                        final desc = n['description'] ?? n['content'] ?? '';
+                        // Strip simple HTML tags for preview
+                        final cleanDesc = desc.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+                        return InkWell(
+                          onTap: () => _showNoticeDetail(ctx, n),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(children: [
+                                    Container(
+                                      width: 4,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary,
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(n['title'] ?? '',
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 15)),
-                                      Text(n['date'] ?? n['created_at'] ?? '',
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppColors.textSecondary)),
-                                    ],
-                                  )),
-                                ]),
-                                if (n['description'] != null ||
-                                    n['content'] != null) ...[
-                                  const SizedBox(height: 8),
-                                  Text(n['description'] ?? n['content'] ?? '',
-                                      style: const TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.textSecondary)),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(n['title'] ?? '',
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 15)),
+                                         Text(_fmtDate(n['date']?.toString(), fallback: n['created_at']?.toString()),
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppColors.textSecondary)),
+                                      ],
+                                    )),
+                                    const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                                  ]),
+                                  if (cleanDesc.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Text(cleanDesc,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            fontSize: 13,
+                                            color: AppColors.textSecondary)),
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
                           ),
                         );
                       }),
             ),
+    );
+  }
+
+  void _showNoticeDetail(BuildContext ctx, Map n) {
+    final desc = n['description'] ?? n['content'] ?? '';
+    final cleanDesc = desc.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceDark,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.95,
+        builder: (_, controller) => SingleChildScrollView(
+          controller: controller,
+          padding: const EdgeInsets.all(24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: AppColors.textSecondary.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Container(
+              width: 4,
+              height: 24,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(n['title'] ?? '',
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            Text(_fmtDate(n['date']?.toString(), fallback: n['created_at']?.toString()),
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 16),
+            if (cleanDesc.isNotEmpty)
+              Text(cleanDesc,
+                  style: const TextStyle(fontSize: 15, height: 1.7, color: AppColors.textSecondary))
+            else
+              const Text('No content available.',
+                  style: TextStyle(color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
+          ]),
+        ),
+      ),
     );
   }
 
@@ -132,8 +222,27 @@ class _CreateNoticeSheet extends StatefulWidget {
 
 class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
   final _formKey = GlobalKey<FormState>();
-  String _title = '', _description = '';
+  final _dateCtrl = TextEditingController();
+  String _title = '', _description = '', _date = '';
   bool _isLoading = false;
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      final nepaliPicked = picked.toNepaliDateTime();
+      setState(() {
+        final dateStr =
+            '${nepaliPicked.year}-${nepaliPicked.month.toString().padLeft(2, '0')}-${nepaliPicked.day.toString().padLeft(2, '0')}';
+        _date = dateStr;
+        _dateCtrl.text = dateStr;
+      });
+    }
+  }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -145,6 +254,7 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
         data: {
           'title': _title,
           'description': _description,
+          if (_date.isNotEmpty) 'date': _date,
         },
       );
       if (mounted) {
@@ -186,6 +296,16 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
                 decoration: const InputDecoration(labelText: 'Notice Title'),
                 validator: (v) => v!.isEmpty ? 'Required' : null,
                 onSaved: (v) => _title = v!,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _dateCtrl,
+                readOnly: true,
+                decoration: const InputDecoration(
+                  labelText: 'Notice Date',
+                  suffixIcon: Icon(Icons.calendar_today),
+                ),
+                onTap: _pickDate,
               ),
               const SizedBox(height: 12),
               TextFormField(
