@@ -14,6 +14,12 @@ from salary_management.models import Salary, SalaryTransaction
 
 from .serializers import SalarySerializer, SalaryTransactionSerializer, NetSalarySerializer
 
+def _get_org(user):
+    try:
+        return user.employee.post.department.organization
+    except Exception:
+        return user.organization.first()
+
 
 class BasicSalaryCreateAPIView(generics.ListCreateAPIView):
     model = Salary
@@ -36,10 +42,7 @@ class BasicSalaryCreateAPIView(generics.ListCreateAPIView):
         return Response(self.get_serializer(salary).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
     def get_queryset(self):
-        try:
-            organization = self.request.user.employee.organization
-        except Exception:
-            organization = self.request.user.organization.first()
+        organization = _get_org(self.request.user)
             
         if not organization:
             return Salary.objects.none()
@@ -53,8 +56,8 @@ class BasicSalaryUpdateAPIView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        employee: Employee = self.request.user.employee
-        return Salary.objects.filter(employee__post__department__organization=employee.organization)
+        organization = _get_org(self.request.user)
+        return Salary.objects.filter(organization=organization)
 
 
 class NetSalaryAPIView(generics.RetrieveAPIView):
@@ -73,16 +76,22 @@ class NetSalaryAPIView(generics.RetrieveAPIView):
         except Salary.DoesNotExist:
             return Response({'error': 'Salary details not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        net_salary = Salary.calculate_net_salary(
-            employee=salary.employee, year=nepali_date.year, month=(nepali_date.month-1))
+        # Use the same year/month for all calculations for consistency
+        year = nepali_date.year
+        month = nepali_date.month
 
-        # Calculate other details
+        net_salary = Salary.calculate_net_salary(
+            employee=salary.employee, year=year, month=month)
+
+        # Calculate other details (same month as net salary)
         no_of_days_present = Attendance.get_no_of_present_days(
-            salary.employee, nepali_date.year, nepali_date.month)
+            salary.employee, year, month)
         paid_leaves = LeaveRequest.get_total_paid_leaves(
-            salary.employee, nepali_date.year, nepali_date.month)
+            salary.employee, year, month)
         holidays = count_saturdays(
-            nepali_date.year, nepali_date.month) + count_holidays(salary.employee.organization, nepali_date.year, nepali_date.month)
+            year, month) + count_holidays(salary.employee.organization, year, month)
+        unpaid_leaves = LeaveRequest.get_total_unpaid_leaves(
+            salary.employee, year, month)
 
         # Prepare data for the response
         data = {
@@ -90,6 +99,7 @@ class NetSalaryAPIView(generics.RetrieveAPIView):
             "holidays": holidays,
             "no_of_days_present": no_of_days_present,
             "paid_leaves": paid_leaves,
+            "unpaid_leaves": unpaid_leaves,
         }
         serializer = NetSalarySerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -102,7 +112,7 @@ class SalaryTransactionRetrieveAPIView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         time.sleep(2)
-        organization = self.request.user.employee.organization
+        organization = _get_org(self.request.user)
         return SalaryTransaction.objects.filter(organization=organization)
 
 
@@ -147,17 +157,11 @@ class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        try:
-            organization = self.request.user.employee.organization
-        except Exception:
-            organization = self.request.user.organization.first()
+        organization = _get_org(self.request.user)
         return SalaryTransaction.objects.filter(organization=organization).order_by('-date')
 
     def create(self, request, *args, **kwargs):
-        try:
-            organization = self.request.user.employee.organization
-        except Exception:
-            organization = self.request.user.organization.first()
+        organization = _get_org(self.request.user)
             
         # Extract data from request
         salary_id = request.data.get('salary')

@@ -128,6 +128,11 @@ class SalaryTransaction(models.Model):
             self.salary.employee, self.date.year, self.date.month)
 
     @property
+    def unpaid_leaves(self):
+        return LeaveRequest.get_total_unpaid_leaves(
+            self.salary.employee, self.date.year, self.date.month)
+
+    @property
     def deduction(self):
         return self.salary.basic_salary - self.net_salary
 

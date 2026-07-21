@@ -12,4 +12,5 @@ class FiscalYear(models.Model):
     
     class Meta:
         verbose_name = 'Fiscal year'
+        ordering = ['-id']
     

@@ -24,18 +24,17 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
-      final isLoggedIn  = authState.isAuthenticated;
-      final isLoading   = authState.isLoading;
+      final isLoggedIn = authState.isAuthenticated;
+      final isLoading = authState.isLoading;
       final onLoginPage = state.matchedLocation == '/login';
 
       if (isLoading) return null;
       if (!isLoggedIn && !onLoginPage) return '/login';
-      if (isLoggedIn  &&  onLoginPage) return '/';
+      if (isLoggedIn && onLoginPage) return '/';
       return null;
     },
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
         routes: [
@@ -48,17 +47,29 @@ final routerProvider = Provider<GoRouter>((ref) {
                   : const EmployeeDashboard();
             },
           ),
-          GoRoute(path: '/attendance',   builder: (_, __) => const AttendanceScreen()),
-          GoRoute(path: '/leave',        builder: (_, __) => const LeaveScreen()),
-          GoRoute(path: '/salary',       builder: (_, __) => const SalaryScreen()),
-          GoRoute(path: '/tasks',        builder: (_, __) => const TasksScreen()),
-          GoRoute(path: '/noticeboard',  builder: (_, __) => const NoticeboardScreen()),
-          GoRoute(path: '/notifications',builder: (_, __) => const NotificationsScreen()),
-          GoRoute(path: '/profile',      builder: (_, __) => const ProfileScreen()),
-          GoRoute(path: '/employees',    builder: (_, __) => const EmployeeListScreen()),
-          GoRoute(path: '/feedback',     builder: (_, __) => const FeedbackScreen()),
-          GoRoute(path: '/calendar',     builder: (_, __) => const CalendarScreen()),
-          GoRoute(path: '/performance',  builder: (_, __) => const PerformanceScreen()),
+          GoRoute(
+              path: '/attendance',
+              builder: (_, __) => const AttendanceScreen()),
+          GoRoute(path: '/leave', builder: (_, __) => const LeaveScreen()),
+          GoRoute(path: '/salary', builder: (_, __) => const SalaryScreen()),
+          GoRoute(path: '/tasks', builder: (_, __) => const TasksScreen()),
+          GoRoute(
+              path: '/noticeboard',
+              builder: (_, __) => const NoticeboardScreen()),
+          GoRoute(
+              path: '/notifications',
+              builder: (_, __) => const NotificationsScreen()),
+          GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+          GoRoute(
+              path: '/employees',
+              builder: (_, __) => const EmployeeListScreen()),
+          GoRoute(
+              path: '/feedback', builder: (_, __) => const FeedbackScreen()),
+          GoRoute(
+              path: '/calendar', builder: (_, __) => const CalendarScreen()),
+          GoRoute(
+              path: '/performance',
+              builder: (_, __) => const PerformanceScreen()),
         ],
       ),
     ],

@@ -9,7 +9,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'package:nepali_utils/nepali_utils.dart';
 
-// ─── Date helper ─────────────────────────────────────────────────────────────────
+// ─── Date helper ─────────────────────────────────────────────────────────────
 String _formatDate(String? raw, {String? fallback}) {
   DateTime? parseDate(String? s) {
     if (s == null || s.isEmpty) return null;
@@ -26,9 +26,7 @@ String _formatDate(String? raw, {String? fallback}) {
   }
 
   final date = parseDate(raw) ?? parseDate(fallback);
-  if (date != null) {
-    return DateFormat('dd MMM yyyy').format(date);
-  }
+  if (date != null) return DateFormat('dd MMM yyyy').format(date);
   return DateFormat('dd MMM yyyy').format(DateTime.now());
 }
 
@@ -51,10 +49,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   bool _orgLogsLoading = false;
   late TabController _adminTabs;
 
+  // Remote work permission state
+  bool? _hasRemotePermission;
+  List _remoteEmployees = [];
+  bool _remoteLoading = false;
+
   @override
   void initState() {
     super.initState();
-    _adminTabs = TabController(length: 2, vsync: this);
+    _adminTabs = TabController(length: 3, vsync: this);
     _loadAll();
   }
 
@@ -69,15 +72,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       _loadTodayStatus(),
       _loadStats(),
       _loadDailyHistory(),
+      _loadMyRemoteStatus(),
     ]);
     final isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
-    if (isAdmin) _loadOrgLogs();
+    if (isAdmin) {
+      _loadOrgLogs();
+      _loadRemoteList();
+    }
   }
 
   Future<void> _loadTodayStatus() async {
     try {
-      final res = await ApiService()
-          .get('${AppConstants.attendanceBase}/today-status/');
+      final res =
+          await ApiService().get('${AppConstants.attendanceBase}/today-status/');
       if (mounted) {
         setState(() {
           _isCheckedIn = res.data['is_checked_in'] == true;
@@ -102,12 +109,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     try {
       final user = ref.read(currentUserProvider);
       if (user?.employeeId == null) return;
-      final res = await ApiService().get(
-        '${AppConstants.attendanceBase}/list/',
-      );
+      final res = await ApiService().get('${AppConstants.attendanceBase}/list/');
       if (!mounted) return;
       final all = res.data is List ? res.data as List : [];
-      // Filter for current employee
       final myLogs =
           all.where((a) => a['employee_id'] == user?.employeeId).toList();
       setState(() => _dailyHistory = myLogs);
@@ -130,6 +134,59 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     }
   }
 
+  Future<void> _loadMyRemoteStatus() async {
+    try {
+      final res = await ApiService()
+          .get('${AppConstants.attendanceBase}/remote-work-permission/me/');
+      if (mounted) {
+        setState(() =>
+            _hasRemotePermission = res.data['has_remote_permission'] == true);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadRemoteList() async {
+    setState(() => _remoteLoading = true);
+    try {
+      final res = await ApiService()
+          .get('${AppConstants.attendanceBase}/remote-work-permission/list/');
+      if (mounted) {
+        setState(() {
+          _remoteEmployees = res.data is List ? res.data : [];
+          _remoteLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _remoteLoading = false);
+    }
+  }
+
+  Future<void> _setRemoteLocation(int employeeId) async {
+    try {
+      final pos = await _getLocation();
+      await ApiService().post(
+        '${AppConstants.attendanceBase}/remote-work-permission/set/$employeeId/',
+        data: {'latitude': pos.latitude, 'longitude': pos.longitude},
+      );
+      _showSnack('✅ Remote location set!', AppColors.success);
+      _loadRemoteList();
+    } catch (e) {
+      _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
+    }
+  }
+
+  Future<void> _removeRemoteLocation(int employeeId) async {
+    try {
+      await ApiService().delete(
+        '${AppConstants.attendanceBase}/remote-work-permission/set/$employeeId/',
+      );
+      _showSnack('✅ Remote access revoked', AppColors.success);
+      _loadRemoteList();
+    } catch (e) {
+      _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
+    }
+  }
+
   Future<Position> _getLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) throw Exception('Location services are disabled.');
@@ -142,15 +199,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       }
     }
     if (perm == LocationPermission.deniedForever) {
-      throw Exception('Location permission permanently denied. Please enable it in settings.');
+      throw Exception(
+          'Location permission permanently denied. Please enable it in settings.');
     }
     return await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
+      timeLimit: const Duration(seconds: 10),
     );
   }
 
   Future<void> _checkIn() async {
-    // Confirm first
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -187,10 +245,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     } catch (e) {
       if (!mounted) return;
       final msg = ApiService.getErrorMessage(e);
-      // Friendly message for double check-in attempt
       if (msg.toLowerCase().contains('cannot check in again') ||
           msg.toLowerCase().contains('without checking out')) {
-        _showSnack('⚠️ You are already checked in. Please check out first.', AppColors.warning);
+        _showSnack('⚠️ You are already checked in. Please check out first.',
+            AppColors.warning);
+      } else if (msg
+          .toLowerCase()
+          .contains('not within the office or remote work radius')) {
+        _showSnack(
+            '⚠️ You need to be at the office or your approved remote location to check in.',
+            AppColors.warning);
       } else {
         _showSnack('❌ $msg', AppColors.error);
       }
@@ -210,7 +274,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Cancel')),
           ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              style:
+                  ElevatedButton.styleFrom(backgroundColor: AppColors.error),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Check Out')),
         ],
@@ -236,7 +301,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       await _loadDailyHistory();
     } catch (e) {
       if (!mounted) return;
-      _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
+      final msg = ApiService.getErrorMessage(e);
+      if (msg
+          .toLowerCase()
+          .contains('not within the office or remote work radius')) {
+        _showSnack(
+            '⚠️ You need to be at the office or your approved remote location to check out.',
+            AppColors.warning);
+      } else {
+        _showSnack('❌ $msg', AppColors.error);
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -259,8 +333,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         'latitude': pos.latitude,
         'longitude': pos.longitude,
       });
-      _showSnack(
-          '✅ Office Location configured successfully!', AppColors.success);
+      _showSnack('✅ Office Location configured successfully!', AppColors.success);
     } catch (e) {
       _showSnack(
           '❌ Failed to set office location: ${ApiService.getErrorMessage(e)}',
@@ -291,6 +364,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             tabs: const [
               Tab(text: 'Check In/Out'),
               Tab(text: 'All Staff Logs'),
+              Tab(text: 'Remote Access'),
             ],
           ),
         ),
@@ -299,6 +373,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           children: [
             _buildCheckInUI(),
             _buildOrgLogs(),
+            _buildRemoteAccessTab(),
           ],
         ),
       );
@@ -322,7 +397,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(children: [
-          // Stats row
           if (_stats != null) ...[
             Row(children: [
               Expanded(
@@ -330,21 +404,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       '${_stats!['total_working_hour']}h', AppColors.primary)),
               const SizedBox(width: 12),
               Expanded(
-                  child: _StatBox(
-                      'Days Present',
-                      '${_stats!['total_no_of_days_present']}',
-                      AppColors.success)),
+                  child: _StatBox('Days Present',
+                      '${_stats!['total_no_of_days_present']}', AppColors.success)),
               const SizedBox(width: 12),
               Expanded(
-                  child: _StatBox(
-                      'Remaining',
-                      '${_stats!['remaining_working_hour']}h',
-                      AppColors.warning)),
+                  child: _StatBox('Remaining',
+                      '${_stats!['remaining_working_hour']}h', AppColors.warning)),
             ]),
             const SizedBox(height: 24),
           ],
 
-          // Check-in / Check-out button
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(28),
@@ -423,11 +492,46 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             ),
           ],
 
+          if (_hasRemotePermission != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: (_hasRemotePermission!
+                        ? AppColors.success
+                        : AppColors.textSecondary)
+                    .withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(children: [
+                Icon(
+                  _hasRemotePermission!
+                      ? Iconsax.tick_circle
+                      : Iconsax.close_circle,
+                  size: 16,
+                  color: _hasRemotePermission!
+                      ? AppColors.success
+                      : AppColors.textSecondary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _hasRemotePermission!
+                        ? 'Remote work location approved ✓'
+                        : 'No remote work location approved yet',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ]),
+            ),
+          ],
+
           const SizedBox(height: 24),
           const Align(
               alignment: Alignment.centerLeft,
               child: Text('Attendance History',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
+                  style:
+                      TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
           const SizedBox(height: 12),
 
           if (_dailyHistory.isEmpty)
@@ -443,7 +547,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           const Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                  'Note: Check-in requires you to be within 500m of your office or approved remote location.',
+                  'Note: Check-in and check-out both require you to be within 500m of your office or your approved remote location.',
                   style:
                       TextStyle(color: AppColors.textSecondary, fontSize: 12))),
         ]),
@@ -463,6 +567,69 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (_, i) =>
                       _AttendanceLogTile(log: _orgLogs[i], showName: true),
+                ),
+        );
+
+  Widget _buildRemoteAccessTab() => _remoteLoading
+      ? const Center(child: CircularProgressIndicator())
+      : RefreshIndicator(
+          onRefresh: _loadRemoteList,
+          child: _remoteEmployees.isEmpty
+              ? const Center(
+                  child: Text('No employees found.',
+                      style: TextStyle(color: AppColors.textSecondary)))
+              : ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _remoteEmployees.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (_, i) {
+                    final e = _remoteEmployees[i];
+                    final hasPermission = e['has_remote_permission'] == true;
+                    final employeeId = e['employee_id'] as int;
+                    return Card(
+                      child: ListTile(
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: (hasPermission
+                                    ? AppColors.success
+                                    : AppColors.textSecondary)
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            hasPermission
+                                ? Iconsax.tick_circle
+                                : Iconsax.close_circle,
+                            color: hasPermission
+                                ? AppColors.success
+                                : AppColors.textSecondary,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(e['employee_name'] ?? 'Unknown'),
+                        subtitle: Text(hasPermission
+                            ? 'Remote location approved'
+                            : 'No remote location set'),
+                        trailing: hasPermission
+                            ? IconButton(
+                                icon: const Icon(Icons.remove_circle_outline,
+                                    color: AppColors.error),
+                                tooltip: 'Revoke remote access',
+                                onPressed: () =>
+                                    _removeRemoteLocation(employeeId),
+                              )
+                            : IconButton(
+                                icon: const Icon(
+                                    Icons.add_location_alt_outlined,
+                                    color: AppColors.primary),
+                                tooltip: 'Set remote location (from here)',
+                                onPressed: () => _setRemoteLocation(employeeId),
+                              ),
+                      ),
+                    );
+                  },
                 ),
         );
 }
@@ -536,18 +703,20 @@ class _AttendanceLogTile extends StatelessWidget {
               ])),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text('${hours}h',
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 15)),
             if (isRemote)
               Container(
                 margin: const EdgeInsets.only(top: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: AppColors.accent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text('Remote',
-                    style: TextStyle(fontSize: 10, color: AppColors.accent)),
+                    style:
+                        TextStyle(fontSize: 10, color: AppColors.accent)),
               ),
           ]),
         ]),
@@ -573,8 +742,8 @@ class _StatBox extends StatelessWidget {
               style: TextStyle(
                   fontSize: 18, fontWeight: FontWeight.bold, color: color)),
           Text(label,
-              style:
-                  const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              style: const TextStyle(
+                  fontSize: 11, color: AppColors.textSecondary),
               textAlign: TextAlign.center),
         ]),
       );
