@@ -1,0 +1,71 @@
+{% extends 'index.html' %}
+
+{% block title %}
+Feedback
+{% endblock %}
+
+{% block css %}
+{{ form.media }}
+<style>
+    .ck{
+        height: 100%;
+    }
+    .ck-editor__editable h1, 
+    .ck-editor__editable h2, 
+    .ck-editor__editable h3, 
+
+    .ck-editor__editable p {
+        color: #333333;  /* Replace with your desired default color */
+    }
+</style>
+
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+      <div class="card">
+            <div class="card-header border-0">
+                  <div class="card-title fs-4">Edit your complain</div>
+            </div>
+            <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+                <div class="card-body">
+                    <div class="row">
+                        {% for field in form %}
+                        {% if field.label == 'Description' %}
+                        <div class="col-12 form-group mb-4" id="{{ field.label|lower }}">
+                            <label for="{{ field.id_for_label }}">Description</label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                                {% for error in field.errors %}
+                                {{ error }}. <br>
+                                {% endfor %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="col-md-6 form-group mb-4" id="{{ field.label|lower }}">
+                              <label for="{{ field.id_for_label }}" class="{% if field.field.required %}required{% endif %}">{{ field.label|safe }}</label>
+                              {{ field }}
+                              {% if field.errors %}
+                              <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                                  {% for error in field.errors %}
+                                  {{ error }}. <br>
+                                  {% endfor %}
+                              </small>
+                              {% endif %}
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer pt-0 border-0">
+                  <button class="btn btn-primary btn-sm fw-medium">Save changes</button>
+              </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

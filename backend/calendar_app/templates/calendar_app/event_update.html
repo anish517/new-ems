@@ -1,0 +1,39 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+Events | Edit
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Edit Event</h3>
+    </div>
+    <form method="POST">
+        <div class="card-body">
+            <div class="row">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                    <label for="{{ field.id_for_label }}" class="required">{{ field.label|safe }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                        {% for error in field.errors %}
+                        {{ error }}. <br>
+                        {% endfor %}
+                    </small>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="card-footer py-3 d-flex justify-content-between align-items-end">
+            <button type="submit" class="btn btn-sm btn-primary d-flex align-items-center">
+                <span class="material-symbols-outlined me-2"> upload </span>Save changes</button>
+            <a href="#" class="text-hover float-end">Need help?</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

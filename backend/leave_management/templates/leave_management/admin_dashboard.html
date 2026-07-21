@@ -1,0 +1,361 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+Leave tracker
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-xl-6 col-md-12">
+        <div class="card justify-content-center">
+            <div class="card-body d-flex">
+                <div class="d-block">
+                    {% if employee.user.profile_picture %}
+                    <img src="{{ employee.user.profile_picture.url }}" class="avatar avatar-xxl border-primary rounded-circle" alt="{{ employee.user.full_name }}">
+                    {% else %}
+                    <img src="{% static 'images/placeholder/placeholder.png' %}" class="avatar avatar-xxl border-primary rounded-circle"  alt="{{ employee.user.full_name }}">
+                    {% endif %}
+                </div>
+                <div class="w-100 ps-4">
+                    <div class="d-flex justify-content-between">
+                        <div class="">
+                            <h4 class="card-title mb-1 text-capitalize"> {{ employee.user.full_name }}</h4>
+                            <h5 class="text-capitalize"> {{ employee.post.title }} </h5>
+                        </div>
+                        <div class="d-block">
+                            <a href="{% url 'leave_management:apply_leave' %}" class="btn btn-primary d-block fw-medium">
+                                Take leave
+                            </a>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap">
+                        <div class="d-flex align-items-center pe-md-4 pe-2 mb-2">
+                            <div class="pe-2">
+                                <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M20 4.5H4C3.20435 4.5 2.44129 4.81607 1.87868 5.37868C1.31607 5.94129 1 6.70435 1 7.5V17.5C1 18.2956 1.31607 19.0587 1.87868 19.6213C2.44129 20.1839 3.20435 20.5 4 20.5H20C20.7956 20.5 21.5587 20.1839 22.1213 19.6213C22.6839 19.0587 23 18.2956 23 17.5V7.5C23 6.70435 22.6839 5.94129 22.1213 5.37868C21.5587 4.81607 20.7956 4.5 20 4.5ZM21 17.25L16.1 12.85L21 9.42V17.25ZM3 9.42L7.9 12.85L3 17.25V9.42ZM9.58 14.03L11.43 15.32C11.5974 15.4361 11.7963 15.4984 12 15.4984C12.2037 15.4984 12.4026 15.4361 12.57 15.32L14.42 14.03L19.42 18.5H4.6L9.58 14.03ZM4 6.5H20C20.1857 6.50149 20.3673 6.55467 20.5245 6.65358C20.6817 6.75249 20.8083 6.89322 20.89 7.06L12 13.28L3.11 7.06C3.19171 6.89322 3.31826 6.75249 3.47545 6.65358C3.63265 6.55467 3.81428 6.50149 4 6.5Z" fill="#F79F19"></path>
+                                </svg>	
+                            </div>
+                            <h5 class="font-w400 mb-0">{{ employee.official_email }}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body p-4">
+                <div class="media ai-icon">
+                    <span class="me-3 bgl-warning text-warning">
+                        <i class="material-symbols-outlined" style="font-size: 32px;">
+                            hourglass_top
+                        </i>
+                    </span>
+                    <div class="media-body">
+                        <p class="mb-1">Pending</p>
+                        <h4 class="mb-0">{{ leave_approvals.count }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body p-4">
+                <div class="media ai-icon">
+                    <span class="me-3 bgl-success text-success">
+                        <span class="material-symbols-outlined" style="font-size: 32px;">
+                            check_circle
+                        </span>
+                    </span>
+                    <div class="media-body">
+                        <p class="mb-1">Approved</p>
+                        <h4 class="mb-0">{{ approved_leave_requests.count }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-8 col-lg-7 col-md-12">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3 class="card-title fs-5 ">Yearly leave pattern</h3>
+            </div>
+            <div class="card-body">
+                <div class="height370">
+                    <canvas id="yearlyLeavePatternGraph"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-5  col-md-12">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3 class="card-title fs-5 ">Leave types</h3>
+            </div>
+            <div class="card-body">
+                <div class="height370">
+                    <canvas id="yearlyLeavePatternTypeGraph"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6 col-lg-12">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3 class="card-title fs-5">Leave approvals</h3>
+                <a href="{% url 'leave_management:leave_request_list' %}" class="btn text-primary">View all</a>
+            </div>
+            <div class="card-body">
+                <div class="height370 dlab-scroll">
+                    {% if leave_approvals %}
+                    <div class="table-responsive">
+                        <table class="table table-responsive verticle-middle table-hover">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Employee</th>
+                                    <th scope="col">Subject</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Requested at</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for approval in leave_approvals %}
+                                <tr style="cursor: pointer;">
+                                    <td>
+                                        <a href="{% url 'leave_management:leave_request_detail' approval.id %}">
+                                            <div class="d-flex align-items-center">
+                                                <div class="d-flex flex-column justify-content-between align-items-start">
+                                                    <span class="fw-medium fs-5 text-primary text-capitalize">{{ approval.employee.user.full_name }}</span>
+                                                    <small class="text-muted">{{ approval.employee.user.email}}</small>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="fw-medium text-dark">
+                                            {{ approval.subject|truncatechars:15 }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {{ approval.type }}
+                                    </td>
+                                    <td style="white-space: nowrap;">
+                                        {{ approval.created_at }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center">No leave approval found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6 col-lg-12">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3 class="card-title fs-5">Leave history</h3>
+                <a href="{% url 'leave_management:leave_request_list' %}" class="btn text-primary">View all</a>
+
+            </div>
+            <div class="card-body">
+                <div class="height370 dlab-scroll">
+                    {% if leave_history %}
+                    <div class="table-responsive">
+                        <table class="table verticle-middle table-responsive-md table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Requested at</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in leave_history %}
+                                
+                                <tr style="cursor: pointer;">
+                                    <td>
+                                        <a href="{% url 'leave_management:leave_request_detail' request.id %}">
+                                            <div class="d-flex align-items-center">
+                                                <div class="d-flex flex-column justify-content-between align-items-start">
+                                                    <span class="fw-medium fs-5 text-primary text-capitalize">{{ request.employee.user.full_name }}</span>
+                                                    <small class="text-muted">{{ request.employee.user.email }}</small>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {{ request.type }}
+                                    </td>
+                                    <td>
+                                        {% if request.is_approved %}
+                                        <span class="badge light badge-success">Approved</span>
+                                        {% else %}
+                                        <span class="badge light badge-danger">Declined</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="white-space: nowrap;">
+                                        {{ request.created_at }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center">No leave history found</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6 col-lg-6">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3 class="card-title fs-5">Leave types</h3>
+                <a href="{% url 'leave_management:leave_type_list' %}" class="btn btn-sm btn-primary">View all</a>
+            </div>
+            <div class="card-body">
+                <div class="height370 dlab-scroll">
+                    {% if leave_types %}
+                    <div class="table-responsive">
+                        <table class="table table-responsive-md table-hover verticle-middle">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Quota</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in leave_types %}
+                                <tr>
+                                    <td class="fw-medium">{{ item.name }}</td>
+                                    <td>{{ item.quota }} days</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center">No leave types found</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6 col-md-6">
+        <div class="card">
+            <div class="card-header pb-0 border-0">
+                <h3 class="card-title fs-5">
+                    Leave balance
+                </h3>
+                <a href="{% url 'leave_management:leave_balance_list' %}" class="btn btn-sm btn-primary">View all</a>
+            </div>
+            <div class="card-body">
+                <div class="height370 dlab-scroll">
+                    {% if leave_balances_by_employee %}
+                    <div class="table-responsive">
+                        <table class="table table-responsive-md table-hover verticle-middle">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    {% for leave_type in leave_types_header %}
+                                    <th>{{ leave_type.name }}</th>
+                                    {% endfor %}
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in leave_balances_by_employee %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'leave_management:employee_dashboard' %}?employee={{item.employee.id}}">
+                                            <div class="d-flex align-items-center">
+                                                <img src="{{ item.employee.user.profile_picture.url }}" class="rounded-3 me-2" width="46" alt=""> 
+                                                <div class="d-flex flex-column justify-content-between align-items-start">
+                                                    <span class="fw-medium fs-5 text-primary">{{ item.employee.user.full_name }}</span>
+                                                    <small class="text-muted">{{ item.employee.user.email }}</small>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </td>
+                                    {% for leave_balance in item.leave_balances %}
+                                    <td>{{ leave_balance.quota }} days</td>
+                                    {% endfor %}
+                                    <td>
+                                        <div class="dropdown custom-dropdown mb-0 tbl-orders-style">
+                                            <div class="btn sharp tp-btn" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                        <path d="M12 6C12.5523 6 13 5.55228 13 5C13 4.44772 12.5523 4 12 4C11.4477 4 11 4.44772 11 5C11 5.55228 11.4477 6 12 6Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                        <path d="M12 20C12.5523 20 13 19.5523 13 19C13 18.4477 12.5523 18 12 18C11.4477 18 11 18.4477 11 19C11 19.5523 11.4477 20 12 20Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                </svg>
+                                            </div>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a class="dropdown-item" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#leaveQuotaDetail" data-employeeId="{{ item.employee.id }}" onclick="fetchLeaveQuota(event)">View</a>
+                                                <a class="dropdown-item" href="{% url 'leave_management:leave_balance_update' employee.id %}">Edit</a>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center">No leave balance records found</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!--  modal -->
+<div class="modal fade" id="leaveQuotaDetail" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Leave quota details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center" id="loader">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <div class="d-none" id="leaveQuotaDetailContainer">
+                    <div class="d-flex flex-column align-items-center" id="user-info">
+                        <img src="{% static 'images/user.jpg' %}" alt="placeholder" id="user-pp" class="mb-3" width="100px" height="100px" style="object-fit: cover; border-radius: 50%;"> 
+                        <h6 class="fs-5 fw-medium" id="user-full-name">John doe</h6>
+                        <span class="text-muted mb-3" id="user-email">johndoe.official@gmail.com</span>
+                    </div>
+                    
+                    <div class="table-responsive" id="transactionDetailTable">
+                        <table class="table verticle-middle table-md-responsive table-hover table-striped">
+                            <tbody id="leave-balance-container"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm btn-danger light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'vendor/chart-js/chart.bundle.min.js' %}"></script>
+<script src="{% static 'js/custom/LeaveTrackerAdmin.js' %}"></script>
+{% endblock %}

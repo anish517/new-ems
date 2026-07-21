@@ -1,0 +1,222 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block title %}
+Calendar
+{% endblock %}
+
+{% block css %}
+<style>
+    .calendar-header {
+        text-align: center;
+        padding-top: 1rem;
+    }
+    .calendar-week-days, .calendarDays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        grid-gap: 1rem;
+    }
+    .calendar-week-days div, .calendarDays div {
+        padding: 1.6rem;
+        border: 1px solid #dee2e6;
+        text-align: center;
+        font-size: 1.1rem;
+        border-radius: 5px;
+    }
+    .calendar-week-days .c-header {
+        font-weight: bold;
+    }
+    .calendar-week-days > div:nth-child(7) {
+        color: #FD5353;
+        background-color: #FFDDDD;
+    }
+    .calendar-week-days > div:nth-child(7n),
+    .calendarDays > div:nth-child(7n) {
+        color: #FD5353;
+        background-color: #FFDDDD;
+    }
+    .event {
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3 class="card-title">
+                    Calendar
+                </h3>
+                {% if request.user in request.user.employee.organization.admin_users.all %}
+                <a class="btn btn-primary" href="{% url 'calendar_app:event-add' %}">Add event</a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="calendar-header mb-4">
+                    <button class="btn btn-secondary light btn-xs" id="prevMonth">&lt;</button>
+                    <h5 class="mx-4 d-inline" id="monthYear"></h5>
+                    <button class="btn btn-secondary light btn-xs" id="nextMonth">&gt;</button>
+                </div>
+                <div class="calendar-week-days mb-2">
+                    <div class="c-header">Sun</div>
+                    <div class="c-header">Mon</div>
+                    <div class="c-header">Tue</div>
+                    <div class="c-header">Wed</div>
+                    <div class="c-header">Thu</div>
+                    <div class="c-header">Fri</div>
+                    <div class="c-header">Sat</div>
+                </div>
+                <div class="calendarDays" id="calendarDays"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-6">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <div class="card-title">Events</div>
+            </div>
+            <div class="card-body p-2">
+                <div id="DZ_W_TimeLine" class="widget-timeline dlab-scroll my-4 px-4 height370">
+                    <ul class="timeline" id="eventTimeline"></ul>
+                </div>
+            </div>
+            {% if request.user in request.user.employee.organization.admin_users.all %}
+            <div class="card-footer pt-o border-0">
+                <a class="btn btn-primary btn-block" href="{% url 'calendar_app:event-add' %}">Add event</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-6">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <div class="card-title">Event types</div>
+            </div>
+            <div class="card-body p-2">
+                <div class="my-4 px-4 height370">
+                    {% for type in event_types %}
+                    <div class="alert alert-{{type.color}} alert-dismissible show">
+                        <strong>{{ type.name }}</strong>
+                        <button type="button" class="btn-close">  </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% if request.user in request.user.employee.organization.admin_users.all %}
+            <div class="card-footer pt-o border-0">
+                <a class="btn btn-primary btn-block" href="{% url 'calendar_app:event-add' %}">Add event types</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-12">
+        <div class="row">
+            <div class="col-xl-12 col-lg-4 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-success text-success">
+                                <!-- <i class="ti-user"></i> -->
+                                <i class="material-symbols-outlined" style="font-size: 48px;">
+                                    event_available
+                                </i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Working days</p>
+                                <h5 class="mb-0" id="noOfWorkingDays">0 Days</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-12 col-lg-4 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-danger text-danger">
+                                <!-- <i class="ti-user"></i> -->
+                                <i class="material-symbols-outlined" style="font-size: 48px;">
+                                    early_on
+                                </i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Holidays</p>
+                                <h5 class="mb-0" id="noOfHolidays">0</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-12 col-lg-4 col-sm-6">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-primary text-primary">
+                                <!-- <i class="ti-user"></i> -->
+                                <i class="material-symbols-outlined" style="font-size: 48px;">
+                                    event
+                                </i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Other events</p>
+                                <h5 class="mb-0" id="noOfOtherEvents">0 Days</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- modals -->
+<div class="modal fade" id="calendar-event-detail-modal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Event details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-12 form-group mb-3">
+                        <label for="id_event_type">Event type</label>
+                        <input type="text" class="form-control" id="id_event_type" disabled>
+                    </div>
+                    <div class="col-md-12 form-group mb-3">
+                        <label for="id_event_title">Event title</label>
+                        <input type="text" class="form-control" id="id_event_title" disabled>
+                    </div>
+                    <div class="col-md-12 form-group mb-3">
+                        <label for="id_start_date">Start date</label>
+                        <input type="text" class="form-control" id="id_start_date" disabled>
+                    </div>
+                    <div class="col-md-12 form-group mb-3">
+                        <label for="id_end_date">End date</label>
+                        <input type="text" class="form-control" id="id_end_date" disabled>
+                    </div>
+                    <div class="col-md-12 form-group mb-3">
+                        <label for="id_location">Location</label>
+                        <input type="text" class="form-control" id="id_location" disabled>
+                    </div>
+                    <div class="col-md-12 form-group mb-3">
+                        <label for="id_description">Description</label>
+                        <textarea name="description" id="id_description" class="form-control" rows="5" disabled></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm btn-danger light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/plugins-init/nepaliDatePicker.min.js' %}"></script>
+<script src="{% static 'js/custom/Calendar.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,172 @@
+<div class="text-dark fs-5" id="contract-container">
+    <h3 class="text-center">EMPLOYMENT AGREEMENT</h3>
+    <p class="text-end text-dark">Date: {{ contract.created_at|date:"Y-m-d" }}</p>
+    <p>Dear <span class="text-capitalize">{{ employee.full_name }},</span></p>
+    <p>We are pleased to offer you the position of {{ employee.post }} at <span class="text-capitalize">{{ contract.organization }}</span>. Please find the details about your position and other related information as follows:</p>
+    <div class="py-2">
+        <h4>1. Job title</h4>
+        <p>You are employed as a {{ employee.post }}. You will report to your supervisor or any other official appointed by the Management.</p>
+    </div>
+    <div class="py-2">
+        <h4>2. Job responsibilites</h4>
+        <p> Your responsibilities will include but are not limited to:</p>
+        <p>{{ contract.responsibilites|safe }}</p>
+    </div>
+    <div class="py-2">
+        <h4>3. Work Timings and Punctuality</h4>
+        <p>Coming office late is not a professional way. We monitor your punctuality and will reflect in your performance evaluation and yearly bonus.</p>
+        <h4>Office hours: </h4>
+        <div class="table-responsive" style="width: 50%;">
+            <table class="table table-responsive">
+                <thead>
+                    <th>Date and month</th>
+                    <th>Sunday to friday</th>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Baisakh 01 to Mangsir 14</td>
+                        <td>10:00 A.M. - 5:30 PM</td>
+                    </tr>
+                    <tr>
+                        <td>Mangsir 15 to Magh 14</td>
+                        <td>10:00 A.M. - 5:00 PM</td>
+                    </tr>
+                    <tr>
+                        <td>Magh 15 to Chaitra 31</td>
+                        <td>10:00 A.M. - 5:30 PM</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <h4>Working days:</h4>
+        <ol class="roman-list">
+            <li>Sunday to Friday</li>
+            <li>Depending on the project load, you may be required to work on off hours/days too.</li>
+        </ol>
+        <h4>Lunch</h4>
+        <ol class="roman-list">
+            <li>Lunch time is of half an hour, from 2:00 PM to 2:30 PM.</li>
+            <li>Light snacks and tea/coffee for your refreshment will be available at the office pantry.</li>
+        </ol>
+    </div>
+    <div class="py-2">
+        <h4>4. Dress code</h4>
+        <ol>
+            <li>{{ contract.organization }} promote professional environment, thus professional attire between Monday and Thursday is a must. NO EXCEPTION! </li>
+            <li>For male employees: Shirt (foll/half sleeved); pants; tie when meeting with clients, or doing a presentation etc. (No tennis/running shoes, jeans) </li>
+            <li>For female employees: Shirt; pants/skirts; proper dress-up when meeting with clients, or doing a presentation etc.</li>
+            <li>However, Friday is the day for smart casuals.</li>
+        </ol>
+    </div>
+    <div class="py-2">
+        <h4>5. Company Network access information and Internet/e-mail address </h4>
+        <ol>
+            <li>Server access to store data will be provided to you by the company.</li>
+            <li>Company Identity card will be provided, please make sure to wear it during office hours and site visits (if any).</li>
+        </ol>
+    </div>
+    <div class="py-2">
+        <h4>6. Travel</h4>
+        <p>You may have to travel when required for relevant project works.</p>
+    </div>
+    <div class="py-2">
+        <h4>7. Duration of contract</h4>
+        <p>Your employment with Omway Technologies under this Contract commenced on {{ contract.start_date }} and expires on {{ contract.end_date }} or, unless your employment is terminated earlier in accordance with clause 12.
+            Once you successfully complete the 1-year contract period, your contract will be reviewed and renewed accordingly.</p>
+    </div>
+    <div class="py-2">
+        <h4>8. Remuneration & Benefits</h4>
+        <ol>
+            <li>In lieu of your services, you will receive a salary of Rs. {{ contract.employee.salary.basic_salary }} per month. </li>
+            <li>Besides the basic salary you are eligible to attendance bonus if you are punctual every month, you will be entitled to an additional motivational bonus of Rs. 1000. It will be paid to you after the successful completion of this contract.</li>
+            <li>An attractive bonus will be awarded if you consistently deliver exemplary performance and demonstrate a high standard of work after completing the first year of your contract period. </li>
+            <li>It will be provided to you within three months of the renewal of this contract.</li>
+        </ol>
+    </div>
+    <div class="py-2">
+        <h4>9. Leaves</h4>
+        <div class="table-responsive" style="width: 50%;">
+            <table class="table table-responsive">
+                <tbody>
+                    <tr>
+                        <td>Medical leave (conditional)</td>
+                        <td>7 days (Annually)</td>
+                    </tr>
+                    <tr>
+                        <td>Casual leave (conditional)</td>
+                        <td>8 days (Annually)</td>
+                    </tr>
+                    <tr>
+                        <td>National holidays (includes religious holidays)</td>
+                        <td>14 days (Annually)</td>
+                    </tr>
+                    <tr>
+                        <td>Marriage leaves</td>
+                        <td>5 days (One time only)</td>
+                    </tr>
+                    <tr>
+                        <td>Mourning leaves</td>
+                        <td>15 days</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p>The leave can be utilied as up to two days in a month with prior notice as follows: </p>
+        <ol>
+            <li>For 1 - 2 days: One week of prior information </li>
+            <li>For 3 - 4 days: Two weeks of prior information </li>
+            <li>For 5 - 8 days: Three weeks of prior information </li>
+        </ol>
+        <p>If the leave is taken without prior information as mentioned above, then that will be considered as non-paid, and the required action will be taken as deemed appropriate by management. You cannot take more than two "paid leaves" in a month and more than 16 in a year. For separating Saturday and Sunday leaves from your requested leaves, you need to be present at least either on Friday or Monday. </p>
+    </div>
+    <div class="py-2">
+        <h4>10. Evaluation and recommendation</h4>
+        <p>Your performance will be evaluated every six months based on the results and quality that you deliver. The other criteria are your creativity in finishing up tasks and self-initiative measures that you show for the tasks assigned as well as, company processes that need adjustments/enhancements. </p>
+        <i>Please understand that evaluation does not equate to salary raise. </i>
+    </div>
+    <div class="py-2">
+        <h4>11. Promotion</h4>
+        <p>Your immediate supervisor, after evaluation based on your performance and as per the need of the company will recommend you for your increment or promotion. However, it is strictly under the discretion of the company to reward you with an incremental raise in your salary.</p>
+    </div>
+    <div class="py-2">
+        <h4>12. Termination/Suspension</h4>
+        <p>Your contract with the company may be terminated/ suspended under the following conditions:</p>
+        <ol>
+            <li>Committing any misconduct as per employees' rules and regulations for which you shall be terminated with immediate effect.</li>
+            <li>Not meeting the deadlines, not performing as per the criteria laid down, one-week notice shall be served by the management.</li>
+            <li>In case you are absent without permission from your supervisor for 3 (three) consecutive days in a month, you shall be terminated with immediate effect.</li>
+            <li>If you are found to be in the breach of Employee non-disclosure, confidentiality & non competing agreement' signed between you and the organization.</li>
+            <li>Upon serving written notice of resignation in advance of two month or by foregoing one month remuneration in lieu of notice.</li>
+        </ol>
+        <p>At the time of termination of your service with the company you shall promptly deliver to the company all records, documents, data, and any other tangible items made or complied by you or in your possession concerning or relating any business, product, personnel or business associate of the company.</p>
+    </div>
+    <div class="py-2">
+        <h4>13. Leaving Omway Technologies</h4>
+        <ol>
+            <li>You must notify Omway Technologies at least two months in advance if you decide to resign. If you fail to notify of your resignation prior to two months, your last month's salary will not be paid to you.</li>
+            <li>Furthermore, if you fail to notify of your resignation on time, both employment certification and recommendation letter will not be provided to you. If you notify two months prior to leaving the company as the policy requires but you have not worked at least one year, neither letter of employment certification nor recommendation letter will be provided to you. You must work for at least one year to qualify for receiving these certificates.</li>
+            <li>The company can contact you for support regarding any project that you have handled during your tenure at the company.</li>
+            <li>The company can contact you up to three months after you have left the company and you will be paid if major task is involved. The payment will be made in mutual understanding.</li>
+        </ol>
+        <div class="py-5 border-bottom border-dark" style="width: 200px;"></div>
+        <p class="pt-3">Date: <span class="p-4 border-bottom" style="width: 50px;"></span></p>
+        <p>For Omway Technologies</p>
+    </div>
+    <div class="pt-5">
+        <h4 class="text-uppercase text-center">EMPLOYEE NON-DISCLOSURE, CONFIDENTIALITY & NON-COMPETING AGREEMENT</h4>
+        <p>FOR GOOD AND VALUABLE CONSIDERATION, receipt of which is hereby acknowledged by Omway Technologies registration number with Company Registration Office, with its registered office at Baneshwor Nepal and hereafter referred to as "Omway Technologies), the undersigned employee (hereinafter referred to as "I" hereby agrees and acknowledge</p>
+        <ol>
+            <li>I agree that I shall not during, or at any time after the termination of my employment with the Company, disclose or divulge to others including future employers or any other acquaintances any proprietary information of the Company consisting of but not limited to client information (including personal information of client such as contact details etc.), customer leads, campaign scripts, documentations (including manual, proposals, business plans, technical documentation, system documentation, etc.), programming codes and designs, web templates, prototype web designs, all the codes used in the web project, and business information including domain knowledge, customer information, pricing data, sources of supply, financial data and marking, production,  merchandising systems or plans</li>
+            <li>I agree that I will not contact, represent, solicit business from or work for (on personal basis, consultative basis or through a firm or any third party) the present and past clients of Omway Technologies with whom I interact during the execution of the project, during or after the termination of my employment from Omway Technologies.</li>
+            <li>I agree that upon the termination of my employment from the Company, I shall not utilize and return to the Company all documents and property of the Company, including but not necessarily limited to: assets and consumables, client information, drawings, blueprints, reports, campaign scripts, manuals, correspondence, designs, customer lists, customer contact information, customer leads, SRS, design document, computer programs (codes & executables), design templates and all other materials and all copies thereof relating in any way to the Company's business, or in any way obtained by me during the course of employment. I further agree that I shall not stain copies of the material mentioned above.</li>
+            <li>Use of Company Property and Intellectual Property Rights: The employee agrees not to use any property, including but not limited to equipment, tools, software, and proprietary information, belonging to the company without prior written permission. All code, products, designs, and intellectual property developed during the course of employment are the exclusive property of the company and protected by copyright laws. The employee is strictly prohibited from using, sharing, or distributing any such code or products with third parties without explicit written authorization from the company, both during and after leaving the company. Upon termination or resignation, the employee is required to return all company property and refrain from using or disclosing any confidential information or intellectual property acquired during their employment. Any breach of this clause, even after leaving the company, will result in legal action as per applicable international intellectual property and confidentiality laws.</li>
+        </ol>
+        <p>This agreement shall be binding upon me and my personal representatives and successors in interest, its successors and assigns. <u>I fully understand that upon the breach of above clauses of this contract. I shall be liable to the legal action by the company as per the Muliki Ain & Cyber Law - The Electronic Transaction Act BS 2063 of Nepal </u> and I understand that one copy of this agreement will be sent to the local police station.</p>
+        <p>I have read and understood all the terms and conditions outlined in this agreement, and I hereby declare my acceptance of them.</p>        
+    </div>
+    <div class="py-5 border-bottom border-dark" style="width: 200px;"></div>
+        <p class="pt-3">Date: <span class="p-4 border-bottom" style="width: 50px;"></span></p>
+        <p class="text-capitalize">{{ employee.full_name }}</p>
+        <p>Citizenship No. : {{ employee.national_id_details.citizenship_no }}</p>
+        <p>Address: {{ employee.address.street }}, {{ employee.address.district }}, {{ employee.address.state }}</p>
+</div>

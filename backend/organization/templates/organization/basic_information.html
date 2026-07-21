@@ -1,0 +1,101 @@
+{% extends 'organization/index.html' %}
+{% block tab %}
+<div class="card">
+    <div class="card-header border-0">
+        <h3 class="card-title border-0 pb-0">
+            Basic Organization Details
+        </h3>
+    </div>
+ 
+    <form {% if organization %} action="{% url 'organization:update' organization.pk %}" {% endif %} class="profile-form" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="card-body">
+            <div class="row">
+                {% for field in form %}
+                {% if field.id_for_label == 'id_profile_picture' %}
+                <div class="col-md-6 form-group mb-3 d-none" id="{{ field.label|lower }}">
+                    <label for="{{ field.id_for_label }}" class="required">{{ field.label|safe }}</label>
+                    {% if current_employee_document %}
+                    <div>
+                        <p>{{ current_employee_document.citizenship.url }}</p>
+                    </div>
+                    {% else %}
+                    {{ field }}
+                    {% endif %}
+                    {% if field.errors %}
+                    <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                        {% for error in field.errors %}
+                        {{ error }}. <br>
+                        {% endfor %}
+                    </small>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                    <label for="{{ field.id_for_label }}" class="required">{{ field.label|safe }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                        {% for error in field.errors %}
+                        {{ error }}. <br>
+                        {% endfor %}
+                    </small>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% endfor %}
+                
+                <div class="card-title text-muted mt-4" style="font-size: 1rem;">
+                    Primary address
+                </div>
+            
+                <div class="row">
+                    {% if primary_address %}
+                    <input type="hidden" name="address_id" value="{{ primary_address.id }}">
+                    {% endif %}
+                    <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                        <label for="address_line_1" class="required">Address line 1</label>
+                        <input type="text" name="address_line_1" id="address_line_1" class="form-control" value="{{ primary_address.address_line_1 }}">
+                    </div>
+                    <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                        <label for="address_line_2" class="required">Address line 2</label>
+                        <input type="text" name="address_line_2" id="address_line_2" class="form-control" value="{{ primary_address.address_line_2 }}">
+                    </div>
+                    <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                        <label for="state" class="required">State</label>
+                        <select name="state" id="state" class="form-control" value="{{ primary_address.state }}">
+                            <option value="">------</option>
+                            <option value="province_1" {% if primary_address.state == 'province_1' %} selected {% endif %}>Province No. 1</option>
+                            <option value="province_2" {% if primary_address.state == 'province_2' %} selected {% endif %}>Province No. 2 (Madhesh Province)</option>
+                            <option value="bagmati" {% if primary_address.state == 'bagmati' %} selected {% endif %}>Bagmati Province</option>
+                            <option value="gandaki" {% if primary_address.state == 'gandaki' %} selected {% endif %}>Gandaki Province</option>
+                            <option value="lumbini" {% if primary_address.state == 'lumbini' %} selected {% endif %}>Lumbini Province</option>
+                            <option value="karnali" {% if primary_address.state == 'karnali' %} selected {% endif %}>Karnali Province</option>
+                            <option value="sudurpaschim" {% if primary_address.state == 'sudurpaschim' %} selected {% endif %}>Sudurpashchim Province</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                        <label for="city" class="required">City</label>
+                        <input type="text" name="city" id="city" class="form-control" value="{{ primary_address.city }}">
+                    </div>
+                    <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                        <label for="latitude" class="required">Latitude</label>
+                        <input type="text" name="latitude" id="latitude" class="form-control" value="{{ primary_address.latitude }}">
+                    </div>
+                    <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                        <label for="longitude" class="required">Latitude</label>
+                        <input type="text" name="longitude" id="longitude" class="form-control" value="{{ primary_address.longitude }}">
+                    </div>
+                </div>
+              
+            </div>
+        </div>
+        <div class="card-footer border-0 pt-0">
+            <button type="submit" class="btn btn-primary d-flex align-items-center">
+                <span class="material-symbols-outlined me-2"> bookmark</span>Save
+            </button>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

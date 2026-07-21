@@ -1,0 +1,92 @@
+{% extends 'index.html' %}
+
+{% block title %}
+Contracts | Add 
+{% endblock %}
+
+{% block css %}
+{{ form.media }}
+
+<style>
+    .ck{
+        height: 100%;
+    }
+    .ck-editor__editable h1, 
+    .ck-editor__editable h2, 
+    .ck-editor__editable h3, 
+
+    .ck-editor__editable p {
+        color: #333333;  /* Replace with your desired default color */
+    }
+    li {
+        list-style-type: unset !important;
+    }
+</style>
+
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header pb-0 border-0">
+                <h3 class="card-title">Add new contract</h3>
+            </div>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-12 form-group mb-4" id="{{ field.label|lower }}">
+                            <label for="{{ form.employee.id_for_label }}">{{ form.employee.label }}</label>
+                            {{ form.employee }}
+                            {% if form.employee.errors %}
+                            <small id="{{ form.employee.label|lower }}Help" class="form-text text-danger">
+                                {% for error in field.errors %}
+                                {{ error }}. <br>
+                                {% endfor %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 form-group mb-4" id="{{ field.label|lower }}">
+                            <label for="{{ form.start_date.id_for_label }}">{{ form.start_date.label }}</label>
+                            {{ form.start_date }}
+                            {% if form.start_date.errors %}
+                            <small id="{{ form.start_date.label|lower }}Help" class="form-text text-danger">
+                                {% for error in field.errors %}
+                                {{ error }}. <br>
+                                {% endfor %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 form-group mb-4" id="{{ field.label|lower }}">
+                            <label for="{{ form.end_date.id_for_label }}">{{ form.end_date.label }}</label>
+                            {{ form.end_date }}
+                            {% if form.end_date.errors %}
+                            <small id="{{ form.end_date.label|lower }}Help" class="form-text text-danger">
+                                {% for error in form.end_date.errors %}
+                                {{ error }}. <br>
+                                {% endfor %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        <div class="col-12 form-group mb-4" id="{{ form.responsibilites.label|lower }}">
+                            <label for="{{ form.responsibilites.id_for_label }}">{{ form.responsibilites.label }}</label>
+                            {{ form.responsibilites }}
+                            {% if form.responsibilites.errors %}
+                            <small id="{{ form.responsibilites.label|lower }}Help" class="form-text text-danger">
+                                {% for error in form.responsibilites.errors %}
+                                {{ error }}. <br>
+                                {% endfor %}
+                            </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer pt-0 border-0">
+                    <button class="btn btn-primary btn-sm fw-medium">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

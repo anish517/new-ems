@@ -1,0 +1,165 @@
+{% load static %}
+<div class="dlabnav">
+  <div class="feature-box">
+    <a href="{% url 'calendar_app:calendar' %}">
+      <div class="wallet-box">
+        <span class="material-symbols-outlined me-3" style="color: white">calendar_month</span>
+        <div>
+          <h4 class="text-white mb-0 d-block">{{ current_date_in_words }}</h4>
+          <small>{{ current_date }}</small>
+        </div>
+        <input type="hidden" value="{{ employee.id }}" id="global_employee_id" />
+        <input type="hidden" value="{{ employee.organization.id }}" id="organization_id" />
+      </div>
+    </a>
+  </div>
+  <span class="main-menu">Main Menu</span>
+  <div class="menu-scroll">
+    <div class="dlabnav-scroll">
+      <ul class="metismenu" id="menu">
+        <li>
+          <a
+            class="d-flex align-items-center"
+            href="{% url 'authentication:dashboard' %}"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined me-2"> Dashboard </span>
+            <span class="nav-text">Dashboard</span>
+          </a>
+        </li>
+        {% if request.user.employee.is_company_admin %}
+        <li>
+          <a
+            class="d-flex align-items-center"
+            href="{% url 'organization:employee_list' %}"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined me-2">
+              supervisor_account
+            </span>
+            <span class="nav-text">Employees</span>
+          </a>
+        </li>
+        {% endif %} {% if request.user.employee.is_company_admin %}
+        <li>
+          <a
+            class="d-flex align-items-center"
+            href="{% url 'leave_management:admin_dashboard' %}"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined me-2"> cloudy_snowing </span>
+            <span class="nav-text">Leave tracker</span>
+          </a>
+        </li>
+        {% else %}
+        <li>
+          <a
+            class="d-flex align-items-center"
+            href="{% url 'leave_management:employee_dashboard' %}"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined me-2"> cloudy_snowing </span>
+            <span class="nav-text">Leave tracker</span>
+          </a>
+        </li>
+        {% endif %}
+
+        <li>
+          {% if request.user.employee.is_company_admin %}
+          <a
+            class="d-flex align-items-center"
+            href="{% url 'salary_management:admin_dashboard' %}"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined me-2"> payments </span>
+            <span class="nav-text">Salary tracker</span>
+          </a>
+          {% else %}
+          <a
+            class="d-flex align-items-center"
+            href="{% url 'salary_management:employee_dashboard' %}"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined me-2"> payments </span>
+            <span class="nav-text">Salary tracker</span>
+          </a>
+          {% endif %}
+        </li>
+        <li>
+          {% if request.user.employee.is_company_admin %}
+          <a
+            class="d-flex align-items-center"
+            href="{% url 'attendance:admin_dashboard' %}"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined me-2"> task_alt </span>
+            <span class="nav-text">Attendance</span>
+          </a>
+          {% else %}
+          <a
+            class="d-flex align-items-center"
+            href="{% url 'attendance:employee_dashboard' %}"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined me-2"> task_alt </span>
+            <span class="nav-text">Attendance</span>
+          </a>
+          {% endif %}
+        </li>
+        <li>
+          {% if request.user.employee.is_company_admin %}
+          <a
+            class="d-flex align-items-center"
+            href="{% url 'task_management:admin_dashboard' %}"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined me-2"> inventory </span>
+            <span class="nav-text">Task management</span>
+          </a>
+          {% else %}
+          <a
+            class="d-flex align-items-center"
+            href="{% url 'task_management:employee_dashboard' %}"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined me-2"> inventory </span>
+            <span class="nav-text">Task management</span>
+          </a>
+          {% endif %}
+        </li>
+        <li>
+          {% if request.user.employee.is_company_admin %}
+          <a
+            class="d-flex align-items-center"
+            href="{% url 'feedback:admin_dashboard' %}"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined me-2"> quick_phrases </span>
+            <span class="nav-text">Feedback</span>
+          </a>
+          {% else %}
+          <a
+            class="d-flex align-items-center"
+            href="{% url 'feedback:employee_dashboard' %}"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined me-2"> quick_phrases </span>
+            <span class="nav-text">Feedback</span>
+          </a>
+          {% endif %}
+        </li>
+
+        <li>
+          <a
+            class="d-flex align-items-center"
+            href="{% url 'noticeboard:dashboard' %}"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined me-2"> campaign </span>
+            <span class="nav-text">Noticeboard</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>

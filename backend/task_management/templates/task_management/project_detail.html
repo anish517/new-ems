@@ -1,0 +1,286 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+Task management
+{% endblock %}
+
+{% block content %}
+<input type="hidden" value="{{ project.id }}" id="projectId">
+<div class="row">
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body  p-4">
+                <div class="media">
+                    <span class="me-3 bgl-success text-success">
+                        <i class="la la-users"></i>
+                    </span>
+                    <div class="media-body text-dark">
+                        <p class="mb-1 text-muted">Completed tasks</p>
+                        <h3 class="text-dark fw-medium">{{ completed_tasks.count }}</h3>
+                        <div class="progress mt-2 bgl-success">
+                            <div class="progress-bar progress-animated bg-success" style="width: {{ project.completion }}%">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body p-4">
+                <div class="media ai-icon">
+                    <span class="me-3 bgl-secondary text-secondary">
+                        <!-- <i class="ti-user"></i> -->
+                        <svg id="icon-customers" xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </span>
+                    <div class="media-body">
+                        <p class="mb-1">On going tasks</p>
+                        <h4 class="mb-0">{{ in_progress_tasks.count }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body p-4">
+                <div class="media ai-icon">
+                    <span class="me-3 bgl-warning">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="30px" viewBox="0 -960 960 960" width="30px" fill="#FFAB2D">
+                            <path d="M680-80q-83 0-141.5-58.5T480-280q0-83 58.5-141.5T680-480q83 0 141.5 58.5T880-280q0 83-58.5 141.5T680-80Zm67-105 28-28-75-75v-112h-40v128l87 87Zm-547 65q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v250q-18-13-38-22t-42-16v-212h-80v120H280v-120h-80v560h212q7 22 16 42t22 38H200Zm280-640q17 0 28.5-11.5T520-800q0-17-11.5-28.5T480-840q-17 0-28.5 11.5T440-800q0 17 11.5 28.5T480-760Z"></path>
+                        </svg>
+                    </span>
+                    <div class="media-body">
+                        <p class="mb-1">Pending tasks</p>
+                        <h4 class="mb-0">1</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body p-4">
+                <div class="media ai-icon">
+                    <span class="me-3 bgl-primary text-primary">
+                        <!-- <i class="ti-user"></i> -->
+                        <svg id="icon-customers" xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </span>
+                    <div class="media-body">
+                        <p class="mb-1">Team members</p>
+                        <h4 class="mb-0">{{ team_members.count }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-12">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3 class="card-title fs-5">
+                    Tasks status
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="height370">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <div class="spinner-border" role="status" id="taskStatusGraphLoader">
+                          <span class="sr-only">Loading...</span>
+                        </div>
+                    </div>
+                    <canvas id="taskStatusGraph"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-6">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h4 class="card-title fs-5">In progress</h4>
+            </div>
+            <div class="card-body p-0">
+                <div id="DZ_W_TimeLine11" class="widget-timeline dlab-scroll  px-4 my-4 style-1 height370">
+                    <ul class="timeline">
+                        {% for task in in_progress_tasks %}
+                        {% if task.priority == 'high' %}
+                        <li>
+                            <div class="timeline-badge danger">
+                            </div>
+                            <a class="timeline-panel text-muted" href="{% url 'task_management:task_details' task.id %}">
+                                <span>Completion date: {{task.actual_end_date}}</span>
+                                <h6 class="mb-0">{{ task.title }}</h6>
+                                <p class="mb-0">{{ task.project.title }}</p>
+                            </a>
+                        </li>
+                        {% elif task.priority == 'medium' %}
+                        <li>
+                            <div class="timeline-badge warning">
+                            </div>
+                            <a class="timeline-panel text-muted" href="{% url 'task_management:task_details' task.id %}">
+                                <span>Completion date: {{task.actual_end_date}}</span>
+                                <h6 class="mb-0">{{ task.title }}</h6>
+                                <p class="mb-0">{{ task.project.title }}</p>
+                            </a>
+                        </li>
+                        {% elif task.priority == 'low' %}
+                        <li>
+                            <div class="timeline-badge success">
+                            </div>
+                            <a class="timeline-panel text-muted" href="{% url 'task_management:task_details' task.id %}">
+                                <span>Deadline: {% if task.planned_end_date %} {{task.planned_end_date}} {% else %} N/A {% endif %}</span>
+                                <h6 class="mb-0">{{ task.title }}</h6>
+                                <p class="mb-0">{{ task.project.title }}</p>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% empty %}
+                        <p class="py-4 text-center">No tasks in progress.</p>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-6">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h4 class="card-title fs-5">Pending tasks</h4>
+            </div>
+            <div class="card-body p-0">
+                <div id="DZ_W_TimeLine11" class="widget-timeline dlab-scroll  px-4 my-4 style-1 height370">
+                    <ul class="timeline">
+                        {% for task in pending_tasks %}
+                        {% if task.priority == 'high' %}
+                        <li>
+                            <div class="timeline-badge danger">
+                            </div>
+                            <a class="timeline-panel text-muted" href="{% url 'task_management:task_details' task.id %}">
+                                <span>Deadline: {% if task.planned_end_date %} {{task.planned_end_date}} {% else %} N/A {% endif %}</span>
+                                <h6 class="mb-0">{{ task.title }}</h6>
+                                <p class="mb-0">{{ task.project.title }}</p>
+                            </a>
+                        </li>
+                        {% elif task.priority == 'medium' %}
+                        <li>
+                            <div class="timeline-badge warning">
+                            </div>
+                            <a class="timeline-panel text-muted" href="#">
+                                <span>Completion date: {{task.actual_end_date}}</span>
+                                <h6 class="mb-0">{{ task.title }}</h6>
+                                <p class="mb-0">{{ task.project.title }}</p>
+                            </a>
+                        </li>
+                        {% elif task.priority == 'low' %}
+                        <li>
+                            <div class="timeline-badge success">
+                            </div>
+                            <a class="timeline-panel text-muted" href="#">
+                                <span>Completion date: {{task.actual_end_date}}</span>
+                                <h6 class="mb-0">{{ task.title }}</h6>
+                                <p class="mb-0">{{ task.project.title }}</p>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% empty %}
+                        <p class="py-4 text-center">No pending tasks found</p>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header pb-0 border-0">
+                <h3 class="card-title fs-5">Tasks</h3>
+                <a href="#" class="text-primary">View more<i class="fa-solid fa-caret-right"></i></a>
+            </div>
+            <div class="card-body height370 dlab-scroll">
+                <div class="table-responsive">
+                    <table class="table table-responsive table-striped table-hover">
+                        <thead>
+                            <th>Title</th>
+                            <th>Project</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Created at</th>
+                            <th></th>
+                        </thead>
+                        <tbody>
+                            {% for task in tasks %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'task_management:task_details' task.id %}"">
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-medium fs-5 text-primary mb-2">{{ task.title }}</span>
+                                            <span>#{{ task.project.abbreviation }}0000{{ task.id }}</span>
+                                        </div>
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="javascript: void(0)">
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-medium fs-5 mb-2">{{ task.project.title }}</span>
+                                            <span>#PRJ0000{{ task.project.id }}</span>
+                                        </div>
+                                    </a>
+                                </td>
+                                <td>
+                                    {% if task.priority == 'low' %}
+                                    <span class="badge badge-lg badge-success fw-medium">Low</span>
+                                    {% elif task.priority == 'medium' %}
+                                    <span class="badge badge-lg badge-warning fw-medium">Medium</span>
+                                    {% elif task.priority == 'high' %}
+                                    <span class="badge badge-lg badge-danger fw-medium">High</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if task.status == 'done' %}
+                                    <span class="badge badge-lg badge-success fw-medium">Done</span>
+                                    {% elif task.status == 'in-progress' %}
+                                    <span class="badge badge-lg badge-secondary fw-medium">In progress</span>
+                                    {% elif task.status == 'to-do' %}
+                                    <span class="badge badge-lg badge-warning fw-medium">Todo</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ task.created_at }}</td>
+                                <td>
+                                    <div class="dropdown custom-dropdown mb-0 tbl-orders-style">
+                                        <div class="btn sharp tp-btn" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path d="M12 6C12.5523 6 13 5.55228 13 5C13 4.44772 12.5523 4 12 4C11.4477 4 11 4.44772 11 5C11 5.55228 11.4477 6 12 6Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path d="M12 20C12.5523 20 13 19.5523 13 19C13 18.4477 12.5523 18 12 18C11.4477 18 11 18.4477 11 19C11 19.5523 11.4477 20 12 20Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="dropdown-menu dropdown-menu-end">
+                                            <a class="dropdown-item" href="{% url 'task_management:task_details' task.id %}">Details</a>
+                                            {% if request.user.employee.is_company_admin %}
+                                            <a class="dropdown-item" href="{% url 'task_management:task-update' task.id %}">Edit</a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'vendor/chart-js/chart.bundle.min.js' %}"></script>
+<script src="{% static 'js/custom/ProjectDetail.js' %}"></script>
+{% endblock %}

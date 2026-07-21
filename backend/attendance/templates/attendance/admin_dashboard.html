@@ -1,0 +1,251 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+Attendance
+{% endblock %}
+
+{% block content %}
+<div class="row">
+      <div class="col-xl-8 col-lg-7 col-md-12">
+            <div class="card">
+                  <div class="card-header border-0 pb-0">
+                        <h3 class="card-title fs-5">Attendance status</h3>
+                        <a href="{% url 'attendance:attendance_list' %}" class="text-primary">View more <i class="fas fa-caret-right"></i></a>
+                  </div>
+                  <div class="card-body">
+                        <div class="height370">
+                              <canvas id="attendanceGraph" width="100%">
+
+                              </canvas>
+                        </div>
+                  </div>
+            </div>
+      </div>
+      <div class="col-xl-4 col-lg-5 col-md-12">
+            <div class="row">
+                  <div class="col-12">
+                        <div class="widget-stat card">
+                              <div class="card-body p-4">
+                                    <div class="media ai-icon">
+                                          <span class="me-3 bgl-primary text-primary">
+                                                <!-- <i class="ti-user"></i> -->
+                                                <svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="#3736AF">
+                                                      <path d="m424-296 282-282-56-56-226 226-114-114-56 56 170 170Zm56 216q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
+                                                </svg>
+                                          </span>
+                                          <div class="media-body">
+                                                <p class="mb-1">Checked in</p>
+                                                <h4 class="mb-0 fw-medium text-primary">{{checked_in_attendances.count}}</h4>
+                                          </div>
+                                    </div>
+                              </div>
+                        </div>
+                  </div>
+                  <div class="col-12">
+                        <div class="widget-stat card">
+                              <div class="card-body p-4">
+                                    <div class="media ai-icon">
+                                          <span class="me-3 bgl-warning text-warning">
+                                                <!-- <i class="ti-user"></i> -->
+                                                <svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="#FFAB2D">
+                                                      <path d="M480-280q17 0 28.5-11.5T520-320q0-17-11.5-28.5T480-360q-17 0-28.5 11.5T440-320q0 17 11.5 28.5T480-280Zm-40-160h80v-240h-80v240Zm40 360q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
+                                                </svg>
+                                          </span>
+                                          <div class="media-body">
+                                                <p class="mb-1">Absent</p>
+                                                <h4 class="mb-0 fw-medium text-warning">{{ absent_employees.count }}</h4>
+                                          </div>
+                                    </div>
+                              </div>
+                        </div>
+                  </div>
+                  <div class="col-12">
+                        <div class="widget-stat card">
+                              <div class="card-body p-4">
+                                    <div class="media ai-icon">
+                                          <span class="me-3 bgl-secondary text-secondary">
+                                                <!-- <i class="ti-user"></i> -->
+                                                <svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="#3693FF">
+                                                      <path d="M784-120 530-374l56-56 254 254-56 56Zm-546-28q-60-60-89-135t-29-153q0-78 29-152t89-134q60-60 134.5-89.5T525-841q78 0 152.5 29.5T812-722L238-148Zm8-122 54-54q-16-21-30.5-43T243-411q-12-22-21-44t-16-43q-11 59-1.5 118T246-270Zm112-110 222-224q-43-33-86.5-53.5t-81.5-28q-38-7.5-68.5-2.5T296-666q-17 18-22 48.5t2.5 69q7.5 38.5 28 81.5t53.5 87Zm278-280 56-54q-53-32-112-42t-118 2q22 7 44 16t44 20.5q22 11.5 43.5 26T636-660Z"/>
+                                                </svg>
+                                          </span>
+                                          <div class="media-body">
+                                                <p class="mb-1">On leave</p>
+                                                <h4 class="mb-0 fw-medium text-secondary">{{ employees_on_leave.count }}</h4>
+                                          </div>
+                                    </div>
+                              </div>
+                        </div>
+                  </div>
+            </div>
+      </div>
+      <div class="col-xl-6 col-lg-12">
+            <div class="card">
+                  <div class="card-header border-0 pb-0">
+                        <h3 class="card-title fs-5">Present employees</h3>
+                        <a href="{% url 'attendance:attendance_list' %}" class="text-primary">View more <i class="fas fa-caret-right"></i></a>
+                  </div>
+                  <div class="card-body">
+                        <div class="height370 dlab-scroll">
+                              <div class="table-responsive">
+                                    <table class="table table-responsive-md table-hover verticle-middle">
+                                          <thead>
+                                                <tr>
+                                                      <th>Employee</th>
+                                                      <th>Checked in</th>
+                                                      <th>Checked out</th>
+                                                      <th></th>
+                                                </tr>
+                                          </thead>
+                                          <tbody>
+                                                {% for attendance in checked_in_attendances %}
+                                                <tr>
+                                                      <td>
+                                                            <a href="#">
+                                                                  <div class="d-flex align-items-center">
+                                                                      <div class="d-flex flex-column justify-content-between align-items-start">
+                                                                          <span class="fw-medium fs-5 text-primary">{{ attendance.employee.user.full_name }}</span>
+                                                                          <small class="text-muted">{{ attendance.employee.user.email }}</small>
+                                                                      </div>
+                                                                  </div>
+                                                            </a>
+                                                      </td>
+                                                      <td>
+                                                            <span class="text-capitalize">{{ attendance.check_in_timestamp }}</span>
+                                                      </td>
+                                                      <td>
+                                                            <span>-</span>
+                                                      </td>
+                                                      <td>
+                                                            <div class="dropdown custom-dropdown mb-0 tbl-orders-style">
+                                                                  <div class="btn sharp tp-btn" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                              <path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                              <path d="M12 6C12.5523 6 13 5.55228 13 5C13 4.44772 12.5523 4 12 4C11.4477 4 11 4.44772 11 5C11 5.55228 11.4477 6 12 6Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                              <path d="M12 20C12.5523 20 13 19.5523 13 19C13 18.4477 12.5523 18 12 18C11.4477 18 11 18.4477 11 19C11 19.5523 11.4477 20 12 20Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                                        </svg>
+                                                                  </div>
+                                                                  <div class="dropdown-menu dropdown-menu-end">
+                                                                        <a class="dropdown-item" href="javascript:void(0);">View</a>
+                                                                        <a class="dropdown-item">Edit</a>
+                                                                  </div>
+                                                            </div>
+                                                      </td>
+                                                </tr>
+                                                {% endfor %}
+                                          </tbody>
+                                    </table>
+                              </div>
+                        </div>
+                  </div>
+            </div>
+      </div>
+      <div class="col-xl-6 col-lg 12">
+            <div class="card">
+                  <div class="card-header border-0 pb-0">
+                        <h3 class="card-title fs-5">On leave</h3>
+                        <a href="{% url 'attendance:attendance_list' %}" class="text-primary">View more <i class="fas fa-caret-right"></i></a>
+                  </div>
+                  <div class="card-body">
+                        <div class="height370 dlab-scroll">
+                              <div class="table-responsive">
+                                    <table class="table table-responsive-md table-hover verticle-middle">
+                                          <thead>
+                                                <tr>
+                                                      <th>Employee</th>
+                                                      <th>From</th>
+                                                      <th>Till</th>     
+                                                </tr>
+                                          </thead>
+                                          <tbody>
+                                                {% for leave_request in employees_on_leave %}
+                                                <tr>
+                                                      <td>
+                                                            <a href="{% url 'leave_management:leave_request_detail' leave_request.id %}">
+                                                                  <div class="d-flex align-items-center">
+                                                                      <div class="d-flex flex-column justify-content-between align-items-start">
+                                                                          <span class="fw-medium fs-5 text-primary">{{ leave_request.employee.user.full_name }}</span>
+                                                                          <small class="text-muted">{{ leave_request.employee.user.email }}</small>
+                                                                      </div>
+                                                                  </div>
+                                                            </a>
+                                                      </td>
+                                                      <td>
+                                                            <span>{{ leave_request.from_date }}</span>
+                                                      </td>
+                                                      <td>
+                                                            <span>{{ leave_request.till_date }}</span>
+                                                      </td>
+                                                </tr>
+                                                {% endfor %}
+                                          </tbody>
+                                    </table>
+                              </div>
+                        </div>
+                  </div>
+            </div>
+      </div>
+      <div class="col-12">
+            <div class="card">
+                  <div class="card-header border-0 pb-0">
+                        <h3 class="card-title fs-5">
+                              Employees
+                        </h3>
+                  </div>
+                  <div class="card-body">
+                        <div class="table-responsive">
+                              <table id="table" class="table table-responsive table-striped table-hover">
+                                    <thead>
+                                          <tr>
+                                                <th>Employee</th>
+                                                <th>Status</th>
+                                                <th>Check in</th>
+                                                <th>Working hour</th>
+                                          </tr>
+                                    </thead>
+                                    <tbody>
+                                          {% for attendance in employee_attendance %}
+                                          <tr>
+                                                <td>
+                                                      <a href="{% url 'attendance:employee_dashboard' %}?employee={{ attendance.employee.id }}">
+                                                            <div class="d-flex align-items-center">
+                                                                  <img src="{{ attendance.employee.profile_picture }}" class="rounded-3 me-2" width="46" alt=""> 
+                                                                  <div class="d-flex flex-column justify-content-between align-items-start">
+                                                                        <span class="fw-medium fs-5 text-dark text-capitalize">{{ attendance.employee.name }}</span>
+                                                                        <small class="text-muted">{{ attendance.employee.email }}</small>
+                                                                  </div>
+                                                            </div>
+                                                      </a>
+                                                </td>
+                                                <td>
+                                                      {% if attendance.has_checked_in_today %}
+                                                      <span class="badge badge-success badge-lg light fw-medium">Present</span>
+                                                      {% else %}
+                                                      <span class="badge badge-warning badge-lg light fw-medium">Absent</span>
+                                                      {% endif %}
+                                                </td>
+                                                <td>
+                                                      {% if attendance.check_in_time %}
+                                                      {{ attendance.check_in_time }}
+                                                      {% else %}
+                                                      N/A
+                                                      {% endif %}
+                                                </td>
+                                                <td>{{ attendance.working_hour }}</td>
+                                          </tr>
+                                          {% endfor %}
+                                    </tbody>
+                              </table>
+                        </div>
+                  </div>
+            </div>
+      </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'vendor/chart-js/chart.bundle.min.js' %}"></script>
+<script src="{% static 'js/custom/AttendanceAdmin.js' %}"></script>
+{% endblock %}

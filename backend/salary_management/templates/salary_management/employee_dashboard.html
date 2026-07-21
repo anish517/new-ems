@@ -1,0 +1,350 @@
+{% extends 'index.html' %}
+
+{% load static %}
+
+{% block title %}
+Salary management
+{% endblock %}
+
+{% block content %}
+<input type="hidden" id="employee_id" value="{{ employee.id }}">
+<div class="row">
+    <div class="col-xl-6 col-md-12">
+        <div class="card justify-content-center">
+            <div class="card-body d-flex">
+                <div class="d-block">
+                    <img src="{{ employee.user.profile_picture.url }}" class="avatar avatar-xxl border-primary rounded-circle" alt="">
+                </div>
+                <div class="w-100 ps-4">
+                    <div class="d-flex justify-content-between">
+                        <div class="">
+                            <h4 class="card-title mb-1"> {{ employee.user.full_name }} </h4>
+                            <h5> {{ employee.post }} </h5>
+                            
+                            <span>{{ employee.official_email }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6 col-md-12">
+        <div class="card">
+            <div class="card-body pb-0">
+                <form method="GET" class="mb-3">
+                    <input type="hidden" name="employee" value="{{ employee.id }}">
+                    <div class="row align-items-end">
+                        <div class="col form-group">
+                            <label for="from_date_input">Select year</label>
+                            <select name="year" id="year" class="form-control select2" required>
+                                <option value="">--------</option>
+                                {% for year in year_list %}
+                                {% if selected_year == year %}
+                                <option value="{{ year }}"  selected >{{ year }}</option>
+                                {% else %}
+                                <option value="{{ year }}" >{{ year }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col form-group">
+                            <label for="from_date_input">Select month</label>
+                            <select name="month" id="id_month" class="form-control" required>
+                                <option value="">--------</option>
+                                <option value="1" {% if selected_month == '1' %} selected {% endif %}>Baisakh</option>
+                                <option value="2" {% if selected_month == '2' %} selected {% endif %}>Jestha</option>
+                                <option value="3" {% if selected_month == '3' %} selected {% endif %}>Ashar</option>
+                                <option value="4" {% if selected_month == '4' %} selected {% endif %}>Shrawan</option>
+                                <option value="5" {% if selected_month == '5' %} selected {% endif %}>Bhadra</option>
+                                <option value="6" {% if selected_month == '6' %} selected {% endif %}>Ashoj</option>
+                                <option value="7" {% if selected_month == '7' %} selected {% endif %}>Kartik</option>
+                                <option value="8" {% if selected_month == '8' %} selected {% endif %}>Mangsir</option>
+                                <option value="9" {% if selected_month == '9' %} selected {% endif %}>Poush</option>
+                                <option value="10" {% if selected_month == '10' %} selected {% endif %}>Magh</option>
+                                <option value="11" {% if selected_month == '11' %} selected {% endif %}>Falgun</option>
+                                <option value="12" {% if selected_month == '12' %} selected {% endif %}>Chaitra</option>
+                            </select>
+                        </div>
+                        <div class="col form-group">
+                            <button class="btn btn-sm btn-outline-primary me-2">
+                                Filter
+                            </button>
+                            <a href="{% url 'salary_management:employee_dashboard' %}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body p-4">
+                <div class="media ai-icon">
+                    <span class="me-3 bgl-secondary text-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="#3693FF">
+                            <path d="M531-260h96v-3L462-438l1-3h10q54 0 89.5-33t43.5-77h40v-47h-41q-3-15-10.5-28.5T576-653h70v-47H314v57h156q26 0 42.5 13t22.5 32H314v47h222q-6 20-23 34.5T467-502H367v64l164 178ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
+                        </svg>
+                    </span>
+                    <div class="media-body">
+                        <p class="mb-1">Basic salary</p>
+                        <h4 class="mb-0 card-title fs-4">Rs. {{ basic_salary }}</h4>
+                        <span class="badge badge-secondary">+5.0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body p-4">
+                <div class="media ai-icon">
+                    <span class="me-3 bgl-success text-success">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="#3AB67A">
+                            <path d="M438-226 296-368l58-58 84 84 168-168 58 58-226 226ZM200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z"/>
+                        </svg>
+                    </span>
+                    <div class="media-body">
+                        <p class="mb-1">Gross Salary</p>
+                        <h4 class="mb-0 card-title fs-4">Rs. {{ gross_salary }}</h4>
+                        <span class="badge badge-success">+3.2%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body p-4">
+                <div class="media ai-icon">
+                    <span class="me-3 bgl-warning text-warning">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="#ffab2d">
+                            <path d="m387-412 35-114-92-74h114l36-112 36 112h114l-93 74 35 114-92-71-93 71ZM240-40v-309q-38-42-59-96t-21-115q0-134 93-227t227-93q134 0 227 93t93 227q0 61-21 115t-59 96v309l-240-80-240 80Zm240-280q100 0 170-70t70-170q0-100-70-170t-170-70q-100 0-170 70t-70 170q0 100 70 170t170 70ZM320-159l160-41 160 41v-124q-35 20-75.5 31.5T480-240q-44 0-84.5-11.5T320-283v124Zm160-62Z"/>
+                        </svg>
+                    </span>
+                    <div class="media-body">
+                        <p class="mb-1">Incentives</p>
+                        <h4 class="mb-0 card-title fs-4">Rs. {{ incentives }}</h4>
+                        <span class="badge badge-warning">+5.0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body p-4">
+                <div class="media ai-icon">
+                    <span class="me-3 bgl-primary text-primary">
+                        <svg id="icon-customers" xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </span>
+                    <div class="media-body">
+                        <p class="mb-1">Net salary</p>
+                        <h4 class="mb-0 card-title fs-4">Rs. {{ net_salary }}</h4>
+                        <span class="badge badge-primary">+0.0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-6 col-sm-12">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <div class="card-title fs-4">
+                    Salary history
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="height270">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <div class="spinner-border" role="status" id="salaryHistoryGraphLoader">
+                          <span class="sr-only">Loading...</span>
+                        </div>
+                    </div>
+                    <p class="text-center d-none" id="salaryHistoryGraphNotFoundMessage">Data not found</p>
+                    <canvas id="salaryHistoryGraph" class="d-none">
+
+                    </canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-6 col-sm-12">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <div class="card-title fs-4">
+                    Incentive history
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="height270">
+                    <canvas id="incentiveHistoryGraph">
+
+                    </canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-sm-12">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <div class="card-title fs-4">
+                    Performance
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="height270">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <div class="spinner-border" role="status" id="performanceGraphLoader">
+                          <span class="sr-only">Loading...</span>
+                        </div>
+                    </div>
+                    <canvas id="performanceHistoryGraph">
+
+                    </canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3 class="card-title fs-4">
+                    Transaction history
+                </h3>
+            </div>
+            <div class="card-body">
+                {% if transaction_history %}
+                <div class="table-responsive">
+                    <table class="table verticle-middle table-md-responsive">
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Basic salary</th>
+                                <th scope="col">Incentives</th>
+                                <th scope="col">Deduction</th>
+                                <th scope="col">Net salary</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in transaction_history %}
+                            <tr>
+                                <td>{{ transaction.date }}</td>
+                                <td>Rs. {{ transaction.salary.basic_salary }}</td>
+                                <td>
+                                    <span class="text-success fw-medium">
+                                        Rs. 0
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-danger fw-medium">
+                                       Rs. {{ transaction.deduction }}
+                                    </span>
+                                </td>
+                                <td class="fw-medium">Rs. {{ transaction.net_salary }}</td>
+                                <td>
+                                    <button class="btn btn-sm text-secondary" data-bs-toggle="modal" data-bs-target="#transactionDetailModal" data-id="{{ transaction.id }}" onclick="fetchTransactionDetail(event)">
+                                        <i class="far fa-eye" data-id="{{ transaction.id }}"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-center">No transaction found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- modal -->
+
+<div class="modal fade" id="transactionDetailModal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Transaction details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center" id="loader">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <div class="table-responsive d-none" id="transactionDetailTable">
+                    <table class="table verticle-middle table-md-responsive table-hover table-striped ">
+                        <tbody>
+                            <tr>
+                                <th>Date</th>
+                                <td id="transactionDate">-</td>
+                            </tr>
+                            <tr>
+                                <th>Fiscal year</th>
+                                <td id="transactionFiscalYear">81/82</td>
+                            </tr>
+                            <tr>
+                                <th>Status</th>
+                                <td id="transactionStatus">
+                                    <span class="badge badge-lg badge-success light">Success</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Basic salary</th>
+                                <td id="transactionBasicSalary">-</td>
+                            </tr>
+                            <tr>
+                                <th>Holidays</th>
+                                <td id="transactionHoliday">
+                                    -
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Attendance</th>
+                                <td id="transactionAttendance">
+                                    -
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Paid leaves</th>
+                                <td id="transactionPaidLeaves">
+                                    -
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Deduction</th>
+                                <td id="transactionDeduction" class="text-danger">
+                                    -
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Net salary</th>
+                                <td id="transactionNetSalary" class="fw-bold">
+                                    -
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm btn-danger light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'vendor/chart-js/chart.bundle.min.js' %}"></script>
+<script src="{% static 'js/custom/SalaryEmployeeDashboard.js' %}"></script>
+{% endblock %}

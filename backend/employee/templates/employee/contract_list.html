@@ -1,0 +1,91 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+Contracts
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3 class="card-title">Contracts</h3>
+                <a href="{% url 'employee:contract_create' %}" class="btn btn-primary btn-sm">Add contract</a>
+            </div>
+            <div class="card-body">
+                {% if contracts %}
+                <div class="table-responsive">
+                    <table class="table table-responsive table-hover dataTable" id="contractTable">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Start date</th>
+                                <th>End date</th>
+                                <th>Created at</th>
+                                <th>Updated at</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for contract in contracts %}
+                            <tr id="contract-{{ contract.id }}">
+                                <td>{{ contract.employee }}</td>
+                                <td>{{ contract.start_date }}</td>
+                                <td>{{ contract.end_date }}</td>
+                                <td>{{ contract.created_at }}</td>
+                                <td>{{ contract.updated_at }}</td>
+                                <td>
+                                    <div class="dropdown custom-dropdown mb-0 tbl-orders-style">
+                                        <div class="btn sharp tp-btn" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                    <path d="M12 6C12.5523 6 13 5.55228 13 5C13 4.44772 12.5523 4 12 4C11.4477 4 11 4.44772 11 5C11 5.55228 11.4477 6 12 6Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                    <path d="M12 20C12.5523 20 13 19.5523 13 19C13 18.4477 12.5523 18 12 18C11.4477 18 11 18.4477 11 19C11 19.5523 11.4477 20 12 20Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="dropdown-menu dropdown-menu-end">
+                                            <a class="dropdown-item" href="{% url 'employee:contract_detail' contract.pk %}">View</a>
+                                            <a class="dropdown-item" href="{% url 'employee:contract_update' contract.pk %}">Edit</a>
+                                            <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#contractDeleteConfirmationModal" data-id="{{ contract.id }}" onclick="getContractId(event)">Delete</button>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="py-4 text-center">No contracts found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- modal -->
+<div class="modal fade" id="contractDeleteConfirmationModal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Leave quota details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" id="contractDeleteConfirmationModalCloseBtn"></button>
+            </div>
+            <div class="modal-body">
+                <p class="py-4">Are you sure you want to <span class="text-danger">delete</span> the contract?</p>
+            </div>
+            
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm btn-success light" data-bs-dismiss="modal">No</button>
+                <button class="btn btn-sm btn-danger light" onclick="handleDeleteContract(event)">Yes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/custom/ContractDetail.js' %}"></script>
+{% endblock %}

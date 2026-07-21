@@ -1,0 +1,110 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+Task management
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-0">
+                <h3 class="card-title">
+                    Tasks
+                </h3>
+                {% if employee.is_company_admin %}
+                <a href="{% url 'task_management:task_create' %}" class="btn btn-primary btn-sm">Add a new task</a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12 mb-5">
+                        <form method="GET">
+                            <div class="row align-items-end">
+                                {% for field in filter.form %}
+                                <div class="col-xl-3 col-lg-4 col-md-6">
+                                    <div class="form-group "> 
+                                        <label for="{{ field.id_for_label }}" class="{% if field.field.required %}required{% endif %}">{{ field.label|safe }}</label>
+                                        {{ field }}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-xs btn-secondary mb-3">Filter</button>
+                                    <a href="{% url 'task_management:task_list' %}" class="btn btn-xs btn-primary mb-3">Reset</a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-12">
+                        <div class="table-responsive">
+                            <table class="table table-responsive table-striped table-hover dataTable" id="taskDataTable">
+                                <thead>
+                                    <th>Title</th>
+                                    <th>Project</th>
+                                    <th>Assigned to</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Created at</th>
+                                </thead>
+                                <tbody>
+                                    {% for task in tasks %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'task_management:task_details' task.id %}">
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-medium fs-5 text-primary mb-2">{{ task.title }}</span>
+                                                    <span>#TSK0000{{ task.id }}</span>
+                                                </div>
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'task_management:project_detail' task.project.id %}">
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-medium fs-5 text-primary mb-2">{{ task.project.title }}</span>
+                                                    <span>#PRJ0000{{ task.project.id }}</span>
+                                                </div>
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="{{ task.assigned_to.user.profile_picture.url }}" class="rounded-3 me-2" width="46" alt=""> 
+                                                <div class="d-flex flex-column justify-content-between align-items-start">
+                                                    <span class="fw-medium fs-5 text-dark">{{ task.assigned_to.user.full_name }}</span>
+                                                    <small class="text-muted">#EMP000{{ task.assigned_to.id }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if task.status == 'done' %}
+                                            <span class="badge badge-lg badge-success fw-medium">Done</span>
+                                            {% elif task.status == 'in-progress' %}
+                                            <span class="badge badge-lg badge-secondary fw-medium">In progress</span>
+                                            {% elif task.status == 'to-do' %}
+                                            <span class="badge badge-lg badge-warning fw-medium">Todo</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if task.priority == 'low' %}
+                                            <span class="badge badge-lg badge-success fw-medium">Low</span>
+                                            {% elif task.priority == 'medium' %}
+                                            <span class="badge badge-lg badge-warning fw-medium">Medium</span>
+                                            {% elif task.priority == 'high' %}
+                                            <span class="badge badge-lg badge-danger fw-medium">High</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ task.created_at }}</td>
+        
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

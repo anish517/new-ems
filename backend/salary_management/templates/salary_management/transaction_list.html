@@ -1,0 +1,215 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+Salary Management
+{% endblock %}
+
+{% block css %}
+{{ form.media }}
+<link href="{% static 'django_ckeditor_5/dist/styles.css' %}" type="text/css" media="all" rel="stylesheet">
+<script src="{% static 'django_ckeditor_5/dist/bundle.js' %}"></script>
+<style>
+    .ck{
+        height: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header pb-0 border-0">
+        <h3 class="card-title mb-3">Transactions</h3>
+        <a href="{% url 'salary_management:transaction_create_view' %}" class="btn btn-sm btn-primary">+ New Transaction</a>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="mb-3">
+            <div class="row align-items-end">
+                <div class="col-md-3 form-group">
+                    <label for="from_date_input">Select year</label>
+                    <select name="year" id="year" class="form-control select2">
+                        <option value="">--------</option>
+                        {% for year in year_list %}
+                        {% if selected_year == year %}
+                        <option value="{{ year }}"  selected >{{ year }}</option>
+                        {% else %}
+                        <option value="{{ year }}" >{{ year }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 form-group">
+                    <label for="from_date_input">Select month</label>
+                    <select name="month" id="id_month" class="form-control">
+                        <option value="">--------</option>
+                        <option value="1" {% if selected_month == '1' %} selected {% endif %}>Baisakh</option>
+                        <option value="2" {% if selected_month == '2' %} selected {% endif %}>Jestha</option>
+                        <option value="3" {% if selected_month == '3' %} selected {% endif %}>Ashar</option>
+                        <option value="4" {% if selected_month == '4' %} selected {% endif %}>Shrawan</option>
+                        <option value="5" {% if selected_month == '5' %} selected {% endif %}>Bhadra</option>
+                        <option value="6" {% if selected_month == '6' %} selected {% endif %}>Ashoj</option>
+                        <option value="7" {% if selected_month == '7' %} selected {% endif %}>Kartik</option>
+                        <option value="8" {% if selected_month == '8' %} selected {% endif %}>Mangsir</option>
+                        <option value="9" {% if selected_month == '9' %} selected {% endif %}>Poush</option>
+                        <option value="10" {% if selected_month == '10' %} selected {% endif %}>Magh</option>
+                        <option value="11" {% if selected_month == '11' %} selected {% endif %}>Falgun</option>
+                        <option value="12" {% if selected_month == '12' %} selected {% endif %}>Chaitra</option>
+                    </select>
+                </div>
+                <div class="col-md-2 form-group">
+                    <button class="btn btn-sm btn-outline-primary me-2">
+                        Filter
+                    </button>
+                    <a href="{% url 'salary_management:transaction_list_view' %}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                </div>
+            </div>
+        </form>
+        {% if transaction %}
+        <div class="table-responsive">
+            <table class="table table-responsive-md table-hover  dataTable" id="monthlySalaryTransactionTable">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Employee</th>
+                        <th scope="col">Basic salary</th>
+                        <th scope="col">Deduction</th>
+                        <th scope="col">Incentives</th>
+                        <th scope="col">Net salary</th>
+                        <td></td>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in salary_transaction_list %}
+                    <tr>
+                        <td>{{ transaction.date }}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="{{ transaction.salary.employee.user.profile_picture.url }}" class="rounded-3 me-2" width="36" alt=""> 
+                                <div class="d-flex flex-column justify-content-between align-items-start">
+                                    <span class="fw-medium fs-5 text-dark">{{ transaction.salary.employee.user.full_name }}</span>
+                                    <small class="text-muted">#EMP000{{ transaction.salary.employee.id }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>Rs. {{ transaction.salary.basic_salary }}</td>
+                        <td>
+                            <span class="text-danger">Rs. {{ transaction.deduction }}</span>
+                        </td>
+                        <td>
+                            <span class="text-success">0</span>
+                        </td>
+                        <td><span class="fw-semibold"> Rs.{{ transaction.net_salary }}</span></td>
+                        <td>
+                            <div class="dropdown">
+                                <button type="button" class="btn light sharp" data-bs-toggle="dropdown">
+                                    <svg width="20px" height="20px" viewBox="0 0 24 24" version="1.1">
+                                        <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                            <rect x="0" y="0" width="24" height="24"></rect>
+                                            <circle fill="#000000" cx="5" cy="12" r="2"></circle>
+                                            <circle fill="#000000" cx="12" cy="12" r="2"></circle>
+                                            <circle fill="#000000" cx="19" cy="12" r="2"></circle>
+                                        </g>
+                                    </svg>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item view-details-btn" data-id="{{ transaction.id }}" data-id="{{ transaction.id }}" data-bs-toggle="modal" data-bs-target="#transactionDetailModal" onclick="fetchTransactionDetail(event)">View</a>
+                                    <a class="dropdown-item" href="{% url 'salary_management:salary_transaction_delete_view' transaction.id %}"><span class="text-danger">Delete</span></a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-center py-4">No transactions found</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- modal -->
+
+<div class="modal fade" id="transactionDetailModal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Transaction details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center" id="loader">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <div class="table-responsive d-none" id="transactionDetailTable">
+                    <table class="table verticle-middle table-md-responsive table-hover table-striped ">
+                        <tbody>
+                            <tr>
+                                <th>Date</th>
+                                <td id="transactionDate">-</td>
+                            </tr>
+                            <tr>
+                                <th>Fiscal year</th>
+                                <td id="transactionFiscalYear">81/82</td>
+                            </tr>
+                            <tr>
+                                <th>Status</th>
+                                <td id="transactionStatus">
+                                    <span class="badge badge-lg badge-success light">Success</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Basic salary</th>
+                                <td id="transactionBasicSalary">-</td>
+                            </tr>
+                            <tr>
+                                <th>Holidays</th>
+                                <td id="transactionHoliday">
+                                    -
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Attendance</th>
+                                <td id="transactionAttendance">
+                                    -
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Paid leaves</th>
+                                <td id="transactionPaidLeaves">
+                                    -
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Deduction</th>
+                                <td id="transactionDeduction" class="text-danger">
+                                    -
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Net salary</th>
+                                <td id="transactionNetSalary" class="fw-bold">
+                                    -
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm btn-danger light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/custom/SalaryTransactionList.js' %}"></script>
+{% endblock %}

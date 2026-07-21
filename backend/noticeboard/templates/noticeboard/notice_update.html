@@ -1,0 +1,60 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block title %}
+Notice | Update
+{% endblock %}
+
+{% block css %}
+{{ form.media }}
+<link href="{% static 'django_ckeditor_5/dist/styles.css' %}" type="text/css" media="all" rel="stylesheet">
+<script src="{% static 'django_ckeditor_5/dist/bundle.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Update Notice</h3>
+    </div>
+    <div class="card-body">
+        <form action="{% url 'noticeboard:notice_create' %}" method="POST" enctype="multipart/form-data">
+            <div class="row">
+                {% csrf_token %}
+                {% for field in form %}
+                {% if field.label == 'Description' %}
+                <div class="col-12 form-group mb-3" id="{{ field.label|lower }}">
+                    <label for="{{ field.id_for_label }}" class="required">{{ field.label|safe }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                        {% for error in field.errors %}
+                        {{ error }}. <br>
+                        {% endfor %}
+                    </small>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                    <label for="{{ field.id_for_label }}" class="required">{{ field.label|safe }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                        {% for error in field.errors %}
+                        {{ error }}. <br>
+                        {% endfor %}
+                    </small>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% endfor %}
+                <div class="col-md-6 form-group mb-3">
+                    <label for="files">File</label>
+                    <input type="file" name="files" id="files" class="form-control" multiple>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-sm btn-primary">Update Notice</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

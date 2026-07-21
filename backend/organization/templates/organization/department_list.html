@@ -1,0 +1,108 @@
+{% extends 'organization/index.html' %}
+{% load static %}
+{% block title %} Department {% endblock %}
+
+{% block tab %}
+<div class="row">
+    <div class="custom-tab-1">
+        <div class="card">
+            <div class="card-header border-0">
+                <ul class="nav nav-tabs border-0">
+                    <li class="nav-item" role="presentation">
+                        <a href="#department-list" class="nav-link active d-flex align-items-center" data-bs-toggle="tab" aria-selected="true" role="tab">
+                            <span class="material-symbols-outlined me-2">domain</span>Departments
+                        </a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a href="#department-form" class="nav-link d-flex align-items-center" data-bs-toggle="tab" aria-selected="false" role="tab">
+                            <span class="material-symbols-outlined me-2">domain_add </span>Add department
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div class="tab-content">
+                <div class="tab-pane fade active show" id="department-list" role="tabpanel">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-responsive-md dataTable" id="departmentTable">
+                                <thead>
+                                    <tr>
+                                        <th>Department Name</th>
+                                        {% if request.user.is_superuser %}
+                                        <th>Organization</th>
+                                        {% endif %} 
+                                        <th>Parent department</th>
+                                        <th>No. of Employees</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for department in department_list %}
+                                    <tr>
+                                        <td>{{ department.department_name }}</td>
+                                        {% if request.user.is_superuser %}
+                                        <td>{{ department.organization }}</td>
+                                        {% endif %}
+                                        {% if department.parent_department %}
+                                        <td>{{ department.parent_department }}</td>
+                                        {% else %}
+                                        <td>-</td>
+                                        {% endif %}
+                                        <td>{{ department.employees.count }}</td>
+                                        <td><div class="dropdown">
+                                            <button type="button" class="btn light sharp" data-bs-toggle="dropdown">
+                                                <svg width="20px" height="20px" viewBox="0 0 24 24" version="1.1">
+                                                    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                                        <rect x="0" y="0" width="24" height="24"></rect>
+                                                        <circle fill="#000000" cx="5" cy="12" r="2"></circle>
+                                                        <circle fill="#000000" cx="12" cy="12" r="2"></circle>
+                                                        <circle fill="#000000" cx="19" cy="12" r="2"></circle>
+                                                    </g>
+                                                </svg>
+                                            </button>
+                                            <div class="dropdown-menu">
+                                                <a class="dropdown-item" href="{% url 'organization:department_detail' department.id %}">View</a>
+                                                <a class="dropdown-item text-danger" href="{% url 'organization:delete_department' department.pk %}">Delete</a>
+                                            </div>
+                                        </div></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="department-form"  role="tabpanel">
+                    <form action="{% url 'organization:create_department' %}" class="profile-form" method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            <div class="row">
+                                {% for field in department_form %}
+                                <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                                    <label for="{{ field.id_for_label }}" class="required">{{ field.label|safe }}</label>
+                                    {{ field }}
+                                    {% if field.errors %}
+                                    <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                                        {% for error in field.errors %}
+                                        {{ error }}. <br>
+                                        {% endfor %}
+                                    </small>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="card-footer border-0">
+                            <button type="submit" class="btn btn-primary d-flex align-items-center">
+                                <span class="material-symbols-outlined me-2">domain_add</span>
+                                Add
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+{% endblock %}

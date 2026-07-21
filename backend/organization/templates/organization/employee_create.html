@@ -1,0 +1,273 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+Employee | Add
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-xl-3 col-lg-4">
+                        <div class="nav flex-column nav-pills mb-3" role="tablist">
+                            <a href="#profile-tab" data-bs-toggle="pill" class="nav-link py-3 show active d-flex align-items-center" aria-selected="true" role="tab">
+                                <span class="material-symbols-outlined me-2">account_circle</span>
+                                Personal information
+                            </a>
+                            <a href="#contact-tab" data-bs-toggle="pill" class="nav-link py-3 d-flex align-items-center disabled" aria-selected="false" role="tab" tabindex="-1" >
+                                <span class="material-symbols-outlined me-2">share_location</span>
+                                Address
+                            </a>
+                            <a href="#national-id-detail" data-bs-toggle="pill" class="nav-link py-3 d-flex align-items-center disabled" aria-selected="false" role="tab" tabindex="-1">
+                                <span class="material-symbols-outlined me-2">badge</span>
+                                National ID details
+                            </a>
+                            <a href="#qualification-tab" data-bs-toggle="pill" class="nav-link py-3 d-flex align-items-center disabled" aria-selected="false" role="tab" tabindex="-1">
+                                <span class="material-symbols-outlined me-2">workspace_premium</span>
+                                Qualification
+                            </a>
+                            <a href="#bank-details-tab" data-bs-toggle="pill" class="nav-link py-3 d-flex align-items-center disabled" aria-selected="false" role="tab" tabindex="-1">
+                                <span class="material-symbols-outlined me-2">account_balance</span>
+                                Bank details
+                            </a>
+                            <a href="#documents-tab" data-bs-toggle="pill" class="nav-link py-3 d-flex align-items-center disabled" aria-selected="false" role="tab" tabindex="-1">
+                                <span class="material-symbols-outlined me-2">folder_shared</span>
+                                Documents
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-xl-9 col-lg-8">
+                        <div class="tab-content ps-5">
+                            <div id="profile-tab" class="tab-pane fade active show" role="tabpanel">
+                                <form method="POST" id="employeeCreationForm" onsubmit="handleEmployeeCreation(event);" novalidate>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="row">
+                                                
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_first_name">First name</label>
+                                                <input type="text" class="form-control" placeholder="John" name="first_name" id="id_first_name" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_last_name">Last name</label>
+                                                <input type="text" class="form-control" placeholder="Doe" name="last_name" id="id_last_name" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_father_name">Father's name</label>
+                                                <input type="text" class="form-control" placeholder="Doe" name="father_name" id="id_father_name" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_gender">Gender</label>
+                                                <select name="gender" id="id_gender" class="form-control" required>
+                                                    <option value="">------</option>
+                                                    <option value="male">Male</option>
+                                                    <option value="female">Female</option>
+                                                    <option value="others">Others</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_employee_type">Employee Type</label>
+                                                <select name="employee_type" id="id_employee_type" class="form-control">
+                                                    <option value="">------</option>
+                                                    <option value="full_time" {% if employee.employee_type == 'full_time' %} selected {% endif %}>Full time</option>
+                                                    <option value="part_time" {% if employee.employee_type == 'part_time' %} selected {% endif %}>Part time</option>
+                                                    <option value="intern" {% if employee.employee_type == 'intern' %} selected {% endif %}>Intern</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_post">Post</label>
+                                                <select name="post" id="id_post" class="form-control">
+                                                    <option value="">------</option>
+                                                    {% for post in posts %}
+                                                    <option value="{{ post.id }}">{{ post.title }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="id_date_of_birth">Date of birth</label>
+                                                <input type="text" name="date_of_birth" id="id_date_of_birth" class="form-control nepali-date" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_phone_no">Phone no.</label>
+                                                <input type="text" class="form-control" placeholder="9874561230" name="phone_no" id="id_phone_no" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_official_email">Official email</label>
+                                                <input type="email" class="form-control" placeholder="johndoe@officialemail.com" name="official_email" id="id_official_email" required>
+                                                <span class="text-muted">*Account activate email will be sent to this email address.</span>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_personal_email">Personal Email</label>
+                                                <input type="email" class="form-control" placeholder="johndoe@personalemail.com" name="personal_email" id="id_personal_email" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_password">Password</label>
+                                                <input type="password" class="form-control" placeholder="************" name="password" id="id_password" required>
+                                                <span class="text-muted">*This password will be used to sign in.</span>
+                                            </div>
+                                            <div class="card-footer p-0 pt-4 border-0">
+                                                <button type="submit" class="btn btn-primary btn-sm">Add employee</button>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="author-profile">
+                                                <div class="author-media">
+                                                    <img src="{% static 'images/tab/1.jpg' %}" alt="" id="imagePreview">
+                                                    <div class="upload-link" title="Upload profile picture" data-toggle="tooltip" data-placement="right" data-original-title="update" onchange="handleProfilePictureUpload(event)" >
+                                                        <input type="file" class="update-flie" name="profile_picture" id="id_profile_picture" style="object-fit: cover;">
+                                                        <i class="fa fa-upload" ></i>
+                                                    </div>
+                                                </div>
+                                                <div class="author-info">
+                                                    <h6 class="title text-muted">Upload profile picture</h6>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div id="contact-tab" class="tab-pane fade" role="tabpanel">
+                                <form method="POST" onsubmit="handleAddressUpload(event)">
+                                    <h4 class="text-muted fw-medium mb-3">Temporary address</h4>
+                                    <div class="row mb-3">
+                                        <div class="mb-3 col-md-6">
+                                            <label class="form-label" for="id_temporary_address">State</label>
+                                            <input type="text" class="form-control" name="temporary_state" id="id_temporary_address">
+                                        </div>
+                                        <div class="mb-3 col-md-6">
+                                            <label class="form-label" for="id_district">District</label>
+                                            <input type="text" class="form-control" name="temporary_district" id="id_temporary_district">
+                                        </div>
+                                        <div class="mb-3 col-md-6">
+                                            <label class="form-label" for="id_temporary_street">Street</label>
+                                            <input type="text" class="form-control" name="temporary_street" id="id_temporary_street">
+                                        </div>
+                                    </div>
+                                    <h4 class="text-muted fw-medium mb-3">Permanent address</h4>
+                                    <div class="row">
+                                        <div class="mb-3 col-md-6">
+                                            <label class="form-label" for="id_permanent_address">State</label>
+                                            <input type="text" class="form-control" name="permanent_state" id="id_permanent_address">
+                                        </div>
+                                        <div class="mb-3 col-md-6">
+                                            <label class="form-label" for="id_district">District</label>
+                                            <input type="text" class="form-control" name="permanent_district" id="id_district">
+                                        </div>
+                                        <div class="mb-3 col-md-6">
+                                            <label class="form-label" for="id_permanent_street">Street</label>
+                                            <input type="text" class="form-control" name="permanent_street" id="id_permanent_street">
+                                        </div>
+                                        <div class="mb-3">
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                Save
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                </form>
+                            </div>
+                            <div id="national-id-detail" class="tab-pane fade" role="tabpanel">
+                                <form method="POST" onsubmit="handleNationalIdDetail(event)">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="id_national_id_number">National ID No.</label>
+                                            <input type="text" class="form-control" name="national_id_no" id="id_national_id_number">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="id_citizenship_no">Citizenship number</label>
+                                            <input type="text" class="form-control" name="citizenship_no" id="id_citizenship_no">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="id_marital_status">Marital status</label>
+                                            <select name="marital_status" id="id_marital_status" class="form-control">
+                                                <option value="">-------</option>
+                                                <option value="married">Married</option>
+                                                <option value="unmarried">Unmarried</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div id="qualification-tab" class="tab-pane fade" role="tabpanel">
+                                <form method="POST" onsubmit="handleQualificationUpload(event)">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label required" for="id_college">College/University</label>
+                                            <input type="text" class="form-control" name="college" id="id_college" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label required" for="id_degree">Degree</label>
+                                            <input type="text" class="form-control" name="degree" id="id_degree" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label required" for="id_field_of_study">Field of study</label>
+                                            <input type="text" class="form-control" name="field_of_study" id="id_field_of_study" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label required" for="id_qualification_start_date">Start date</label>
+                                            <input type="date" class="form-control" name="qualification_start_date" id="id_qualification_start_date" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="id_qualification_end_date">End date (or expected)</label>
+                                            <input type="date" class="form-control" name="qualification_end_date" id="id_qualification_end_date">
+                                        </div>
+                                        <div class="my-3">
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                save
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div id="bank-details-tab" class="tab-pane fade" role="tabpanel">
+                                <form method="POST" onsubmit="handleBankDetailsUpload(event)">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="id_bank_name">Bank name</label>
+                                            <input type="text" name="bank_name" id="id_bank_name" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="id_account_no">Account No.</label>
+                                            <input type="text" name="account_no" id="id_account_no" class="form-control" required>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm">Save</button>
+                                </form>
+                            </div>
+                            <div id="documents-tab" class="tab-pane fade" role="tabpanel">
+                                <form method="POST" onsubmit="handleDocumentUpload(event)">
+                                    <div class="row align-items-end">
+                                        <div class="col-md-5 mb-3">
+                                            <label for="id_document_name" class="form-label">Document name</label>
+                                            <input type="text" class="form-control" name="document_name" id="id_document_name" placeholder="e.g. Citizenship" required>
+                                        </div>
+                                        <div class="col-md-5 mb-3">
+                                            <label for="id_document_file" class="form-label">File</label>
+                                            <input type="file" class="form-control" name="document_file" id="id_document_file" required>
+                                        </div>
+                                        <div class="col-md-2 mb-3">
+                                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/custom/employee/EmployeeCreate.js' %}"></script>
+{% endblock %}

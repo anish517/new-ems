@@ -1,0 +1,101 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+Attendance
+{% endblock %}
+
+{% block content %}
+<input type="hidden" name="employee_id" id="employee_id" value="{{ employee.id }}">
+<div class="row">
+      <div class="col-12">
+            <div class="card">
+                  <div class="card-header border-0 pb-0">
+                        <h3 class="card-title">Attendance history</h3>
+                  </div>
+                  <div class="card-body">
+                        <form method="GET">
+                              <div class="row align-items-end">
+                                    {% for field in filter.form %}
+                                    <div class="col-xl-3 col-lg-4 col-md-6">
+                                    <div class="form-group "> 
+                                          <label for="{{ field.id_for_label }}" class="{% if field.field.required %}required{% endif %}">{{ field.label|safe }}</label>
+                                          {{ field }}
+                                    </div>
+                                    </div>
+                                    {% endfor %}
+                                    <div class="col-md-3">
+                                    <button type="submit" class="btn btn-xs btn-secondary mb-3">Filter</button>
+                                    <a href="#" class="btn btn-xs btn-primary mb-3">Reset</a>
+                                    </div>
+                              </div>
+                        </form>
+                  </div>
+                  <div class="card-body">
+                        <div class="table-responsive">
+                              <table class="table table-responsive table-striped table-hover dataTable" id="attendanceTable">
+                                    <thead>
+                                          <tr>
+                                                <th>Employee</th>
+                                                <th>Date</th>
+                                                <th>Status</th>
+                                                <th>Check in</th>
+                                                <th>Check out</th>
+                                                <th>Working hour</th>
+                                          </tr>
+                                    </thead>
+                                    <tbody>
+                                          {% for attendance in attendances %}
+                                          <tr>
+                                                <td>
+                                                      <a href="#">
+                                                          <div class="d-flex align-items-center">
+                                                              <img src="{{ attendance.employee.user.profile_picture.url }}" class="rounded-3 me-2" width="46" alt=""> 
+                                                              <div class="d-flex flex-column justify-content-between align-items-start">
+                                                                  <span class="fw-medium fs-5 text-primary">{{ attendance.employee.user.full_name }}</span>
+                                                                  <small class="text-muted">{{ attendance.employee.user.email }}</small>
+                                                              </div>
+                                                          </div>
+                                                      </a>
+                                                </td>
+                                                <td>
+                                                      {{ attendance.date }}
+                                                </td>
+                                                <td>
+                                                      {% if attendance.has_checked_in %}
+                                                      <span class="badge light badge-success">Present</span>
+                                                      {% else %}
+                                                      <span class="badge light badge-danger">Absent</span>
+                                                      {% endif %}
+                                                </td>
+                                                <td>
+                                                      {% if attendance.has_checked_in %}
+                                                      <span>{{ attendance.check_in_timestamp }}</span>
+                                                      {% else %}
+                                                      <span>-</span>
+                                                      {% endif %}
+                                                </td>
+                                                <td>
+                                                      {% if attendance.check_out_timestamp %}
+                                                      <span>{{ attendance.check_out_timestamp }}</span>
+                                                      {% else %}
+                                                      <span>-</span>
+                                                      {% endif %}
+                                                </td>
+                                                <td>
+                                                      {% if attendance.check_out_timestamp %}
+                                                      <span>{{ attendance.formated_working_hour }}</span>
+                                                      {% else %}
+                                                      <span>-</span>
+                                                      {% endif %}
+                                                </td>
+                                          </tr>
+                                          {% endfor %}
+                                    </tbody>
+                              </table>
+                        </div>
+                  </div>
+            </div>
+      </div>
+</div>
+{% endblock %}

@@ -1,0 +1,177 @@
+{% extends 'index.html' %}
+
+{% load static %}
+
+{% block title %}
+Salary management
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body p-4">
+                <div class="media ai-icon">
+                    <span class="me-3 bgl-primary text-primary">
+                        <svg id="icon-customers" xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </span>
+                    <div class="media-body">
+                        <p class="mb-1">employees</p>
+                        <h4 class="mb-0 card-title fs-4">{{ employees.count }}</h4>
+                        <!-- <span class="badge badge-primary">+0.0%</span> -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body p-4">
+                <div class="media ai-icon">
+                    <span class="me-3 bgl-success text-success">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="#3AB67A">
+                            <path d="M531-260h96v-3L462-438l1-3h10q54 0 89.5-33t43.5-77h40v-47h-41q-3-15-10.5-28.5T576-653h70v-47H314v57h156q26 0 42.5 13t22.5 32H314v47h222q-6 20-23 34.5T467-502H367v64l164 178ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
+                        </svg>
+                    </span>
+                    <div class="media-body">
+                        <p class="mb-1">Average Salary</p>
+                        <h4 class="mb-0 card-title fs-4">Rs. {{ average_salary }}</h4>
+                        <!-- <span class="badge badge-success">+3.2%</span> -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body p-4">
+                <div class="media ai-icon">
+                    <span class="me-3 bgl-secondary text-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="#3693FF">
+                            <path d="M531-260h96v-3L462-438l1-3h10q54 0 89.5-33t43.5-77h40v-47h-41q-3-15-10.5-28.5T576-653h70v-47H314v57h156q26 0 42.5 13t22.5 32H314v47h222q-6 20-23 34.5T467-502H367v64l164 178ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
+                        </svg>
+                    </span>
+                    <div class="media-body">
+                        <p class="mb-1">Total Salary</p>
+                        <h4 class="mb-0 card-title fs-4">Rs. {{ total_salary }}</h4>
+                        <!-- <span class="badge badge-secondary">+5.0%</span> -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-sm-6">
+        <div class="widget-stat card">
+            <div class="card-body p-4">
+                <div class="media ai-icon">
+                    <span class="me-3 bgl-warning text-warning">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="#ffab2d">
+                            <path d="m387-412 35-114-92-74h114l36-112 36 112h114l-93 74 35 114-92-71-93 71ZM240-40v-309q-38-42-59-96t-21-115q0-134 93-227t227-93q134 0 227 93t93 227q0 61-21 115t-59 96v309l-240-80-240 80Zm240-280q100 0 170-70t70-170q0-100-70-170t-170-70q-100 0-170 70t-70 170q0 100 70 170t170 70ZM320-159l160-41 160 41v-124q-35 20-75.5 31.5T480-240q-44 0-84.5-11.5T320-283v124Zm160-62Z"/>
+                        </svg>
+                    </span>
+                    <div class="media-body">
+                        <p class="mb-1">Total Incentives</p>
+                        <h4 class="mb-0 card-title fs-4">Rs. 40500</h4>
+                        <!-- <span class="badge badge-warning">+5.0%</span> -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6 col-lg-12">
+        <div class="card">
+            <div class="card-header pb-0 border-0">
+                <h3 class="card-title fs-5">Payroll history</h3>
+                <a href="{% url 'salary_management:transaction_list_view' %}" class="btn btn-sm text-success">View more</a>
+            </div>
+            <div class="card-body">
+                <div class="height370">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <div class="spinner-border" role="status" id="payrollGraphLoader">
+                          <span class="sr-only">Loading...</span>
+                        </div>
+                    </div>
+                    <canvas id="payrollHistoryGraph">
+
+                    </canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6 col-lg-12">
+        <div class="card">
+            <div class="card-header pb-0 border-0">
+                <h3 class="card-title fs-5">Incentives and bonuses</h3>
+                <button class="btn btn-sm text-secondary">View more</button>
+            </div>
+            <div class="card-body">
+                <div class="height370">
+                    <canvas id="incentiveHistoryGraph">
+
+                    </canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3 class="card-title fs-5">Employees</h3>
+                <a href="{% url 'salary_management:transaction_create_view' %}" class="btn btn-sm btn-primary">+ New Transaction</a>
+
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table verticle-middle table-responsive-md">
+                        <thead>
+                            <tr>
+                                <th scope="col">Employee</th>
+                                <th scope="col">Position</th>
+                                <th scope="col">Basic salary</th>
+                                <th scope="col">Net salary</th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in net_salary_list %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <img src="{{ item.salary.employee.user.profile_picture.url }}" class="rounded-3 me-2" width="46" alt=""> 
+                                        <div class="d-flex flex-column justify-content-between align-items-start">
+                                            <span class="fw-medium fs-5 text-dark">{{ item.salary.employee.user.full_name }}</span>
+                                            <small class="text-muted">#EMP000{{ item.salary.employee.id }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-between align-items-start">
+                                        <span class="fw-medium fs-5 text-dark">{{ item.salary.employee.post }}</span>
+                                        <small class="text-muted">{{ item.salary.employee.post.department }}</small>
+                                    </div>
+                                </td>
+                                <td class="fw-medium">Rs. {{ item.salary.basic_salary }}</td>
+                                <td class="fw-medium">Rs. {{ item.net_pay }}</td>
+                                <td>
+                                    <a href="{% url 'salary_management:employee_dashboard' %}?employee={{ item.salary.employee.id }}" class="btn btn-sm text-secondary">
+                                        <i class="far fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'vendor/chart-js/chart.bundle.min.js' %}"></script>
+<script src="{% static 'js/custom/SalaryAdminDashboard.js' %}"></script>
+{% endblock %}

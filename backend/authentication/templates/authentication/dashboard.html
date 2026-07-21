@@ -1,0 +1,801 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block title %}
+Dashboard
+{% endblock %}
+
+{% block css %}
+<!-- chartist CSS -->
+<link rel="stylesheet" href="{% static 'vendor/chartist/css/chartist.min.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    <!-- employee detail card -->
+    <div class="col-xl-6 col-md-12">
+        <div class="card justify-content-center">
+            <div class="card-body d-flex">
+                <div class="d-block">
+                    {% if employee.user.profile_picture %}
+                    <img src="{{ employee.user.profile_picture.url }}"
+                        class="avatar avatar-xxl border-primary rounded-circle" alt="{{ employee.user.first_name }} {{ employee.user.last_name }}" style="object-fit: cover;">
+                    {% else %}
+                    <img src="{% static 'images/placeholder/placeholder.png' %}" class="avatar avatar-xxl border-primary rounded-circle" alt="{{ employee.user.first_name }} {{ employee.user.last_name }}" style="object-fit: cover;">
+                    {% endif %}
+                </div>
+                <div class="w-100 ps-4">
+                    <div class="d-flex justify-content-between flex-sm-row flex-column">
+                        <div class="">
+                            <h4 class="card-title mb-1"> {{ employee.user.full_name }} </h4>
+                            <h5> {{ employee.department }} </h5>
+                            {% if employee.permanent_address %}
+                            <span> {{ employee.get_id }} </span>
+                            {% endif %}
+                            <span>{{ employee.user.email }}</span>
+                        </div>
+                        <div class="d-flex justify-content-start pt-3 pt-sm-0">
+                            <div class="dropdown me-sm-2 me-3">
+                                {% if contract %}
+                                <a href="{% url 'employee:contract_detail' contract.id %}" class="btn btn-xs btn-secondary light d-flex align-items-center justify-content-center">
+                                    <span class="material-symbols-outlined">
+                                        contract
+                                    </span>
+                                </a>
+                                {% else %}
+                                <a href="javascript: void(0)" class="btn btn-xs btn-secondary light d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#contract-error-modal">
+                                    <span class="material-symbols-outlined">
+                                        contract
+                                    </span>
+                                </a>
+                                {% endif %}
+                            </div>
+                            <div class="dropdown me-sm-2 me-3">
+                                <a href="javascript: void(0);" class="btn btn-xs btn-warning light d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#id-card-modal">
+                                    <span class="material-symbols-outlined">
+                                        id_card
+                                    </span>
+                                </a>
+                            </div>
+                            <div class="dropdown">
+                                {% if has_checked_in_today %}
+                                <button class="btn btn-warning light" onclick="checkOut(event)">Check out</button>
+                                {% else %}
+                                <button class="btn btn-success light" onclick="checkIn(event)">Check in</button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- filter form -->
+    <div class="col-xl-6 col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET">
+                    <div class="row align-items-end">
+                        <div class="col-md-4 form-group">
+                            <label for="from_date_input">Select year</label>
+                            <select name="selected_year" id="year" class="form-control select2" required>
+                                <option value="">--------</option>
+                                {% for year in year_list %}
+                                {% if selected_year == year %}
+                                <option value="{{ year }}"  selected >{{ year }}</option>
+                                {% else %}
+                                <option value="{{ year }}" >{{ year }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 form-group">
+                            <label for="from_date_input">Select month</label>
+                            <select name="selected_month" id="id_month" class="form-control" required>
+                                <option value="">--------</option>
+                                <option value="1" {% if selected_month == '1' %} selected {% endif %}>Baisakh</option>
+                                <option value="2" {% if selected_month == '2' %} selected {% endif %}>Jestha</option>
+                                <option value="3" {% if selected_month == '3' %} selected {% endif %}>Ashar</option>
+                                <option value="4" {% if selected_month == '4' %} selected {% endif %}>Shrawan</option>
+                                <option value="5" {% if selected_month == '5' %} selected {% endif %}>Bhadra</option>
+                                <option value="6" {% if selected_month == '6' %} selected {% endif %}>Ashoj</option>
+                                <option value="7" {% if selected_month == '7' %} selected {% endif %}>Kartik</option>
+                                <option value="8" {% if selected_month == '8' %} selected {% endif %}>Mangsir</option>
+                                <option value="9" {% if selected_month == '9' %} selected {% endif %}>Poush</option>
+                                <option value="10" {% if selected_month == '10' %} selected {% endif %}>Magh</option>
+                                <option value="11" {% if selected_month == '11' %} selected {% endif %}>Falgun</option>
+                                <option value="12" {% if selected_month == '12' %} selected {% endif %}>Chaitra</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 form-group">
+                            <button class="btn btn-sm btn-outline-primary me-2">
+                                Filter
+                            </button>
+                            <a href="{% url 'authentication:dashboard' %}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="row">
+            <div class="col-xl-9">
+                <div class="row">
+                    <!-- Performance score -->
+                    <div class="col-xl-4 col-lg-6 col-sm-6">
+                        <div class="widget-stat card">
+                            <div class="card-body  p-4">
+                                <div class="media ai-icon">
+                                    <span class="me-3 bgl-secondary text-secondary">
+                                        <i class="material-symbols-outlined" style="font-size: 38px;">monitoring</i>
+                                    </span>
+                                    <div class="media-body">
+                                        <p class="mb-1">Performance</p>
+                                        <h5 class="mb-0">{{ analyis_report.analysis_score }}</h5>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <!-- No of days present -->
+                    <div class="col-xl-4 col-lg-6 col-sm-6">
+                        <div class="widget-stat card">
+                            <div class="card-body  p-4">
+                                <div class="media ai-icon">
+                                    <span class="me-3 bgl-warning text-warning">
+                                        <i class="material-symbols-outlined" style="font-size: 38px;">event_available</i>
+                                    </span>
+                                    <div class="media-body">
+                                        <p class="mb-1">Attendance</p>
+                                        <h5 class="mb-0">{{ present_days }} days</h5>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <!-- Average working hour -->
+                    <div class="col-xl-4 col-lg-6 col-sm-6">
+                        <div class="widget-stat card">
+                            <div class="card-body  p-4">
+                                <div class="media ai-icon">
+                                    <span class="me-3 bgl-warning text-warning">
+                                        <i class="material-symbols-outlined" style="font-size: 38px;">avg_time</i>
+                                    </span>
+                                    <div class="media-body">
+                                        <p class="mb-1">Average working hour</p>
+                                        <h5 class="mb-0" id="average-working-hour">{{ average_working_hour }}</h5>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <!-- No of leaves -->
+                    <div class="col-xl-4 col-lg-6 col-sm-6">
+                        <div class="widget-stat card">
+                            <div class="card-body  p-4">
+                                <div class="media ai-icon">
+                                    <span class="me-3 bgl-primary text-primary">
+                                        <i class="material-symbols-outlined" style="font-size: 38px;">
+                                            cloudy_snowing
+                                        </i>
+                                    </span>
+                                    <div class="media-body">
+                                        <p class="mb-1">Leaves</p>
+                                        <h5 class="mb-0">{{ leave_days }} days</h5>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <!-- Salary -->
+                    <div class="col-xl-4 col-lg-6 col-sm-6">
+                        <div class="widget-stat card">
+                            <div class="card-body  p-4">
+                                <div class="media ai-icon">
+                                    <span class="me-3 bgl-success text-success">
+                                        <svg id="icon-revenue" xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-dollar-sign">
+                                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                        </svg>
+                                    </span>
+                                    <div class="media-body">
+                                        <p class="mb-1">Salary</p>
+                                        <h5 class="mb-0">
+                                            Rs. {{ salary }} 
+                                            <span class="badge badge-success badge-sm light">Approx.</span>
+                                        </h5>
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <div class="col-xl-4 col-lg-12">
+                        <div class="widget-stat card">
+                            <div class="card-body p-4">
+                                <div class="media ai-icon">
+                                    <span class="me-3 bgl-primary text-primary">
+                                        <i class="material-symbols-outlined" style="font-size: 38px;">timer</i>
+                                    </span>
+                                    <div class="media-body">
+                                        <h5 class="text-primary">{{ working_hour }}</h5>
+                                        <div class="progress mb-2 bgl-primary">
+                                            <div class="progress-bar progress-animated bg-primary"
+                                                style="width: {{ working_hour_percentage }}%">
+                                            </div>
+                                        </div>
+                                        <small>{{ working_hour_percentage }}% of total working hour</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <!-- Task graph -->
+                    <div class="col-xl-4 col-lg-4 col-md-12 ">
+                        <div class="card">
+                            <div class="card-header border-0 pb-0 d-block">
+                                <div class="d-flex align-items-center">
+                                    <div class="icon-box icon-box-sm bg-danger">
+                                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg">
+                                            <path
+                                                d="M6 0H2C1.46957 0 0.960859 0.210714 0.585786 0.585786C0.210714 0.960859 0 1.46957 0 2V6C0 6.53043 0.210714 7.03914 0.585786 7.41421C0.960859 7.78929 1.46957 8 2 8H6C6.53043 8 7.03914 7.78929 7.41421 7.41421C7.78929 7.03914 8 6.53043 8 6V2C8 1.46957 7.78929 0.960859 7.41421 0.585786C7.03914 0.210714 6.53043 0 6 0ZM2 6V2H6V6H2ZM16 0H12C11.4696 0 10.9609 0.210714 10.5858 0.585786C10.2107 0.960859 10 1.46957 10 2V6C10 6.53043 10.2107 7.03914 10.5858 7.41421C10.9609 7.78929 11.4696 8 12 8H16C16.5304 8 17.0391 7.78929 17.4142 7.41421C17.7893 7.03914 18 6.53043 18 6V2C18 1.46957 17.7893 0.960859 17.4142 0.585786C17.0391 0.210714 16.5304 0 16 0ZM12 6V2H16V6H12ZM6 10H2C1.46957 10 0.960859 10.2107 0.585786 10.5858C0.210714 10.9609 0 11.4696 0 12V16C0 16.5304 0.210714 17.0391 0.585786 17.4142C0.960859 17.7893 1.46957 18 2 18H6C6.53043 18 7.03914 17.7893 7.41421 17.4142C7.78929 17.0391 8 16.5304 8 16V12C8 11.4696 7.78929 10.9609 7.41421 10.5858C7.03914 10.2107 6.53043 10 6 10ZM2 16V12H6V16H2ZM16 10H12C11.4696 10 10.9609 10.2107 10.5858 10.5858C10.2107 10.9609 10 11.4696 10 12V16C10 16.5304 10.2107 17.0391 10.5858 17.4142C10.9609 17.7893 11.4696 18 12 18H16C16.5304 18 17.0391 17.7893 17.4142 17.4142C17.7893 17.0391 18 16.5304 18 16V12C18 11.4696 17.7893 10.9609 17.4142 10.5858C17.0391 10.2107 16.5304 10 16 10ZM12 16V12H16V16H12Z"
+                                                fill="#FCFCFC"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ms-3">
+                                        <h5 class="mb-1"><a class="text-danger" href="activity.html">Tasks</a></h5>
+                                        <ul class="d-flex">
+                                            <li class="me-3">Score: {{ analyis_report.task_score }}</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="height370">
+                                    <!-- chart goes here -->
+                                    <canvas id="task-pie-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Attendance graph -->
+                    <div class="col-xl-4 col-lg-4 col-md-12">
+                        <div class="card">
+                            <div class="card-header border-0 pb-0 d-block">
+                                <div class="d-flex align-items-center">
+                                    <div class="icon-box icon-box-sm bg-warning">
+                                        <svg xmlns="http://www.w3.org/2000/svg" height="40px" viewBox="0 -960 960 960"
+                                            width="40px" fill="#e8eaed">
+                                            <path
+                                                d="m622-288.67 48.67-48.66-155.34-156v-195.34h-66.66v222l173.33 178ZM480-80q-82.33 0-155.33-31.5-73-31.5-127.34-85.83Q143-251.67 111.5-324.67T80-480q0-82.33 31.5-155.33 31.5-73 85.83-127.34Q251.67-817 324.67-848.5T480-880q82.33 0 155.33 31.5 73 31.5 127.34 85.83Q817-708.33 848.5-635.33T880-480q0 82.33-31.5 155.33-31.5 73-85.83 127.34Q708.33-143 635.33-111.5T480-80Zm0-400Zm0 333.33q137.67 0 235.5-97.83 97.83-97.83 97.83-235.5 0-137.67-97.83-235.5-97.83-97.83-235.5-97.83-137.67 0-235.5 97.83-97.83 97.83-97.83 235.5 0 137.67 97.83 235.5 97.83 97.83 235.5 97.83Z" />
+                                        </svg>
+                                    </div>
+                                    <div class="ms-3">
+                                        <h5 class="mb-1 text-warning">
+                                            Attendance
+                                        </h5>
+                                        <ul class="d-flex">
+                                            <li class="me-3">Score: {{ analyis_report.attendance_score }}</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="height370">
+                                    <canvas id="working-hour-pie-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Total score table -->
+                    <div class="col-xl-4 col-lg-4 col-md-12">
+                        <div class="card">
+                            <div class="card-header border-0 pb-0 d-block">
+                                <div class="d-flex align-items-center">
+                                    <div class="icon-box icon-box-sm bg-success">
+                                        <svg xmlns="http://www.w3.org/2000/svg" height="40px" viewBox="0 -960 960 960"
+                                            width="40px" fill="#e8eaed">
+                                            <path
+                                                d="m622-288.67 48.67-48.66-155.34-156v-195.34h-66.66v222l173.33 178ZM480-80q-82.33 0-155.33-31.5-73-31.5-127.34-85.83Q143-251.67 111.5-324.67T80-480q0-82.33 31.5-155.33 31.5-73 85.83-127.34Q251.67-817 324.67-848.5T480-880q82.33 0 155.33 31.5 73 31.5 127.34 85.83Q817-708.33 848.5-635.33T880-480q0 82.33-31.5 155.33-31.5 73-85.83 127.34Q708.33-143 635.33-111.5T480-80Zm0-400Zm0 333.33q137.67 0 235.5-97.83 97.83-97.83 97.83-235.5 0-137.67-97.83-235.5-97.83-97.83-235.5-97.83-137.67 0-235.5 97.83-97.83 97.83-97.83 235.5 0 137.67 97.83 235.5 97.83 97.83 235.5 97.83Z" />
+                                        </svg>
+                                    </div>
+                                    <div class="ms-3">
+                                        <h5 class="mb-1"><a class="text-success" href="activity.html">Total Score</a></h5>
+                                        <ul class="d-flex">
+                                            <li class="me-3">Score: {{ analyis_report.analysis_score }}</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="height370 dlab-scroll">
+                                    <div class="table-responsive">
+                                        <table class="table bordered table-responsive">
+                                            <tr>
+                                                <th>Last updated</th>
+                                                <th>Score</th>
+                                                <th>Remarks</th>
+                                            </tr>
+                                            {% for report in analysis_reports %}
+                                            <tr>
+                                                <td>{{ report.date }}</td>
+                                                <td>{{ report.analysis_score }}</td>
+                                                <td>
+                                                    {% if report.analysis_score <= 49 %} 
+                                                    <span class="badge badge-lg light badge-danger"> Bad </span>
+                                                    {% elif report.analysis_score <= 59 %} 
+                                                    <span class="badge badge-lg light badge-warning">Average</span>
+                                                    {% elif report.analysis_score <= 79 %} 
+                                                    <span class="badge badge-lg light badge-secondary"> Good </span>
+                                                    {% elif report.analysis_score <= 89 %} 
+                                                    <span class="badge badge-lg light badge-primary"> Very good </span>
+                                                    {% else %}
+                                                    <span class="badge badge-lg light badge-success"> Excellent </span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </table>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-6 col-lg-6 col-md-12">
+                        <div class="card">
+                            <div class="card-header border-0 pb-0 d-block">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <h3 class="card-title">Leave requests</h3>
+                                        <span>
+                                            <strong class="text-primary">
+                                                {{ leave_days }}
+                                            </strong>
+                                            leaves taken
+                                        </span>
+                                    </div>
+                                    <div class="dropdown custom-dropdown mb-0 tbl-orders-style">
+                                        <div class="btn sharp tp-btn" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                    <path d="M12 6C12.5523 6 13 5.55228 13 5C13 4.44772 12.5523 4 12 4C11.4477 4 11 4.44772 11 5C11 5.55228 11.4477 6 12 6Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                    <path d="M12 20C12.5523 20 13 19.5523 13 19C13 18.4477 12.5523 18 12 18C11.4477 18 11 18.4477 11 19C11 19.5523 11.4477 20 12 20Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="dropdown-menu dropdown-menu-end">
+                                            {% if user.is_company_admin %}
+                                            <a class="dropdown-item" href="{% url 'leave_management:admin_dashboard' %}">Details</a>
+                                            {% else %}
+                                            <a class="dropdown-item" href="{% url 'leave_management:employee_dashboard' %}">Details</a>
+                                            <a class="dropdown-item" href="{% url 'leave_management:apply_leave' %}">Take leave</a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="height370 dlab-scroll">
+                                    <div class="table-responsive">
+                                        {% if leave_requests %}
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>From</th>
+                                                    <th>Till</th>
+                                                    <th>No of days</th>
+                                                </tr>
+                                            <tbody>
+                                                {% for leave_request in leave_requests %}
+                                                <tr>
+                                                    <td>{{ leave_request.from_date }}</td>
+                                                    <td>{{ leave_request.till_date }}</td>
+            
+                                                    <td>
+                                                        {{ leave_request.no_days }} days
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                            </thead>
+                                        </table>
+                                        {% else %}
+                                        <p class="text-center py-4">No leave requests found.</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-6 col-lg-6 col-md-12">
+                        <div class="card">
+                            <div class="card-header border-0 d-block">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <h3 class="card-title">Attendance</h3>
+                                        <span>
+                                            <strong class="text-primary">
+                                                {{ present_days }}
+                                            </strong>
+                                            days present
+                                        </span>
+                                    </div>
+                                    <div class="dropdown custom-dropdown mb-0 tbl-orders-style">
+                                        <div class="btn sharp tp-btn" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                    <path d="M12 6C12.5523 6 13 5.55228 13 5C13 4.44772 12.5523 4 12 4C11.4477 4 11 4.44772 11 5C11 5.55228 11.4477 6 12 6Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                    <path d="M12 20C12.5523 20 13 19.5523 13 19C13 18.4477 12.5523 18 12 18C11.4477 18 11 18.4477 11 19C11 19.5523 11.4477 20 12 20Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="dropdown-menu dropdown-menu-end">
+                                            {% if user.is_company_admin %}
+                                            <a class="dropdown-item" href="{% url 'attendance:admin_dashboard' %}">Details</a>
+                                            {% else %}
+                                            <a class="dropdown-item" href="{% url 'attendance:employee_dashboard' %}">Details</a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="height370 dlab-scroll">
+                                    <div class="table-responsive">
+                                        <table class="table shadow-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Status</th>
+                                                    <th>Total hours</th>
+                                                </tr>
+                                            </thead>
+                
+                                            <tbody>
+                                                {% for attendance in attendance_list %}
+                                                <tr>
+                                                    <td class="text-primary view-detail-btn" data-bs-toggle="modal"
+                                                        data-bs-target="#attendance-detail-modal" data-id="{{ attendance.id }}"
+                                                        style="cursor: pointer;">
+                                                        {{ attendance.date }}
+                                                    </td>
+                                                    <td>
+                                                        {% if attendance.has_checked_in %}
+                                                        <span class="badge light badge-success">Present</span>
+                                                        {% else %}
+                                                        <span class="badge light badge-danger">Absent</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if attendance.check_out_timestamp %}
+                                                        <span>{{ attendance.formated_working_hour }}</span>
+                                                        {% else %}
+                                                        <span>-</span>
+                                                        {% endif %}
+                                                  </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header border-0 pb-0">
+                                <h3 class="card-title">Calendar</h3>
+                                <div class="dropdown custom-dropdown mb-0 tbl-orders-style">
+                                    <div class="btn sharp tp-btn" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path d="M12 6C12.5523 6 13 5.55228 13 5C13 4.44772 12.5523 4 12 4C11.4477 4 11 4.44772 11 5C11 5.55228 11.4477 6 12 6Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path d="M12 20C12.5523 20 13 19.5523 13 19C13 18.4477 12.5523 18 12 18C11.4477 18 11 18.4477 11 19C11 19.5523 11.4477 20 12 20Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <a class="dropdown-item" href="{% url 'calendar_app:calendar' %}">Details</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="DZ_W_TimeLine" class="widget-timeline dlab-scroll height370">
+                                    {% if events %}
+									<ul class="timeline">
+                                        {% for event in events %}
+										<li>
+											<div class="timeline-badge {{ event.category.color }}"></div>
+											<a class="timeline-panel text-muted" href="#">
+												<span>{{ event.start }} - {{ event.end }}</span>
+												<h6 class="mb-0 text-{{ event.category.color }}">{{ event.title }} </h6>
+                                                <p class="mb-0">
+                                                    {{ event.description|truncatewords:8 }}
+                                                </p>
+											</a>
+                                            
+										</li>
+                                        {% endfor %}
+									</ul>
+                                    {% else %}
+                                    <p class="text-center py-4">No events found.</p>
+                                    {% endif %}
+								</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header border-0 pb-0 d-block">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <h3 class="card-title">Notices</h3>
+                                        <span>
+                                            <strong class="text-primary">{{ notices.count }}</strong> notices
+                                        </span>
+                                    </div>
+                                    <div class="dropdown custom-dropdown mb-0 tbl-orders-style">
+                                        <div class="btn sharp tp-btn" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                    <path d="M12 6C12.5523 6 13 5.55228 13 5C13 4.44772 12.5523 4 12 4C11.4477 4 11 4.44772 11 5C11 5.55228 11.4477 6 12 6Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                    <path d="M12 20C12.5523 20 13 19.5523 13 19C13 18.4477 12.5523 18 12 18C11.4477 18 11 18.4477 11 19C11 19.5523 11.4477 20 12 20Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="dropdown-menu dropdown-menu-end">
+                                            <a class="dropdown-item" href="{% url 'noticeboard:dashboard' %}">Details</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="height370 dlab-scroll">
+                                    <div class="table-responsive">
+                                        {% if notices %}
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Title</th>
+                                                </tr>
+                                            <tbody>
+                                                {% for notice in notices %}
+                                                <tr class="task-row" style="cursor: pointer;">
+                                                    <td>{{ notice.date }}</td>
+                                                    <td>{{ notice.title|truncatechars:20 }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                            </thead>
+                                        </table>
+                                        {% else %}
+                                        <p class="text-center py-0">No notices found.</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header border-0 pb-0 ">
+                                <h3 class="card-title mb-2">Task</h3>
+                            </div>
+                            <div class="card-body pt-2">
+                                <div class="d-flex align-items-center mb-4">
+                                    <div class="icon-box icon-box-sm bg-primary">
+                                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M6 0H2C1.46957 0 0.960859 0.210714 0.585786 0.585786C0.210714 0.960859 0 1.46957 0 2V6C0 6.53043 0.210714 7.03914 0.585786 7.41421C0.960859 7.78929 1.46957 8 2 8H6C6.53043 8 7.03914 7.78929 7.41421 7.41421C7.78929 7.03914 8 6.53043 8 6V2C8 1.46957 7.78929 0.960859 7.41421 0.585786C7.03914 0.210714 6.53043 0 6 0ZM2 6V2H6V6H2ZM16 0H12C11.4696 0 10.9609 0.210714 10.5858 0.585786C10.2107 0.960859 10 1.46957 10 2V6C10 6.53043 10.2107 7.03914 10.5858 7.41421C10.9609 7.78929 11.4696 8 12 8H16C16.5304 8 17.0391 7.78929 17.4142 7.41421C17.7893 7.03914 18 6.53043 18 6V2C18 1.46957 17.7893 0.960859 17.4142 0.585786C17.0391 0.210714 16.5304 0 16 0ZM12 6V2H16V6H12ZM6 10H2C1.46957 10 0.960859 10.2107 0.585786 10.5858C0.210714 10.9609 0 11.4696 0 12V16C0 16.5304 0.210714 17.0391 0.585786 17.4142C0.960859 17.7893 1.46957 18 2 18H6C6.53043 18 7.03914 17.7893 7.41421 17.4142C7.78929 17.0391 8 16.5304 8 16V12C8 11.4696 7.78929 10.9609 7.41421 10.5858C7.03914 10.2107 6.53043 10 6 10ZM2 16V12H6V16H2ZM16 10H12C11.4696 10 10.9609 10.2107 10.5858 10.5858C10.2107 10.9609 10 11.4696 10 12V16C10 16.5304 10.2107 17.0391 10.5858 17.4142C10.9609 17.7893 11.4696 18 12 18H16C16.5304 18 17.0391 17.7893 17.4142 17.4142C17.7893 17.0391 18 16.5304 18 16V12C18 11.4696 17.7893 10.9609 17.4142 10.5858C17.0391 10.2107 16.5304 10 16 10ZM12 16V12H16V16H12Z" fill="#FCFCFC"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ms-3">
+                                        <h5 class="mb-1"><a class="text-primary" href="#">To Do</a></h5>
+                                        <ul class="d-flex">
+                                            <li class="me-3">{{ open_tasks.count }} Tasks</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center mb-4">
+                                    <div class="icon-box icon-box-sm bg-secondary">
+                                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M6 0H2C1.46957 0 0.960859 0.210714 0.585786 0.585786C0.210714 0.960859 0 1.46957 0 2V6C0 6.53043 0.210714 7.03914 0.585786 7.41421C0.960859 7.78929 1.46957 8 2 8H6C6.53043 8 7.03914 7.78929 7.41421 7.41421C7.78929 7.03914 8 6.53043 8 6V2C8 1.46957 7.78929 0.960859 7.41421 0.585786C7.03914 0.210714 6.53043 0 6 0ZM2 6V2H6V6H2ZM16 0H12C11.4696 0 10.9609 0.210714 10.5858 0.585786C10.2107 0.960859 10 1.46957 10 2V6C10 6.53043 10.2107 7.03914 10.5858 7.41421C10.9609 7.78929 11.4696 8 12 8H16C16.5304 8 17.0391 7.78929 17.4142 7.41421C17.7893 7.03914 18 6.53043 18 6V2C18 1.46957 17.7893 0.960859 17.4142 0.585786C17.0391 0.210714 16.5304 0 16 0ZM12 6V2H16V6H12ZM6 10H2C1.46957 10 0.960859 10.2107 0.585786 10.5858C0.210714 10.9609 0 11.4696 0 12V16C0 16.5304 0.210714 17.0391 0.585786 17.4142C0.960859 17.7893 1.46957 18 2 18H6C6.53043 18 7.03914 17.7893 7.41421 17.4142C7.78929 17.0391 8 16.5304 8 16V12C8 11.4696 7.78929 10.9609 7.41421 10.5858C7.03914 10.2107 6.53043 10 6 10ZM2 16V12H6V16H2ZM16 10H12C11.4696 10 10.9609 10.2107 10.5858 10.5858C10.2107 10.9609 10 11.4696 10 12V16C10 16.5304 10.2107 17.0391 10.5858 17.4142C10.9609 17.7893 11.4696 18 12 18H16C16.5304 18 17.0391 17.7893 17.4142 17.4142C17.7893 17.0391 18 16.5304 18 16V12C18 11.4696 17.7893 10.9609 17.4142 10.5858C17.0391 10.2107 16.5304 10 16 10ZM12 16V12H16V16H12Z" fill="#FCFCFC"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ms-3">
+                                        <h5 class="mb-1"><a class="text-secondary" href="#">In Progress</a></h5>
+                                        <ul class="d-flex">
+                                            <li class="me-3">{{ in_progress_task.count }} Task Now</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <div class="icon-box icon-box-sm bg-success">
+                                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M6 0H2C1.46957 0 0.960859 0.210714 0.585786 0.585786C0.210714 0.960859 0 1.46957 0 2V6C0 6.53043 0.210714 7.03914 0.585786 7.41421C0.960859 7.78929 1.46957 8 2 8H6C6.53043 8 7.03914 7.78929 7.41421 7.41421C7.78929 7.03914 8 6.53043 8 6V2C8 1.46957 7.78929 0.960859 7.41421 0.585786C7.03914 0.210714 6.53043 0 6 0ZM2 6V2H6V6H2ZM16 0H12C11.4696 0 10.9609 0.210714 10.5858 0.585786C10.2107 0.960859 10 1.46957 10 2V6C10 6.53043 10.2107 7.03914 10.5858 7.41421C10.9609 7.78929 11.4696 8 12 8H16C16.5304 8 17.0391 7.78929 17.4142 7.41421C17.7893 7.03914 18 6.53043 18 6V2C18 1.46957 17.7893 0.960859 17.4142 0.585786C17.0391 0.210714 16.5304 0 16 0ZM12 6V2H16V6H12ZM6 10H2C1.46957 10 0.960859 10.2107 0.585786 10.5858C0.210714 10.9609 0 11.4696 0 12V16C0 16.5304 0.210714 17.0391 0.585786 17.4142C0.960859 17.7893 1.46957 18 2 18H6C6.53043 18 7.03914 17.7893 7.41421 17.4142C7.78929 17.0391 8 16.5304 8 16V12C8 11.4696 7.78929 10.9609 7.41421 10.5858C7.03914 10.2107 6.53043 10 6 10ZM2 16V12H6V16H2ZM16 10H12C11.4696 10 10.9609 10.2107 10.5858 10.5858C10.2107 10.9609 10 11.4696 10 12V16C10 16.5304 10.2107 17.0391 10.5858 17.4142C10.9609 17.7893 11.4696 18 12 18H16C16.5304 18 17.0391 17.7893 17.4142 17.4142C17.7893 17.0391 18 16.5304 18 16V12C18 11.4696 17.7893 10.9609 17.4142 10.5858C17.0391 10.2107 16.5304 10 16 10ZM12 16V12H16V16H12Z" fill="#FCFCFC"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ms-3">
+                                        <h5 class="mb-1"><a class="text-success" href="">Completed</a></h5>
+                                        <ul class="d-flex">
+                                            <li class="me-3">{{ completed_task.count }} Task Now</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div> 
+                </div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
+<!-- modals -->
+<div class="modal fade" id="attendance-detail-modal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <form action="" method="POST" id="modal-form">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Attendance detail</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 form-group mb-3">
+                            <label for="id_employee">Employee name</label>
+                            <input type="text" class="form-control" name="employee_name" id="id_employee_name" disabled>
+                        </div>
+                        <div class="col-md-6 form-group mb-3">
+                            <label for="id_date">Date</label>
+                            <input type="date" class="form-control" name="date" id="id_date" disabled>
+                        </div>
+                        <div class="col-md-6 form-group mb-3">
+                            <label for="id_date">Total working hours</label>
+                            <input type="text" class="form-control" name="total_working_hours"
+                                id="id_total_working_hours" disabled>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Check in</th>
+                                    <th>Check out</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-tbody">
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-danger light" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-sm btn-primary">Save changes</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="id-card-modal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">Employee ID Card</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex align-items-center justify-content-center">
+                    <div class="card shadow border-0 overflow-hidden" style="width: 350px;">
+                        <div class="gradient-custom text-white p-5 position-relative">
+                            <div class="text-center">
+                                <small class="text-uppercase tracking-wider opacity-75">Tech Industries</small>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center" style="margin-top: -58px;">
+                            {% if employee.user.profile_picture %}
+                            <img src="{{ employee.user.profile_picture.url }}" alt="{{ employee.user.full_name }}" class="rounded-circle border border-4 border-white shadow" width="120" height="120" style="object-fit: cover;">
+                            {% else %}
+                            <img src="{% static 'images/placeholder/placeholder.png' %}" alt="{{ employee.user.full_name }}" class="rounded-circle border border-4 border-white shadow" width="120" height="120" style="object-fit: cover;">
+                            {% endif %}
+                        </div>
+
+                        <div class="card-body text-center p-4">
+                            <h2 class="fs-2 fw-semibold mb-1">{{ employee.user.full_name }}</h2>
+                            <p class="text-primary fw-semibold text-uppercase mb-4">{{ employee.post }}</p>
+                            
+                            <div class="row g-4">
+                                <div class="col-12">
+                                    <div class="p-3 bgl-primary rounded-3">
+                                        <small class="text-muted text-uppercase">ID Number</small>
+                                        <div class="fw-medium">EMP000{{employee.id}}</div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="p-3 bgl-primary rounded-3">
+                                        <small class="text-muted text-uppercase">Department</small>
+                                        <div class="fw-semibold">{{ employee.department }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <div class="p-3 bgl-primary rounded-3 mb-3">
+                                    <small class="text-muted text-uppercase">Join Date</small>
+                                    <div class="fw-bold">{{ contract.start_date }}</div>
+                                </div>
+                            </div>
+                            
+                            
+                            <div class="mt-4 pt-3 border-top">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">Issue Date: {{ contract.start_date }}</small>
+                                    <small class="text-muted">Valid Until: {{ contract.end_date }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div class="card-footer bg-dark text-white text-center py-2">
+                            <small class="text-uppercase">{{ employee.organization.name }} © Copyright 2024</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="contract-error-modal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <form action="" method="POST" id="modal-form">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">Error</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    No contract found.
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-sm btn-primary light" data-bs-dismiss="modal">Ok</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- endblock -->
+{% endblock %}
+
+{% block js %}
+{% if request.user in request.user.employee.organization.admin_users.all %}
+<script>
+    const is_user_admin = true;
+</script>
+{% else %}
+<script>
+    const is_user_admin = false;
+</script>
+{% endif %}
+<script src="{% static 'vendor/chart-js/chart.bundle.min.js' %}"></script>
+<script src="{% static 'js/custom/EmployeeDetailChartInit.js' %}"></script>
+<script src="{% static 'js/custom/Attendance.js' %}"></script>
+<script src="{% static 'js/custom/CheckIn.js' %}"></script>
+{% endblock %}

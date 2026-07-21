@@ -1,0 +1,103 @@
+{% extends 'index.html' %}
+
+{% load static %}
+
+{% block title %}
+Noticeboard
+{% endblock %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-0">
+                <h3 class="card-title">Noticesboard</h3>
+                {% if request.user.employee.is_company_admin %}
+                <a href="{% url 'noticeboard:notice_create' %}" class="btn btn-primary btn-sm fw-medium light">
+                    Add Notice
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if notices %}
+                <div class="table-responsive">
+                    <table class="table-responsive table-stripped table-hover dataTable" id="noticeTable">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Date</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for notice in notices %}
+                            <tr>
+                                <td class="fw-medium">{{ notice.title }}</td>
+                                <td>{{ notice.date }}</td>
+                                <td>
+                                    <div class="dropdown custom-dropdown mb-0 tbl-orders-style">
+                                        <div class="btn sharp tp-btn" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                    <path d="M12 6C12.5523 6 13 5.55228 13 5C13 4.44772 12.5523 4 12 4C11.4477 4 11 4.44772 11 5C11 5.55228 11.4477 6 12 6Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                    <path d="M12 20C12.5523 20 13 19.5523 13 19C13 18.4477 12.5523 18 12 18C11.4477 18 11 18.4477 11 19C11 19.5523 11.4477 20 12 20Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg>
+                                        </div>
+                                        
+                                        <div class="dropdown-menu dropdown-menu-end">
+                                            <a class="dropdown-item" data-bs-toggle="modal" data-bs-toggle="modal" data-bs-target="#notice-detail-modal" data-id="{{ notice.id }}" onclick="fetchNoticeDetail(event)">Details</a>
+                                            {% if request.user.employee.is_company_admin %}
+                                            <a class="dropdown-item" href="{% url 'noticeboard:notice_update' notice.id %}">Edit</a>
+                                            <a class="dropdown-item text-danger" href="{% url 'noticeboard:notice_delete' notice.id %}">Delete</a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-center py-4">No notices found.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<div class="modal fade" id="notice-detail-modal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="notice-title"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" id="notice-detail-modal-close-btn"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center p-4" id="loader">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <div class="d-none" id="description">
+                    <div class="ck ck-content" style="height: 100%;">
+                        <h5>Description</h5>
+                        <div id="notice-description">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/custom/NoticeboardDashboard.js' %}"></script>
+{% endblock %}

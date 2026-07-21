@@ -1,0 +1,293 @@
+{% extends 'index.html' %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+Attendance
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-xl-8">
+        <div class="row">
+            <div class="col-xl-8 col-lg-12">
+                <div class="card justify-content-center">
+                    <div class="card-body d-flex">
+                        <div class="d-block">
+                            <img src="{{ employee.user.profile_picture.url }}"
+                                class="avatar avatar-xxl border-primary rounded-circle" alt="">
+                        </div>
+                        <div class="w-100 ps-4">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="">
+                                    <h4 class="card-title mb-1"> {{ employee.user.full_name }} </h4>
+                                    <h6> {{ employee.post }} </h6>
+                                    <span>{{ employee.user.email }}</span>
+                                </div>
+                                {% if has_checked_in_today %}
+                                <span class="badge badge-lg light badge-success">Checked in</span>
+                                {% else %}
+                                <span class="badge badge-lg light badge-warning">Yet to check in</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-4 col-lg-12">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-success text-success">
+                                <i class="material-symbols-outlined" style="font-size: 38px;">timer</i>
+                            </span>
+                            <div class="media-body">
+                                <h5 class="text-success">{{ total_working_hour_today }}</h5>
+                                <div class="progress mb-2 bgl-success">
+                                    <div class="progress-bar progress-animated bg-success"
+                                        style="width: {{ percentage_of_shift_covered }}%">
+                                    </div>
+                                </div>
+                                <small>{{ percentage_of_shift_covered }}% of total working hour</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header border-0 pb-0 d-block">
+                    <h3 class="card-title">
+                        Attendance history
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="height370">
+                        <canvas id="attendanceBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header border-0 pb-0">
+                    <div class="card-title">
+                        General
+                    </div>
+                    <div class="span">
+                        {{request.user.employee.organization.opening_time}} -
+                        {{request.user.employee.organization.closing_time}}
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <form method="get">
+                        <div class="row row align-items-end">
+                            <div class="col-md-4 form-group">
+                                <label for="id_year">Year</label>
+                                <select name="year" id="year" class="form-control select2" required>
+                                    <option value="">--------</option>
+                                    {% for year in year_list %}
+                                    {% if selected_year == year %}
+                                    <option value="{{ year }}"  selected >{{ year }}</option>
+                                    {% else %}
+                                    <option value="{{ year }}" >{{ year }}</option>
+                                    {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label for="id_month">Month</label>
+                                <select name="month" id="id_month" class="form-control" required>
+                                    <option value="">--------</option>
+                                    <option value="1" {% if selected_month == '1' %} selected {% endif %}>Baisakh</option>
+                                    <option value="2" {% if selected_month == '2' %} selected {% endif %}>Jestha</option>
+                                    <option value="3" {% if selected_month == '3' %} selected {% endif %}>Ashar</option>
+                                    <option value="4" {% if selected_month == '4' %} selected {% endif %}>Shrawan</option>
+                                    <option value="5" {% if selected_month == '5' %} selected {% endif %}>Bhadra</option>
+                                    <option value="6" {% if selected_month == '6' %} selected {% endif %}>Ashoj</option>
+                                    <option value="7" {% if selected_month == '7' %} selected {% endif %}>Kartik</option>
+                                    <option value="8" {% if selected_month == '8' %} selected {% endif %}>Mangsir</option>
+                                    <option value="9" {% if selected_month == '9' %} selected {% endif %}>Poush</option>
+                                    <option value="10" {% if selected_month == '10' %} selected {% endif %}>Magh</option>
+                                    <option value="11" {% if selected_month == '11' %} selected {% endif %}>Falgun</option>
+                                    <option value="12" {% if selected_month == '12' %} selected {% endif %}>Chaitra</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <button type="submit" class="btn btn-sm btn-primary me-2">Filter</button>
+                                <a href="{% url 'attendance:my_attendance' %}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                            </div>
+                        </div>
+                    </form>
+                    <div class="table-responsive height370">
+                        <table class="table shadow-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Total hours</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for attendance in attendance_list %}
+                                <tr>
+                                    <td class="text-primary view-detail-btn" data-bs-toggle="modal"
+                                        data-bs-target="#attendance-detail-modal" data-id="{{ attendance.id }}"
+                                        style="cursor: pointer;">
+                                        {{ attendance.date|nepali_date_format }}
+                                    </td>
+                                    {% if attendance.total_working_hours.1 == 0 %}
+                                    <td>
+                                        <span class="badge badge-lg light badge-warning">Absent</span>
+                                    </td>
+                                    {% else %}
+                                    <td>
+                                        <span class="badge badge-lg light badge-success">Present</span>
+                                    </td>
+                                    {% endif %}
+                                    {% if attendance.total_working_hours.1 == 0 %}
+                                    <td>
+                                        -
+                                    </td>
+                                    {% else %}
+                                    <td>
+                                        {{ attendance.total_working_hours.0 }}
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header border-0 pb-0">
+                        <div class="widget-stat p-0">
+                            <div class="media-body">
+                                <h5>Monthly working hour</h5>
+                                <span class="badge badge-lg light badge-success" id="monthlyWorkingHourHeader"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="ct-chart ct-perfect-fourth height370">
+                            <canvas id="attendancePieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            Today's records
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-responsive shadow-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Check in</th>
+                                        <th>Check out</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for check_in_out in today_check_in_out %}
+                                    <tr>
+                                        <td>
+                                            {{ check_in_out.check_in }}
+                                        </td>
+                                        <td>
+                                            {% if check_in_out.check_out %}
+                                            {{ check_in_out.check_out }}
+                                            {% else %}
+                                            <span class="badge badge-lg light badge-warning">Pending</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- modals -->
+<div class="modal fade" id="attendance-detail-modal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <form action="" method="POST" id="modal-form">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Attendance detail</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 form-group mb-3">
+                            <label for="id_employee">Employee name</label>
+                            <input type="text" class="form-control" name="employee_name" id="id_employee_name" disabled>
+                        </div>
+                        <div class="col-md-6 form-group mb-3">
+                            <label for="id_date">Date</label>
+                            <input type="date" class="form-control" name="date" id="id_date" disabled>
+                        </div>
+                        <div class="col-md-6 form-group mb-3">
+                            <label for="id_date">Total working hours</label>
+                            <input type="text" class="form-control" name="total_working_hours"
+                                id="id_total_working_hours" disabled>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Check in</th>
+                                    <th>Check out</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-tbody">
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-danger light" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-sm btn-primary">Save changes</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- endblock -->
+{% endblock %}
+
+
+{% block js %}
+{% if request.user in request.user.employee.organization.admin_users.all %}
+<script>
+    const is_user_admin = true;
+</script>
+{% else %}
+<script>
+    const is_user_admin = false;
+</script>
+{% endif %}
+<script src="{% static 'vendor/chart-js/chart.bundle.min.js' %}"></script>
+<script src="{% static 'js/custom/Attendance.js' %}"></script>
+{% endblock %}

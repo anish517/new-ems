@@ -1,0 +1,102 @@
+{% extends 'index.html' %}
+
+{% block title %}
+Noticeboard
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header border-0 pb-0">
+        <h3 class="card-title">Notifications</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-responsive-md dataTable" id="noticeBoardTable">
+                <thead>
+                    <tr>
+                        <td>Date</td>
+                        <td>Title</td>
+                        <td></td>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for notification in notifications %}
+                    {% if notification.is_read %}
+                    <tr id="notification-{{ notification.id }}">
+                        <td>{{ notification.created_at }}</td>
+                        <td>
+                            {{ notification.title }}
+                        </td>
+                        <td>
+                            <div class="dropdown">
+                                <button type="button" class="btn light sharp" data-bs-toggle="dropdown">
+                                    <svg width="20px" height="20px" viewBox="0 0 24 24" version="1.1">
+                                        <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                            <rect x="0" y="0" width="24" height="24"></rect>
+                                            <circle fill="#000000" cx="5" cy="12" r="2"></circle>
+                                            <circle fill="#000000" cx="12" cy="12" r="2"></circle>
+                                            <circle fill="#000000" cx="19" cy="12" r="2"></circle>
+                                        </g>
+                                    </svg>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item view-details-btn" data-bs-toggle="modal" data-bs-toggle="modal" data-bs-target="#notificationDetailModal" data-id="{{ notification.id }}" onclick="getNotificationId(event)">View</button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr class="table-active" id="notification-{{ notification.id }}">
+                        <td>{{ notification.created_at }}</td>
+                        <td>
+                            {{ notification.title }}
+                        </td>
+                        <td>
+                            <div class="dropdown">
+                                <button type="button" class="btn light sharp" data-bs-toggle="dropdown">
+                                    <svg width="20px" height="20px" viewBox="0 0 24 24" version="1.1">
+                                        <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                            <rect x="0" y="0" width="24" height="24"></rect>
+                                            <circle fill="#000000" cx="5" cy="12" r="2"></circle>
+                                            <circle fill="#000000" cx="12" cy="12" r="2"></circle>
+                                            <circle fill="#000000" cx="19" cy="12" r="2"></circle>
+                                        </g>
+                                    </svg>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item view-details-btn" data-bs-toggle="modal" data-bs-toggle="modal" data-bs-target="#notificationDetailModal" data-id="{{ notification.id }}" onclick="getNotificationId(event)">View</button>
+                                    <button class="dropdown-item" data-id="{{ notification.id }}" onclick="handleMarkAsRead(event)">Mark as read</button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="notificationDetailModal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="notificationTitle">-</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="description">
+                    <div class="ck ck-content" style="height: 100%;" id="notificationDescription">
+                        
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button class="btn btn-primary btn-sm light" onclick="handleMarkAsRead(event)" data-bs-dismiss="modal">Mark as read</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,57 @@
+<div class="card">
+    <div class="card-body">
+        <div class="custom-tab-1">
+            <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    {% url 'organization:detail' as detail_url %}
+                    <a class="nav-link d-flex align-items-center 
+                    {% if request.path == detail_url %}active{% endif %}" href="{{ detail_url }}"
+                        style="background-color: unset;">
+                        <span class="material-symbols-outlined me-2">info</span> Basic information
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    {% url 'organization:department_list' as detail_url %}
+                    <a class="nav-link d-flex align-items-center 
+                    {% if request.path == detail_url %}active{% endif %}" href="{{ detail_url }}"
+                        style="background-color: unset;">
+                        <span class="material-symbols-outlined me-2">domain</span> Departments
+                    </a>
+                </li>
+
+                <li class="nav-item" role="presentation">
+                    {% url 'organization:post_list' as detail_url %}
+                    <a class="nav-link d-flex align-items-center 
+                    {% if request.path == detail_url %}active{% endif %}" href="{{ detail_url }}"
+                        style="background-color: unset;">
+                        <span class="material-symbols-outlined me-2">admin_panel_settings</span> Designations
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    {% url 'fiscal_year:list' as detail_url %}
+                    <a class="nav-link d-flex align-items-center 
+                    {% if request.path == detail_url %}active{% endif %}" href="{{ detail_url }}"
+                        style="background-color: unset;">
+                        <span class="material-symbols-outlined me-2">admin_panel_settings</span> Fiscal year
+                    </a>
+                </li>
+                <!-- <li class="nav-item" role="presentation">
+                    {% url 'organization:policies_list' as detail_url %}
+                    <a class="nav-link d-flex align-items-center 
+                    {% if request.path == detail_url %}active{% endif %}" href="{{ detail_url }}"
+                        style="background-color: unset;">
+                        <span class="material-symbols-outlined me-2">admin_panel_settings</span> Policies
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    {% url 'organization:folder_list' as detail_url %}
+                    <a class="nav-link d-flex align-items-center 
+                    {% if request.path == detail_url %}active{% endif %}" href="{{ detail_url }}"
+                        style="background-color: unset;">
+                        <span class="material-symbols-outlined me-2">folder</span> Folders
+                    </a>
+                </li> -->
+            </ul>
+        </div>
+    </div>
+</div>

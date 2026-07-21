@@ -1,0 +1,113 @@
+      {% extends 'index.html' %}
+
+{% block title %}
+Leave tracker
+{% endblock %}
+
+{% block content %}
+<div class="row">
+      <div class="col-xl-12">
+            <div class="card">
+                  <div class="card-header border-0 pb-0">
+                        <h3 class="card-title">Leave requests</h3>
+                  </div>
+                  <div class="card-body">
+                        <div class="row">
+                              <div class="col-12">
+                                    <form method="GET">
+                                          <div class="row align-items-end">
+                                                {% for field in filter.form %}
+                                                <div class="col-md-3">
+                                                      <div class="form-group ">
+                                                            <label for="{{ field.id_for_label }}" class="{% if field.field.required %}required{% endif %}">{{ field.label|safe }}</label>
+                                                            {{ field }}
+                                                      </div>
+                                                </div>
+                                                {% endfor %}
+                                                <div class="col-md-3">
+                                                      <button type="submit" class="btn btn-xs btn-secondary mb-3">Filter</button>
+                                                </div>
+                                          </div>
+                                    </form>
+                              </div>
+                              <div class="col-12">
+                                    {% if leave_requests %}
+                                    <div class="table-responsive  mt-5">
+            
+                                          <table class="table table-responsive verticle-middle table-hover dataTable" id="leaveRequestDataTable">
+                                                <thead>
+                                                <tr>
+                                                      <th scope="col">Employee</th>
+                                                      <th scope="col">Subject</th>
+                                                      <th scope="col">Type</th>
+                                                      <th scope="col">Status</th>
+                                                      <th scope="col">Is approved</th>
+                                                      <th scope="col">Renumeration</th>
+                                                      <th scope="col">Requested at</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                {% for leave_request in leave_requests %}
+                                                <tr style="cursor: pointer;">
+                                                      <td>
+                                                            <a href="{% url 'leave_management:leave_request_detail' leave_request.id %}">
+                                                                  <div class="d-flex align-items-center">
+                                                                        <img src="{{ leave_request.employee.user.profile_picture.url }}" class="rounded-3 me-2" width="46" alt=""> 
+                                                                        <div class="d-flex flex-column justify-content-between align-items-start">
+                                                                              <span class="fw-medium fs-5 text-primary text-capitalize">{{ leave_request.employee.user.full_name }}</span>
+                                                                              <small class="text-muted">{{ leave_request.employee.user.email}}</small>
+                                                                        </div>
+                                                                  </div>
+                                                            </a>
+                                                      </td>
+                                                      <td>
+                                                            <span class="fw-medium text-dark">
+                                                            {{ leave_request.subject|truncatechars:30 }}
+                                                            </span>
+                                                      </td>
+                                                      <td>
+                                                            {{ leave_request.type }}
+                                                      </td>
+                                                      <td>
+                                                            {% if leave_request.is_reviewed %}
+                                                            <span class="badge badge-lg light badge-success ms-2">Reviewed</span>
+                                                            {% else %}
+                                                            <span class="badge badge-lg light badge-warning ms-2">Pending</span>
+                                                            {% endif %} 
+                                                      </td>
+                                                      <td>
+                                                            {% if leave_request.is_approved %}
+                                                            <span class="badge badge-lg light badge-success ms-2">Approved</span>
+                                                            {% else %}
+                                                            <span class="badge badge-lg light badge-warning ms-2">Declined</span>
+                                                            {% endif %} 
+                                                      </td>
+                                                      <td>
+                                                            {% if leave_request.is_paid %}
+                                                            <span class="badge badge-lg light badge-success ms-2">Paid</span>
+                                                            {% else %}
+                                                            <span class="badge badge-lg light badge-warning ms-2">Unpaid</span>
+                                                            {% endif %} 
+                                                      </td>
+
+                                                      <td style="white-space: nowrap;">
+                                                            {{ leave_request.created_at }}
+                                                      </td>
+                                                </tr>
+                                                {% endfor %}
+                                                </tbody>
+                                          </table>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-center mt-5">No leave approval found.</p>
+                                    {% endif %}
+                              </div>
+                        </div>
+                        
+                  </div>
+            </div>
+      </div>
+</div>
+
+
+{% endblock %}

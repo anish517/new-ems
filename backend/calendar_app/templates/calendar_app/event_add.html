@@ -1,0 +1,110 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+Events | Add
+{% endblock %}
+
+{% block content %}
+<div class="row flex-lg-row flex-sm-column-reverse">
+    <div class="col-xl-4 col-lg-5">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <div class="card-title">Event types</div>
+            </div>
+            <div class="card-body p-2">
+                <div class="my-4 px-4" id="event-type-container">
+                    {% for type in event_types %}
+                    <div class="alert alert-{{type.color}} alert-dismissible show">
+                        <strong>{{ type.name }}</strong>
+                        <button type="button" class="btn-close">  </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% if request.user in request.user.employee.organization.admin_users.all %}
+            <div class="card-footer pt-o border-0">
+                <button class="btn btn-primary btn-block" data-bs-toggle="modal" data-bs-target="#event-type-add-form">Add event types</button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-xl-8 col-lg-7">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3 class="card-title">Add Event</h3>
+            </div>
+            <form method="POST">
+                <div class="card-body">
+                    <div class="row">
+                        {% csrf_token %}
+                        {% for field in form %}
+                        <div class="col-xl-6 form-group mb-3" id="{{ field.label|lower }}">
+                            <label for="{{ field.id_for_label }}" class="required">{{ field.label|safe }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                                {% for error in field.errors %}
+                                {{ error }}. <br>
+                                {% endfor %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer py-3 border-0 d-flex justify-content-between align-items-end">
+                    <button type="submit" class="btn btn-sm btn-primary d-flex align-items-center">
+                        <span class="material-symbols-outlined me-2"> add </span>Add event
+                    </button>
+                    <a href="#" class="text-hover float-end">Need help?</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- modal -->
+<div class="modal fade" id="event-type-add-form" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <form method="POST" onsubmit="handleEventCreate(event)">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title">Event details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="organization_id" value="{{ request.user.employee.organization.id }}">
+                    <div class="row">
+                        <div class="form-group mb-3">
+                            <label for="id_category_title">Title</label>
+                            <input type="text" class="form-control" id="id_category_title" name="category_title">
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="id_color">Color</label>
+                            <select name="color" required="" id="id_color" class="form-control">
+                                <option value="" selected="">---------</option>
+                                <option value="danger" class="bgl-danger text-danger py-4">Red</option>
+                                <option value="primary" class="bgl-primary text-blue">Blue</option>
+                                <option value="warning" class="bgl-warning text-warning">Yellow</option>
+                                <option value="info" class="bgl-info text-info">Light blue</option>
+                                <option value="success" class="bgl-success text-success">Green</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-sm btn-danger light" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-sm btn-primary" data-bs-dismiss="modal">Save</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/custom/CalendarEventForm.js' %}"></script>
+{% endblock %}

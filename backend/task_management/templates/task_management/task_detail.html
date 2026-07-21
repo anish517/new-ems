@@ -1,0 +1,135 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+Task management
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <input type="hidden" value="{{ task.id }}" id="task_id">
+    <div class="col-xl-8 col-lg-6 col-md-12">
+        <div class="card">
+            <div class="card-header pb-0 border-0">
+                <h3 class="card-title fs-3">{{ task.title }}</h3>
+                {% if task.created_by == request.user.employee %}
+                <a href="{% url 'task_management:task-update' task.pk %}" class="btn btn-primary btn-xs light">
+                    <i class="far fa-edit"></i>
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-4">
+                    {% if task.priority == 'high' %}
+                    <span class="badge badge-lg badge-danger fw-medium light me-2">High</span>
+                    {% elif task.priority == 'medium' %}
+                    <span class="badge badge-lg badge-warning fw-medium light me-2">Medium</span>
+                    {% elif task.priority == 'low' %}
+                    <span class="badge badge-lg badge-success fw-medium light me-2">Low</span>
+                    {% endif %}
+
+                    {% if task.status == 'to-do' %}
+                    <span class="badge badge-lg badge-warning fw-medium light me-2 project-status-badge">Todo</span>
+                    {% elif task.status == 'in-progress' %}
+                    <span class="badge badge-lg badge-secondary fw-medium light me-2 project-status-badge">In progress</span>
+                    {% elif task.status == 'done' %}
+                    <span class="badge badge-lg badge-success fw-medium light me-2 project-status-badge">Done</span>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="form-label fs-4">Description</label>
+                    {{ task.description|safe }}
+                </div>
+            </div>
+            <div class="card-footer pt-0 border-0 d-flex justify-content-between">
+                <span class="fw-medium">
+                    <span class="fw-semibold">Start date:</span> {{ task.planned_start_date }}
+                </span>
+                <span class="fw-medium">
+                    <span class="fw-semibold">Deadline:</span> {{ task.planned_end_date }}
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-6 col-md-12">
+        <div class="card">
+            <div class="card-header pb-0 border-0">
+                <h3 class="card-title">Task Details</h3>
+                {% if task.created_by == request.user.employee %}
+                <a href="{% url 'task_management:task-update' task.pk %}" class="btn btn-primary btn-xs light">
+                    <i class="far fa-edit"></i>
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-responsive table-hover table-striped">
+                        <tbody>
+                            <tr>
+                                <th class="fs-5 fw-medium text-dark">Project</th>
+                                <td><a href="#" class="text-primary fw-medium">{{ task.project.title }}</a></td>
+                            </tr>
+                            <tr>
+                                <th class="fs-5 fw-medium text-dark">Create by</th>
+                                <td><a href="#" class="text-primary fw-medium text-capitalize">{{ task.created_by.user.full_name }}</a></td>
+                            </tr>
+                            <tr>
+                                <th class="fs-5 fw-medium text-dark">Assigned to</th>
+                                <td><a href="#" class="text-primary fw-medium text-capitalize">{{ task.assigned_to.user.full_name }}</a></td>
+                            </tr>
+                            <tr>
+                                <th class="fs-5 fw-medium text-dark">Status</th>
+                                <td>
+                                    <select name="status" id="id_status" onchange="handleProjectStatusUpdate(event)" class="badge badge-lg light fw-medium {% if task.status == 'to-do' %} badge-warning {% elif task.status == 'in-progress' %} badge-secondary {% elif task.status == 'done' %} badge-success {% endif %} project-status-badge">
+                                        <option value="to-do" {% if task.status == 'to-do' %} selected {% endif %}>To Do</option>
+                                        <option value="in-progress" {% if task.status == 'in-progress' %} selected {% endif %}>In progress</option>
+                                        <option value="done" {% if task.status == 'done' %} selected {% endif %}>Done</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="fs-5 fw-medium text-dark">Priority</th>
+                                <td>
+                                    {% if task.priority == 'high' %}
+                                    <span class="badge badge-lg badge-danger light fw-medium">High</span>
+                                    {% elif task.priority == 'medium' %}
+                                    <span class="badge badge-lg badge-warning light fw-medium">Medium</span>
+                                    {% elif task.priority == 'low' %}
+                                    <span class="badge badge-lg badge-success light fw-medium">Low</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="fs-5 fw-medium text-dark">Planned start date</th>
+                                <td>
+                                    {% if task.start_date %}
+                                    {{ task.start_date }}
+                                    {% else %}
+                                    <span class="fw-bold">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="fs-5 fw-medium text-dark">Planned end date</th>
+                                <td>
+                                    {% if task.end_date %}
+                                    {{ task.end_date }}
+                                    {% else %}
+                                    <span class="fw-bold">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'vendor/chart-js/chart.bundle.min.js' %}"></script>
+<script src="{% static 'js/custom/TaskDetail.js' %}"></script>
+{% endblock %}

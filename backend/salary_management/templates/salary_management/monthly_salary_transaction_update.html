@@ -1,0 +1,50 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+Salary transaction | Update
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Update transaction</div>
+    </div>
+    <div class="card-body">
+        <input type="hidden" id="salary_id" value="{{ salary_id }}">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="row">
+                {% for field in form %}
+                <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                    <label for="{{ field.id_for_label }}" class="required">{{ field.label|safe }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                        {% for error in field.errors %}
+                        {{ error }}. <br>
+                        {% endfor %}
+                    </small>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                <!-- review form -->
+                {% for field in salary_transaction_review_form %}
+                <div class="col-12 form-group mb-3"></div>
+                <label for="{{ field.id_for_label }}">Review</label>
+                {{ field }}
+                {% endfor %} 
+                <div class="card-footer py-3 d-flex justify-content-between align-items-end">
+                    <button type="submit" class="btn btn-sm btn-primary d-flex align-items-center">
+                        <span class="material-symbols-outlined me-2"> bookmark </span>Save</button>
+                    <a href="#" class="text-hover float-end">Need help?</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/custom/SalaryTransaction.js' %}"></script>
+{% endblock %}

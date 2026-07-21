@@ -1,0 +1,471 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}
+{{ employee.user.full_name }} | Edit
+{% endblock %}
+
+{% block content %}
+
+<input type="hidden" id="employee_id" value="{{ employee.id }}">
+<input type="hidden" id="employee_user_id" value="{{ employee.id }}">
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-xl-3 col-lg-4 col-md-12">
+                        <div class="nav flex-xl-column flex-md-row nav-pills mb-lg-0 mb-md-4" role="tablist">
+                            <a href="#profile-tab" data-bs-toggle="pill" class="nav-link py-3 show active d-flex align-items-center" aria-selected="true" role="tab">
+                                <span class="material-symbols-outlined me-2">account_circle</span>
+                                <span class="d-lg-block d-md-none">Personal information</span>
+                            </a>
+                            <a href="#contact-tab" data-bs-toggle="pill" class="nav-link py-3 d-flex align-items-center" aria-selected="false" role="tab" tabindex="-1" >
+                                <span class="material-symbols-outlined me-2">share_location</span>
+                                <span class="d-lg-block d-md-none">Address</span>
+                            </a>
+                            <a href="#national-id-detail" data-bs-toggle="pill" class="nav-link py-3 d-flex align-items-center" aria-selected="false" role="tab" tabindex="-1">
+                                <span class="material-symbols-outlined me-2">badge</span>
+                                <span class="d-lg-block d-md-none">National ID details</span>
+                            </a>
+                            <a href="#qualification-tab" data-bs-toggle="pill" class="nav-link py-3 d-flex align-items-center" aria-selected="false" role="tab" tabindex="-1">
+                                <span class="material-symbols-outlined me-2">workspace_premium</span>
+                                <span class="d-lg-block d-md-none">Qualification</span>
+                            </a>
+                            <a href="#bank-details-tab" data-bs-toggle="pill" class="nav-link py-3 d-flex align-items-center" aria-selected="false" role="tab" tabindex="-1">
+                                <span class="material-symbols-outlined me-2">account_balance</span>
+                                <span class="d-lg-block d-md-none">Bank details</span>
+                            </a>
+                            <a href="#documents-tab" data-bs-toggle="pill" class="nav-link py-3 d-flex align-items-center" aria-selected="false" role="tab" tabindex="-1">
+                                <span class="material-symbols-outlined me-2">folder_shared</span>
+                                <span class="d-lg-block d-md-none">Documents</span>
+                            </a>
+                            <a href="#salary-tab" data-bs-toggle="pill" class="nav-link py-3 d-flex align-items-center" aria-selected="false" role="tab" tabindex="-1">
+                                <span class="material-symbols-outlined me-2">payments</span>
+                                <span class="d-lg-block d-md-none">Salary details</span>
+                            </a>
+                            <a href="#remote-work-tab" data-bs-toggle="pill" class="nav-link py-3 d-flex align-items-center" aria-selected="false" role="tab" tabindex="-1">
+                                <span class="material-symbols-outlined me-2">in_home_mode</span>
+                                <span class="d-lg-block d-md-none">Remote work</span>
+                            </a>
+                            <a href="#password-reset-tab" data-bs-toggle="pill" class="nav-link py-3 d-flex align-items-center" aria-selected="false" role="tab" tabindex="-1">
+                                <span class="material-symbols-outlined me-2">encrypted</span>
+                                <span class="d-lg-block d-md-none">Password reset</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-xl-9 col-lg-8">
+                        <div class="tab-content ps-xl-5 ps-lg-0">
+                            <div id="profile-tab" class="tab-pane fade active show" role="tabpanel">
+                                <form method="POST" id="employeeCreationForm" onsubmit="handleEmployeeUpdate(event);" novalidate>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <h3 class="card-title mb-4">Personal informtion</h3>
+                                        </div>
+                                    </div>
+                                    <div class="row flex-xl-row flex-sm-column-reverse">
+                                        <div class="col-xl-6 col-lg-12">
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_first_name">First name</label>
+                                                <input type="text" class="form-control" placeholder="John" name="first_name" id="id_first_name" value="{{ employee.user.first_name }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_last_name">Last name</label>
+                                                <input type="text" class="form-control" placeholder="Doe" name="last_name" id="id_last_name" value="{{ employee.user.last_name }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_father_name">Father's name</label>
+                                                <input type="text" class="form-control" placeholder="Doe" name="father_name" id="id_father_name" value="{{ employee.father_name }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_gender">Gender</label>
+                                                <select name="gender" id="id_gender" class="form-control" required>
+                                                    <option value="">------</option>
+                                                    <option value="male" {% if employee.gender == 'male' %} selected {% endif %}>Male</option>
+                                                    <option value="female" {% if employee.gender == 'female' %} selected {% endif %}>Female</option>
+                                                    <option value="others" {% if employee.gender == 'others' %} selected {% endif %}>Others</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_employee_type">Employee Type</label>
+                                                <select name="employee_type" id="id_employee_type" class="form-control">
+                                                    <option value="">------</option>
+                                                    <option value="full_time" {% if employee.employee_type == 'full_time' %} selected {% endif %}>Full time</option>
+                                                    <option value="part_time" {% if employee.employee_type == 'part_time' %} selected {% endif %}>Part time</option>
+                                                    <option value="intern" {% if employee.employee_type == 'intern' %} selected {% endif %}>Intern</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_post">Post</label>
+                                                <select name="post" id="id_post" class="form-control">
+                                                    <option value="">------</option>
+                                                    {% for post in posts %}
+                                                    {% if employee.post.id == post.id %}
+                                                    <option value="{{ post.id }}" selected>{{ post.title }}</option>
+                                                    {% else %}
+                                                    <option value="{{ post.id }}">{{ post.title }}</option>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="id_date_of_birth">Date of birth</label>
+                                                <input type="text" name="date_of_birth" id="id_date_of_birth" class="form-control nepali-date" value="{{ employee.date_of_birth }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_phone_no">Phone no.</label>
+                                                <input type="text" class="form-control" placeholder="9874561230" name="phone_no" id="id_phone_no" value="{{ employee.phone_no }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label required" for="id_personal_email">Personal Email</label>
+                                                <input type="email" class="form-control" placeholder="johndoe@personalemail.com" name="personal_email" id="id_personal_email" value="{{ employee.personal_email }}" required>
+                                            </div>
+                                            <div class="card-footer p-0 pt-4 border-0">
+                                                <button type="submit" class="btn btn-primary btn-sm">
+                                                    Save changes
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-xl-6 col-lg-12">
+                                            <div class="author-profile">
+                                                <div class="author-media">
+                                                    {% if employee.user.profile_picture %}
+                                                    <img src="{{ employee.user.profile_picture.url }}" alt="" id="imagePreview">
+                                                    {% else %}
+                                                    <img src="{% static '/images/avatar/1.jpg' %}" alt="" id="imagePreview">
+                                                    {% endif %}
+                                                    <div class="upload-link" title="Upload profile picture" data-toggle="tooltip" data-placement="right" data-original-title="update" onchange="handleProfilePictureUpload(event)" >
+                                                        <input type="file" class="update-flie" name="profile_picture" id="id_profile_picture" style="object-fit: cover;">
+                                                        <i class="fa fa-upload" ></i>
+                                                    </div>
+                                                </div>
+                                                <div class="author-info">
+                                                    <h6 class="title text-muted">Upload profile picture</h6>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div id="contact-tab" class="tab-pane fade" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <h3 class="card-title mb-4">Address</h3>
+                                    </div>
+                                </div>
+                                <form method="POST" onsubmit="handleAddressUpdate(event)">
+                                    <h6 class="text-muted fw-medium mb-3">Temporary address</h6>
+                                    <div class="row mb-3">
+                                        <input type="hidden" name="temporary_address_id" value="{{ temporary_address.id }}">
+                                        <div class="mb-3 col-md-6">
+                                            <label class="form-label" for="id_temporary_address">State</label>
+                                            <input type="text" class="form-control" name="temporary_state" id="id_temporary_address" value="{{ temporary_address.state }}">
+                                        </div>
+                                        <div class="mb-3 col-md-6">
+                                            <label class="form-label" for="id_district">District</label>
+                                            <input type="text" class="form-control" name="temporary_district" id="id_temporary_district" value="{{ temporary_address.district }}">
+                                        </div>
+                                        <div class="mb-3 col-md-6">
+                                            <label class="form-label" for="id_temporary_street">Street</label>
+                                            <input type="text" class="form-control" name="temporary_street" id="id_temporary_street" value="{{ temporary_address.street }}">
+                                        </div>
+                                    </div>
+                                    <h6 class="text-muted fw-medium mb-3">Permanent address</h6>
+                                    <div class="row">
+                                        <input type="hidden" name="permanent_address_id" value="{{ permanent_address.id }}">
+                                        <div class="mb-3 col-md-6">
+                                            <label class="form-label" for="id_permanent_address">State</label>
+                                            <input type="text" class="form-control" name="permanent_state" id="id_permanent_address" value="{{ permanent_address.state }}">
+                                        </div>
+                                        <div class="mb-3 col-md-6">
+                                            <label class="form-label" for="id_district">District</label>
+                                            <input type="text" class="form-control" name="permanent_district" id="id_district" value="{{ permanent_address.district }}">
+                                        </div>
+                                        <div class="mb-3 col-md-6">
+                                            <label class="form-label" for="id_permanent_street">Street</label>
+                                            <input type="text" class="form-control" name="permanent_street" id="id_permanent_street" value="{{ permanent_address.street }}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                Save changes
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                </form>
+                            </div>
+                            <div id="national-id-detail" class="tab-pane fade" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <h3 class="card-title mb-4">National ID details</h3>
+                                    </div>
+                                    <div class="col-12">
+                                        <form method="POST" onsubmit="handleNationalIdUpdate(event)">
+                                            <div class="row">
+                                                <input type="hidden" name="national_id" id="id_national_id" value="{{  national_id.pk }}">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_national_id_number">National ID No.</label>
+                                                    <input type="text" class="form-control" name="national_id_no" id="id_national_id_number" value="{{ national_id.national_id_no }}">
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_citizenship_no">Citizenship number</label>
+                                                    <input type="text" class="form-control" name="citizenship_no" id="id_citizenship_no" value="{{ national_id.citizenship_no }}">
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_marital_status">Marital status</label>
+                                                    <select name="marital_status" id="id_marital_status" class="form-control">
+                                                        <option value="">-------</option>
+                                                        <option value="married" {% if national_id.martial_status == 'married' %} selected {% endif %}>Married</option>
+                                                        <option value="unmarried" {% if national_id.martial_status == 'unmarried' %} selected {% endif %}>Unmarried</option>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <button type="submit" class="btn btn-primary btn-sm">Save changes</button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="qualification-tab" class="tab-pane fade" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <h3 class="card-title mb-4">Qualification details</h3>
+                                    </div>
+                                    <div class="col-12">
+                                        <form method="POST" onsubmit="handleQualificationUpload(event)">
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label required" for="id_college">College/University</label>
+                                                    <input type="text" class="form-control" name="college" id="id_college" required>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label required" for="id_degree">Degree</label>
+                                                    <input type="text" class="form-control" name="degree" id="id_degree" required>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label required" for="id_field_of_study">Field of study</label>
+                                                    <input type="text" class="form-control" name="field_of_study" id="id_field_of_study" required>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label required" for="id_qualification_start_date">Start date</label>
+                                                    <input type="date" class="form-control" name="qualification_start_date" id="id_qualification_start_date" required>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_qualification_end_date">End date (or expected)</label>
+                                                    <input type="date" class="form-control" name="qualification_end_date" id="id_qualification_end_date">
+                                                </div>
+                                                <div class="my-3">
+                                                    <button type="submit" class="btn btn-primary btn-sm">
+                                                        save
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <div class="table-responsive mt-4">
+                                    <table class="table header-border table-responsive-sm" id="qualificationTable">
+                                            <thead>
+                                                <tr>
+                                                    <td>College</td>
+                                                    <td>Degree</td>
+                                                    <td>Field of study</td>
+                                                    <td>Start date</td>
+                                                    <td>End date</td>
+                                                    <td></td>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for qualification in employee.qualification.all %}
+                                                <tr id="qualification-row-{{ qualification.id }}">
+                                                    <td>{{ qualification.college }}</td>
+                                                    <td>{{ qualification.degree }}</td>
+                                                    <td>{{ qualification.field_of_study }}</td>
+                                                    <td>{{ qualification.start_date }}</td>
+                                                    <td>{{ qualification.end_date }}</td>
+                                                    <td>
+                                                        <button class="btn btn-xs btn-danger light" data-id="{{qualification.id}}" onClick="handleQualificationDelete(event)">
+                                                            <i class="far fa-trash-alt"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>    
+                                    </table>
+                                </div>
+                            </div>
+                            <div id="bank-details-tab" class="tab-pane fade" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <h3 class="card-title mb-4">Bank details</h3>
+                                    </div>
+                                    <div class="col-12">
+                                        <form method="POST" onsubmit="handleBankDetailsUpdate(event)">
+                                            <div class="row">
+                                                <input type="hidden" name="bank_detail_id" value="{{ bank_detail.pk }}">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_bank_name">Bank name</label>
+                                                    <input type="text" name="bank_name" id="id_bank_name" class="form-control" value="{{ bank_detail.bank_name }}" required>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_account_no">Account No.</label>
+                                                    <input type="text" name="account_no" id="id_account_no" class="form-control" value="{{ bank_detail.account_number }}" required>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-primary btn-sm">Save changes</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="documents-tab" class="tab-pane fade" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <h3 class="card-tile mb-4">
+                                            Documents
+                                        </h3>
+                                    </div>
+                                    <div class="col-12">
+                                        <form method="POST" onsubmit="handleDocumentUpload(event)">
+                                            <div class="row align-items-end">
+                                                <div class="col-md-5 mb-3">
+                                                    <label for="id_document_name" class="form-label">Document name</label>
+                                                    <input type="text" class="form-control" name="document_name" id="id_document_name" placeholder="e.g. Citizenship" required>
+                                                </div>
+                                                <div class="col-md-5 mb-3">
+                                                    <label for="id_document_file" class="form-label">File</label>
+                                                    <input type="file" class="form-control" name="document_file" id="id_document_file" required>
+                                                </div>
+                                                <div class="col-md-2 mb-3">
+                                                    <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                        <div class="table-responsive my-4">
+                                            <table class="table table-sm-responsive table-hover" id="documentTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Name</th>
+                                                        <th></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for document in employee.documents.all %}
+                                                    <tr id="row-{{document.id}}">
+                                                        <td>{{ document.name }}</td>
+                                                        <td>
+                                                            <a href="{{ document.file.url }}" target="_blank" class="btn btn-xs btn-secondary me-2"><i class="far fa-eye"></i></a>
+                                                            <button class="btn btn-xs btn-danger light" onclick="handleDocumentDelete(event)" data-id="{{ document.id }}">
+                                                                <i class="far fa-trash-alt"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                            <div id="salary-tab" class="tab-pane fade" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <h3 class="card-title mb-4">Salary details</h3>
+                                    </div>
+                                    <div class="col-12">
+                                        <form method="POST" onsubmit="handleBasicSalaryUpdate(event)">
+                                            <div class="row">
+                                                <input type="hidden" name="basic_salary_id" value="{{ salary.pk }}">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_basic_salary">Basic salary</label>
+                                                    <input type="number" name="basic_salary" id="id_basic_salary" class="form-control" value="{{ salary.basic_salary }}" min="1" required>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_remote_salary">Remote salary</label>
+                                                    <input type="number" name="remote_salary" id="id_remote_salary" class="form-control" value="{{ salary.remote_salary }}" min="1" required>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-primary btn-sm">Save changes</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="remote-work-tab" class="tab-pane fade" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <h3 class="card-title mb-4">Remote work</h3>
+                                    </div>
+                                    <div class="col-12">
+                                        <form method="POST" onsubmit="handleRemoteWorkPermissionUpdate(event)">
+                                            <div class="row">
+                                                <input type="hidden" name="remote_work_permission_id" value="{{ remote_work_permission.pk }}">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_is_allowed">Is allowed</label>
+                                                    <select name="is_allowed" id="id_is_allowed" class="form-control">
+                                                        <option value="true" {% if remote_work_permission.is_allowed %}selected{% endif %}>Yes</option>
+                                                        <option value="false" {% if not remote_work_permission.is_allowed %}selected{% endif %}>No</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_latitude">Latitude</label>
+                                                    <input type="text" name="remote_lat" id="id_latitude" class="form-control" value="{{ remote_work_permission.remote_lat }}" required>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_longitude">Longitude</label>
+                                                    <input type="text" name="remote_lng" id="id_longitude" class="form-control" value="{{ remote_work_permission.remote_lng }}" required>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-primary btn-sm">Save changes</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="password-reset-tab" class="tab-pane fade" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <h3 class="card-title mb-4">Password reset</h3>
+                                    </div>
+                                    <div class="col-12">
+                                        <form method="POST" onsubmit="handlePasswordChange(event)">
+                                            <div class="row">
+                                                <input type="hidden" name="remote_work_permission_id" value="{{ remote_work_permission.pk }}">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_old_password">Old password</label>
+                                                    <input type="password" name="old_password" id="id_old_password" class="form-control" placeholder="Enter your current password" required>
+                                                </div>
+                                                <div class="col-md-6 mb-3"></div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_new_password">New password</label>
+                                                    <input type="password" name="new_password" id="id_new_password" class="form-control" placeholder="Enter a new password" required>
+                                                </div>
+                                                <div class="col-md-6 mb-3"></div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label" for="id_confirm_password">Re-type new password</label>
+                                                    <input type="password" name="confirm_password" id="id_confirm_password" class="form-control" placeholder="Re-type new password" required>
+                                                </div>
+                                                <div class="col-12 mb-3">
+                                                    <span>Note: You will be signed out and redirected to sign in page.</span><br>
+                                                </div>
+                                            </div>
+
+                                            <button class="btn btn-primary btn-sm">Save</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/custom/employee/EmployeeUpdate.js' %}"></script>
+{% endblock %}

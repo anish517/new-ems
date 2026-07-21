@@ -1,0 +1,232 @@
+{% extends 'index.html' %}
+
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}
+Attendance
+{% endblock %}
+
+{% block content %}
+<input type="hidden" name="employee_id" id="employee_id" value="{{ employee.id }}">
+<div class="row">
+      <div class="col-xl-6 col-lg-12">
+            <div class="card justify-content-center">
+                  <div class="card-body d-flex">
+                        <div class="d-block">
+                              <img src="{{ employee.user.profile_picture.url }}" class="avatar avatar-xxl border-primary rounded-circle" alt="">
+                        </div>
+                        <div class="w-100 ps-4">
+                              <div class="d-flex justify-content-between">
+                                    <div class="">
+                                          <h4 class="card-title mb-1"> {{ employee.user.full_name }} </h4>
+                                          <h5> {{ employee.post }} </h5>
+                                    </div>
+                                    <div class="d-block">    
+                                          {% if has_checked_in_today %}
+                                          <button class="btn btn-warning light" onclick="checkOut(event)">Check out</button>
+                                          {% else %}
+                                          <button class="btn btn-success light" onclick="checkIn(event)">Check in</button>
+                                          {% endif %}
+                                    </div>
+                              </div>
+                              <div class="d-flex flex-wrap">
+                                    <div class="d-flex align-items-center pe-md-4 pe-2 mb-2">
+                                          <div class="pe-2">
+                                                <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M20 4.5H4C3.20435 4.5 2.44129 4.81607 1.87868 5.37868C1.31607 5.94129 1 6.70435 1 7.5V17.5C1 18.2956 1.31607 19.0587 1.87868 19.6213C2.44129 20.1839 3.20435 20.5 4 20.5H20C20.7956 20.5 21.5587 20.1839 22.1213 19.6213C22.6839 19.0587 23 18.2956 23 17.5V7.5C23 6.70435 22.6839 5.94129 22.1213 5.37868C21.5587 4.81607 20.7956 4.5 20 4.5ZM21 17.25L16.1 12.85L21 9.42V17.25ZM3 9.42L7.9 12.85L3 17.25V9.42ZM9.58 14.03L11.43 15.32C11.5974 15.4361 11.7963 15.4984 12 15.4984C12.2037 15.4984 12.4026 15.4361 12.57 15.32L14.42 14.03L19.42 18.5H4.6L9.58 14.03ZM4 6.5H20C20.1857 6.50149 20.3673 6.55467 20.5245 6.65358C20.6817 6.75249 20.8083 6.89322 20.89 7.06L12 13.28L3.11 7.06C3.19171 6.89322 3.31826 6.75249 3.47545 6.65358C3.63265 6.55467 3.81428 6.50149 4 6.5Z" fill="#F79F19"></path>
+                                                </svg>	
+                                          </div>
+                                          <h5 class="font-w400 mb-0">{{ employee.user.email }}</h5>
+                                    </div>
+                                    <div class="d-flex align-items-center pe-md-4 pe-2 mb-2">
+                                          <div class="pe-2">
+                                                <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M19.4401 13.5004C19.2201 13.5004 18.9901 13.4304 18.7701 13.3804C18.3246 13.2822 17.8868 13.1518 17.4601 12.9904C16.9962 12.8216 16.4862 12.8304 16.0284 13.015C15.5706 13.1996 15.1972 13.547 14.9801 13.9904L14.7601 14.4404C13.7861 13.8985 12.8911 13.2256 12.1001 12.4404C11.3149 11.6494 10.6419 10.7544 10.1001 9.78036L10.5201 9.50036C10.9635 9.28327 11.3109 8.90989 11.4955 8.45205C11.6801 7.99421 11.6889 7.48427 11.5201 7.02036C11.3613 6.59278 11.231 6.15515 11.1301 5.71036C11.0801 5.49036 11.0401 5.26036 11.0101 5.03036C10.8887 4.32598 10.5197 3.6881 9.96972 3.2316C9.41972 2.77509 8.7248 2.52997 8.0101 2.54036H5.0101C4.57913 2.53631 4.15235 2.62517 3.75881 2.80089C3.36527 2.9766 3.01421 3.23505 2.72953 3.55864C2.44485 3.88222 2.23324 4.26335 2.10909 4.67607C1.98494 5.08879 1.95118 5.52342 2.0101 5.95036C2.54284 10.1397 4.45613 14.0322 7.44775 17.013C10.4394 19.9938 14.3388 21.8929 18.5301 22.4104H18.9101C19.6475 22.4114 20.3595 22.1409 20.9101 21.6504C21.2265 21.3674 21.4792 21.0205 21.6516 20.6327C21.8239 20.2448 21.9121 19.8248 21.9101 19.4004V16.4004C21.8979 15.7057 21.6449 15.0369 21.1944 14.508C20.744 13.9791 20.1239 13.623 19.4401 13.5004ZM19.9401 19.5004C19.9399 19.6423 19.9095 19.7827 19.8509 19.912C19.7923 20.0413 19.7068 20.1566 19.6001 20.2504C19.4884 20.3468 19.3577 20.4189 19.2165 20.462C19.0753 20.505 18.9267 20.5181 18.7801 20.5004C15.035 20.0202 11.5563 18.3068 8.89282 15.6306C6.2293 12.9545 4.53251 9.46769 4.0701 5.72036C4.05419 5.57387 4.06813 5.42569 4.1111 5.28475C4.15407 5.14381 4.22517 5.01304 4.3201 4.90036C4.41381 4.79369 4.52916 4.7082 4.65848 4.64957C4.7878 4.59095 4.92812 4.56054 5.0701 4.56036H8.0701C8.30265 4.55518 8.52972 4.63124 8.71224 4.77543C8.89476 4.91962 9.02131 5.12293 9.0701 5.35036C9.1101 5.62369 9.1601 5.89369 9.2201 6.16036C9.33562 6.6875 9.48936 7.20554 9.6801 7.71036L8.2801 8.36036C8.1604 8.41528 8.05272 8.4933 7.96326 8.58995C7.87379 8.6866 7.8043 8.79997 7.75877 8.92355C7.71324 9.04713 7.69257 9.17849 7.69795 9.31008C7.70332 9.44167 7.73464 9.5709 7.7901 9.69036C9.2293 12.7731 11.7073 15.2512 14.7901 16.6904C15.0336 16.7904 15.3066 16.7904 15.5501 16.6904C15.6748 16.6458 15.7894 16.5768 15.8873 16.4875C15.9851 16.3983 16.0643 16.2905 16.1201 16.1704L16.7401 14.7704C17.2571 14.9552 17.7847 15.1088 18.3201 15.2304C18.5868 15.2904 18.8568 15.3404 19.1301 15.3804C19.3575 15.4291 19.5608 15.5557 19.705 15.7382C19.8492 15.9207 19.9253 16.1478 19.9201 16.3804L19.9401 19.5004Z" fill="#FF5B5B"></path>
+                                                </svg>
+                                          </div>
+                                          <h5 class="font-w400 mb-0">{{ employee.phone_no }}</h5>
+                                    </div>
+                              </div>
+                        </div>
+                  </div>
+            </div>
+      </div>
+      <div class="col-xl-3 col-md-6">
+            <div class="widget-stat card">
+                  <div class="card-body p-4">
+                        <div class="media ai-icon align-items-center">
+                              <span class="me-3 bgl-primary text-primary">
+                                    <svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="#3736AF">
+                                          <path d="m424-296 282-282-56-56-226 226-114-114-56 56 170 170Zm56 216q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"></path>
+                                    </svg>
+                              </span>
+                              <div class="media-body">
+                                    <p class="mb-1">Check in</p>
+                                    <h4 class="mb-0 fw-medium">
+                                          {% if check_in_time.check_in %}
+                                          {{ check_in_time.check_in }}
+                                          {% else %}
+                                          <span class="badge badge-lg badge-warning light">Pending</span>
+                                          {% endif %}
+                                    </h4>
+                              </div>
+                        </div>
+                  </div>
+            </div>
+      </div>
+      <div class="col-xl-3 col-md-6">
+            <div class="widget-stat card">
+                  <div class="card-body  p-4">
+                        <div class="media">
+                              <span class="me-3 bgl-primary">
+                                    <svg xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 -960 960 960" width="36px" fill="#3736AF">
+                                          <path d="M360-840v-80h240v80H360Zm80 440h80v-240h-80v240Zm40 320q-74 0-139.5-28.5T226-186q-49-49-77.5-114.5T120-440q0-74 28.5-139.5T226-694q49-49 114.5-77.5T480-800q62 0 119 20t107 58l56-56 56 56-56 56q38 50 58 107t20 119q0 74-28.5 139.5T734-186q-49 49-114.5 77.5T480-80Zm0-80q116 0 198-82t82-198q0-116-82-198t-198-82q-116 0-198 82t-82 198q0 116 82 198t198 82Zm0-280Z"/>
+                                    </svg>
+                              </span>
+                              <div class="media-body">
+                                    <p class="mb-1 fs-4 text-dark fw-medium">{{ working_hour }}</p>
+                                    <div class="progress mb-2 bgl-primary">
+                                          <div class="progress-bar progress-animated bg-primary" style="width: {{shift_covered}}%">
+                                          </div>
+                                    </div>
+                                    <small>{{ shift_covered }}% of total working hour</small>
+                              </div>
+                        </div>
+                  </div>
+            </div>      
+      </div>
+      <div class="col-xl-8 col-lg-12">
+            <div class="card">
+                  <div class="card-header border-0 pb-0">
+                        <h3 class="card-title fs-5">Attendance history</h3>
+                        <a href="{% url 'attendance:attendance_list' %}" class="text-primary">View more <i class="fa-solid fa-caret-right"></i></a>
+                  </div>
+                  <div class="card-body">
+                        <div class="height370 text-center py-5" id="attendanceHistoryLoader">
+                              <div class="spinner-border text-primary" role="status" >
+                                <span class="visually-hidden">Loading...</span>
+                              </div>
+                        </div>
+                        <div class="height370 d-none" id="attendanceHistoryGraphContainer">
+                              <canvas id="attendanceHistoryGraph">
+
+                              </canvas>
+                        </div>
+                  </div>
+            </div>
+      </div>
+      <div class="col-xl-4 col-lg-12">
+            <div class="card">
+                  <div class="card-header border-0 pb-0">
+                        <h3 class="card-title fs-5">Working hour</h3>
+                        <a href="{% url 'attendance:attendance_list' %}" class="text-primary">View more <i class="fa-solid fa-caret-right"></i></a>
+                  </div>
+                  <div class="card-body">
+                        <div class="text-center py-5" id="workingHourPieChartLoader">
+                              <div class="spinner-border text-primary" role="status" >
+                                <span class="visually-hidden">Loading...</span>
+                              </div>
+                        </div>
+                        <div class="height370 d-none" id="workingHourPieChartContainer">
+                              <canvas id="workingHourPieChart">
+
+                              </canvas>
+                        </div>
+                  </div>
+            </div>
+      </div>
+      <div class="col-12">
+            <div class="card">
+                  <div class="card-header border-0">
+                        <h3 class="card-title fs-5">Attendance history</h3>
+                        <a href="{% url 'attendance:attendance_list' %}" class="text-primary">View more <i class="fa-solid fa-caret-right"></i></a>
+                  </div>
+                  <div class="card-body">
+                        {% if attendance_history %}
+                        <div class="table-responsive py-4">
+                              <table class="table table-responsive table-striped table-hover dataTable" id="attendanceHistoryDataTable">
+                                    <thead>
+                                          <tr>
+                                                <th>Employee</th>
+                                                <th>Date</th>
+                                                <th>Status</th>
+                                                <th></th>
+                                                <th>Check in</th>
+                                                <th>Check out</th>
+                                                <th>Working hour</th>
+                                          </tr>
+                                    </thead>
+                                    <tbody>
+                                          {% for attendance in attendance_history %}
+                                          <tr>
+                                                <td>
+                                                      <a href="#">
+                                                          <div class="d-flex align-items-center">
+                                                              <img src="{{ attendance.employee.user.profile_picture.url }}" class="rounded-3 me-2" width="46" alt=""> 
+                                                              <div class="d-flex flex-column justify-content-between align-items-start">
+                                                                  <span class="fw-medium fs-5 text-primary">{{ attendance.employee.user.full_name }}</span>
+                                                                  <small class="text-muted">{{ attendance.employee.user.email }}</small>
+                                                              </div>
+                                                          </div>
+                                                      </a>
+                                                </td>
+                                                <td>
+                                                      {{ attendance.date|nepali_date_format }}
+                                                </td>
+                                                <td>
+                                                      {% if attendance.has_checked_in %}
+                                                      <span class="badge light badge-success">Present</span>
+                                                      {% else %}
+                                                      <span class="badge light badge-danger">Absent</span>
+                                                      {% endif %}
+                                                </td>
+                                                <td>
+                                                      {% if attendance.has_checked_in %}
+                                                      <span>{{ attendance.check_in_timestamp }}</span>
+                                                      {% else %}
+                                                      <span>-</span>
+                                                      {% endif %}
+                                                </td>
+                                                <td>
+                                                      {% if attendance.is_remote %}
+                                                      <span class="badge light badge-warning">Remote</span>
+                                                      {% else %}
+                                                      <span class="badge light badge-success">In-site</span>
+                                                      {% endif %}
+                                                </td>
+                                                <td>
+                                                      {% if attendance.check_out_timestamp %}
+                                                      <span>{{ attendance.check_out_timestamp }}</span>
+                                                      {% else %}
+                                                      <span>-</span>
+                                                      {% endif %}
+                                                </td>
+                                                <td>
+                                                      {% if attendance.check_out_timestamp %}
+                                                      <span>{{ attendance.formated_working_hour }}</span>
+                                                      {% else %}
+                                                      <span>-</span>
+                                                      {% endif %}
+                                                </td>
+                                          </tr>
+                                          {% endfor %}
+                                    </tbody>
+                              </table>
+                        </div>
+                        {% else %}
+                        <div class="py-3 text-center">No attendance data found</div>
+                        {% endif %}
+                  </div>
+            </div>
+      </div>
+</div>
+{% endblock %}
+
+
+{% block js %}
+<script src="{% static 'vendor/chart-js/chart.bundle.min.js' %}"></script>
+<script src="{% static 'js/custom/AttendanceEmployee.js' %}"></script>
+<script src="{% static 'js/custom/CheckIn.js' %}"></script>
+
+{% endblock %}

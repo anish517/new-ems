@@ -1,0 +1,149 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block title %} Leave Type {% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="tab-pane fade show active" role="tab">
+        <div class="card">
+            <div class="custom-tab-1">
+                <div class="card-body">
+                    <ul class="nav nav-tabs border-0" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a href="#leave-type-lists" class="nav-link active d-flex align-items-center" data-bs-toggle="tab" aria-selected="true" role="tab">
+                                <span class="material-symbols-outlined me-2">schedule</span>Leave types
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a href="#leave-type-form" class="nav-link d-flex align-items-center" data-bs-toggle="tab" aria-selected="true" role="tab">
+                                <span class="material-symbols-outlined me-2">add_circle</span>Add leave type
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="tab-content">
+        <div class="tab-pane fade active show" id="leave-type-lists" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-responsive-md dataTable table-hover table-striped" id="leaveTypesTable">
+                            <thead>
+                                <tr>
+                                    <td>Name</td>
+                                    <td>Maximum leave</td>
+                                    <td></td>
+                                </tr>
+                            </thead>
+                            {% for leave_type in leave_type_list %}
+                            <tr>
+                                <td>
+                                    <a href="javascript:void()" class="text-primary fw-medium" data-bs-toggle="modal" data-bs-target="#leave-type-modal" 
+                                        data-id="{{ leave_type.id }}" onclick="fetchLeaveType(this)">
+                                        {{ leave_type.name }}
+                                    </a>
+                                </td>
+                                <td>{{ leave_type.quota}} days</td>
+                                <td>
+                                    <div class="dropdown">
+                                        <button type="button" class="btn light sharp" data-bs-toggle="dropdown">
+                                            <svg width="20px" height="20px" viewBox="0 0 24 24" version="1.1">
+                                                <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                                    <rect x="0" y="0" width="24" height="24"></rect>
+                                                    <circle fill="#000000" cx="5" cy="12" r="2"></circle>
+                                                    <circle fill="#000000" cx="12" cy="12" r="2"></circle>
+                                                    <circle fill="#000000" cx="19" cy="12" r="2"></circle>
+                                                </g>
+                                            </svg>
+                                        </button>
+                                        <div class="dropdown-menu">
+                                            <a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#leave-type-modal" 
+                                            data-id="{{ leave_type.id }}" onclick="fetchLeaveType(this)" style="cursor: pointer;">Edit</a>
+                                            <a class="dropdown-item" href="#">Delete</a>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="leave-type-form" role="tabpanel">
+            <div class="card">
+                <form action="{% url 'leave_management:create_leave_type' %}" class="profile-form" method="POST" enctype="multipart/form-data">
+                    <div class="card-body">
+                        {% csrf_token %}
+                            <div class="row">
+                                {% for field in leave_type_form %}
+                                <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                                    <label for="{{ field.id_for_label }}" class="required">{{ field.label|safe }}</label>
+                                    {{ field }}
+                                    {% if field.errors %}
+                                    <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                                        {% for error in field.errors %}
+                                        {{ error }}. <br>
+                                        {% endfor %}
+                                    </small>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                    </div>
+                    <div class="card-footer pt-0 border-0">
+                        <button type="submit" class="btn btn-primary">
+                            Add
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="leave-type-modal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <form method="POST" id="leave-type-update-form" onsubmit="handleLeaveTypeUpdate(event)">
+            {% csrf_token %}
+            <input type="hidden" id="leave_type_id">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title">Edit leave type</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="d-none" id="leave-type-detail">
+                    <div class="modal-body">
+                        <div class="row">
+                           <div class="col-12 form-group mb-3">
+                               <label for="id_modal_name">Leave type</label>
+                               <input type="text" name="name" maxlength="255" class="form-control" id="id_modal_name" required>
+                           </div>
+                           <div class="col-12 form-group mb-3">
+                               <label for="id_modal_leave_quota">Quota (days)</label>
+                               <input type="number" name="leave_quota" class="form-control" id="id_modal_leave_quota" required>
+                           </div>
+                       </div>
+                   </div>
+                   <div class="modal-footer pt-0 border-0">
+                       <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                   </div>
+                </div>
+                
+                <div class="text-center p-5" id="modal-loader">
+                    <div class="spinner-border" role="status">
+                      <span class="sr-only">Loading...</span>
+                    </div>
+                  </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/custom/LeaveType.js' %}"></script>
+{% endblock %}

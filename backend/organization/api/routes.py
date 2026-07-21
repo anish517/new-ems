@@ -1,0 +1,22 @@
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from . import views
+
+router = DefaultRouter()
+router.register(r'employees', views.EmployeeViewSet)
+router.register(r'national-ids', views.NationalIdViewSet)
+router.register(r'qualifications', views.QualificationViewSet)
+router.register(r'bank-details', views.BankDetailViewSet)
+router.register(r'documents', views.DocumentViewSet)
+
+urlpatterns = [
+    path('', include(router.urls)),
+    path('organization_file/<int:pk>/',
+         views.OrganizationFileRetrieveAPIView.as_view()),
+    path('addresses/', views.EmployeeAddressCreateView.as_view()),
+    path('addresses/<int:pk>/', views.EmployeeAddressDetailView.as_view()),
+    path('analysis-report/', views.EmployeeAnalysisReportListAPIView.as_view()),
+    path('department/<int:pk>/',
+         views.DepartmentRetrieveUpdateDeleteAPIView.as_view()),
+    path('address/set/', views.SetOrganizationAddressView.as_view()),
+]

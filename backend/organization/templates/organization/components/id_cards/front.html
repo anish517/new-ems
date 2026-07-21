@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ADAN Membership Card</title>
+
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 0;
+        padding: 0;
+        text-align: center;
+      }
+
+      .container {
+        width: 500px;
+        height: 796px;
+        margin: 0 auto;
+        border: 1px solid #ccc;
+        overflow: hidden;
+        font-family: Arial, Helvetica, sans-serif;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .header,
+      .footer {
+        width: 100%;
+        background-color: #3e9d15;
+        color: #fff;
+        padding: 6px 10px;
+        box-sizing: border-box;
+      }
+
+      .header {
+        font-size: 1.4em;
+        font-weight: bold;
+      }
+
+      .subheader {
+        width: 100%;
+        background-color: #4caf50;
+        color: #fff;
+        font-size: 1.1em;
+        padding: 5px 20px;
+        box-sizing: border-box;
+      }
+
+      .content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 30px 0;
+        box-sizing: border-box;
+        line-height: 1.5;
+      }
+
+      .member-photo {
+        height: 200px;
+        width: 200px;
+        border-radius: 50%;
+        border: 1px solid #2e980e;
+        object-fit: cover;
+      }
+
+      .member-info {
+        margin: 20px 0;
+        text-align: center;
+      }
+
+      .member-name {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #e8a221;
+        font-family: Georgia, "Times New Roman", Times, serif;
+      }
+
+      .member-details {
+        font-size: 1em;
+        font-weight: 500;
+        display: block;
+        font-family: cursive;
+        margin-top: 10px;
+      }
+      .line {
+        border-top: 1px solid green;
+        width: 400px;
+      }
+      .qr-code {
+        width: 150px;
+        height: 150px;
+        margin-top: 20px;
+      }
+
+      .issue-date {
+        margin-top: 20px;
+        font-size: 1em;
+        text-align: left;
+      }
+
+      .issue-date p {
+        font-size: 0.8em;
+        margin: 5px 0;
+      }
+
+      .issue-date p b {
+        color: #e8a221;
+        font-size: 1em;
+        font-weight: 700;
+        font-family: cursive;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <span>Ayurveda Doctors Association of Nepal (ADAN)</span>
+      </div>
+      <div class="subheader">
+        <span>General Member</span>
+      </div>
+      <div class="content">
+        <img src="./image/t2.jpg" class="member-photo" alt="Member Photo" />
+        <div class="member-info">
+          <span class="member-name">Prerok Regmi</span><br />
+          <span class="member-details"><b>Membership No:</b> 2222</span><br />
+        </div>
+        <div class="line"></div>
+        <img
+          src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg"
+          class="qr-code"
+          alt="QR Code"
+        />
+        <div class="issue-date">
+          <p><b>Date of Issue:&nbsp;</b>2081/01/01</p>
+          <p><b>Valid Until:&nbsp;&nbsp;&nbsp;&nbsp;</b>2081/01/01</p>
+        </div>
+      </div>
+      <div class="footer">
+        <span>www.nma.org.np</span>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,38 @@
+<div id="new-department" class="tab-pane fade" role="tabpanel">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Add new department</h3>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <form action="{% url 'organization:create_department' %}" class="profile-form" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="card-body">
+                    <div class="row">
+                        {% for field in department_form %}
+                        <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                            <label for="{{ field.id_for_label }}" class="required">{{ field.label|safe }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                                {% for error in field.errors %}
+                                {{ error }}. <br>
+                                {% endfor %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer py-3 d-flex justify-content-between align-items-end">
+                    <button type="submit" class="btn btn-primary d-flex align-items-center">
+                        Add
+                        <span class="material-symbols-outlined ms-2">add</span>
+                    </button>
+                    <a href="#" class="text-hover float-end">Need help?</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

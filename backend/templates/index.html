@@ -1,0 +1,138 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!--Title-->
+    <title>
+        {% block title %}
+        {% endblock %}
+    </title>
+
+    <!-- Meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <!-- MOBILE SPECIFIC -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <!-- Toastr -->
+    <link rel="stylesheet" href="{% static 'vendor/toastr/css/toastr.min.css' %}">
+    <!-- Datatable -->
+    <link href="{% static 'vendor/datatables/css/jquery.dataTables.min.css' %}" rel="stylesheet">
+    <!-- Select2 CSS -->
+    <link rel="stylesheet" href="{% static 'vendor/select2/css/select2.min.css' %}">
+    <!-- Nepali date -->
+    <link rel="stylesheet" href="{% static 'vendor/nepali-datepicker/nepali-datepicker.min.css' %}">
+    <!-- FAVICONS ICON -->
+    <link rel="shortcut icon" type="image/png" href="{% static 'images/favicon.png' %}">
+    <link href="{% static 'vendor/bootstrap-select/dist/css/bootstrap-select.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0">
+    <link href="{% static 'vendor/fullcalendar/css/main.min.css' %}" rel="stylesheet">
+
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+
+
+    {% block css %}
+    {% endblock %}
+</head>
+
+<body>
+
+    <!--*******************
+        Preloader start
+    ********************-->
+    <div id="preloader">
+        <div class="lds-ripple">
+            <div></div>
+            <div></div>
+        </div>
+    </div>
+    <!--*******************
+        Preloader end
+    ********************-->
+
+    <!--**********************************
+        Main wrapper start
+    ***********************************-->
+    <div id="main-wrapper">
+
+        <!--***** Nav header start *********-->
+        {% include 'NavHeader.html' %}
+        <!--*****    Nav header end ********-->
+
+        <!--********* Header start **********-->
+        {% include 'header.html' %}
+
+        <!--************ Header end ***********-->
+
+        <!--********** Sidebar start ***********-->
+        {% include 'siderbar.html' %}
+        <!--******** Sidebar end *********-->
+
+        <!--******* Content body start ********-->
+        <div class="content-body">
+            <!-- row -->
+            <div class="container-fluid">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </div>
+        <!--****** Content body end *******-->
+
+
+        <!--******** Footer start ********-->
+        {% include 'footer.html' %}
+        <!--******* Footer end ********-->
+
+    </div>
+    <!--******* Main wrapper end ********-->
+
+    <!--****** Scripts *******-->
+    <!-- Required vendors -->
+    <script src="{% static 'vendor/jquery/jquery.min.js' %}"></script>
+    <script src="{% static 'vendor/global/global.min.js' %}"></script>
+    <script src="{% static 'vendor/bootstrap-select/dist/js/bootstrap-select.min.js' %}"></script>
+    <script src="{% static 'js/custom.min.js' %}"></script>
+    <script src="{% static 'js/dlabnav-init.js' %}"></script>
+
+    <!-- CSRF TOKEN -->
+    <script src="{% static 'js/csrfToken/csrfToken.js' %}"></script>
+    <!-- axios -->
+    <script src="{% static 'js/axios/axios.js' %}"></script>
+    <script src="{% static 'js/axios/axiosInstance.js' %}"></script>
+
+    <!-- Datatable -->
+    <script src="{% static 'vendor/datatables/js/jquery.dataTables.min.js' %}"></script>
+    <script src="{% static 'vendor/datatables/responsive/responsive.js' %}"></script>
+    <script src="{% static 'js/custom/Datatable.js' %}"></script>
+
+    <!-- Notification -->
+    <script src="{% static 'js/custom/Notification.js' %}"></script>
+
+    <!-- Select2 -->
+    <script src="{% static 'vendor/select2/js/select2.full.min.js' %}"></script>
+    <script src="{% static 'js/custom/Select2.js' %}"></script>
+
+    <!-- Toastr -->
+    <script src="{% static 'vendor/toastr/js/toastr.min.js' %}"></script>
+
+    <!-- Nepali date -->
+    <script src="{% static 'vendor/nepali-datepicker/nepali-datepicker.min.js' %}"></script>
+    <script src="{% static 'js/custom/NepaliDateField.js' %}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            initNepaliDateField();
+            initSelect2();
+        })
+    </script>
+    {% include 'toastr.html' %}
+
+    {% block js %}
+
+    {% endblock %}
+</body>
+
+</html>

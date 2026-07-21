@@ -1,0 +1,124 @@
+{% extends 'index.html' %}
+
+{% block title %}
+Salary management
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header pb-0 border-0">
+        <h3 class="card-title border-0">Salary list</h3>
+        <button class="btn btn-primary">Add</button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-responsive-md dataTable" id="salaryTable">
+                <thead>
+                    <tr>
+                        {% if request.user.is_superuser %}
+                        <th>Organization</th>
+                        {% endif %}
+                        <th>Employee</th>
+                        <th>Basic salary</th>
+                        <th>SSF</th>
+                        <th>TDS</th>
+                        <th>EPF</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for data in salary_list %}
+                    <tr>
+                        {% if request.user.is_superuser %}
+                        <td>{{ data.employee.organization }}</td>
+                        {% endif %}
+                        <td>{{ data.employee.user.full_name }}</td>
+                        <td>{{ data.basic_salary }}</td>
+                        <td>{{ data.ssf }}</td>
+                        <td>{{ data.tds }}</td>
+                        <td>{{ data.epf }}</td>
+                        <td>
+                            <div class="dropdown">
+                                <button type="button" class="btn light sharp" data-bs-toggle="dropdown">
+                                    <svg width="20px" height="20px" viewBox="0 0 24 24" version="1.1">
+                                        <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                            <rect x="0" y="0" width="24" height="24"></rect>
+                                            <circle fill="#000000" cx="5" cy="12" r="2"></circle>
+                                            <circle fill="#000000" cx="12" cy="12" r="2"></circle>
+                                            <circle fill="#000000" cx="19" cy="12" r="2"></circle>
+                                        </g>
+                                    </svg>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a href="#" class="dropdown-item" data-bs-toggle="modal"
+                                        data-bs-target="#salary-modal-{{ data.id }}">
+                                        View
+                                    </a>
+                                    <a class="dropdown-item" href="#">Delete</a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- modals start -->
+{% for data in salary_list %}
+<div class="modal fade" id="salary-modal-{{ data.id }}" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <form action="{% url 'salary_management:salary_update_view' data.id %}" method="POST">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Salary detail of {{ data.employee }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 form-group mb-3">
+                            <label for="id_basic_salary">Basic salary</label>
+                            <input class="form-control mb-3" type="number" name="basic_salary" id="id_basic_salary"
+                                value="{{ data.basic_salary }}" readonly>
+                        </div>
+                        <div class="col-md-6 form-group mb-3">
+                            <label for="id_ssf">Social security fund (%)</label>
+                            <input class="form-control mb-3" type="number" name="ssf" id="id_ssf"
+                                value="{{ data.ssf }}">
+                        </div>
+                        <div class="col-md-6 form-group-mb-3">
+                            <label for="id_tds">Tax deducted at source (%)</label>
+                            <input class="form-control mb-3" type="number" name="tds" id="id_tds"
+                                value="{{ data.tds }}">
+                        </div>
+                        <div class="col-md-6 form-group-mb-3">
+                            <label for="id_epf">Employees' provident fund (%) </label>
+                            <input class="form-control mb-3" type="number" name="epf" id="id_epf"
+                                value="{{ data.epf }}">
+                        </div>
+                        <div class="col-md-6 form-group-mb-3">
+                            <label for="id_citizen_investment_trust">Citizen Investment Trust (%) </label>
+                            <input class="form-control mb-3" type="number" name="citizen_investment_trust"
+                                id="id_citizen_investment_trust" value="{{ data.citizen_investment_trust }}">
+                        </div>
+                        <div class="col-md-6 form-group-mb-3">
+                            <label for="id_insurance">Insurance (%)</label>
+                            <input class="form-control mb-3" type="number" name="insurance" id="id_insurance"
+                                value="{{ data.insurance }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-danger light" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-sm btn-primary">Save changes</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+<!-- modals end -->
+{% endblock %}

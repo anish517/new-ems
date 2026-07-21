@@ -1,0 +1,184 @@
+{% extends 'organization/index.html' %}
+{% load static %}
+{% block title %} Policies {% endblock %}
+
+{% block tab %}
+<div class="row">
+    {% if folder_list %}
+    <div class="col-lg-2 col-md-3">
+        <div class="card" data-bs-toggle="modal" data-bs-target="#add-folder-modal" style="cursor: pointer;">
+            <div
+                class="card-body d-flex flex-column justify-content-center align-items-center text-center ai-icon text-primary">
+                <i class="material-symbols-outlined" style="font-size: 48px;">
+                    create_new_folder
+                </i>
+                <h6 class="my-2">Add folder</h6>
+            </div>
+        </div>
+    </div>
+    {% for folder in folder_list %}
+    <div class="col-lg-2 col-md-3">
+        <a href="{% url 'organization:folder_detail' folder.id %}">
+            <div class="card">
+                <div
+                    class="card-body d-flex flex-column justify-content-center align-items-center text-center ai-icon text-primary">
+                    <i class="material-symbols-outlined" style="font-size: 48px;">
+                        folder
+                    </i>
+                    <h6 class="my-2">{{ folder.title }}</h6>
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+    {% elif folder %}
+    <div class="col-xl-2 col-lg-3 col-md-4">
+        <div class="card" data-bs-toggle="modal" data-bs-target="#add-folder-modal" style="cursor: pointer;">
+            <div
+                class="card-body d-flex flex-column justify-content-center align-items-center text-center ai-icon text-primary">
+                <i class="material-symbols-outlined" style="font-size: 48px;">
+                    note_add
+                </i>
+                <h6 class="my-2">Add {{ folder.title }}</h6>
+            </div>
+        </div>
+    </div>
+    {% for file in folder.files.all %}
+    <div class="col-xl-2 col-lg-3 col-md-4">
+        <div class="card" data-bs-toggle="modal" data-bs-target="#file-detail-modal" style="cursor: pointer;"
+            data-fileId="{{ file.id }}" onclick="fetchFileDetail(this)">
+            <div
+                class="card-body d-flex flex-column justify-content-center align-items-center text-center ai-icon text-primary">
+                <i class="material-symbols-outlined" style="font-size: 48px;">
+                    note
+                </i>
+                <h6 class="my-2 ">{{ file.title|truncatechars:10}}</h6>
+            </div>
+
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p>{{ folder }}</p>
+    <p>Nothing to display</p>
+    {% endif %}
+
+</div>
+
+{% if folder_list %}
+<div class="modal fade" id="add-folder-modal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <form action="{% url 'organization:folder_create' %}" method="POST">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add new folder</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        {% for field in new_folder_form %}
+                        <div class="col form-group mb-3">
+                            <label for="id_folder_name" class="required">Folder name</label>
+                            {{ field }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-danger light" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-sm btn-primary">Add</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% elif folder %}
+<div class="modal fade" id="add-folder-modal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <form action="{% url 'organization:organization_file_create' folder.id %}" method="POST"
+            enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add new file</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        {% for field in file_form %}
+                        <div class="col-12 form-group mb-3">
+                            <label for="id_folder_name" class="required">{{ field.label }}</label>
+                            {{ field }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-danger light" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-sm btn-primary">Add</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="modal fade" id="file-detail-modal" tabindex="-1" role="dialog" aria-labelledby="fileDetailModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable" role="document">
+        <form action="{% url 'organization:organization_file_create' folder.id %}" method="POST"
+            enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fileDetailModalLabel">File name</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="table-responsive">
+                            <table class="table hover table-responsive">
+                                <tbody>
+                                    <tr>
+                                        <td>File name</td>
+                                        <th id="modal-file-name">File name</th>
+                                    </tr>
+                                    <tr>
+                                        <td>Description</td>
+                                        <th id="modal-file-description">Lorem ipsum dolor sit, amet consectetur
+                                            adipisicing
+                                            elit. Quibusdam, aut.
+                                            Neque animi consectetur eum molestiae eaque quis, provident quos est?</th>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2">
+                                            <div class="input-group mb-3">
+                                                <input type="text" class="form-control" readonly value="Download (2 KB)"
+                                                    id="modal-file-size">
+                                                <a class="btn btn-primary" id="modal-file-source" download>
+                                                    <i class="fas fa-file-download"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a class="btn btn-danger" id="modal-file-delete-btn">
+                        Delete
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/custom/Files.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends 'index.html' %}
+
+{% load static %}
+
+{% block title %}
+Task management
+{% endblock %}
+
+{% block css %}
+{{ form.media }}
+
+<style>
+    .ck{
+        height: 100%;
+    }
+</style>
+
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="card-header pb-0 border-0">
+                    <div class="card-title fs-4">Edit task</div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for field in form %}
+                        {% if field.label == 'Description' %}
+                        <div class="col-12 form-group mb-3" id="{{ field.label|lower }}">
+                            <label for="{{ field.id_for_label }}">Description</label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                                {% for error in field.errors %}
+                                {{ error }}. <br>
+                                {% endfor %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                            <label for="{{ field.id_for_label }}" class="{% if field.field.required %}required{% endif %}">{{ field.label|safe }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                                {% for error in field.errors %}
+                                {{ error }}. <br>
+                                {% endfor %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% endfor %} 
+                    </div>
+                </div>
+                <div class="card-footer pt-0 border-0">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

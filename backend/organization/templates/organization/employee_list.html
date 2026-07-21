@@ -1,0 +1,72 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block title %} Employees {% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <form method="GET" style="flex-grow: 2;">
+                    <div class="row align-items-end">
+                        <div class="col-md-3 form-group">
+                            <label for="id_status">Select status</label>
+                            <select name="status" id="id_status" class="form-control">
+                                <option value="">--------</option>
+                                <option value="active"  {% if status == 'active' %} selected {% endif %}>Active</option>
+                                <option value="inactive" {% if status == 'inactive' %} selected {% endif %}>Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 form-group">
+                            <button class="btn btn-sm btn-primary me-2">
+                                Filter
+                            </button>
+                            <a href="{% url 'organization:employee_list' %}" class="btn btn-sm btn-secondary">Reset</a>
+                        </div>
+                    </div>
+                </form>
+                <a class="btn btn-primary btn-sm" href="{% url 'organization:add_employee' %}">Add employee</a>
+            </div>
+        </div>
+    </div>
+        
+    <div class="row">
+        {% for employee in employee_list %}
+        <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="card overflow-hidden">
+                <div class="card-body">
+                    <div class="text-center">
+                        <div class="profile-photo">
+                            {% if employee.user.profile_picture %}
+                            <img src="{{ employee.user.profile_picture.url }}" style="height: 100px; width: 100px;object-fit: cover;" class="img-fluid rounded-circle" alt="{{ employee.user.first_name }} {{ employee.user.last_name }} placeholder">
+                            {% else %}
+                            <img src="/media/placeholder/placeholder.png" style="height: 100px; width: 100px;object-fit: cover;" class="img-fluid rounded-circle" alt="{{ employee.user.first_name }} {{ employee.user.last_name }} placeholder">
+                            {% endif %}
+                        </div>
+                        <h3 class="mt-4 mb-1">{{ employee.user.full_name }}</h3>
+                        <p class="text-muted">{{ employee.post.department }}</p>
+                        <a class="btn btn-xs btn-outline-primary btn-rounded mt-3 px-5" href="{% url 'organization:employee_detail' employee.id %}">View detail</a>
+                    </div>
+                </div>
+
+                <div class="card-footer pt-0 pb-0 text-center">
+                    <div class="row">
+                        <div class="col-6 pt-3 pb-3 border-end">
+                            <span>{{ employee.post }}</span>
+                        </div>
+                        <div class="col-6 pt-3 pb-3">
+                            {% if employee.has_checked_in %}
+                            <span class="badge badge-lg light badge-success">Checked in</span>
+                            {% else %}
+                            <span class="badge badge-lg light badge-warning">Absent</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>     
+</div>
+
+{% endblock %}

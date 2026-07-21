@@ -1,0 +1,51 @@
+{% extends 'index.html' %}
+
+{% load static %}
+
+{% block title %}
+Feedback
+{% endblock %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-0">
+                <h3 class="card-title">Complains</h3>
+                <a href="{% url 'feedback:complain_add' %}" class="btn btn-sm btn-primary">Add</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Status</th>
+                                <th>Created at</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for complain in complains %}
+                            <tr>
+                                <td>{{ complain.title }}</td>
+                                <td>{{ complain.status }}</td>
+                                <td>{{ complain.created_at }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

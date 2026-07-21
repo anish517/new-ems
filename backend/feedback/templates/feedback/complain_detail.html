@@ -1,0 +1,136 @@
+{% extends 'index.html' %}
+
+{% load static %}
+
+{% block title %}
+Feedback
+{% endblock %}
+
+
+{% block css %}
+{{ reply_form.media }}
+<style>
+    .ck{
+        height: 100%;
+    }
+    .ck-editor__editable h1, 
+    .ck-editor__editable h2, 
+    .ck-editor__editable h3, 
+
+    .ck-editor__editable p {
+        color: #333333;  /* Replace with your desired default color */
+    }
+</style>
+
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3 class="card-title">
+                    {{ complain.title }}
+                </h3>
+                {% if complain.employee == request.user.employee %}
+                <div>
+                    <a href="{% url 'feedback:complain_delete' complain.pk %}" class="btn btn-danger light btn-sm fw-medium me-2">Delete</a>
+                    <a href="{% url 'feedback:complain_update' complain.pk %}" class="btn btn-primary btn-sm fw-medium">Edit</a>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {{ complain.description|safe }}
+            </div>
+        </div>
+    </div>
+
+    {% if reply %}
+    <div class="col-12" id="reply-container">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex">
+                    <div class="d-block">
+                        <img src="{{ reply.employee.user.profile_picture.url }}" class="avatar avatar-xxl border-primary rounded-circle" alt="">
+                    </div>
+                    <div class="ps-3">
+                        <div class="card-title fs-5">
+                            {{ reply.employee.user.full_name }} 
+                            {% if request.user.employee == reply.employee %}
+                            <button class="btn btn-sm fw-medium text-primary" onclick="toggleReplyForm()"> 
+                                <i class="fa-regular fa-pen-to-square"></i> Edit
+                            </button>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex align-items-center mb-4">
+                            <span class="material-symbols-outlined me-2">date_range</span>
+                            <span class="fs-5">{{ reply.created_at }}</span>
+                        </div>
+                        {{ reply.content|safe }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 d-none" id="reply-form-container">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3  class="card-title fs-5 fw-medium">
+                    Reply
+                </h3>
+            </div>
+            <form action="{% url 'feedback:complain_reply_add' %}" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="complain" value="{{ complain.id }}">
+                {% csrf_token %}
+                <div class="card-body">
+                    <div class="row">
+                        {% for field in reply_form %}
+                        <div class="col-12 form-group mb-4">
+                            {{ field }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer pt-0 border-0">
+                    <button type="button" class="btn btn-sm btn-danger light fw-medium me-2" onclick="toggleReplyForm()">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm fw-medium">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    {% if request.user.employee.is_company_admin %}
+    <div class="col-12" id="reply-form-container">
+        <div class="card">
+            <div class="card-header border-0 pb-0">
+                <h3  class="card-title fs-5 fw-medium">
+                    Reply
+                </h3>
+            </div>
+            <form action="{% url 'feedback:complain_reply_add' %}" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="complain" value="{{ complain.id }}">
+                {% csrf_token %}
+                <div class="card-body">
+                    <div class="row">
+                        {% for field in reply_form %}
+                        <div class="col-12 form-group mb-4">
+                            {{ field }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer pt-0 border-0">
+                    <button type="submit" class="btn btn-primary btn-sm fw-medium">Post Reply</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/custom/ComplainDetail.js' %}"></script>
+{% endblock %}

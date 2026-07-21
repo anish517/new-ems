@@ -1,0 +1,107 @@
+{% extends 'organization/index.html' %}
+{% load static %}
+{% block title %} Designation {% endblock %}
+
+{% block tab %}
+
+        <div class="tab-pane fade show active" role="tabpanel">
+            <!-- Nav tabs -->
+            <div class="custom-tab-1">
+                <div class="card">
+                    <div class="card-header border-0">
+                        <ul class="nav nav-tabs border-0">
+                            <li class="nav-item" role="presentation">
+                                <a href="#department-list" class="nav-link active" data-bs-toggle="tab" aria-selected="true" role="tab">
+                                    Designation
+                                </a>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <a href="#department-form" class="nav-link" data-bs-toggle="tab" aria-selected="false" role="tab">
+                                    Add designation
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="tab-content">
+                        <div class="tab-pane fade active show" id="department-list" role="tabpanel">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-responsive-md dataTable" id="departmentTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Title</th>
+                                                {% if request.user.is_superuser %}
+                                                <th>Organization</th>
+                                                {% endif %}
+                                                <th>Department</th>
+                                                <th>No. of Employees</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for designation in designation_list %}
+                                            <tr>
+                                                <td>{{ designation.title }}</td>
+                                                {% if request.user.is_superuser %}
+                                                <td>{{ designation.department.organization }}</td>
+                                                {% endif %}
+                                                <td>{{ designation.department }}</td>
+                                                <td>{{ designation.employees.count }}</td>
+                                                <td><div class="dropdown">
+                                                    <button type="button" class="btn light sharp" data-bs-toggle="dropdown">
+                                                        <svg width="20px" height="20px" viewBox="0 0 24 24" version="1.1">
+                                                            <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                                                <rect x="0" y="0" width="24" height="24"></rect>
+                                                                <circle fill="#000000" cx="5" cy="12" r="2"></circle>
+                                                                <circle fill="#000000" cx="12" cy="12" r="2"></circle>
+                                                                <circle fill="#000000" cx="19" cy="12" r="2"></circle>
+                                                            </g>
+                                                        </svg>
+                                                    </button>
+                                                    <div class="dropdown-menu">
+                                                        <a class="dropdown-item" href="#">Update</a>
+                                                        <a class="dropdown-item" href="{% url 'organization:delete_post' designation.pk %}">Delete</a>
+                                                    </div>
+                                                </div></td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="department-form" class="tab-pane fade" role="tabpanel">
+                            <form action="{% url 'organization:create_post' %}" class="profile-form" method="POST" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <div class="card-body">
+                                    <div class="row">
+                                        {% for field in post_form %}
+                                        <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                                            <label for="{{ field.id_for_label }}" class="required">{{ field.label|safe }}</label>
+                                            {{ field }}
+                                            {% if field.errors %}
+                                            <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                                                {% for error in field.errors %}
+                                                {{ error }}. <br>
+                                                {% endfor %}
+                                            </small>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="card-footer border-0">
+                                    <button type="submit" class="btn btn-primary d-flex align-items-center">
+                                        Add
+                                        <span class="material-symbols-outlined ms-2">add</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+{% endblock %}

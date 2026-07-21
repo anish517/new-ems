@@ -1,0 +1,88 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block title %} User | Update {% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/custom/userForm.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-xl-3 col-lg-4">
+        <div class="clearfix">
+            <div class="card card-bx profile-card author-profile m-b30">
+                <div class="card-body">
+                    <div class="p-5">
+                        <div class="author-profile">
+                            <div class="author-media">
+                                <img src="{{ user.profile_picture.url }}" alt="" id="previewImage" style="height: 15vh; width: 15vh; object-fit: cover;">
+                                <div class="upload-link" id="profile-picture-update-btn" style="cursor: pointer;">
+                                    <i class="fa fa-camera"></i>
+                                </div>
+                            </div>
+                            <div class="author-info">
+                                <h6 class="title text-capitalize">{{ user.full_name }}</h6>
+                                <span>@{{ user.username }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="input-group mb-3">
+                        <div class="form-control rounded text-center">Portfolio</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-9 col-lg-8">
+        <div class="card profile-card card-bx m-b30">
+            <div class="card-header">
+                <h4 class="card-title">Account setup</h4>
+            </div>
+            <form class="profile-form" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="card-body">
+                    <div class="row">
+                        {% for field in form %}
+                        {% if field.id_for_label == 'id_profile_picture' %}
+                        <div class="col-md-6 form-group mb-3 d-none" id="{{ field.label|lower }}">
+                            <label for="{{ field.id_for_label }}" class="required">{{ field.label|safe }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                                {% for error in field.errors %}
+                                {{ error }}. <br>
+                                {% endfor %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                            <label for="{{ field.id_for_label }}" class="required">{{ field.label|safe }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                                {% for error in field.errors %}
+                                {{ error }}. <br>
+                                {% endfor %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer py-3">
+                    <button class="btn btn-primary btn-sm" type="submit">SUBMIT</button>
+                    <a href="#" class="text-hover float-end">Forgot your password?</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/custom/UserForm.js' %}"></script>
+{% endblock %}

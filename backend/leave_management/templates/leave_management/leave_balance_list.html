@@ -1,0 +1,111 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block title %}
+Leave tracker
+{% endblock %}
+
+{% block content %}
+<div class="col-12">
+      <div class="card">
+            <div class="card-header pb-0 border-0">
+                  <h3 class="card-title">
+                  Employee Leave balance
+                  </h3>
+            </div>
+            <div class="card-body">
+            {% if leave_balances_by_employee %}
+            <div class="table-responsive">
+                  <table class="table table-responsive-md table-hover verticle-middle dataTable" id="leaveBalanceDataTable">
+                        <thead>
+                        <tr>
+                              <th>Employee</th>
+                              {% for leave_type in leave_types %}
+                              <th>{{ leave_type.name }}</th>
+                              {% endfor %}
+                              <th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for item in leave_balances_by_employee %}
+                        <tr>
+                              <td>
+                                    <div class="d-flex align-items-center">
+                                    <img src="{{ item.employee.user.profile_picture.url }}" class="rounded-3 me-2" width="46" alt=""> 
+                                    <div class="d-flex flex-column justify-content-between align-items-start">
+                                          <span class="fw-medium fs-5 text-dark">{{ item.employee.user.full_name }}</span>
+                                          <small class="text-muted">{{ item.employee.user.email }}</small>
+                                    </div>
+                                    </div>
+                              </td>
+                              {% for leave_balance in item.leave_balances %}
+                              <td>{{ leave_balance.quota }} days</td>
+                              {% endfor %}
+                              <td>
+                                    <div class="dropdown custom-dropdown mb-0 tbl-orders-style">
+                                    <div class="btn sharp tp-btn" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path d="M12 6C12.5523 6 13 5.55228 13 5C13 4.44772 12.5523 4 12 4C11.4477 4 11 4.44772 11 5C11 5.55228 11.4477 6 12 6Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path d="M12 20C12.5523 20 13 19.5523 13 19C13 18.4477 12.5523 18 12 18C11.4477 18 11 18.4477 11 19C11 19.5523 11.4477 20 12 20Z" stroke="var(--text-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                          </svg>
+                                    </div>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                          <a class="dropdown-item" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#leaveQuotaDetail" data-employeeId="{{ item.employee.id }}" onclick="fetchLeaveQuota(event)">View</a>
+                                          <a class="dropdown-item" href="{% url 'leave_management:leave_balance_update' item.employee.id %}">Edit</a>
+                                    </div>
+                                    </div>
+                              </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                  </table>
+            </div>
+            {% else %}
+            <p class="text-center">No leave balance records found</p>
+            {% endif %}
+            </div>
+      </div>
+</div>
+
+<!--  modal -->
+<div class="modal fade" id="leaveQuotaDetail" role="dialog" style="display: none;" aria-hidden="true">
+      <div class="modal-dialog" role="dialog">
+          <div class="modal-content">
+              <div class="modal-header border-0 pb-0">
+                  <h5 class="modal-title">Leave quota details</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                  <div class="text-center" id="loader">
+                      <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                      </div>
+                  </div>
+                  <div class="d-none" id="leaveQuotaDetailContainer">
+                      <div class="d-flex flex-column align-items-center" id="user-info">
+                          <img src="{% static 'images/user.jpg' %}" alt="placeholder" id="user-pp" class="mb-3" width="100px" height="100px" style="object-fit: cover; border-radius: 50%;"> 
+                          <h6 class="fs-5 fw-medium" id="user-full-name">John doe</h6>
+                          <span class="text-muted mb-3" id="user-email">johndoe.official@gmail.com</span>
+                      </div>
+                      
+                      <div class="table-responsive" id="transactionDetailTable">
+                          <table class="table verticle-middle table-md-responsive table-hover table-striped">
+                              <tbody id="leave-balance-container"></tbody>
+                          </table>
+                      </div>
+                  </div>
+              </div>
+              
+              <div class="modal-footer border-0 pt-0">
+                  <button type="button" class="btn btn-sm btn-danger light" data-bs-dismiss="modal">Close</button>
+              </div>
+          </div>
+      </div>
+</div>
+  
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/custom/LeaveBalanceList.js' %}"></script>
+{% endblock %}

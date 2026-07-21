@@ -1,0 +1,89 @@
+{% extends 'index.html' %}
+
+{% block title %}
+Noticeboard
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Noticeboard</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-responsive-md dataTable" id="noticeBoardTable">
+                <thead>
+                    <tr>
+                        {% if request.user.is_superuser %}
+                        <td>Organization</td>
+                        {% endif %}
+                        <td>Date</td>
+                        <td>Title</td>
+                        <td></td>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for notice in notices %}
+                    <tr class="notice-row">
+                        {% if request.user.is_superuser %}
+                        <td>{{ notice.organization }}</td>
+                        {% endif %}
+                        <td>{{ notice.date }}</td>
+                        <td>
+                            {{ notice.title }}
+                        </td>
+                        <td>
+                            <div class="dropdown">
+                                <button type="button" class="btn light sharp" data-bs-toggle="dropdown">
+                                    <svg width="20px" height="20px" viewBox="0 0 24 24" version="1.1">
+                                        <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                            <rect x="0" y="0" width="24" height="24"></rect>
+                                            <circle fill="#000000" cx="5" cy="12" r="2"></circle>
+                                            <circle fill="#000000" cx="12" cy="12" r="2"></circle>
+                                            <circle fill="#000000" cx="19" cy="12" r="2"></circle>
+                                        </g>
+                                    </svg>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item view-details-btn" href="#" data-bs-toggle="modal" data-bs-toggle="modal" data-bs-target="#notice-{{ notice.id }}">View</a>
+                                    {% if request.user in request.user.employee.organization.admin_users.all %}
+                                    <a class="dropdown-item" href="{% url 'noticeboard:notice_update' notice.id %}">Edit</a>
+                                    <a class="dropdown-item" href="{% url 'noticeboard:notice_delete' notice.id  %}">Delete</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% for notice in notices %}
+<div class="modal fade" id="notice-{{ notice.id }}" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <form method="POST" action="{% url 'noticeboard:notice_update' notice.id %}">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ notice.title }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal">
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="description">
+                        <div class="ck ck-content" style="height: 100%;">
+                            <h5>Description</h5>
+                            <p>{{ notice.description|safe }}</p>  
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}

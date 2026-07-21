@@ -1,0 +1,63 @@
+{% extends 'index.html' %}
+{% block title %}
+
+Analysis report
+
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Analysis reports</div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table bordered table-responsive dataTable" id="analysisDataTable">
+                <thead>
+                    <tr>
+                        <th>Last updated</th>
+                        <th>Task score</th>
+                        <th>Attendance score</th>
+                        <th>Score</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                {% for report in analysis_report_list %}
+                <tr>
+                    <td>{{ report.date }}</td>
+                    <td>{{ report.task_score }}</td>
+                    <td>{{ report.attendance_score }}</td>
+                    <td>{{ report.analysis_score }}</td>
+                    <td>
+                        {% if report.analysis_score <= 49 %}
+                        <span class="badge badge-lg light badge-danger">
+                            Bad
+                        </span>
+                        {% elif report.analysis_score <= 59 %}
+                        <span class="badge badge-lg light badge-warning">
+                            Average
+                        </span>
+                        {% elif report.analysis_score <= 79 %}
+                        <span class="badge badge-lg light badge-secondary">
+                            Good
+                        </span>
+                        {% elif report.analysis_score <= 89 %}
+                        <span class="badge badge-lg light badge-primary">
+                            Very good
+                        </span>
+                        {% else %}
+                        <span class="badge badge-lg light badge-success">
+                            Excellent
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

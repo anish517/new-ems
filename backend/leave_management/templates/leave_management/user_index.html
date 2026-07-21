@@ -1,0 +1,337 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block title %}
+Leave management
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'vendor/swiper/css/swiper-bundle.min.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- Swiper Container -->
+<div class="swiper-container">
+    <!-- Swiper Wrapper -->
+    <div class="swiper-wrapper">
+        <div class="swiper-slide">
+            <div class="widget-stat card bg-secondary">
+                <div class="card-body p-4">
+                <div class="media">
+                    <div class="media-body text-white">
+                    <p class="mb-1">Total leave</p>
+                    <h3 class="text-white">{{ total_no_of_days }}</h3>
+                    <div class="progress mb-2 bg-secondary">
+                        <div class="progress-bar progress-animated bg-white" style="width: {{ total_no_days_percentage }}%">
+                        </div>
+                    </div>
+                    <small>{{ total_no_of_days }} in {{total_no_of_leave_quota }} days</small>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+      {% for item in sorted_no_of_leaves %}
+      <!-- Swiper Slide -->
+      <div class="swiper-slide">
+        <div class="widget-stat card bg-{{ item.color }}">
+          <div class="card-body p-4">
+            <div class="media">
+              <div class="media-body text-white">
+                <p class="mb-1">{{ item.type }}</p>
+                <h3 class="text-white">{{ item.no_of_leaves }}</h3>
+                <div class="progress mb-2 bg-secondary">
+                  <div class="progress-bar progress-animated bg-white" style="width: {{ item.percentage }}%">
+                  </div>
+                </div>
+                <small>{{ item.no_of_leaves }} in {{ item.leave_quota }} Days</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  
+    <!-- Add Pagination -->
+    <div class="swiper-pagination"></div>
+  </div>
+  
+
+<div class="row">
+    <div class="col-lg-3 col-md-6 col-sm-12">
+        <div class="row">
+            <div class="col-12">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-success text-success">
+                                <i class="material-symbols-outlined" style="font-size: 38px;">task_alt</i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Approved</p>
+                                <h4 class="mb-0">{{ approved_leave_request.count }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-warning text-warning">
+                                <i class="material-symbols-outlined" style="font-size: 38px;">schedule</i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Pending</p>
+                                <h4 class="mb-0">{{ pending_leave_request.count }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="widget-stat card">
+                    <div class="card-body p-4">
+                        <div class="media ai-icon">
+                            <span class="me-3 bgl-danger text-danger">
+                                <i class="material-symbols-outlined" style="font-size: 38px;">cancel</i>
+                            </span>
+                            <div class="media-body">
+                                <p class="mb-1">Rejected</p>
+                                <h4 class="mb-0">{{ rejected_leave_request.count }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-9 col-md-6 col-sm-12">
+        <div class="tab-pane fade show active" role="tabpanel" aria-labelledby="home-tab1">
+            <!-- Nav tabs -->
+            <div class="custom-tab-1">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs border-0" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link active d-flex align-items-center" data-bs-toggle="tab" href="#pending-leave-requests" aria-selected="true" role="tab"  style="background-color: unset;">
+                                    <span class="material-symbols-outlined me-2">schedule</span>Pending 
+                                </a>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link d-flex align-items-center" data-bs-toggle="tab" href="#approved-leave-requests" aria-selected="false" role="tab" tabindex="-1" style="background-color: unset;">
+                                    <span class="material-symbols-outlined me-2"> task_alt </span> Approved
+                                </a>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link d-flex align-items-center" data-bs-toggle="tab" href="#rejected-leave-requests" aria-selected="false" role="tab" tabindex="-1" style="background-color: unset;">
+                                    <span class="material-symbols-outlined me-2"> cancel </span> Rejected
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="tab-content">
+                        <div class="tab-pane fade active show" id="pending-leave-requests" role="tabpanel">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-responsive-md dataTable" id="pendingLeaveRequestTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Employee name</th>
+                                                <th>Leave type</th>
+                                                <th>Renumeration</th>
+                                                <th>Leave period</th>
+                                                <th>Day/hours taken</th>
+                                                <th>Date requested</th>
+                                                <th>Approval</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for leave_request in pending_leave_request %}
+                                            <tr data-bs-toggle="modal" data-bs-target="#leave-detail-modal-{{ leave_request.id }}" data-id="{{ leave_request.id }}">
+                                                <td>
+                                                    {{ leave_request.employee.user.full_name }}
+                                                </td>
+                                                <td>{{ leave_request.type }}</td>
+                                                <td>
+                                                    {% if leave_request.is_paid %}
+                                                    <span class="badge badge-lg light badge-success">Paid</span>
+                                                    {% else %}
+                                                    <span class="badge badge-lg light badge-warning">Upaid</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ leave_request.from_date }} to {{ leave_request.till_date }}</td>
+                                                <td>{{ leave_request.no_days }}</td>
+                                                <td>{{ leave_request.created_at }}</td> 
+                                                <td>
+                                                    {% if leave_request.is_reviewed and leave_request.is_approved %}
+                                                    <span class="badge badge-lg light badge-success">Approved</span>
+                                                    {% elif leave_request.is_reviewed and not leave_request.is_approved %}
+                                                    <span class="badge badge-lg light badge-danger">
+                                                        Declined
+                                                    </span>
+                                                    {% else %}
+                                                    <span>
+                                                        <span class="badge badge-lg light badge-warning">
+                                                            Pending
+                                                        </span>
+                                                    </span>
+                                                    {% endif %}
+                                                </td> 
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="approved-leave-requests" role="tabpanel">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-responsive-md dataTable" id="approvedLeaveRequestTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Employee name</th>
+                                                <th>Leave type</th>
+                                                <th>Renumeration</th>
+                                                <th>Leave period</th>
+                                                <th>Day/hours taken</th>
+                                                <th>Date requested</th>
+                                                <th>Approval</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for leave_request in approved_leave_request %}
+                                            <tr data-bs-toggle="modal" data-bs-target="#leave-detail-modal-{{ leave_request.id }}" data-id="{{ leave_request.id }}">
+                                                <td>
+                                                    {{ leave_request.employee.user.full_name }}
+                                                </td>
+                                                <td>{{ leave_request.type }}</td>
+                                                <td>
+                                                    {% if leave_request.is_paid %}
+                                                    <span class="badge badge-lg light badge-success">Paid</span>
+                                                    {% else %}
+                                                    <span class="badge badge-lg light badge-warning">Upaid</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ leave_request.from_date }} to {{ leave_request.till_date }}</td>
+                                                <td>{{ leave_request.no_days }}</td>
+                                                <td>{{ leave_request.created_at }}</td> 
+                                                <td>
+                                                    {% if leave_request.is_reviewed and leave_request.is_approved %}
+                                                    <span class="badge badge-lg light badge-success">Approved</span>
+                                                    {% elif leave_request.is_reviewed and not leave_request.is_approved %}
+                                                    <span class="badge badge-lg light badge-danger">
+                                                        Declined
+                                                    </span>
+                                                    {% else %}
+                                                    <span>
+                                                        <span class="badge badge-lg light badge-warning">
+                                                            Pending
+                                                        </span>
+                                                    </span>
+                                                    {% endif %}
+                                                </td> 
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="rejected-leave-requests" role="tabpanel">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-responsive-md dataTable" id="rejectedLeaveRequestTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Employee name</th>
+                                                <th>Leave type</th>
+                                                <th>Renumeration</th>
+                                                <th>Leave period</th>
+                                                <th>Day/hours taken</th>
+                                                <th>Date requested</th>
+                                                <th>Approval</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for leave_request in rejected_leave_request %}
+                                            <tr data-bs-toggle="modal" data-bs-target="#leave-detail-modal-{{ leave_request.id }}" data-id="{{ leave_request.id }}">
+                                                <td>
+                                                    {{ leave_request.employee.user.full_name }}
+                                                </td>
+                                                <td>{{ leave_request.type }}</td>
+                                                <td>
+                                                    {% if leave_request.is_paid %}
+                                                    <span class="badge badge-lg light badge-success">Paid</span>
+                                                    {% else %}
+                                                    <span class="badge badge-lg light badge-warning">Upaid</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ leave_request.from_date }} to {{ leave_request.till_date }}</td>
+                                                <td>{{ leave_request.no_days }}</td>
+                                                <td>{{ leave_request.created_at }}</td> 
+                                                <td>
+                                                    {% if leave_request.is_reviewed and leave_request.is_approved %}
+                                                    <span class="badge badge-lg light badge-success">Approved</span>
+                                                    {% elif leave_request.is_reviewed and not leave_request.is_approved %}
+                                                    <span class="badge badge-lg light badge-danger">
+                                                        Declined
+                                                    </span>
+                                                    {% else %}
+                                                    <span>
+                                                        <span class="badge badge-lg light badge-warning">
+                                                            Pending
+                                                        </span>
+                                                    </span>
+                                                    {% endif %}
+                                                </td> 
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'vendor/chart-js/chart.bundle.min.js' %}"></script>
+<script src="{% static 'vendor/swiper/js/swiper-bundle.min.js' %}"></script>
+<script src="{% static 'js/custom/LeaveRequest.js' %}"></script>
+<script>
+    var swiper = new Swiper('.swiper-container', {
+      direction: 'horizontal',
+      loop: true,
+      autoplay: {
+      delay: 3000,
+      disableOnInteraction: false,
+    },
+      spaceBetween: 20,
+  
+      breakpoints: {
+      768: {
+        slidesPerView: 2,
+      },
+      1024: {
+        slidesPerView: 3,
+      },
+      1440: {
+        slidesPerView: 4,
+      },
+      1600: {
+        slidesPerView: 4,
+      },
+    }
+    });
+  </script>
+  
+  
+{% endblock %}

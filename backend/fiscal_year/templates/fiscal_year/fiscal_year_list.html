@@ -1,0 +1,116 @@
+{% extends 'organization/index.html' %}
+{% load static %}
+{% block title %}
+Fiscal Year
+{% endblock %}
+
+{% block tab %}
+<div class="card">
+    <div class="card-header border-0">
+        <div class="custom-tab-1">
+            <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link active d-flex align-items-center" data-bs-toggle="tab" href="#fiscalYearList" aria-selected="true" role="tab">
+                        <span class="material-symbols-outlined me-2">
+                            event
+                        </span>
+                        <span>Fiscal years</span>
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link d-flex align-items-center" data-bs-toggle="tab" href="#monthlySalaryTransactionAddForm" aria-selected="true" role="tab">
+                        <span class="material-symbols-outlined me-2">
+                            calendar_add_on
+                        </span>
+                        <span>Add fiscal year</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="fiscalYearList" role="tabpanel">
+                {% if fiscal_year_list %}
+                <div class="table-responsive">
+                    <table class="table table-responsive-md dataTable">
+                        <thead>
+                            <tr>
+                                <th scope="col">Fiscal year</th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fiscal_year in fiscal_year_list %}
+                            <tr>
+                                <td>{{ fiscal_year.title }}</td>
+                                <td>
+                                    <button class="btn btn-xs btn-outline-primary" data-bs-toggle="modal" data-bs-target="#fiscal-year-modal">Update</button>
+                                    <button class="btn btn-xs btn-outline-danger" data-bs-toggle="modal" data-bs-target="#fiscal-year-modal">Delete</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-center">
+                    No fiscal year found.
+                </p>
+                {% endif %}
+            </div>
+            <div class="tab-pane fade" id="monthlySalaryTransactionAddForm">
+                <form action="{% url 'fiscal_year:create' %}" method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="row">
+                        {% for field in form %}
+                        <div class="col-md-6 form-group mb-3" id="{{ field.label|lower }}">
+                            <label for="{{ field.id_for_label }}" class="required">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <small id="{{ field.label|lower }}Help" class="form-text text-danger">
+                                {% for error in field.errors %}
+                                {{ error }}. <br>
+                                {% endfor %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-sm btn-primary fw-medium">
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="fiscal-year-modal" role="dialog" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog" role="dialog">
+        <form action="" method="POST">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Fiscal year</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                     <div class="row">
+                        <div class="form-group mb-3">
+                            <label for="id_fiscal_year">Fiscal year</label>
+                            <input class="form-control mb-3" type="number" name="fiscal_year" id="id_fiscal_year">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-danger light" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-sm btn-primary">Save changes</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

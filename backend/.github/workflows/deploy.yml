@@ -1,0 +1,36 @@
+name: Deploy to cPanel
+
+on:
+  push:
+    branches:
+      - development
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to cPanel via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.TEST_FTP_SERVER }}
+          username: ${{ secrets.TEST_FTP_USERNAME }}
+          password: ${{ secrets.TEST_FTP_PASSWORD }}
+
+      - name: Executing Django commands
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.TEST_SSH_HOST }}
+          username: ${{ secrets.TEST_SSH_USER }}
+          password: ${{ secrets.TEST_SSH_PASSWORD }}
+          script: |
+            source /home/nepadvisor/virtualenv/ems/3.11/bin/activate && cd /home/nepadvisor/ems
+            pip install -r requirements.txt
+            python manage.py makemigrations --noinput
+            python manage.py migrate --noinput
+            python manage.py collectstatic --noinput
+            touch passenger_wsgi.py
+            touch tmp/restart.txt
