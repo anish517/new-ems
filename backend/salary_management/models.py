@@ -82,14 +82,9 @@ class Salary(models.Model):
 
     @staticmethod
     def calculate_net_salary(employee: Employee, year: int, month: int):
-
-        # assuming 1% tax on basic salary
-        tax = Salary.calculate_gross_salary(
-            employee=employee, year=year, month=month) * 0.01
         gross_salary = Salary.calculate_gross_salary(
             employee=employee, year=year, month=month)
-        net_salary = round(gross_salary - tax)
-        return net_salary
+        return round(gross_salary)
 
 
 class SalaryTransaction(models.Model):

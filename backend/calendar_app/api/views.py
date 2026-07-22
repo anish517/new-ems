@@ -111,26 +111,50 @@ class EventViewSet(viewsets.ViewSet):
 
 
     def total_days_in_month(self, year, month):
-        # Start on the first day of the month
-        first_day = datetime.date(year, month, 1)
-
-        # Find the number of days in the month by advancing to the next month and subtracting one day
+        import nepali_datetime
+        import datetime
+        first_day = nepali_datetime.date(year, month, 1)
         if month == 12:
-            next_month = datetime.date(year + 1, 1, 1)
+            next_month = nepali_datetime.date(year + 1, 1, 1)
         else:
-            next_month = datetime.date(year, month + 1, 1)
-
-        days_in_month = (next_month - first_day).days
-        return days_in_month - 1
+            next_month = nepali_datetime.date(year, month + 1, 1)
+        last_day = next_month - datetime.timedelta(days=1)
+        return last_day.day
 
     def count_saturdays(self, year, month):
-
+        import nepali_datetime
         days_in_month = self.total_days_in_month(year, month)
-
-        # Count Saturdays
         saturdays = sum(1 for day in range(1, days_in_month + 1)
-                        if datetime.date(year, month, day).weekday() == 5)
+                        if nepali_datetime.date(year, month, day).weekday() == 5)
         return saturdays
+
+    def create(self, request):
+        import nepali_datetime
+        title = request.data.get('title')
+        start_str = request.data.get('start')
+        end_str = request.data.get('end', start_str)
+        is_important = request.data.get('is_important', False)
+        if str(is_important).lower() == 'true': is_important = True
+        elif str(is_important).lower() == 'false': is_important = False
+        
+        try:
+            y, m, d = map(int, start_str.split('-'))
+            start_date = nepali_datetime.date(y, m, d)
+            y2, m2, d2 = map(int, end_str.split('-'))
+            end_date = nepali_datetime.date(y2, m2, d2)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            
+        org = self._get_org(request.user)
+        event = Event.objects.create(
+            title=title,
+            start=start_date,
+            end=end_date,
+            is_important=is_important,
+            organization=org
+        )
+        serializer = EventSerializer(event)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def retrieve(self, request, pk=None):
         try:

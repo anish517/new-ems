@@ -18,6 +18,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   List _holidays = [];
   bool _loading = false;
   String? _error;
+  int? _selectedDay;
 
   static const _monthNames = [
     '',
@@ -123,6 +124,92 @@ class _CalendarScreenState extends State<CalendarScreen> {
         raw.endsWith('-${day.toString().padLeft(2, '0')}');
   }
 
+  void _showDayDialog(int day) {
+    setState(() => _selectedDay = day);
+    final dateStr = '${_viewedMonth.year}-${_viewedMonth.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
+    final dayEvents = _events.where((e) => _matchesBsDay(e, day)).toList();
+    final titleCtrl = TextEditingController();
+    bool isImportant = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceDark,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              left: 16,
+              right: 16,
+              top: 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Events for $dateStr',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                if (dayEvents.isEmpty)
+                  const Text('No events scheduled.', style: TextStyle(color: AppColors.textSecondary))
+                else
+                  ...dayEvents.map((e) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.event, color: AppColors.primary),
+                        title: Text(e['title'] ?? e['name'] ?? ''),
+                        subtitle: (e['is_important'] == true) 
+                            ? const Text('Important', style: TextStyle(color: AppColors.error, fontSize: 12)) 
+                            : null,
+                      )),
+                const Divider(),
+                const Text('Add New Event', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(hintText: 'Event Title'),
+                ),
+                CheckboxListTile(
+                  title: const Text('Is Important (Triggers early push notification)'),
+                  value: isImportant,
+                  onChanged: (val) => setModalState(() => isImportant = val ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (titleCtrl.text.trim().isEmpty) return;
+                      try {
+                        await ApiService().post('${AppConstants.calendarBase}/events/', data: {
+                          'title': titleCtrl.text.trim(),
+                          'start': dateStr,
+                          'end': dateStr,
+                          'is_important': isImportant,
+                        });
+                        if (mounted) Navigator.pop(ctx);
+                        _loadEvents();
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to add event: $e')));
+                      }
+                    },
+                    child: const Text('Save Event'),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        },
+      ),
+    ).then((_) {
+      if (mounted) setState(() => _selectedDay = null);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final days = _daysInViewedMonth;
@@ -207,46 +294,57 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     final hasEvent = _events.any((e) => _matchesBsDay(e, day));
                     final isHoliday =
                         _holidays.any((h) => _matchesBsDay(h, day));
+                    final isSelected = day == _selectedDay;
 
-                    return Container(
-                      margin: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: isToday
-                            ? AppColors.primary
-                            : isHoliday
-                                ? AppColors.error.withValues(alpha: 0.1)
-                                : null,
-                        borderRadius: BorderRadius.circular(8),
-                        border: isToday
-                            ? null
-                            : Border.all(
-                                color: AppColors.surfaceDark, width: 0.5),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('$day',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: isToday
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: isToday
-                                    ? Colors.white
-                                    : isSaturday || isHoliday
-                                        ? AppColors.error
-                                        : null,
-                              )),
-                          if (hasEvent)
-                            Container(
-                              width: 5,
-                              height: 5,
-                              margin: const EdgeInsets.only(top: 2),
-                              decoration: const BoxDecoration(
-                                  color: AppColors.accent,
-                                  shape: BoxShape.circle),
-                            ),
-                        ],
+                    return InkWell(
+                      onTap: () => _showDayDialog(day),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        margin: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.accent.withValues(alpha: 0.2)
+                              : isToday
+                                  ? AppColors.primary
+                                  : isHoliday
+                                      ? AppColors.error.withValues(alpha: 0.1)
+                                      : null,
+                          borderRadius: BorderRadius.circular(8),
+                          border: isSelected
+                              ? Border.all(color: AppColors.accent, width: 2.0)
+                              : isToday
+                                  ? null
+                                  : Border.all(
+                                      color: AppColors.surfaceDark, width: 0.5),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('$day',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: isToday || isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: isSelected
+                                      ? AppColors.accent
+                                      : isToday
+                                          ? Colors.white
+                                          : isSaturday || isHoliday
+                                              ? AppColors.error
+                                              : null,
+                                )),
+                            if (hasEvent)
+                              Container(
+                                width: 5,
+                                height: 5,
+                                margin: const EdgeInsets.only(top: 2),
+                                decoration: BoxDecoration(
+                                    color: isSelected ? AppColors.accent : AppColors.accent,
+                                    shape: BoxShape.circle),
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   },

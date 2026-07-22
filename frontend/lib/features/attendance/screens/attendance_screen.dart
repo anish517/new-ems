@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
@@ -38,7 +39,7 @@ class AttendanceScreen extends ConsumerStatefulWidget {
 }
 
 class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   bool _isCheckedIn = false;
   bool _isLoading = false;
   String? _checkInTime;
@@ -54,17 +55,167 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   List _remoteEmployees = [];
   bool _remoteLoading = false;
 
+  Timer? _autoActionTimer;
+  bool _autoInFlight = false;
+  bool _hasPromptedAutoAttendance = false;
+
   @override
   void initState() {
     super.initState();
     _adminTabs = TabController(length: 3, vsync: this);
-    _loadAll();
+    WidgetsBinding.instance.addObserver(this);
+    _loadAll().then((_) => _attemptAutoAttendance());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _autoActionTimer?.cancel();
     _adminTabs.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _attemptAutoAttendance();
+    }
+  }
+
+  Future<void> _attemptAutoAttendance() async {
+    if (_autoInFlight || _isLoading || _hasPromptedAutoAttendance) return;
+    final isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
+    if (isAdmin) return; // keep this automatic for regular employees only
+
+    _autoInFlight = true;
+    try {
+      if (!_isCheckedIn) {
+        await _scheduleAutoAction(
+          message: 'Checking you in at the office…',
+          onFire: _performAutoCheckIn,
+        );
+      } else if (_hasBeenCheckedInLongEnough()) {
+        await _scheduleAutoAction(
+          message: 'Checking you out…',
+          onFire: _performAutoCheckOut,
+        );
+      }
+    } finally {
+      _autoInFlight = false;
+    }
+  }
+
+  bool _hasBeenCheckedInLongEnough() {
+    if (_checkInTime == null) return false;
+    try {
+      final now = DateTime.now();
+      
+      // Handle both "10:30" and "10:30 AM" / "02:30 PM" formats safely
+      String timeStr = _checkInTime!.trim().toUpperCase();
+      bool isPM = timeStr.contains('PM');
+      bool isAM = timeStr.contains('AM');
+      
+      timeStr = timeStr.replaceAll(' AM', '').replaceAll(' PM', '').replaceAll('AM', '').replaceAll('PM', '').trim();
+      final parts = timeStr.split(':');
+      
+      int hour = int.parse(parts[0]);
+      int minute = parts.length > 1 ? int.parse(parts[1]) : 0;
+      int second = 0;
+      if (parts.length > 2) {
+        // Handle microseconds like "37.201748"
+        final secStr = parts[2].split('.')[0];
+        second = int.parse(secStr);
+      }
+      
+      if (isPM && hour < 12) hour += 12;
+      if (isAM && hour == 12) hour = 0;
+
+      final checkedInAt = DateTime(now.year, now.month, now.day, hour, minute, second);
+      return now.difference(checkedInAt) >= const Duration(hours: 6);
+    } catch (_) {
+      // Very important: fail closed (false) to prevent accidental checkouts!
+      return false;
+    }
+  }
+
+  Future<void> _scheduleAutoAction({
+    required String message,
+    required Future<void> Function() onFire,
+  }) async {
+    _autoActionTimer?.cancel();
+    bool cancelled = false;
+    _hasPromptedAutoAttendance = true;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      duration: const Duration(seconds: 5),
+      behavior: SnackBarBehavior.floating,
+      action: SnackBarAction(
+        label: 'CANCEL',
+        onPressed: () => cancelled = true,
+      ),
+    ));
+
+    final completer = Completer<void>();
+
+    _autoActionTimer = Timer(const Duration(seconds: 5), () async {
+      if (!cancelled && mounted) {
+        await onFire();
+      }
+      if (!completer.isCompleted) completer.complete();
+    });
+
+    await completer.future;
+  }
+
+  Future<void> _performAutoCheckIn() async {
+    try {
+      final pos = await _getLocation();
+      final res = await ApiService().post(AppConstants.checkIn, data: {
+        'latitude': pos.latitude,
+        'longitude': pos.longitude,
+      });
+      if (!mounted) return;
+      setState(() {
+        _isCheckedIn = true;
+        _checkInTime = res.data['check_in_time']?.toString();
+        _lastAction = 'Auto checked in at $_checkInTime';
+      });
+      _showSnack('✅ Auto checked-in — welcome!', AppColors.success);
+      await _loadStats();
+      await _loadDailyHistory();
+    } catch (e) {
+      final msg = ApiService.getErrorMessage(e);
+      // Quietly ignore "not within radius" — expected when away from office.
+      if (!msg.toLowerCase().contains('radius')) {
+        _showSnack('⚠️ Auto check-in failed: $msg', AppColors.warning);
+      }
+    }
+  }
+
+  Future<void> _performAutoCheckOut() async {
+    try {
+      final pos = await _getLocation();
+      final res = await ApiService().post(AppConstants.checkOut, data: {
+        'latitude': pos.latitude,
+        'longitude': pos.longitude,
+      });
+      if (!mounted) return;
+      setState(() {
+        _isCheckedIn = false;
+        _checkInTime = null;
+        _lastAction = 'Auto checked out at ${res.data['check_out_time'] ?? res.data['check_in_time']}';
+      });
+      _showSnack('✅ Auto checked-out — see you next time!', AppColors.success);
+      await _loadStats();
+      await _loadDailyHistory();
+    } catch (e) {
+      final msg = ApiService.getErrorMessage(e);
+      if (!msg.toLowerCase().contains('radius')) {
+        _showSnack('⚠️ Auto check-out failed: $msg', AppColors.warning);
+      }
+    }
   }
 
   Future<void> _loadAll() async {
