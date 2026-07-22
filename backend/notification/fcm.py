@@ -37,7 +37,16 @@ def send_push_notification(device_token: str, title: str, body: str, data: dict 
         messaging.send(message)
         return True
     except Exception as e:
+        err_str = str(e)
         print(f'[FCM] Error sending push notification: {e}')
+        # Auto-remove invalid/expired tokens so they don't cause repeated errors
+        if 'registration token' in err_str.lower() or 'not a valid' in err_str.lower() or 'unregistered' in err_str.lower():
+            try:
+                from notification.models import DeviceToken
+                DeviceToken.objects.filter(token=device_token).delete()
+                print(f'[FCM] Removed invalid token from DB.')
+            except Exception:
+                pass
         return False
 
 

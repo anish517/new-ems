@@ -70,15 +70,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final eventsRes =
           await ApiService().get('${AppConstants.calendarBase}/events/$params');
       final holidaysRes =
-          await ApiService().get('${AppConstants.calendarBase}/dates/$params');
+          await ApiService().get('${AppConstants.calendarBase}/dates/month_dates/$params');
       if (!mounted) return;
       setState(() {
         _events = eventsRes.data is List
             ? eventsRes.data
             : (eventsRes.data['results'] ?? []);
-        _holidays = holidaysRes.data is List
-            ? holidaysRes.data
-            : (holidaysRes.data['results'] ?? []);
+        // DateViewSet returns {'dates': [...], 'first_day': ..., ...}
+        final holidayData = holidaysRes.data;
+        if (holidayData is Map && holidayData['dates'] != null) {
+          _holidays = (holidayData['dates'] as List)
+              .where((d) => (d as String).isNotEmpty)
+              .map((d) => {'date': d})
+              .toList();
+        } else if (holidayData is List) {
+          _holidays = holidayData;
+        } else {
+          _holidays = [];
+        }
       });
     } catch (_) {
       if (mounted) setState(() => _error = 'Could not load calendar data.');

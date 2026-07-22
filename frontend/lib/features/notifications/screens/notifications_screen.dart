@@ -17,27 +17,30 @@ class NotificationsScreen extends ConsumerWidget {
             Center(child: Text('Error: ${ApiService.getErrorMessage(e)}')),
         data: (list) => list.isEmpty
             ? const Center(child: Text('No notifications'))
-            : ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: list.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (_, i) {
-                  final n = list[i];
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: (n['is_read'] == true)
-                          ? AppColors.cardDark
-                          : AppColors.primary,
-                      child: const Icon(Icons.notifications_outlined,
-                          color: Colors.white, size: 18),
-                    ),
-                    title: Text(n['title'] ?? ''),
-                    subtitle: Text(n['message'] ?? '',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12)),
-                  );
-                }),
+            : RefreshIndicator(
+                onRefresh: () async => ref.refresh(notificationsProvider.future),
+                child: ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final n = list[i];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: (n['is_read'] == true)
+                              ? AppColors.cardDark
+                              : AppColors.primary,
+                          child: const Icon(Icons.notifications_outlined,
+                              color: Colors.white, size: 18),
+                        ),
+                        title: Text(n['title'] ?? ''),
+                        subtitle: Text(n['message'] ?? '',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12)),
+                      );
+                    }),
+              ),
       ),
     );
   }

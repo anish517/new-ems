@@ -14,59 +14,54 @@ from rest_framework.permissions import IsAuthenticated
 class DateViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def month_dates(self, request):
-        # Get the month and year from the request's query parameters
-        year_ad = int(request.query_params.get(
+        import nepali_datetime
+        # Get the month and year from the request's query parameters (already Nepali)
+        year_np = int(request.query_params.get(
             'year', nepali_datetime.datetime.now().year))
-        month_ad = int(request.query_params.get(
+        month_np = int(request.query_params.get(
             'month', nepali_datetime.datetime.now().month))
-        date_np = nepali_datetime.date.from_datetime_date(
-            datetime.date(year_ad, month_ad, 1))
+        
         # Generate list of dates for the given month and year
-        dates = self.get_dates_for_month(date_np.year, date_np.month)
-        first_day = self.get_first_day_of_month(
-            year=date_np.year, month=date_np.month)
+        dates = self.get_dates_for_month(year_np, month_np)
+        first_day = nepali_datetime.datetime(year_np, month_np, 1)
         data = {
             'first_day': first_day.weekday(),
             'month': first_day.strftime("%B"),
             'year': first_day.strftime("%Y"),
-            'no_of_saturdays': self.count_saturdays(date_np.year, date_np.month),
+            'no_of_saturdays': self.count_saturdays(year_np, month_np),
             'dates': dates,
         }
         return Response(data=data)
 
     # Helper function to generate list of dates for a given month and year
-    def get_dates_for_month(self, year: int, month: int) -> int:
-        first_day = nepali_datetime.datetime(year, month, 1)
-        next_month = first_day.replace(
-            day=28) + timedelta(days=4)  # Go to the next month
-        # Get last day of current month
-        last_day = next_month - timedelta(days=next_month.day)
-
-        # Create a list of all dates in the given month
-        date_list = [(first_day + timedelta(days=i)).strftime('%Y-%m-%d')
+    def get_dates_for_month(self, year: int, month: int):
+        import nepali_datetime
+        import datetime
+        first_day = nepali_datetime.date(year, month, 1)
+        if month == 12:
+            next_month = nepali_datetime.date(year + 1, 1, 1)
+        else:
+            next_month = nepali_datetime.date(year, month + 1, 1)
+        
+        last_day = next_month - datetime.timedelta(days=1)
+        
+        date_list = [(first_day + datetime.timedelta(days=i)).strftime('%Y-%m-%d')
                      for i in range((last_day - first_day).days + 1)]
         return date_list
 
-    def get_first_day_of_month(self, year: int, month: int) -> int:
-        first_day = nepali_datetime.datetime(year, month, 1)
-        return first_day
-
     def count_saturdays(self, year, month):
-        # Start on the first day of the month
-        first_day = datetime.date(year, month, 1)
-
-        # Find the number of days in the month by advancing to the next month and subtracting one day
+        import nepali_datetime
+        import datetime
+        first_day = nepali_datetime.date(year, month, 1)
         if month == 12:
-            next_month = datetime.date(year + 1, 1, 1)
+            next_month = nepali_datetime.date(year + 1, 1, 1)
         else:
-            next_month = datetime.date(year, month + 1, 1)
-
-        days_in_month = (next_month - first_day).days
-
-        # Count Saturdays
-        saturdays = sum(1 for day in range(1, days_in_month + 1)
-                        if datetime.date(year, month, day).weekday() == 5)
-
+            next_month = nepali_datetime.date(year, month + 1, 1)
+            
+        last_day = next_month - datetime.timedelta(days=1)
+        days_in_month = last_day.day
+        
+        saturdays = sum(1 for i in range(1, days_in_month + 1) if nepali_datetime.date(year, month, i).weekday() == 5)
         return saturdays
 
 
