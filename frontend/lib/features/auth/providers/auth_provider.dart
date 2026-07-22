@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/models/user_model.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/firebase_notification_service.dart';
 
 // Auth state
 class AuthState {
@@ -33,6 +34,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (await _authService.isLoggedIn()) {
         final user = await _authService.fetchMe();
         state = AuthState(user: user);
+        FirebaseNotificationService().registerDeviceToken();
       } else {
         state = const AuthState();
       }
@@ -46,6 +48,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final user = await _authService.login(email, password);
       state = AuthState(user: user);
+      FirebaseNotificationService().registerDeviceToken();
       return true;
     } catch (e) {
       state = state.copyWith(

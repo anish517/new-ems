@@ -71,23 +71,33 @@ class DateViewSet(viewsets.ViewSet):
 
 
 class EventViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def _get_org(self, user):
+        try:
+            return user.employee.post.department.organization
+        except Exception:
+            return user.organization.first()
 
     def list(self, request):
-        year_ad = int(request.query_params.get(
-            'year', nepali_datetime.datetime.now().year))
-        month_ad = int(request.query_params.get(
-            'month', nepali_datetime.datetime.now().month))
-        date_np = nepali_datetime.date.from_datetime_date(
-            datetime.date(year_ad, month_ad, 1))
+        now_np = nepali_datetime.datetime.now()
+        # Treat params as Nepali year/month directly (not Gregorian)
+        year_np = int(request.query_params.get('year', now_np.year))
+        month_np = int(request.query_params.get('month', now_np.month))
 
+        # Validate range (Nepali years are 2000–2099)
+        if not (2000 <= year_np <= 2099 and 1 <= month_np <= 12):
+            year_np = now_np.year
+            month_np = now_np.month
+
+        org = self._get_org(request.user)
         queryset = []
-        events = Event.objects.filter(
-            organization=self.request.user.employee.organization).order_by('start')
+        events = Event.objects.filter(organization=org).order_by('start')
 
         holidays = 0
         other_events = 0
         for event in events:
-            if event.start.year == date_np.year and event.start.month == date_np.month:
+            if event.start.year == year_np and event.start.month == month_np:
                 queryset.append(event)
                 if event.is_holiday:
                     holidays += event.duration
@@ -98,11 +108,12 @@ class EventViewSet(viewsets.ViewSet):
 
         data = {
             'events': serializer.data,
-            'holidays': holidays + self.count_saturdays(date_np.year, date_np.month),
-            'working_days': self.total_days_in_month(date_np.year, date_np.month) - (holidays + self.count_saturdays(date_np.year, date_np.month)),
+            'holidays': holidays + self.count_saturdays(year_np, month_np),
+            'working_days': self.total_days_in_month(year_np, month_np) - (holidays + self.count_saturdays(year_np, month_np)),
             'other_events': other_events,
         }
         return Response(data=data)
+
 
     def total_days_in_month(self, year, month):
         # Start on the first day of the month

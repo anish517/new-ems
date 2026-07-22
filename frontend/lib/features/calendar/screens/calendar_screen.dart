@@ -66,10 +66,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _error = null;
     });
     try {
+      final params = '?year=${_viewedMonth.year}&month=${_viewedMonth.month}';
       final eventsRes =
-          await ApiService().get('${AppConstants.calendarBase}/events/');
+          await ApiService().get('${AppConstants.calendarBase}/events/$params');
       final holidaysRes =
-          await ApiService().get('${AppConstants.calendarBase}/dates/');
+          await ApiService().get('${AppConstants.calendarBase}/dates/$params');
       if (!mounted) return;
       setState(() {
         _events = eventsRes.data is List

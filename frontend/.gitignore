@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+# Firebase
+backend/firebase-service-account.json
+
+# Google Services
+frontend/android/app/google-services.json

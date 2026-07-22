@@ -2,11 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/services/firebase_notification_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize FCM Notification service
+  final notificationService = FirebaseNotificationService();
+  await notificationService.init();
+  
   runApp(const ProviderScope(child: EmsApp()));
 }
+
 
 class EmsApp extends ConsumerWidget {
   const EmsApp({super.key});

@@ -39,6 +39,7 @@ class Event(models.Model):
     category = models.ForeignKey(
         Category, blank=True, on_delete=models.CASCADE, null=True)
     is_holiday = models.BooleanField(default=False, null=True)
+    is_important = models.BooleanField(default=False, null=True)
 
     def __str__(self):
         return self.title
