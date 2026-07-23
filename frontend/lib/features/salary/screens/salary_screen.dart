@@ -327,9 +327,6 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               '${_myNetSalary?['paid_leaves'] ?? '—'}'),
           _InfoRow(Iconsax.calendar_remove, 'Unpaid Leaves',
               '${_myNetSalary?['unpaid_leaves'] ?? '—'}'),
-          _InfoRow(Iconsax.money_recive, 'Net Salary',
-              _fmt(_myNetSalary?['net_salary'] ?? _mySalary?['basic_salary']),
-              bold: true),
 
           // Transactions history
           if (_myTransactions.isNotEmpty) ...[
@@ -465,8 +462,15 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }();
   Map<String, dynamic>? _netSalaryInfo;
+  final TextEditingController _netSalaryController = TextEditingController();
   bool _loading = true;
   bool _saving = false;
+
+  @override
+  void dispose() {
+    _netSalaryController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -494,7 +498,12 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
     try {
       final res = await ApiService()
           .get('/api/salary-management/net-salary/$_selSalaryId/?date=$_date');
-      if (mounted) setState(() => _netSalaryInfo = res.data);
+      if (mounted) {
+        setState(() {
+          _netSalaryInfo = res.data;
+          _netSalaryController.text = (_netSalaryInfo!['net_salary'] ?? '').toString();
+        });
+      }
     } catch (_) {}
   }
 
@@ -518,6 +527,7 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
         'fiscal_year': _selFiscalYear,
         'date': _date,
         'status': true,
+        'net_salary': _netSalaryController.text.trim(),
       });
       if (!mounted) return;
       Navigator.pop(context);
@@ -712,9 +722,39 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                     _InfoRow(Iconsax.calendar, 'Holidays',
                         '${_netSalaryInfo!['holidays']}'),
                     const Divider(color: Colors.white24),
-                    _InfoRow(Iconsax.money_recive, 'Net Salary Payable',
-                        'NPR ${_netSalaryInfo!['net_salary']}',
-                        bold: true),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Row(
+                              children: [
+                                Icon(Iconsax.money_recive, size: 20, color: AppColors.primary),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text('Net Salary Payable', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(
+                            width: 100,
+                            child: TextFormField(
+                              controller: _netSalaryController,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                              decoration: const InputDecoration(
+                                prefixText: 'NPR ',
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ]),
                 ),
               const SizedBox(height: 24),
@@ -872,12 +912,6 @@ class _EmployeeSalaryDetailSheetState
                 '${_netInfo!['paid_leaves'] ?? 0} days'),
             _InfoRow(Iconsax.calendar_remove, 'Unpaid Leaves Taken',
                 '${_netInfo!['unpaid_leaves'] ?? 0} days'),
-            const SizedBox(height: 8),
-            const Divider(),
-            const SizedBox(height: 8),
-            _InfoRow(Iconsax.money_recive, 'Net Salary (This Month)',
-                _fmt(_netInfo!['net_salary']),
-                bold: true),
           ],
           const SizedBox(height: 24),
         ]),

@@ -143,7 +143,7 @@ def is_within_radius(current_lat: float, current_lng: float, target_lat: float, 
     """
 
     EARTH_RADIUS = 6371000  # Earth's radius in meters
-    RADIUS_METERS = 500  # 500m radius — matches the text shown in the app UI
+    RADIUS_METERS = 50  # 50m radius — matches the text shown in the app UI
     delta_lat = radians((target_lat) - current_lat)
     delta_lon = radians(target_lng - current_lng)
 
