@@ -76,7 +76,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       setState(() {
         _events = eventsRes.data is List
             ? eventsRes.data
-            : (eventsRes.data['results'] ?? []);
+            : (eventsRes.data['events'] ?? []);
         // DateViewSet returns {'dates': [...], 'first_day': ..., ...}
         final holidayData = holidaysRes.data;
         if (holidayData is Map && holidayData['dates'] != null) {
@@ -116,7 +116,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   bool _matchesBsDay(dynamic item, int day) {
-    final raw = (item['date'] ?? item['start_date'] ?? '').toString();
+    final raw = (item['start'] ?? item['date'] ?? item['start_date'] ?? '').toString();
     // Assumes the API already returns BS-formatted dates (YYYY-MM-DD).
     // If it actually returns AD dates, convert first:
     // DateTime.parse(raw).toNepaliDateTime()

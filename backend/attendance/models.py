@@ -279,8 +279,16 @@ class Attendance(models.Model):
         if not check_in_out:
             raise ValueError("You must check in before checking out.")
 
-        # Record the check-out time
-        check_in_out.check_out = datetime.now().time()
+        # Record the check-out time (cap at 17:00:00 for those who forgot during office hours)
+        current_time = datetime.now().time()
+        import datetime as dt
+        office_end_time = dt.time(17, 0, 0)
+        
+        if current_time > office_end_time:
+            check_in_out.check_out = office_end_time
+        else:
+            check_in_out.check_out = current_time
+            
         check_in_out.save()
 
         # Create and assign notifications

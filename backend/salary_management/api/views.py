@@ -183,13 +183,21 @@ class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
         else:
             date_obj = nepali_datetime.date.today()
             
+        manual_net = request.data.get('net_salary')
+        if manual_net is not None:
+            try:
+                manual_net = float(manual_net)
+            except ValueError:
+                manual_net = None
+
         st = SalaryTransaction.objects.create(
             organization=organization,
             salary=salary,
             fiscal_year=fiscal_year,
             date=date_obj,
             content=content,
-            status=status_val
+            status=status_val,
+            manual_net_salary=manual_net
         )
         serializer = self.get_serializer(st)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

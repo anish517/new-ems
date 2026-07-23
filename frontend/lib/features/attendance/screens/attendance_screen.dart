@@ -144,6 +144,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   }) async {
     _autoActionTimer?.cancel();
     bool cancelled = false;
+    final completer = Completer<void>();
     _hasPromptedAutoAttendance = true;
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -153,11 +154,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       behavior: SnackBarBehavior.floating,
       action: SnackBarAction(
         label: 'CANCEL',
-        onPressed: () => cancelled = true,
+        onPressed: () {
+          cancelled = true;
+          _autoActionTimer?.cancel();
+          if (!completer.isCompleted) completer.complete();
+        },
       ),
     ));
-
-    final completer = Completer<void>();
 
     _autoActionTimer = Timer(const Duration(seconds: 5), () async {
       if (!cancelled && mounted) {
@@ -219,6 +222,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   }
 
   Future<void> _loadAll() async {
+    setState(() => _isLoading = true);
     await Future.wait([
       _loadTodayStatus(),
       _loadStats(),
@@ -230,6 +234,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       _loadOrgLogs();
       _loadRemoteList();
     }
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _loadTodayStatus() async {
@@ -698,7 +703,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           const Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                  'Note: Check-in and check-out both require you to be within 500m of your office or your approved remote location.',
+                  'Note: Check-in and check-out both require you to be within 50m of your office or your approved remote location.',
                   style:
                       TextStyle(color: AppColors.textSecondary, fontSize: 12))),
         ]),

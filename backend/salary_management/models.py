@@ -101,8 +101,12 @@ class SalaryTransaction(models.Model):
     def __str__(self) -> str:
         return f'{self.salary.employee.user.full_name}'
 
+    manual_net_salary = models.FloatField(null=True, blank=True, verbose_name="Manually Entered Net Salary")
+
     @property
     def net_salary(self):
+        if self.manual_net_salary is not None:
+            return self.manual_net_salary
         net_salary = Salary.calculate_net_salary(
             employee=self.salary.employee, year=self.date.year, month=self.date.month)
         return net_salary
