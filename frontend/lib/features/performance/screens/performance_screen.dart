@@ -15,21 +15,34 @@ class PerformanceScreen extends ConsumerStatefulWidget {
 
 class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   List _reviews = [];
+  List _categories = [];
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadReviews();
+    _loadAll();
   }
 
-  Future<void> _loadReviews() async {
+  Future<void> _loadAll() async {
     setState(() => _loading = true);
     try {
-      final res = await ApiService().get('/api/performance/reviews/');
+      final futures = [
+        ApiService().get('/api/performance/reviews/'),
+      ];
+      final isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
+      if (isAdmin) {
+        futures.add(ApiService().get('/api/performance/categories/'));
+      }
+      final results = await Future.wait(futures);
       if (!mounted) return;
       setState(() {
+        final res = results[0];
         _reviews = res.data is List ? res.data : (res.data['results'] ?? res.data);
+        if (isAdmin && results.length > 1) {
+          final catRes = results[1];
+          _categories = catRes.data is List ? catRes.data : (catRes.data['results'] ?? catRes.data);
+        }
         _loading = false;
       });
     } catch (_) {
@@ -44,28 +57,44 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Performance & Scores')),
       floatingActionButton: isAdmin
-          ? FloatingActionButton.extended(
-              onPressed: () => _showCreateReview(context),
-              backgroundColor: AppColors.primary,
-              icon: const Icon(Icons.add),
-              label: const Text('New Review'),
+          ? Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: 'categories',
+                  onPressed: () => _showManageCategories(context),
+                  backgroundColor: AppColors.accent,
+                  icon: const Icon(Icons.category, size: 20),
+                  label: const Text('Categories', style: TextStyle(fontSize: 12)),
+                ),
+                const SizedBox(height: 12),
+                FloatingActionButton.extended(
+                  heroTag: 'review',
+                  onPressed: () => _showCreateReview(context),
+                  backgroundColor: AppColors.primary,
+                  icon: const Icon(Icons.add),
+                  label: const Text('New Review'),
+                ),
+              ],
             )
           : null,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadReviews,
+              onRefresh: _loadAll,
               child: _reviews.isEmpty
                   ? const Center(child: Text('No performance reviews found',
                       style: TextStyle(color: AppColors.textSecondary)))
                   : ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(16),
                       itemCount: _reviews.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (ctx, i) => _ReviewCard(
                         review: _reviews[i],
                         isAdmin: isAdmin,
-                        onUpdate: _loadReviews,
+                        onUpdate: _loadAll,
                       ),
                     ),
             ),
@@ -78,7 +107,16 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
         backgroundColor: AppColors.surfaceDark,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-        builder: (_) => _CreateReviewSheet(onSuccess: _loadReviews),
+        builder: (_) => _CreateReviewSheet(onSuccess: _loadAll, categories: _categories),
+      );
+
+  void _showManageCategories(BuildContext ctx) => showModalBottomSheet(
+        context: ctx,
+        isScrollControlled: true,
+        backgroundColor: AppColors.surfaceDark,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        builder: (_) => _ManageCategoriesSheet(categories: _categories, onUpdate: _loadAll),
       );
 }
 
@@ -99,10 +137,36 @@ class _ReviewCard extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(isAdmin ? review['employee_name'] ?? 'Unknown Employee' : 'Review from ${review['reviewer_name']}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              Text(review['created_at']?.split('T')[0] ?? '',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(isAdmin ? review['employee_name'] ?? 'Unknown Employee' : 'Review from ${review['reviewer_name']}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                  if (isAdmin)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
+                      onPressed: () => _deleteReview(context, review['id']),
+                    ),
+                ],
+              ),
+              Row(
+                children: [
+                  Text(review['created_at']?.split('T')[0] ?? '',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  if (review['category_name'] != null) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(review['category_name'], style: const TextStyle(fontSize: 10, color: AppColors.accent, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ],
+              ),
             ])),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -171,6 +235,33 @@ class _ReviewCard extends StatelessWidget {
     );
   }
 
+  Future<void> _deleteReview(BuildContext context, int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Review'),
+        content: const Text('Are you sure you want to delete this performance review?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text('Delete')
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ApiService().delete('/api/performance/reviews/$id/');
+      onUpdate();
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Review deleted successfully'), backgroundColor: AppColors.success));
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
+    }
+  }
+
   void _showReplySheet(BuildContext ctx) {
     final ctrl = TextEditingController();
     bool saving = false;
@@ -220,7 +311,8 @@ class _ReviewCard extends StatelessWidget {
 
 class _CreateReviewSheet extends StatefulWidget {
   final VoidCallback onSuccess;
-  const _CreateReviewSheet({required this.onSuccess});
+  final List categories;
+  const _CreateReviewSheet({required this.onSuccess, required this.categories});
   @override
   State<_CreateReviewSheet> createState() => _CreateReviewSheetState();
 }
@@ -230,6 +322,7 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
   bool _loading = true;
   bool _saving = false;
   int? _selEmployee;
+  int? _selCategory;
   double _score = 5;
   final _feedbackCtrl = TextEditingController();
   final _suggCtrl = TextEditingController();
@@ -261,6 +354,7 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
     try {
       await ApiService().post('/api/performance/reviews/', data: {
         'employee': _selEmployee,
+        if (_selCategory != null) 'category': _selCategory,
         'score': _score.toInt(),
         'feedback': _feedbackCtrl.text.trim(),
         'suggestion': _suggCtrl.text.trim(),
@@ -298,6 +392,17 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
             }).toList(),
             onChanged: (v) => setState(() => _selEmployee = v),
           ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<int>(
+            value: _selCategory,
+            hint: const Text('Select Category (Optional)'),
+            items: widget.categories.map((c) {
+              return DropdownMenuItem<int>(
+                value: c['id'], child: Text(c['name'] ?? ''),
+              );
+            }).toList(),
+            onChanged: (v) => setState(() => _selCategory = v),
+          ),
           const SizedBox(height: 24),
           Row(children: [
             const Text('Score (1-10): ', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -319,6 +424,81 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
           )
         ]),
       ),
+    );
+  }
+}
+
+class _ManageCategoriesSheet extends StatefulWidget {
+  final List categories;
+  final VoidCallback onUpdate;
+  const _ManageCategoriesSheet({required this.categories, required this.onUpdate});
+
+  @override
+  State<_ManageCategoriesSheet> createState() => _ManageCategoriesSheetState();
+}
+
+class _ManageCategoriesSheetState extends State<_ManageCategoriesSheet> {
+  final _nameCtrl = TextEditingController();
+  bool _saving = false;
+
+  Future<void> _addCategory() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
+    setState(() => _saving = true);
+    try {
+      await ApiService().post('/api/performance/categories/', data: {'name': name});
+      _nameCtrl.clear();
+      widget.onUpdate();
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e))));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _deleteCategory(int id) async {
+    try {
+      await ApiService().delete('/api/performance/categories/$id/');
+      widget.onUpdate();
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e))));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+          left: 24, right: 24, top: 24, bottom: MediaQuery.of(context).viewInsets.bottom + 24),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Text('Manage Categories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        if (widget.categories.isNotEmpty) ...[
+          const Text('Existing Categories', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: widget.categories.map((c) => Chip(
+              label: Text(c['name'] ?? ''),
+              deleteIcon: const Icon(Icons.close, size: 16),
+              onDeleted: () => _deleteCategory(c['id']),
+            )).toList(),
+          ),
+          const SizedBox(height: 24),
+        ],
+        TextField(
+          controller: _nameCtrl,
+          decoration: const InputDecoration(labelText: 'New Category Name'),
+        ),
+        const SizedBox(height: 24),
+        ElevatedButton(
+          onPressed: _saving ? null : _addCategory,
+          child: _saving ? const CircularProgressIndicator() : const Text('Add Category'),
+        )
+      ]),
     );
   }
 }

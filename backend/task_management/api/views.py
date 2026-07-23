@@ -55,7 +55,7 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
             updated_at=today,
         )
 
-class TaskRetrieveUpdateView(generics.RetrieveUpdateAPIView):
+class TaskRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     model = Task
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated]

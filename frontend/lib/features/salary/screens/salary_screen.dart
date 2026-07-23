@@ -189,6 +189,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
       child: _allSalaries.isEmpty
           ? const Center(child: Text('No salary configurations found.'))
           : ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16).copyWith(bottom: 80),
               itemCount: _allSalaries.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -255,16 +256,44 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
       child: _allTransactions.isEmpty
           ? const Center(child: Text('No transactions issued yet.'))
           : ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16).copyWith(bottom: 80),
               itemCount: _allTransactions.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (ctx, i) {
                 final tx = _allTransactions[i];
                 return _TransactionTile(tx,
-                    empName: _empName(tx['employee'] ?? 0));
+                    empName: _empName(tx['employee'] ?? 0), isAdmin: true, onDelete: () => _deleteTransaction(tx['id']));
               },
             ),
     );
+  }
+
+  Future<void> _deleteTransaction(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Transaction'),
+        content: const Text('Are you sure you want to delete this salary transaction?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text('Delete')
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ApiService().delete('${AppConstants.salaryBase}/transactions/$id/');
+      _loadData();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transaction deleted successfully'), backgroundColor: AppColors.success));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
+    }
   }
 
   Widget _buildEmployeeView() {
@@ -962,7 +991,9 @@ class _InfoRow extends StatelessWidget {
 class _TransactionTile extends StatelessWidget {
   final Map tx;
   final String? empName;
-  const _TransactionTile(this.tx, {this.empName});
+  final bool isAdmin;
+  final VoidCallback? onDelete;
+  const _TransactionTile(this.tx, {this.empName, this.isAdmin = false, this.onDelete});
   @override
   Widget build(BuildContext context) => Card(
         margin: const EdgeInsets.only(bottom: 8),
@@ -989,11 +1020,24 @@ class _TransactionTile extends StatelessWidget {
                         style: const TextStyle(
                             color: AppColors.textSecondary, fontSize: 13)),
                   ])),
-              Text('NPR ${tx['net_salary'] ?? '—'}',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.success,
-                      fontSize: 15)),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('NPR ${tx['net_salary'] ?? '—'}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.success,
+                          fontSize: 15)),
+                  if (isAdmin)
+                    InkWell(
+                      onTap: onDelete,
+                      child: const Padding(
+                        padding: EdgeInsets.only(top: 4.0),
+                        child: Text('Delete', style: TextStyle(color: AppColors.error, fontSize: 12)),
+                      ),
+                    )
+                ],
+              ),
             ]),
             const SizedBox(height: 10),
             const Divider(height: 1),

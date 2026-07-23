@@ -472,6 +472,36 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     }
   }
 
+  Future<void> _deleteLog(int id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Attendance Log'),
+        content: const Text('Are you sure you want to delete this attendance record?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await ApiService().delete('${AppConstants.attendanceBase}/$id/');
+      _showSnack('Attendance log deleted successfully', AppColors.success);
+      _loadOrgLogs();
+    } catch (e) {
+      if (mounted) {
+        _showSnack('Failed to delete log: ${ApiService.getErrorMessage(e)}', AppColors.error);
+      }
+    }
+  }
+
   void _showSnack(String msg, Color color) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -718,11 +748,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   child: Text('No attendance logs found.',
                       style: TextStyle(color: AppColors.textSecondary)))
               : ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
                   itemCount: _orgLogs.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (_, i) =>
-                      _AttendanceLogTile(log: _orgLogs[i], showName: true),
+                      _AttendanceLogTile(log: _orgLogs[i], showName: true, onDelete: () => _deleteLog(_orgLogs[i]['id'])),
                 ),
         );
 
@@ -735,6 +766,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   child: Text('No employees found.',
                       style: TextStyle(color: AppColors.textSecondary)))
               : ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
                   itemCount: _remoteEmployees.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -793,7 +825,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 class _AttendanceLogTile extends StatelessWidget {
   final Map log;
   final bool showName;
-  const _AttendanceLogTile({required this.log, this.showName = false});
+  final VoidCallback? onDelete;
+  const _AttendanceLogTile({required this.log, this.showName = false, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -875,6 +908,11 @@ class _AttendanceLogTile extends StatelessWidget {
                         TextStyle(fontSize: 10, color: AppColors.accent)),
               ),
           ]),
+          if (onDelete != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: AppColors.error),
+              onPressed: onDelete,
+            ),
         ]),
       ),
     );

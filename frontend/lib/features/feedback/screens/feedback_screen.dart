@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class FeedbackScreen extends ConsumerStatefulWidget {
   const FeedbackScreen({super.key});
@@ -38,6 +39,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Feedback & Complaints')),
@@ -54,6 +56,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
               child: _complaints.isEmpty
                   ? const Center(child: Text('No complaints filed yet'))
                   : ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(16),
                       itemCount: _complaints.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -66,7 +69,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                                 ? AppColors.warning
                                 : AppColors.textSecondary;
                         return GestureDetector(
-                          onTap: () => _showComplaintDetailsDialog(context, c),
+                          onTap: () => _showComplaintDetails(c, isAdmin),
                           child: Card(
                             child: Padding(
                               padding: const EdgeInsets.all(16),
@@ -140,16 +143,19 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
     );
   }
 
-  void _showComplaintDetailsDialog(BuildContext ctx, Map complaint) =>
-      showModalBottomSheet(
-        context: ctx,
-        isScrollControlled: true,
-        backgroundColor: AppColors.surfaceDark,
-        shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-        builder: (_) => _ComplaintDetailsSheet(
-            complaint: complaint, onReplySuccess: _loadComplaints),
-      );
+  void _showComplaintDetails(Map c, bool isAdmin) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => _ComplaintDetailsSheet(
+        complaint: c, 
+        isAdmin: isAdmin,
+        onReplySuccess: _loadComplaints
+      ),
+    );
+  }
 
   void _showSubmitDialog(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
@@ -264,8 +270,9 @@ class _SubmitComplaintSheetState extends State<_SubmitComplaintSheet> {
 // ─── Complaint Details & Replies Sheet ────────────────────────────────────────
 class _ComplaintDetailsSheet extends StatefulWidget {
   final Map complaint;
+  final bool isAdmin;
   final VoidCallback onReplySuccess;
-  const _ComplaintDetailsSheet({required this.complaint, required this.onReplySuccess});
+  const _ComplaintDetailsSheet({required this.complaint, required this.isAdmin, required this.onReplySuccess});
 
   @override
   State<_ComplaintDetailsSheet> createState() => _ComplaintDetailsSheetState();
@@ -274,6 +281,36 @@ class _ComplaintDetailsSheet extends StatefulWidget {
 class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
   final _replyController = TextEditingController();
   bool _isReplying = false;
+
+  Future<void> _deleteComplaint() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Complaint'),
+        content: const Text('Are you sure you want to delete this complaint?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text('Delete')
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ApiService().delete('${AppConstants.feedbackBase}/${widget.complaint['id']}/');
+      widget.onReplySuccess();
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Complaint deleted successfully'), backgroundColor: AppColors.success));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
+    }
+  }
 
   Future<void> _submitReply() async {
     final text = _replyController.text.trim();
@@ -320,8 +357,19 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(widget.complaint['title'] ?? 'Complaint',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Row(
+            children: [
+              Expanded(
+                child: Text(widget.complaint['title'] ?? 'Complaint',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              if (widget.isAdmin)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                  onPressed: _deleteComplaint,
+                ),
+            ],
+          ),
           if (widget.complaint['owner_name'] != null) ...[
             const SizedBox(height: 4),
             Text('Submitted by: ${widget.complaint['owner_name']}',

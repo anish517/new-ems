@@ -31,10 +31,91 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> {
     }
   }
 
+  Future<void> _deleteEmployee(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Employee'),
+        content: const Text('Are you sure you want to delete this employee?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text('Delete')
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ApiService().delete('${AppConstants.organizationBase}/employees/$id/');
+      _load();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Employee deleted successfully'), backgroundColor: AppColors.success));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
+    }
+  }
+
   List get _filtered => _employees.where((e) {
     final name = '${e['user']?['first_name'] ?? ''} '.toLowerCase();
     return name.contains(_search.toLowerCase());
   }).toList();
+
+  void _showEmployeeDetails(Map e) {
+    final user = e['user'] ?? {};
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(left: 24, right: 24, top: 24, bottom: MediaQuery.of(context).padding.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                  child: const Icon(Icons.person, size: 30, color: AppColors.primary),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim(), 
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text(e['employee_type'] ?? 'Employee', style: const TextStyle(color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const Text('Contact Information', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            _DetailRow(icon: Icons.email_outlined, label: 'Email', value: user['email'] ?? 'N/A'),
+            _DetailRow(icon: Icons.phone_outlined, label: 'Phone', value: user['phone_number'] ?? 'N/A'),
+            const SizedBox(height: 20),
+            const Text('Work Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            _DetailRow(icon: Icons.business_outlined, label: 'Department', value: e['department']?['name'] ?? 'N/A'),
+            _DetailRow(icon: Icons.badge_outlined, label: 'Designation', value: e['designation']?['title'] ?? 'N/A'),
+            const SizedBox(height: 20),
+            const Text('Personal Info', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            _DetailRow(icon: Icons.calendar_today_outlined, label: 'Date of Birth', value: e['date_of_birth'] ?? 'N/A'),
+            _DetailRow(icon: Icons.people_outline, label: 'Gender', value: e['gender'] ?? 'N/A'),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -61,33 +142,93 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> {
       Expanded(
         child: _loading
           ? const Center(child: CircularProgressIndicator())
-          : ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: _filtered.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (_, i) {
                 final e = _filtered[i];
                 final name = '${e['user']?['first_name'] ?? ''} ';
                 return Card(child: ListTile(
+                  onTap: () => _showEmployeeDetails(e),
                   leading: CircleAvatar(backgroundColor: AppColors.primary,
                     child: Text(name.isNotEmpty ? name[0] : '?',
                       style: const TextStyle(color: Colors.white))),
                   title: Text(name.trim()),
                   subtitle: Text(e['employee_type'] ?? ''),
-                  trailing: Icon(e['is_active'] == true ? Icons.circle : Icons.circle_outlined,
-                    color: e['is_active'] == true ? AppColors.success : AppColors.error, size: 12),
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: AppColors.surfaceDark,
-                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-                      builder: (_) => AddSalarySheet(employeeId: e['id'], employeeName: name.trim()),
-                    );
-                  },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(e['is_active'] == true ? Icons.circle : Icons.circle_outlined,
+                        color: e['is_active'] == true ? AppColors.success : AppColors.error, size: 12),
+                      PopupMenuButton<String>(
+                        onSelected: (val) {
+                          if (val == 'edit') {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: AppColors.surfaceDark,
+                              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                              builder: (_) => AddEmployeeSheet(onSuccess: _load, employee: e),
+                            );
+                          } else if (val == 'delete') {
+                            _deleteEmployee(e['id']);
+                          } else if (val == 'salary') {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: AppColors.surfaceDark,
+                              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                              builder: (_) => AddSalarySheet(employeeId: e['id'], employeeName: name.trim()),
+                            );
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(value: 'salary', child: Text('Add Salary')),
+                          const PopupMenuItem(value: 'edit', child: Text('Edit Employee')),
+                          const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.error))),
+                        ],
+                      ),
+                    ],
+                  ),
                 ));
               }),
+            ),
       ),
     ]),
   );
+}
+
+class _DetailRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _DetailRow({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: AppColors.surfaceDark, borderRadius: BorderRadius.circular(8)),
+              child: Icon(icon, size: 20, color: AppColors.primary),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 }

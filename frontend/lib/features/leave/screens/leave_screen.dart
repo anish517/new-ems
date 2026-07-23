@@ -120,6 +120,33 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
     }
   }
 
+  Future<void> _deleteLeave(int leaveId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Leave Request'),
+        content: const Text('Are you sure you want to delete this leave request?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text('Delete')
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ApiService().delete('${AppConstants.leaveBase}/update/$leaveId/');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Leave request deleted successfully'), backgroundColor: AppColors.success));
+      _loadLeaves();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
@@ -151,7 +178,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                         padding: const EdgeInsets.all(16),
                         itemCount: _requests.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (_, i) => _LeaveCard(_requests[i]),
+                        itemBuilder: (_, i) => _LeaveCard(_requests[i], isAdmin: isAdmin, onDelete: () => _deleteLeave(_requests[i]['id'])),
                       ),
               ),
 
@@ -170,6 +197,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                                 leave: _pending[i],
                                 onApprove: () => _approveLeave(_pending[i]['id'], true),
                                 onReject:  () => _approveLeave(_pending[i]['id'], false),
+                                onDelete:  () => _deleteLeave(_pending[i]['id']),
                               ),
                             ),
                     )
@@ -191,7 +219,9 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
 // ─── Leave Card (My Leaves) ──────────────────────────────────────────────────
 class _LeaveCard extends StatelessWidget {
   final Map data;
-  const _LeaveCard(this.data);
+  final bool isAdmin;
+  final VoidCallback onDelete;
+  const _LeaveCard(this.data, {required this.isAdmin, required this.onDelete});
 
   Color get _statusColor {
     if (data['is_approved'] == true) return AppColors.success;
@@ -223,17 +253,31 @@ class _LeaveCard extends StatelessWidget {
                         ? AppColors.success
                         : AppColors.warning)),
           ]),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: _statusColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(_status,
-                style: TextStyle(
-                    color: _statusColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600)),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(_status,
+                    style: TextStyle(
+                        color: _statusColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600)),
+              ),
+              if (isAdmin || _status == 'Pending') ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                  onPressed: onDelete,
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
+                ),
+              ],
+            ],
           ),
         ),
       );
@@ -242,8 +286,8 @@ class _LeaveCard extends StatelessWidget {
 // ─── Admin Leave Approval Card ───────────────────────────────────────────────
 class _AdminLeaveCard extends StatelessWidget {
   final Map leave;
-  final VoidCallback onApprove, onReject;
-  const _AdminLeaveCard({required this.leave, required this.onApprove, required this.onReject});
+  final VoidCallback onApprove, onReject, onDelete;
+  const _AdminLeaveCard({required this.leave, required this.onApprove, required this.onReject, required this.onDelete});
 
   @override
   Widget build(BuildContext context) => Card(
@@ -264,6 +308,13 @@ class _AdminLeaveCard extends StatelessWidget {
                 child: const Text('Pending',
                     style: TextStyle(color: AppColors.warning, fontSize: 11,
                         fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                onPressed: onDelete,
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
               ),
             ]),
 

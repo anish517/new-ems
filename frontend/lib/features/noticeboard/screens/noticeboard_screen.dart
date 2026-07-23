@@ -62,6 +62,36 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
     }
   }
 
+  Future<void> _deleteNotice(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Notice'),
+        content: const Text('Are you sure you want to delete this notice?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text('Delete')
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ApiService().delete('${AppConstants.noticesEndpoint}$id/');
+      _loadNotices();
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notice deleted successfully'), backgroundColor: AppColors.success));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
@@ -84,6 +114,7 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
               child: _notices.isEmpty
                   ? const Center(child: Text('No notices yet'))
                   : ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(16),
                       itemCount: _notices.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -93,7 +124,7 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                         // Strip simple HTML tags for preview
                         final cleanDesc = desc.replaceAll(RegExp(r'<[^>]*>'), '').trim();
                         return InkWell(
-                          onTap: () => _showNoticeDetail(ctx, n),
+                          onTap: () => _showNoticeDetail(ctx, n, isAdmin),
                           borderRadius: BorderRadius.circular(12),
                           child: Card(
                             child: Padding(
@@ -145,7 +176,7 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
     );
   }
 
-  void _showNoticeDetail(BuildContext ctx, Map n) {
+  void _showNoticeDetail(BuildContext ctx, Map n, bool isAdmin) {
     final desc = n['description'] ?? n['content'] ?? '';
     final cleanDesc = desc.replaceAll(RegExp(r'<[^>]*>'), '').trim();
     showModalBottomSheet(
@@ -181,8 +212,19 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            Text(n['title'] ?? '',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(n['title'] ?? '',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                ),
+                if (isAdmin)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                    onPressed: () => _deleteNotice(n['id']),
+                  ),
+              ],
+            ),
             const SizedBox(height: 6),
             Text(_fmtDate(n['date']?.toString(), fallback: n['created_at']?.toString()),
                 style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),

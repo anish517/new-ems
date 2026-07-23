@@ -78,7 +78,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ApiService().patch(
-        '${AppConstants.taskBase}/task/$taskId/',
+        '${AppConstants.taskBase}/tasks/$taskId/',
         data: {'status': newStatus},
       );
       messenger.showSnackBar(SnackBar(
@@ -93,6 +93,33 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ));
+    }
+  }
+
+  Future<void> _deleteTask(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Task'),
+        content: const Text('Are you sure you want to delete this task?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text('Delete')
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ApiService().delete('${AppConstants.taskBase}/tasks/$id/');
+      _loadTasks();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task deleted successfully'), backgroundColor: AppColors.success));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
     }
   }
 
@@ -138,6 +165,14 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                 child: Text(task['title'] ?? '',
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               ),
+              if (ref.read(currentUserProvider)?.canManage == true)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                  onPressed: () {
+                    Navigator.pop(sheetCtx);
+                    _deleteTask(task['id']);
+                  },
+                ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -506,8 +541,15 @@ class _TaskList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => tasks.isEmpty
-      ? const Center(child: Text('No tasks', style: TextStyle(color: AppColors.textSecondary)))
+      ? SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.7,
+            child: const Center(child: Text('No tasks', style: TextStyle(color: AppColors.textSecondary))),
+          ),
+        )
       : ListView.separated(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
           itemCount: tasks.length,
           separatorBuilder: (_, __) => const SizedBox(height: 8),
