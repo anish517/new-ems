@@ -33,6 +33,7 @@ class EmsApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.dark,
+      scrollBehavior: AppScrollBehavior(),
       routerConfig: router,
     );
   }

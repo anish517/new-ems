@@ -81,6 +81,8 @@ class EmployeeSerializer(serializers.ModelSerializer):
     date_of_birth = serializers.CharField(
         required=True, allow_null=True, style={"input_type": "password"}
     )
+    department_name = serializers.SerializerMethodField()
+    designation_title = serializers.SerializerMethodField()
 
     class Meta:
         model = Employee
@@ -97,7 +99,15 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "personal_email",
             "is_active",
             "employee_type",
+            "department_name",
+            "designation_title",
         ]
+
+    def get_department_name(self, obj):
+        return obj.post.department.department_name if obj.post and obj.post.department else None
+
+    def get_designation_title(self, obj):
+        return obj.post.title if obj.post else None
 
     def create(self, validated_data):
         user_data = validated_data.pop("user")
