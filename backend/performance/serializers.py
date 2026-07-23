@@ -1,14 +1,23 @@
 from rest_framework import serializers
-from performance.models import PerformanceReview
+from performance.models import PerformanceReview, PerformanceCategory
+
+
+class PerformanceCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PerformanceCategory
+        fields = ['id', 'name', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
 
 class PerformanceReviewSerializer(serializers.ModelSerializer):
     reviewer_name = serializers.SerializerMethodField()
     employee_name = serializers.SerializerMethodField()
+    category_name = serializers.SerializerMethodField()
 
     class Meta:
         model = PerformanceReview
         fields = ['id', 'employee', 'reviewer', 'reviewer_name', 'employee_name',
+                  'category', 'category_name',
                   'score', 'feedback', 'suggestion', 'reply', 'replied_at', 'created_at']
         read_only_fields = ['id', 'reviewer', 'replied_at', 'created_at']
 
@@ -21,3 +30,8 @@ class PerformanceReviewSerializer(serializers.ModelSerializer):
         if obj.employee and obj.employee.user:
             return obj.employee.user.full_name
         return 'Unknown'
+        
+    def get_category_name(self, obj):
+        if obj.category:
+            return obj.category.name
+        return None

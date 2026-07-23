@@ -64,3 +64,20 @@ class NoticeboardListView(generics.ListCreateAPIView):
             else:
                 serializer.save(date=date_val, created_at=today)
 
+class NoticeDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = NoticeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        from django.db.models import Q
+        user = self.request.user
+        try:
+            employee = user.employee
+            return Notice.objects.filter(Q(organization=employee.organization) | Q(organization__isnull=True))
+        except Exception:
+            orgs = user.organization.all()
+            if orgs.exists():
+                return Notice.objects.filter(Q(organization__in=orgs) | Q(organization__isnull=True))
+            if user.is_superuser:
+                return Notice.objects.all()
+            return Notice.objects.none()

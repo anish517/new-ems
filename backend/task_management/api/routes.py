@@ -1,17 +1,18 @@
 from django.urls import path
-
-from . import views
+from task_management.api.views import (
+    EmployeeTaskSummaryAPIView, OrganizationProjectSummary,
+    OrganizationTaskSummaryAPIView, ProjectListAPIView, ProjectTaskSummaryAPIView, TaskListCreateAPIView, TaskRetrieveUpdateDestroyView)
 
 urlpatterns = [
-    path('tasks/', views.TaskListCreateAPIView.as_view()),
-    path('task/<int:pk>/', views.TaskRetrieveUpdateView.as_view()),
-    path('employee-summary/<int:employee_id>/',
-         views.EmployeeTaskSummaryAPIView.as_view()),
-    path('organization-summary/<int:organization_id>/',
-         views.OrganizationTaskSummaryAPIView.as_view()),
-    path('project-summary/<int:project_id>/',
-         views.ProjectTaskSummaryAPIView.as_view()),
-    path('project-summary/organization/<int:organization_id>/',
-         views.OrganizationProjectSummary.as_view()),
-    path('projects/', views.ProjectListAPIView.as_view())
+    path('tasks/', TaskListCreateAPIView.as_view()),
+    path('tasks/<int:pk>/', TaskRetrieveUpdateDestroyView.as_view()),
+    path('tasks/employee-summary/<int:employee_id>/',
+         EmployeeTaskSummaryAPIView.as_view()),
+    path('tasks/organization-summary/<int:organization_id>/',
+         OrganizationTaskSummaryAPIView.as_view()),
+    path('tasks/project-summary/<int:project_id>/',
+         ProjectTaskSummaryAPIView.as_view()),
+    path('projects/organization-summary/<int:organization_id>/',
+         OrganizationProjectSummary.as_view()),
+    path('projects/', ProjectListAPIView.as_view()),
 ]

@@ -5,7 +5,8 @@ import '../../../core/constants/app_constants.dart';
 
 class AddEmployeeSheet extends StatefulWidget {
   final VoidCallback onSuccess;
-  const AddEmployeeSheet({super.key, required this.onSuccess});
+  final Map? employee;
+  const AddEmployeeSheet({super.key, required this.onSuccess, this.employee});
 
   @override
   State<AddEmployeeSheet> createState() => _AddEmployeeSheetState();
@@ -15,9 +16,45 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
   final _formKey = GlobalKey<FormState>();
   
   String _fname = '', _lname = '', _email = '', _password = '';
-  String _phone = '', _gender = 'male';
-  final DateTime _dob = DateTime.now();
+  String _phone = '', _gender = 'male', _employeeType = 'full_time';
+  DateTime _dob = DateTime.now();
+  final _dobCtrl = TextEditingController();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.employee != null) {
+      final user = widget.employee!['user'] ?? {};
+      _fname = user['first_name'] ?? '';
+      _lname = user['last_name'] ?? '';
+      _email = user['email'] ?? '';
+      _phone = widget.employee!['phone_no'] ?? '';
+      _gender = widget.employee!['gender'] ?? 'male';
+      _employeeType = widget.employee!['employee_type'] ?? 'full_time';
+      if (widget.employee!['date_of_birth'] != null) {
+        try {
+          _dob = DateTime.parse(widget.employee!['date_of_birth']);
+        } catch (_) {}
+      }
+    }
+    _dobCtrl.text = "${_dob.year}-${_dob.month.toString().padLeft(2, '0')}-${_dob.day.toString().padLeft(2, '0')}";
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _dob,
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        _dob = picked;
+        _dobCtrl.text = "${_dob.year}-${_dob.month.toString().padLeft(2, '0')}-${_dob.day.toString().padLeft(2, '0')}";
+      });
+    }
+  }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -25,26 +62,30 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
     setState(() => _isLoading = true);
 
     try {
-      await ApiService().post(
-        '${AppConstants.organizationBase}/employees/',
-        data: {
-          'user': {
-            'first_name': _fname,
-            'last_name': _lname,
-            'email': _email,
-            'password': _password,
-          },
-          'post': 1, // Default seeded post
-          'gender': _gender,
-          'date_of_birth': "${_dob.year}-${_dob.month.toString().padLeft(2, '0')}-${_dob.day.toString().padLeft(2, '0')}",
-          'father_name': 'N/A',
-          'phone_no': _phone,
-          'official_email': _email,
-          'personal_email': _email,
-          'is_active': true,
-          'employee_type': 'full_time',
-        }
-      );
+      final data = {
+        'user': {
+          'first_name': _fname,
+          'last_name': _lname,
+          'email': _email,
+          if (_password.isNotEmpty) 'password': _password,
+        },
+        'gender': _gender,
+        'date_of_birth': "${_dob.year}-${_dob.month.toString().padLeft(2, '0')}-${_dob.day.toString().padLeft(2, '0')}",
+        'phone_no': _phone,
+      };
+
+      if (widget.employee == null) {
+        data['post'] = 1; // Default post
+        data['father_name'] = 'N/A';
+        data['official_email'] = _email;
+        data['personal_email'] = _email;
+        data['is_active'] = true;
+        data['employee_type'] = _employeeType;
+        await ApiService().post('${AppConstants.organizationBase}/employees/', data: data);
+      } else {
+        await ApiService().patch('${AppConstants.organizationBase}/employees/${widget.employee!['id']}/', data: data);
+      }
+
       if (mounted) {
         Navigator.pop(context);
         widget.onSuccess();
@@ -74,16 +115,18 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Add New Employee', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(widget.employee == null ? 'Add New Employee' : 'Edit Employee', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               Row(children: [
                 Expanded(child: TextFormField(
+                  initialValue: _fname,
                   decoration: const InputDecoration(labelText: 'First Name'),
                   validator: (v) => v!.isEmpty ? 'Required' : null,
                   onSaved: (v) => _fname = v!,
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: TextFormField(
+                  initialValue: _lname,
                   decoration: const InputDecoration(labelText: 'Last Name'),
                   validator: (v) => v!.isEmpty ? 'Required' : null,
                   onSaved: (v) => _lname = v!,
@@ -91,20 +134,22 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
               ]),
               const SizedBox(height: 12),
               TextFormField(
+                initialValue: _email,
                 decoration: const InputDecoration(labelText: 'Email Address'),
                 validator: (v) => v!.contains('@') ? null : 'Invalid email',
                 onSaved: (v) => _email = v!,
               ),
               const SizedBox(height: 12),
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Password'),
+                decoration: InputDecoration(labelText: widget.employee == null ? 'Password' : 'Password (leave blank to keep current)'),
                 obscureText: true,
-                validator: (v) => v!.length < 6 ? 'Min 6 chars' : null,
-                onSaved: (v) => _password = v!,
+                validator: (v) => (widget.employee == null && v!.length < 6) ? 'Min 6 chars' : null,
+                onSaved: (v) => _password = v ?? '',
               ),
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(child: TextFormField(
+                  initialValue: _phone,
                   decoration: const InputDecoration(labelText: 'Phone'),
                   onSaved: (v) => _phone = v ?? '',
                 )),
@@ -119,12 +164,36 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                   onChanged: (v) => setState(() => _gender = v!),
                 )),
               ]),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: DropdownButtonFormField<String>(
+                  initialValue: _employeeType,
+                  decoration: const InputDecoration(labelText: 'Employee Type'),
+                  items: const [
+                    DropdownMenuItem(value: 'full_time', child: Text('Full Time')),
+                    DropdownMenuItem(value: 'part_time', child: Text('Part Time')),
+                    DropdownMenuItem(value: 'contract', child: Text('Contract')),
+                    DropdownMenuItem(value: 'intern', child: Text('Intern')),
+                  ],
+                  onChanged: (v) => setState(() => _employeeType = v!),
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(
+                  controller: _dobCtrl,
+                  readOnly: true,
+                  onTap: _pickDate,
+                  decoration: const InputDecoration(
+                    labelText: 'Date of Birth',
+                    suffixIcon: Icon(Icons.calendar_month),
+                  ),
+                )),
+              ]),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _isLoading ? null : _submit,
                 child: _isLoading 
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Add Employee')
+                    : Text(widget.employee == null ? 'Add Employee' : 'Save Changes')
               )
             ],
           ),

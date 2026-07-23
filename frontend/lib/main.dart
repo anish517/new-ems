@@ -1,3 +1,5 @@
+import 'package:ems_app/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router.dart';
@@ -6,14 +8,17 @@ import 'core/services/firebase_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   // Initialize FCM Notification service
   final notificationService = FirebaseNotificationService();
   await notificationService.init();
-  
+
   runApp(const ProviderScope(child: EmsApp()));
 }
-
 
 class EmsApp extends ConsumerWidget {
   const EmsApp({super.key});

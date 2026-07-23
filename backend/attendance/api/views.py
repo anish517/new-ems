@@ -20,7 +20,7 @@ class IsOrgAdmin(BasePermission):
             return False
 
 
-class AttendanceDetailAPIView(generics.RetrieveAPIView):
+class AttendanceDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
     queryset = Attendance.objects.all()
     serializer_class = AttendanceSerializer

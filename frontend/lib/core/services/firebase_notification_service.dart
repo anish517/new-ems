@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import 'api_service.dart';
 
 @pragma('vm:entry-point')
@@ -23,10 +24,20 @@ class FirebaseNotificationService {
 
   Future<void> init() async {
     if (_isInitialized) return;
+    if (kIsWeb) {
+      _isInitialized = true;
+      return;
+    }
 
-    await Firebase.initializeApp();
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
+    } catch (_) {}
     _fcm = FirebaseMessaging.instance;
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    if (!kIsWeb) {
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    }
 
     // Request permissions (iOS/Android 13+)
     NotificationSettings settings = await _fcm.requestPermission(
@@ -39,18 +50,20 @@ class FirebaseNotificationService {
       print('User granted permission for notifications');
     }
 
-    // Setup Local Notifications for FOREGROUND messages
-    const AndroidInitializationSettings androidInitSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initSettings =
-        InitializationSettings(android: androidInitSettings);
+    if (!kIsWeb) {
+      // Setup Local Notifications for FOREGROUND messages
+      const AndroidInitializationSettings androidInitSettings =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const InitializationSettings initSettings =
+          InitializationSettings(android: androidInitSettings);
 
-    await _localNotifications.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: (details) {
-        _handleNotificationTap(details.payload);
-      },
-    );
+      await _localNotifications.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: (details) {
+          _handleNotificationTap(details.payload);
+        },
+      );
+    }
 
     // Listen for messages while app is in foreground
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -58,7 +71,9 @@ class FirebaseNotificationService {
       print('Message data: ${message.data}');
 
       if (message.notification != null) {
-        _showLocalNotification(message);
+        if (!kIsWeb) {
+          _showLocalNotification(message);
+        }
       }
     });
 
@@ -103,6 +118,7 @@ class FirebaseNotificationService {
 
   Future<void> registerDeviceToken() async {
     // Called only when authenticated by AuthProvider
+    if (kIsWeb) return;
 
     try {
       final fcmToken = await _fcm.getToken();

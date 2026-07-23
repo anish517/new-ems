@@ -27,7 +27,7 @@ class RetrieveLeaveRequestApiView(generics.RetrieveAPIView):
         return obj
 
 
-class UpdateLeaveRequestApiView(generics.UpdateAPIView):
+class UpdateLeaveRequestApiView(generics.RetrieveUpdateDestroyAPIView):
     queryset = LeaveRequest.objects.all()
     serializer_class = LeaveRequestSerializer
 

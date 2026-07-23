@@ -105,7 +105,7 @@ class NetSalaryAPIView(generics.RetrieveAPIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class SalaryTransactionRetrieveAPIView(generics.RetrieveAPIView):
+class SalaryTransactionRetrieveAPIView(generics.RetrieveUpdateDestroyAPIView):
     model = SalaryTransaction
     serializer_class = SalaryTransactionSerializer
     permission_classes = [IsAuthenticated]

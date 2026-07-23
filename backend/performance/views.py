@@ -1,13 +1,32 @@
 from django.utils import timezone
-from rest_framework import generics, status
+from rest_framework import generics, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
 from notification.models import Notification
 from organization.models import Employee
-from performance.models import PerformanceReview
-from performance.serializers import PerformanceReviewSerializer
+from performance.models import PerformanceReview, PerformanceCategory
+from performance.serializers import PerformanceReviewSerializer, PerformanceCategorySerializer
+
+
+class PerformanceCategoryViewSet(viewsets.ModelViewSet):
+    serializer_class = PerformanceCategorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        try:
+            org = user.organization.first()
+            return PerformanceCategory.objects.filter(organization=org)
+        except Exception:
+            return PerformanceCategory.objects.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        org = user.organization.first()
+        if org:
+            serializer.save(organization=org)
 
 
 class PerformanceReviewListCreateView(generics.ListCreateAPIView):
@@ -46,6 +65,26 @@ class PerformanceReviewListCreateView(generics.ListCreateAPIView):
                 message=f'You received a performance score of {review.score}/10. Tap to view.',
                 is_read=False,
             )
+
+
+class PerformanceReviewRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = PerformanceReviewSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        is_admin = user.organization.exists() or user.is_superuser
+        if is_admin:
+            try:
+                org = user.organization.first()
+                return PerformanceReview.objects.filter(employee__organization=org)
+            except Exception:
+                return PerformanceReview.objects.all()
+        # Employees should not be able to update/destroy, but maybe retrieve. 
+        try:
+            return PerformanceReview.objects.filter(employee=user.employee)
+        except Exception:
+            return PerformanceReview.objects.none()
 
 
 class PerformanceReviewReplyView(APIView):
