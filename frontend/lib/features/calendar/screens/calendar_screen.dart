@@ -224,7 +224,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadEvents),
         ],
       ),
-      body: Column(children: [
+      body: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 600), child: Column(children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           color: AppColors.surfaceDark,
@@ -397,7 +397,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ]),
           ),
         ],
-      ]),
+      ]))),
     );
   }
 }

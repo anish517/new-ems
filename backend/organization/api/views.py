@@ -8,6 +8,7 @@ from rest_framework.generics import CreateAPIView, RetrieveAPIView, RetrieveUpda
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication
 
+from rest_framework.decorators import action
 from organization.api.serializers import (BankDetailSerializer, DocumentSerializer, EmployeeAnalysisReportSerializer, EmployeeSerializer,
                                           NationalIDDetailSerializer, OrganizationFileSerializer, AddressSerializer, QualificationSerializer, DepartmentSerializer)
 from organization.models import (
@@ -24,6 +25,24 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     queryset = Employee.objects.all()
     serializer_class = EmployeeSerializer
     permission_classes = [IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        user = instance.user
+        instance.delete()
+        if user:
+            user.delete()
+
+    @action(detail=True, methods=['post'])
+    def reset_password(self, request, pk=None):
+        employee = self.get_object()
+        new_password = request.data.get('password')
+        if not new_password:
+            return Response({'error': 'Password is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user = employee.user
+        user.set_password(new_password)
+        user.save()
+        return Response({'message': 'Password updated successfully'}, status=status.HTTP_200_OK)
 
 
 class EmployeeAddressCreateView(CreateAPIView):

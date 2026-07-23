@@ -58,6 +58,38 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> {
     }
   }
 
+  Future<void> _changePassword(int id) async {
+    final ctrl = TextEditingController();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Change Password'),
+        content: TextField(
+          controller: ctrl,
+          obscureText: true,
+          decoration: const InputDecoration(labelText: 'New Password', hintText: 'Enter new password'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || ctrl.text.trim().isEmpty) return;
+
+    try {
+      await ApiService().post('${AppConstants.organizationBase}/employees/$id/reset_password/', data: {
+        'password': ctrl.text.trim(),
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated successfully'), backgroundColor: AppColors.success));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
+    }
+  }
+
   List get _filtered => _employees.where((e) {
     final name = '${e['user']?['first_name'] ?? ''} '.toLowerCase();
     return name.contains(_search.toLowerCase());
@@ -100,12 +132,12 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> {
             const Text('Contact Information', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             _DetailRow(icon: Icons.email_outlined, label: 'Email', value: user['email'] ?? 'N/A'),
-            _DetailRow(icon: Icons.phone_outlined, label: 'Phone', value: user['phone_number'] ?? 'N/A'),
+            _DetailRow(icon: Icons.phone_outlined, label: 'Phone', value: e['phone_no'] ?? 'N/A'),
             const SizedBox(height: 20),
             const Text('Work Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            _DetailRow(icon: Icons.business_outlined, label: 'Department', value: e['department']?['name'] ?? 'N/A'),
-            _DetailRow(icon: Icons.badge_outlined, label: 'Designation', value: e['designation']?['title'] ?? 'N/A'),
+            _DetailRow(icon: Icons.business_outlined, label: 'Department', value: e['department_name'] ?? 'N/A'),
+            _DetailRow(icon: Icons.badge_outlined, label: 'Designation', value: e['designation_title'] ?? 'N/A'),
             const SizedBox(height: 20),
             const Text('Personal Info', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
@@ -176,6 +208,8 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> {
                             );
                           } else if (val == 'delete') {
                             _deleteEmployee(e['id']);
+                          } else if (val == 'password') {
+                            _changePassword(e['id']);
                           } else if (val == 'salary') {
                             showModalBottomSheet(
                               context: context,
@@ -188,6 +222,7 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> {
                         },
                         itemBuilder: (context) => [
                           const PopupMenuItem(value: 'salary', child: Text('Add Salary')),
+                          const PopupMenuItem(value: 'password', child: Text('Change Password')),
                           const PopupMenuItem(value: 'edit', child: Text('Edit Employee')),
                           const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.error))),
                         ],
