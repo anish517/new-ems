@@ -45,28 +45,47 @@ class RetrieveTotalWorkingHourAPIView(APIView):
         current_month = nepali_datetime.date.today().month
         current_year = nepali_datetime.date.today().year
 
-        all_attendance = Attendance.objects.filter(
-            organization=employee.organization, employee=employee)
-        current_month_total_working_hour = 0
+        y = int(selected_year) if selected_year else current_year
+        m = int(selected_month) if selected_month else current_month
 
-        if selected_year and selected_month:
-            for attendance in all_attendance:
-                if attendance.date.year == int(selected_year) and attendance.date.month == int(selected_month):
-                    _, total_working_seconds = attendance.total_working_hours
-                    current_month_total_working_hour += total_working_seconds / 3600
-            total_no_of_days_present = Attendance.get_no_of_present_days(
-                employee=employee, year=int(selected_year), month=int(selected_month))
-        else:
-            for attendance in all_attendance:
-                if attendance.date.year == current_year and attendance.date.month == current_month:
-                    _, total_working_seconds = attendance.total_working_hours
-                    current_month_total_working_hour += total_working_seconds / 3600
-            total_no_of_days_present = Attendance.get_no_of_present_days(
-                employee=employee, year=current_year, month=current_month)
+        all_attendance = Attendance.objects.filter(
+            organization=employee.organization, 
+            employee=employee
+        ).prefetch_related('check_ins_outs')
+
+        monthly_attendance = [a for a in all_attendance if getattr(a.date, 'year', None) == y and getattr(a.date, 'month', None) == m]
+
+        current_month_total_working_hour = 0
+        for attendance in monthly_attendance:
+            _, total_working_seconds = attendance.total_working_hours
+            current_month_total_working_hour += total_working_seconds / 3600
+            
+        total_no_of_days_present = Attendance.get_no_of_present_days(
+            employee=employee, year=y, month=m)
+
+        # Calculate expected monthly working hours dynamically from org shift
+        try:
+            import datetime as _dt
+            org = employee.organization
+            if org.opening_time and org.closing_time:
+                open_dt = _dt.datetime.combine(_dt.date.today(), org.opening_time)
+                close_dt = _dt.datetime.combine(_dt.date.today(), org.closing_time)
+                shift_hours = (close_dt - open_dt).total_seconds() / 3600
+            else:
+                shift_hours = 8.0  # default 8-hour day
+
+            # Count weekdays in the selected month using nepali calendar
+            from calendar_app.utilities import total_days_in_month as nepali_total_days
+            selected_y = int(selected_year) if selected_year else current_year
+            selected_m = int(selected_month) if selected_month else current_month
+            days_in_month = nepali_total_days(year=selected_y, month=selected_m)
+            expected_monthly_hours = round(shift_hours * days_in_month, 2)
+        except Exception:
+            expected_monthly_hours = 182  # safe fallback
 
         return Response({
             'total_working_hour': round(current_month_total_working_hour, 2),
-            'remaining_working_hour': round(182 - current_month_total_working_hour, 2),
+            'remaining_working_hour': round(expected_monthly_hours - current_month_total_working_hour, 2),
             'total_no_of_days_present': total_no_of_days_present,
         }, status=status.HTTP_200_OK)
 
@@ -144,15 +163,11 @@ class CheckIn(APIView):
             target_lat=organization_address.latitude,
             target_lng=organization_address.longitude)
 
-        within_remote_radius = False
-        if remote_work_permission:
-            within_remote_radius = is_within_radius(
-                current_lat=user_lat, current_lng=user_lng,
-                target_lat=float(remote_work_permission.remote_lat),
-                target_lng=float(remote_work_permission.remote_lng))
+        # Remote-permitted employees can check in from anywhere worldwide
+        has_remote_permission = remote_work_permission is not None  # is_allowed already verified above
 
-        if not within_organization_radius and not within_remote_radius:
-            return Response({'error': 'You are not within the office or remote work radius.'},
+        if not within_organization_radius and not has_remote_permission:
+            return Response({'error': 'You are not within the office radius. Contact your admin to enable remote work.'},
                             status=status.HTTP_401_UNAUTHORIZED)
 
         photo = request.FILES.get('photo')
@@ -209,15 +224,11 @@ class CheckOut(APIView):
             target_lat=organization_address.latitude,
             target_lng=organization_address.longitude)
 
-        within_remote_radius = False
-        if remote_work_permission:
-            within_remote_radius = is_within_radius(
-                current_lat=user_lat, current_lng=user_lng,
-                target_lat=float(remote_work_permission.remote_lat),
-                target_lng=float(remote_work_permission.remote_lng))
+        # Remote-permitted employees can check out from anywhere worldwide
+        has_remote_permission = remote_work_permission is not None  # is_allowed already verified above
 
-        if not within_organization_radius and not within_remote_radius:
-            return Response({'error': 'You are not within the office or remote work radius.'},
+        if not within_organization_radius and not has_remote_permission:
+            return Response({'error': 'You are not within the office radius. Contact your admin to enable remote work.'},
                             status=status.HTTP_401_UNAUTHORIZED)
 
         photo = request.FILES.get('photo')
@@ -230,7 +241,7 @@ class CheckOut(APIView):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({
-            "check_in_time": check_in.check_out,
+            "check_out_time": check_in.check_out,
             "is_remote": check_in.attendance.is_remote,
         })
 
@@ -263,16 +274,27 @@ class AttendanceListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        try:
-            org = request.user.employee.organization
-        except Exception:
-            orgs = request.user.organization.all()
-            if not orgs.exists():
-                return Response([])
-            org = orgs.first()
+        user = request.user
+        org = getattr(user.employee, 'organization', None) if hasattr(user, 'employee') else None
+        if not org:
+            if user.organization.exists():
+                org = user.organization.first()
+            elif getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False):
+                from organization.models import Organization
+                org = Organization.objects.first()
+                
+        if not org:
+            return Response([])
 
         date_str = request.GET.get('date')
-        qs = Attendance.objects.filter(organization=org).order_by('-date')
+        employee_id = request.GET.get('employee')
+        
+        qs = Attendance.objects.filter(organization=org).select_related(
+            'employee', 'employee__user'
+        ).prefetch_related('check_ins_outs').order_by('-date')
+
+        if employee_id:
+            qs = qs.filter(employee_id=employee_id)
 
         if date_str:
             try:
@@ -281,12 +303,32 @@ class AttendanceListAPIView(APIView):
             except Exception:
                 pass
 
+        from rest_framework.pagination import PageNumberPagination
+        paginator = PageNumberPagination()
+        paginator.page_size = 50
+        paginated_qs = paginator.paginate_queryset(qs, request)
+
         result = []
-        for att in qs[:200]:
-            first_ci = att.check_ins_outs.order_by('id').first()
-            last_co = att.check_ins_outs.filter(
-                check_out__isnull=False).order_by('-check_out').first()
+        for att in paginated_qs:
+            checkins = list(att.check_ins_outs.all())
+            checkins_sorted = sorted(checkins, key=lambda x: x.id)
+            
+            first_ci = checkins_sorted[0] if checkins_sorted else None
+            
+            last_co = None
+            for ci in reversed(checkins_sorted):
+                if ci.check_out:
+                    last_co = ci
+                    break
+            
             _, total_secs = att.total_working_hours
+            history = []
+            for ci_out in checkins_sorted:
+                history.append({
+                    'in': str(ci_out.check_in) if ci_out.check_in else None,
+                    'out': str(ci_out.check_out) if ci_out.check_out else None,
+                })
+                
             result.append({
                 'id': att.id,
                 'employee_id': att.employee.id,
@@ -298,10 +340,14 @@ class AttendanceListAPIView(APIView):
                 'total_hours': round(total_secs / 3600, 2),
                 'check_in_lat': str(att.check_in_lat) if att.check_in_lat else None,
                 'check_in_lng': str(att.check_in_lng) if att.check_in_lng else None,
+                'check_out_lat': str(att.check_out_lat) if att.check_out_lat else None,
+                'check_out_lng': str(att.check_out_lng) if att.check_out_lng else None,
                 'check_in_photo': request.build_absolute_uri(att.check_in_photo.url) if att.check_in_photo else None,
                 'check_out_photo': request.build_absolute_uri(att.check_out_photo.url) if att.check_out_photo else None,
+                'history': history,
             })
-        return Response(result)
+        
+        return paginator.get_paginated_response(result)
 
 
 # ─── Remote Work Permission Views ─────────────────────────────────────────────
@@ -311,13 +357,17 @@ class RemoteWorkPermissionListAPIView(APIView):
     permission_classes = [IsAuthenticated, IsOrgAdmin]
 
     def get(self, request):
-        try:
-            organization = request.user.employee.organization
-        except Exception:
-            orgs = request.user.organization.all()
-            if not orgs.exists():
-                return Response([])
-            organization = orgs.first()
+        user = request.user
+        organization = getattr(user.employee, 'organization', None) if hasattr(user, 'employee') else None
+        if not organization:
+            if user.organization.exists():
+                organization = user.organization.first()
+            elif getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False):
+                from organization.models import Organization
+                organization = Organization.objects.first()
+                
+        if not organization:
+            return Response([])
 
         employees = Employee.objects.filter(post__department__organization=organization)
         result = []
@@ -339,11 +389,15 @@ class AdminSetRemoteWorkPermissionAPIView(APIView):
     permission_classes = [IsAuthenticated, IsOrgAdmin]
 
     def _get_org(self, request):
-        try:
-            return request.user.employee.organization
-        except Exception:
-            orgs = request.user.organization.all()
-            return orgs.first() if orgs.exists() else None
+        user = request.user
+        org = getattr(user.employee, 'organization', None) if hasattr(user, 'employee') else None
+        if not org:
+            if user.organization.exists():
+                org = user.organization.first()
+            elif getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False):
+                from organization.models import Organization
+                org = Organization.objects.first()
+        return org
 
     def post(self, request, employee_id):
         org = self._get_org(request)
@@ -411,13 +465,17 @@ class GenerateAttendanceReportAPIView(APIView):
         except ValueError:
             return Response({'error': 'Year and month must be valid integers.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            organization = request.user.employee.organization
-        except Exception:
-            organization = None
+        user = request.user
+        organization = getattr(user.employee, 'organization', None) if hasattr(user, 'employee') else None
+        if not organization:
+            if user.organization.exists():
+                organization = user.organization.first()
+            elif getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False):
+                from organization.models import Organization
+                organization = Organization.objects.first()
 
         if organization:
-            employees = Employee.objects.filter(organization=organization)
+            employees = Employee.objects.filter(post__department__organization=organization)
         else:
             employees = Employee.objects.all()
 
@@ -439,7 +497,7 @@ class GenerateAttendanceReportAPIView(APIView):
             
             # Calculate total working hours in the month
             all_attendances = Attendance.objects.filter(employee=employee)
-            monthly_attendances = [a for a in all_attendances if a.date.year == year and a.date.month == month]
+            monthly_attendances = [a for a in all_attendances if getattr(a.date, 'year', None) == year and getattr(a.date, 'month', None) == month]
             
             total_sec = sum(a.total_working_hours[1] for a in monthly_attendances)
             h = int(total_sec // 3600)

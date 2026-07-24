@@ -18,20 +18,29 @@ class NoticeboardListView(generics.ListCreateAPIView):
         except Exception:
             return None
 
+    def _get_org(self):
+        user = self.request.user
+        org = getattr(user.employee, 'organization', None) if hasattr(user, 'employee') else None
+        if not org:
+            if user.organization.exists():
+                org = user.organization.first()
+            elif getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False):
+                from organization.models import Organization
+                org = Organization.objects.first()
+        return org
+
     def get_queryset(self):
         from django.db.models import Q
         user = self.request.user
-        employee = self._get_employee()
-        if not employee:
-            orgs = user.organization.all()
-            if orgs.exists():
-                return Notice.objects.filter(Q(organization__in=orgs) | Q(organization__isnull=True)).order_by('-id')
+        org = self._get_org()
+        
+        if not org:
             if user.is_superuser:
                 return Notice.objects.all().order_by('-id')
             return Notice.objects.none()
             
         return Notice.objects.filter(
-            Q(organization=employee.organization) | Q(organization__isnull=True)
+            Q(organization=org) | Q(organization__isnull=True)
         ).order_by('-id')
 
     def perform_create(self, serializer):
@@ -50,19 +59,20 @@ class NoticeboardListView(generics.ListCreateAPIView):
         else:
             date_val = today
 
+        org = self._get_org()
         if employee:
             serializer.save(
-                organization=employee.organization,
+                organization=org,
                 created_by=employee,
                 date=date_val,
                 created_at=today,
             )
         else:
-            orgs = user.organization.all()
-            if orgs.exists():
-                serializer.save(organization=orgs.first(), date=date_val, created_at=today)
-            else:
-                serializer.save(date=date_val, created_at=today)
+            serializer.save(
+                organization=org,
+                date=date_val,
+                created_at=today,
+            )
 
 class NoticeDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = NoticeSerializer

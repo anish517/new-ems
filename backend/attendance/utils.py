@@ -107,7 +107,7 @@ def get_working_hour(employee: Employee, year: int = TODAY.year, month: int = TO
     return attendance.formated_working_hour(), round(percentage)
 
 
-def average_working_hour(employee: Employee, year: int = TODAY.year, month: int = TODAY.year):
+def average_working_hour(employee: Employee, year: int = TODAY.year, month: int = TODAY.month):
     date = nepali_datetime.date(year=year, month=month, day=1)
     attendances = get_attendance(
         employee=employee, year=date.year, month=date.month)

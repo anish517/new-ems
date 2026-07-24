@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import permissions
 from django.http import HttpResponse
 import csv
 from rest_framework_simplejwt.tokens import AccessToken
@@ -19,6 +20,17 @@ from salary_management.models import Salary, SalaryTransaction
 
 from .serializers import SalarySerializer, SalaryTransactionSerializer, NetSalarySerializer
 
+class IsSalaryAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        if user.organization.exists():
+            return True
+        return False
+
 def _get_org(user):
     try:
         return user.employee.post.department.organization
@@ -32,6 +44,10 @@ class BasicSalaryCreateAPIView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
+        # Only admins can create salaries
+        if not IsSalaryAdmin().has_permission(request, self):
+            return Response({'error': 'Not authorized to create salary'}, status=status.HTTP_403_FORBIDDEN)
+            
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         employee = serializer.validated_data.get('employee')
@@ -47,18 +63,26 @@ class BasicSalaryCreateAPIView(generics.ListCreateAPIView):
         return Response(self.get_serializer(salary).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
     def get_queryset(self):
-        organization = _get_org(self.request.user)
+        user = self.request.user
+        
+        # If admin, return all salaries in org
+        if IsSalaryAdmin().has_permission(self.request, self):
+            organization = _get_org(user)
+            if not organization:
+                return Salary.objects.none()
+            return Salary.objects.filter(organization=organization)
             
-        if not organization:
-            return Salary.objects.none()
+        # If employee, return only their salary
+        if hasattr(user, 'employee'):
+            return Salary.objects.filter(employee=user.employee)
             
-        return Salary.objects.filter(organization=organization)
+        return Salary.objects.none()
 
 
 class BasicSalaryUpdateAPIView(generics.UpdateAPIView):
     model = Salary
     serializer_class = SalarySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSalaryAdmin]
 
     def get_queryset(self):
         organization = _get_org(self.request.user)
@@ -80,6 +104,11 @@ class NetSalaryAPIView(generics.RetrieveAPIView):
             salary = Salary.objects.get(id=salary_id)
         except Salary.DoesNotExist:
             return Response({'error': 'Salary details not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+        user = request.user
+        is_admin = user.is_superuser or user.organization.exists()
+        if not is_admin and salary.employee != getattr(user, 'employee', None):
+            return Response({'error': 'You do not have permission to view this salary.'}, status=status.HTTP_403_FORBIDDEN)
 
         # Use the same year/month for all calculations for consistency
         year = nepali_date.year
@@ -119,7 +148,6 @@ class SalaryTransactionRetrieveAPIView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        time.sleep(2)
         organization = _get_org(self.request.user)
         return SalaryTransaction.objects.filter(organization=organization)
 
@@ -130,16 +158,28 @@ class SalaryTransactionListAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        user = self.request.user
         employee_id = self.request.GET.get('employee')
+        
+        is_admin = user.is_superuser or user.organization.exists()
+        if not is_admin:
+            try:
+                employee_id = user.employee.id
+            except Exception:
+                return SalaryTransaction.objects.none()
+
+        if not employee_id:
+            try:
+                employee_id = user.employee.id
+            except Exception:
+                return SalaryTransaction.objects.none()
+
         try:
             employee = Employee.objects.get(id=employee_id)
         except Employee.DoesNotExist:
-            employee = self.request.user.employee
+            return SalaryTransaction.objects.none()
 
-        all_transaction = SalaryTransaction.objects.filter(
-            salary__employee=employee).order_by('date')
-
-        return all_transaction
+        return SalaryTransaction.objects.filter(salary__employee=employee).order_by('date')
 
     def list(self, request, *args, **kwargs):
         selected_year = self.request.GET.get('year', None)
@@ -155,18 +195,22 @@ class SalaryTransactionListAPIView(generics.ListAPIView):
             if transaction.date.year == current_year:
                 yearly_transaction_history.append(transaction)
         serializer = self.get_serializer(yearly_transaction_history, many=True)
-        time.sleep(2)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
 
 
 class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
     model = SalaryTransaction
     serializer_class = SalaryTransactionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSalaryAdmin]
 
     def get_queryset(self):
         organization = _get_org(self.request.user)
-        return SalaryTransaction.objects.filter(organization=organization).order_by('-date')
+        qs = SalaryTransaction.objects.filter(organization=organization).order_by('-date')
+        # Allow filtering by employee ID for the admin employee detail view
+        employee_id = self.request.GET.get('employee')
+        if employee_id:
+            qs = qs.filter(salary__employee_id=employee_id)
+        return qs
 
     def create(self, request, *args, **kwargs):
         organization = _get_org(self.request.user)
@@ -211,11 +255,9 @@ class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class GenerateSalaryReportAPIView(generics.GenericAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSalaryAdmin]
 
     def get(self, request):
-        if not (request.user.is_superuser or getattr(request.user, 'is_hr', False) or (hasattr(request.user, 'employee') and request.user.employee.organization.admin_users.filter(id=request.user.id).exists())):
-            return Response({'error': 'You do not have permission to generate this report.'}, status=status.HTTP_403_FORBIDDEN)
 
         year_str = request.GET.get('year')
         month_str = request.GET.get('month')
@@ -242,7 +284,15 @@ class GenerateSalaryReportAPIView(generics.GenericAPIView):
         writer.writerow(['Employee Name', 'Email', 'Basic Salary', 'Remote Salary', 'Days Present', 'Paid Leaves', 'Unpaid Leaves', 'Half Leaves', 'Net Salary'])
 
         for salary in salaries:
-            net_salary = Salary.calculate_net_salary(employee=salary.employee, year=year, month=month)
+            # Check if a manual/issued salary transaction exists for this month
+            emp_transactions = SalaryTransaction.objects.filter(salary=salary)
+            transaction = next((t for t in emp_transactions if getattr(t.date, 'year', None) == year and getattr(t.date, 'month', None) == month), None)
+            
+            if transaction:
+                net_salary = transaction.net_salary
+            else:
+                net_salary = Salary.calculate_net_salary(employee=salary.employee, year=year, month=month)
+                
             no_of_days_present = Attendance.get_no_of_present_days(salary.employee, year, month)
             paid_leaves = LeaveRequest.get_total_paid_leaves(salary.employee, year, month)
             unpaid_leaves = LeaveRequest.get_total_unpaid_leaves(salary.employee, year, month)

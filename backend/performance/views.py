@@ -20,6 +20,9 @@ class PerformanceCategoryViewSet(viewsets.ModelViewSet):
             org = user.organization.first()
             if not org and hasattr(user, 'employee'):
                 org = user.employee.organization
+            if not org and getattr(user, 'is_hr', False):
+                from organization.models import Organization
+                org = Organization.objects.first()
             if org:
                 return PerformanceCategory.objects.filter(organization=org)
             return PerformanceCategory.objects.none()
@@ -51,6 +54,10 @@ class PerformanceReviewListCreateView(generics.ListCreateAPIView):
                 org = user.organization.first()
                 if not org and hasattr(user, 'employee'):
                     org = user.employee.organization
+                if not org and getattr(user, 'is_hr', False):
+                    from organization.models import Organization
+                    org = Organization.objects.first()
+                    
                 if org:
                     return PerformanceReview.objects.filter(employee__organization=org)
                 return PerformanceReview.objects.all()
@@ -87,6 +94,10 @@ class PerformanceReviewRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyA
                 org = user.organization.first()
                 if not org and hasattr(user, 'employee'):
                     org = user.employee.organization
+                if not org and getattr(user, 'is_hr', False):
+                    from organization.models import Organization
+                    org = Organization.objects.first()
+                    
                 if org:
                     return PerformanceReview.objects.filter(employee__organization=org)
                 return PerformanceReview.objects.all()

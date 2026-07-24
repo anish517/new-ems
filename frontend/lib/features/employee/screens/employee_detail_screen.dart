@@ -85,8 +85,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       } catch (_) {}
 
       try {
-        final listRes =
-            await ApiService().get('${AppConstants.attendanceBase}/list/');
+        final listRes = await ApiService()
+            .get('${AppConstants.attendanceBase}/list/?employee=${widget.id}');
         final listData = listRes.data is List
             ? listRes.data
             : (listRes.data['results'] ?? []);
@@ -100,7 +100,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       } catch (_) {}
 
       try {
-        final perfRes = await ApiService().get('/api/performance/reviews/');
+        final perfRes = await ApiService()
+            .get('/api/performance/reviews/?employee=${widget.id}');
         final perfData = perfRes.data is List
             ? perfRes.data
             : (perfRes.data['results'] ?? []);
@@ -114,14 +115,14 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             for (var r in myReviews) {
               total += (r['score'] ?? 0).toDouble();
             }
-            _avgPerformance = total / myReviews.length;
+            _avgPerformance = total;
           }
         }
       } catch (_) {}
 
       try {
-        final leaveRes =
-            await ApiService().get('${AppConstants.leaveBase}/leave-requests/');
+        final leaveRes = await ApiService()
+            .get('${AppConstants.leaveBase}/leave-requests/?employee=${widget.id}');
         final leaveData = leaveRes.data is List
             ? leaveRes.data
             : (leaveRes.data['results'] ?? leaveRes.data);
@@ -161,8 +162,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       } catch (_) {}
 
       try {
-        final taskRes =
-            await ApiService().get('${AppConstants.taskBase}/tasks/');
+        final taskRes = await ApiService()
+            .get('${AppConstants.taskBase}/tasks/?assigned_to=${widget.id}');
         final taskData = taskRes.data is List
             ? taskRes.data
             : (taskRes.data['results'] ?? taskRes.data);
@@ -417,8 +418,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     childAspectRatio: 1.5,
                     children: [
                       _buildKpiCard(
-                          'Performance',
-                          _avgPerformance.toStringAsFixed(1),
+                          'Performance Points',
+                          _avgPerformance.toStringAsFixed(0),
                           Iconsax.chart_2,
                           AppColors.primary),
                       GestureDetector(

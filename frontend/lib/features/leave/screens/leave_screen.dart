@@ -6,7 +6,6 @@ import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'package:nepali_utils/nepali_utils.dart';
-import 'package:iconsax/iconsax.dart';
 
 // ─── Date formatter ───────────────────────────────────────────────────────
 String _fmtDate(String? raw, {String? fallback}) {
@@ -66,28 +65,25 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
       final user = ref.read(currentUserProvider);
       final isAdmin = user?.canManage ?? false;
 
-      // My leave requests
-      final res = await ApiService().get('${AppConstants.leaveBase}/leave-requests/');
+      // My leave requests (admins get all org requests, employees get only theirs)
+      final res =
+          await ApiService().get('${AppConstants.leaveBase}/leave-requests/');
       if (!mounted) return;
+      final all =
+          res.data is List ? res.data : (res.data['results'] ?? res.data);
+
       setState(() {
-        _requests = res.data is List ? res.data : (res.data['results'] ?? res.data);
+        _requests = all;
+        // For admins: derive pending list from the same response — no second request needed
+        if (isAdmin) {
+          _pending = (all as List)
+              .where((r) =>
+                  r['is_approved'] != true && r['is_reviewed'] != true)
+              .toList();
+        }
       });
 
-      if (isAdmin) {
-        // Admin: fetch all pending requests
-        try {
-          final pendingRes = await ApiService().get(
-            '${AppConstants.leaveBase}/leave-requests/',
-          );
-          final all = pendingRes.data is List
-              ? pendingRes.data
-              : (pendingRes.data['results'] ?? []);
-          if (mounted) {
-            setState(() => _pending = all.where((r) =>
-              r['is_approved'] != true && r['is_reviewed'] != true).toList());
-          }
-        } catch (_) {}
-      } else {
+      if (!isAdmin) {
         // Employee: fetch leave balance
         if (user?.employeeId != null) {
           try {
@@ -127,14 +123,16 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Leave Request'),
-        content: const Text('Are you sure you want to delete this leave request?'),
+        content:
+            const Text('Are you sure you want to delete this leave request?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.pop(ctx, true), 
-            child: const Text('Delete')
-          ),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete')),
         ],
       ),
     );
@@ -142,10 +140,18 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
 
     try {
       await ApiService().delete('${AppConstants.leaveBase}/update/$leaveId/');
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Leave request deleted successfully'), backgroundColor: AppColors.success));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Leave request deleted successfully'),
+            backgroundColor: AppColors.success));
+      }
       _loadLeaves();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(ApiService.getErrorMessage(e)),
+            backgroundColor: AppColors.error));
+      }
     }
   }
 
@@ -178,34 +184,43 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                   var filtered = _requests;
                   if (isAdmin && _searchQuery.isNotEmpty) {
                     filtered = _requests.where((r) {
-                      final name = (r['employee_name'] ?? '').toString().toLowerCase();
+                      final name =
+                          (r['employee_name'] ?? '').toString().toLowerCase();
                       return name.contains(_searchQuery.toLowerCase());
                     }).toList();
                   }
-                  
+
                   return Column(
                     children: [
                       if (isAdmin)
                         Padding(
-                          padding: const EdgeInsets.all(16.0).copyWith(bottom: 0),
+                          padding:
+                              const EdgeInsets.all(16.0).copyWith(bottom: 0),
                           child: TextField(
                             decoration: InputDecoration(
                               hintText: 'Search by employee name...',
                               prefixIcon: const Icon(Icons.search),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              contentPadding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
                             ),
                             onChanged: (v) => setState(() => _searchQuery = v),
                           ),
                         ),
                       Expanded(
                         child: filtered.isEmpty
-                            ? const Center(child: Text('No leave requests found'))
+                            ? const Center(
+                                child: Text('No leave requests found'))
                             : ListView.separated(
                                 padding: const EdgeInsets.all(16),
                                 itemCount: filtered.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                                itemBuilder: (_, i) => _LeaveCard(filtered[i], isAdmin: isAdmin, onDelete: () => _deleteLeave(filtered[i]['id'])),
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 8),
+                                itemBuilder: (_, i) => _LeaveCard(filtered[i],
+                                    isAdmin: isAdmin,
+                                    onDelete: () =>
+                                        _deleteLeave(filtered[i]['id'])),
                               ),
                       ),
                     ],
@@ -226,9 +241,11 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                                   const SizedBox(height: 8),
                               itemBuilder: (_, i) => _AdminLeaveCard(
                                 leave: _pending[i],
-                                onApprove: () => _approveLeave(_pending[i]['id'], true),
-                                onReject:  () => _approveLeave(_pending[i]['id'], false),
-                                onDelete:  () => _deleteLeave(_pending[i]['id']),
+                                onApprove: () =>
+                                    _approveLeave(_pending[i]['id'], true),
+                                onReject: () =>
+                                    _approveLeave(_pending[i]['id'], false),
+                                onDelete: () => _deleteLeave(_pending[i]['id']),
                               ),
                             ),
                     )
@@ -282,9 +299,14 @@ class _LeaveCard extends StatelessWidget {
                       if (isAdmin && data['employee_name'] != null) ...[
                         Row(
                           children: [
-                            const Icon(Icons.person_outline, size: 14, color: AppColors.textSecondary),
+                            const Icon(Icons.person_outline,
+                                size: 14, color: AppColors.textSecondary),
                             const SizedBox(width: 4),
-                            Text(data['employee_name'], style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                            Text(data['employee_name'],
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500)),
                           ],
                         ),
                         const SizedBox(height: 2),
@@ -292,12 +314,16 @@ class _LeaveCard extends StatelessWidget {
                       Text(data['subject'] ?? '',
                           style: const TextStyle(fontWeight: FontWeight.w600)),
                       const SizedBox(height: 4),
-            Text(data['is_half_day'] == true 
-                ? 'Half Day (${data['half_day_period'] ?? 'N/A'}) • ${_fmtDate(data['from_date']?.toString())}'
-                : '${_fmtDate(data['from_date']?.toString())} → ${_fmtDate(data['till_date']?.toString())}',
-                style: const TextStyle(fontSize: 12)),
+                      Text(
+                          data['is_half_day'] == true
+                              ? 'Half Day (${data['half_day_period'] ?? 'N/A'}) • ${_fmtDate(data['from_date']?.toString())}'
+                              : '${_fmtDate(data['from_date']?.toString())} → ${_fmtDate(data['till_date']?.toString())}',
+                          style: const TextStyle(fontSize: 12)),
                       const SizedBox(height: 4),
-                      Text(data['is_paid'] == true ? 'Paid Leave' : 'Unpaid Leave',
+                      Text(
+                          data['is_paid'] == true
+                              ? 'Paid Leave'
+                              : 'Unpaid Leave',
                           style: TextStyle(
                               fontSize: 11,
                               color: data['is_paid'] == true
@@ -310,7 +336,8 @@ class _LeaveCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: _statusColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -324,7 +351,8 @@ class _LeaveCard extends StatelessWidget {
                     if (isAdmin || _status == 'Pending') ...[
                       const SizedBox(width: 8),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                        icon: const Icon(Icons.delete_outline,
+                            color: AppColors.error),
                         onPressed: onDelete,
                         constraints: const BoxConstraints(),
                         padding: EdgeInsets.zero,
@@ -343,7 +371,11 @@ class _LeaveCard extends StatelessWidget {
 class _AdminLeaveCard extends StatelessWidget {
   final Map leave;
   final VoidCallback onApprove, onReject, onDelete;
-  const _AdminLeaveCard({required this.leave, required this.onApprove, required this.onReject, required this.onDelete});
+  const _AdminLeaveCard(
+      {required this.leave,
+      required this.onApprove,
+      required this.onReject,
+      required this.onDelete});
 
   @override
   Widget build(BuildContext context) => Card(
@@ -351,67 +383,86 @@ class _AdminLeaveCard extends StatelessWidget {
           onTap: () => _showLeaveDetails(context, leave, true),
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-              Expanded(
-                child: Text(leave['subject'] ?? '',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
+                Expanded(
+                  child: Text(leave['subject'] ?? '',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 15)),
                 ),
-                child: const Text('Pending',
-                    style: TextStyle(color: AppColors.warning, fontSize: 11,
-                        fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, color: AppColors.error),
-                onPressed: onDelete,
-                constraints: const BoxConstraints(),
-                padding: EdgeInsets.zero,
-              ),
-            ]),
-
-            const SizedBox(height: 6),
-            Row(children: [
-              const Icon(Icons.person_outline, size: 14, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Text(leave['employee_name'] ?? 'Unknown Employee',
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
-            ]),
-            const SizedBox(height: 4),
-            Row(children: [
-              const Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Text(leave['is_half_day'] == true 
-                  ? 'Half Day (${leave['half_day_period'] ?? 'N/A'}) • ${_fmtDate(leave['from_date']?.toString())}'
-                  : '${_fmtDate(leave['from_date']?.toString())} → ${_fmtDate(leave['till_date']?.toString())}',
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-            ]),
-            if (leave['remarks'] != null && (leave['remarks'] as String).isNotEmpty) ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text('Pending',
+                      style: TextStyle(
+                          color: AppColors.warning,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon:
+                      const Icon(Icons.delete_outline, color: AppColors.error),
+                  onPressed: onDelete,
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
+                ),
+              ]),
+              const SizedBox(height: 6),
+              Row(children: [
+                const Icon(Icons.person_outline,
+                    size: 14, color: AppColors.textSecondary),
+                const SizedBox(width: 4),
+                Text(leave['employee_name'] ?? 'Unknown Employee',
+                    style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500)),
+              ]),
               const SizedBox(height: 4),
-              Text(leave['remarks'],
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  maxLines: 2, overflow: TextOverflow.ellipsis),
-            ],
+              Row(children: [
+                const Icon(Icons.calendar_today_outlined,
+                    size: 14, color: AppColors.textSecondary),
+                const SizedBox(width: 4),
+                Text(
+                    leave['is_half_day'] == true
+                        ? 'Half Day (${leave['half_day_period'] ?? 'N/A'}) • ${_fmtDate(leave['from_date']?.toString())}'
+                        : '${_fmtDate(leave['from_date']?.toString())} → ${_fmtDate(leave['till_date']?.toString())}',
+                    style: const TextStyle(
+                        fontSize: 13, color: AppColors.textSecondary)),
+              ]),
+              if (leave['remarks'] != null &&
+                  (leave['remarks'] as String).isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(leave['remarks'],
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
+              ],
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: OutlinedButton.icon(
+                Expanded(
+                    child: OutlinedButton.icon(
                   onPressed: onReject,
                   icon: const Icon(Icons.close, size: 16),
                   label: const Text('Reject'),
-                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.error),
                 )),
                 const SizedBox(width: 12),
-                Expanded(child: ElevatedButton.icon(
+                Expanded(
+                    child: ElevatedButton.icon(
                   onPressed: onApprove,
                   icon: const Icon(Icons.check, size: 16),
                   label: const Text('Approve'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success),
                 )),
               ]),
             ]),
@@ -430,7 +481,17 @@ class _LeaveBalanceTab extends StatelessWidget {
     if (balance == null) {
       return const Center(child: Text('Leave balance not available'));
     }
-    final leaveBalances = balance!['leave_balances'] as List? ?? [];
+    final leaveBalances = (balance!['leave_balances'] as List?) ?? [];
+
+    // Compute totals from the per-type list
+    int totalTaken = 0;
+    int totalQuota = 0;
+    for (final lb in leaveBalances) {
+      totalTaken += (lb['leaves_taken'] as num? ?? 0).toInt();
+      totalQuota += (lb['leave_type']?['quota'] as num? ?? 0).toInt();
+    }
+    final remaining = (totalQuota - totalTaken).clamp(0, totalQuota);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(children: [
@@ -440,16 +501,19 @@ class _LeaveBalanceTab extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppColors.primary, AppColors.primaryDark]),
+                colors: [AppColors.primary, AppColors.primaryDark]),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(children: [
-            const Text('Leave Summary', style: TextStyle(color: Colors.white70)),
+            const Text('Leave Summary',
+                style: TextStyle(color: Colors.white70)),
             const SizedBox(height: 8),
-            Text('${balance!['no_of_leaves_taken'] ?? 0} days taken',
-                style: const TextStyle(color: Colors.white,
-                    fontSize: 28, fontWeight: FontWeight.bold)),
-            Text('${balance!['remaining_leaves'] ?? 0} days remaining',
+            Text('$totalTaken days taken',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold)),
+            Text('$remaining days remaining',
                 style: const TextStyle(color: Colors.white70)),
           ]),
         ),
@@ -474,9 +538,11 @@ class _LeaveTypeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final used = lb['used_days'] ?? 0;
-    final total = lb['leave_type']?['maximum_leave'] ?? 1;
-    final pct = (used / total).clamp(0.0, 1.0).toDouble();
+    // Backend fields: leaves_taken (int), leave_type.quota (int), leave_type.name (str)
+    final used = (lb['leaves_taken'] as num? ?? 0).toInt();
+    final total = (lb['leave_type']?['quota'] as num? ?? 1).toInt();
+    final remaining = (total - used).clamp(0, total);
+    final pct = total > 0 ? (used / total).clamp(0.0, 1.0).toDouble() : 0.0;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -486,9 +552,14 @@ class _LeaveTypeTile extends StatelessWidget {
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text(lb['leave_type']?['name'] ?? 'Leave',
                 style: const TextStyle(fontWeight: FontWeight.w600)),
-            Text('$used / $total days',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            Text('$used used · $remaining left',
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 13)),
           ]),
+          const SizedBox(height: 4),
+          Text('Total quota: $total days',
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 11)),
           const SizedBox(height: 8),
           LinearProgressIndicator(
             value: pct,
@@ -530,7 +601,8 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
     );
     if (picked != null) {
       setState(() {
-        final dateStr = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+        final dateStr =
+            '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
         if (isFrom) {
           _fromDate = dateStr;
           _fromCtrl.text = dateStr;
@@ -596,89 +668,105 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const Text('Apply for Leave',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Subject'),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-                onSaved: (v) => _subject = v!,
-              ),
-              const SizedBox(height: 12),
-              Row(children: [
-                Expanded(child: TextFormField(
-                  controller: _fromCtrl,
-                  readOnly: true,
-                  onTap: () => _pickDate(true),
-                  decoration: const InputDecoration(
-                    labelText: 'From Date',
-                    suffixIcon: Icon(Icons.calendar_month),
+            child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('Apply for Leave',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    decoration: const InputDecoration(labelText: 'Subject'),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                    onSaved: (v) => _subject = v!,
                   ),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-                )),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(
-                  controller: _tillCtrl,
-                  readOnly: true,
-                  onTap: () => _pickDate(false),
-                  decoration: const InputDecoration(
-                    labelText: 'Till Date',
-                    suffixIcon: Icon(Icons.calendar_month),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(
+                        child: TextFormField(
+                      controller: _fromCtrl,
+                      readOnly: true,
+                      onTap: () => _pickDate(true),
+                      decoration: const InputDecoration(
+                        labelText: 'From Date',
+                        suffixIcon: Icon(Icons.calendar_month),
+                      ),
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'Required' : null,
+                    )),
+                    const SizedBox(width: 12),
+                    Expanded(
+                        child: TextFormField(
+                      controller: _tillCtrl,
+                      readOnly: true,
+                      onTap: () => _pickDate(false),
+                      decoration: const InputDecoration(
+                        labelText: 'Till Date',
+                        suffixIcon: Icon(Icons.calendar_month),
+                      ),
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'Required' : null,
+                    )),
+                  ]),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    maxLines: 3,
+                    decoration:
+                        const InputDecoration(labelText: 'Reason (optional)'),
+                    onSaved: (v) => _reason = v ?? '',
                   ),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-                )),
-              ]),
-              const SizedBox(height: 12),
-              TextFormField(
-                maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Reason (optional)'),
-                onSaved: (v) => _reason = v ?? '',
-              ),
-              const SizedBox(height: 12),
-              SwitchListTile(
-                title: const Text('Paid Leave'),
-                subtitle: const Text('Toggle off for unpaid leave'),
-                value: _isPaid,
-                onChanged: (v) => setState(() => _isPaid = v),
-                activeThumbColor: AppColors.primary,
-                contentPadding: EdgeInsets.zero,
-              ),
-              SwitchListTile(
-                title: const Text('Half Day Leave'),
-                subtitle: const Text('Apply for half-day only'),
-                value: _isHalfDay,
-                onChanged: (v) => setState(() {
-                  _isHalfDay = v;
-                  if (v) _tillCtrl.text = _fromCtrl.text; // sync till date with from date for half day
-                  if (v) _tillDate = _fromDate;
-                }),
-                activeThumbColor: AppColors.primary,
-                contentPadding: EdgeInsets.zero,
-              ),
-              if (_isHalfDay)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Half Day Period'),
-                    value: _halfDayPeriod,
-                    items: const [
-                      DropdownMenuItem(value: 'First Half', child: Text('First Half')),
-                      DropdownMenuItem(value: 'Second Half', child: Text('Second Half')),
-                    ],
-                    onChanged: (v) => setState(() => _halfDayPeriod = v!),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    title: const Text('Paid Leave'),
+                    subtitle: const Text('Toggle off for unpaid leave'),
+                    value: _isPaid,
+                    onChanged: (v) => setState(() => _isPaid = v),
+                    activeThumbColor: AppColors.primary,
+                    contentPadding: EdgeInsets.zero,
                   ),
-                ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _submit,
-                child: _isLoading
-                    ? const SizedBox(height: 20, width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Submit Leave Request'),
-              ),
-            ]),
+                  SwitchListTile(
+                    title: const Text('Half Day Leave'),
+                    subtitle: const Text('Apply for half-day only'),
+                    value: _isHalfDay,
+                    onChanged: (v) => setState(() {
+                      _isHalfDay = v;
+                      if (v) {
+                        _tillCtrl.text = _fromCtrl
+                            .text; // sync till date with from date for half day
+                      }
+                      if (v) _tillDate = _fromDate;
+                    }),
+                    activeThumbColor: AppColors.primary,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  if (_isHalfDay)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: DropdownButtonFormField<String>(
+                        decoration:
+                            const InputDecoration(labelText: 'Half Day Period'),
+                        initialValue: _halfDayPeriod,
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'First Half', child: Text('First Half')),
+                          DropdownMenuItem(
+                              value: 'Second Half', child: Text('Second Half')),
+                        ],
+                        onChanged: (v) => setState(() => _halfDayPeriod = v!),
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _submit,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Submit Leave Request'),
+                  ),
+                ]),
           ),
         ),
       );
@@ -700,14 +788,20 @@ void _showLeaveDetails(BuildContext context, Map leave, bool isAdmin) {
     builder: (ctx) => AlertDialog(
       title: Row(
         children: [
-          const Expanded(child: Text('Leave Details', style: TextStyle(fontWeight: FontWeight.bold))),
+          const Expanded(
+              child: Text('Leave Details',
+                  style: TextStyle(fontWeight: FontWeight.bold))),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(status, style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold)),
+            child: Text(status,
+                style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -717,10 +811,16 @@ void _showLeaveDetails(BuildContext context, Map leave, bool isAdmin) {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (isAdmin && leave['employee_name'] != null) ...[
-              _DetailRow(icon: Icons.person_outline, label: 'Employee', value: leave['employee_name']),
+              _DetailRow(
+                  icon: Icons.person_outline,
+                  label: 'Employee',
+                  value: leave['employee_name']),
               const SizedBox(height: 12),
             ],
-            _DetailRow(icon: Icons.description_outlined, label: 'Subject', value: leave['subject'] ?? 'No Subject'),
+            _DetailRow(
+                icon: Icons.description_outlined,
+                label: 'Subject',
+                value: leave['subject'] ?? 'No Subject'),
             const SizedBox(height: 12),
             _DetailRow(
               icon: Icons.calendar_today_outlined,
@@ -742,16 +842,27 @@ void _showLeaveDetails(BuildContext context, Map leave, bool isAdmin) {
               icon: Icons.credit_card_outlined,
               label: 'Type',
               value: leave['is_paid'] == true ? 'Paid Leave' : 'Unpaid Leave',
-              valueColor: leave['is_paid'] == true ? AppColors.success : AppColors.warning,
+              valueColor: leave['is_paid'] == true
+                  ? AppColors.success
+                  : AppColors.warning,
             ),
             const SizedBox(height: 16),
-            const Text('Description', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
+            const Text('Description',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppColors.textSecondary)),
             const SizedBox(height: 4),
-            Text(leave['description'] ?? 'No description provided.', style: const TextStyle(fontSize: 14)),
-            
-            if (leave['remarks'] != null && (leave['remarks'] as String).isNotEmpty) ...[
+            Text(leave['description'] ?? 'No description provided.',
+                style: const TextStyle(fontSize: 14)),
+            if (leave['remarks'] != null &&
+                (leave['remarks'] as String).isNotEmpty) ...[
               const SizedBox(height: 16),
-              const Text('Remarks', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
+              const Text('Remarks',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: AppColors.textSecondary)),
               const SizedBox(height: 4),
               Text(leave['remarks'], style: const TextStyle(fontSize: 14)),
             ],
@@ -759,7 +870,8 @@ void _showLeaveDetails(BuildContext context, Map leave, bool isAdmin) {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        TextButton(
+            onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
       ],
     ),
   );
@@ -771,7 +883,11 @@ class _DetailRow extends StatelessWidget {
   final String value;
   final Color? valueColor;
 
-  const _DetailRow({required this.icon, required this.label, required this.value, this.valueColor});
+  const _DetailRow(
+      {required this.icon,
+      required this.label,
+      required this.value,
+      this.valueColor});
 
   @override
   Widget build(BuildContext context) {
@@ -784,9 +900,15 @@ class _DetailRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              Text(label,
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 12)),
               const SizedBox(height: 2),
-              Text(value, style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14, color: valueColor ?? AppColors.textPrimary)),
+              Text(value,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                      color: valueColor ?? AppColors.textPrimary)),
             ],
           ),
         ),

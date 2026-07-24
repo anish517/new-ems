@@ -22,11 +22,13 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
             return None
             
     def _get_org(self, employee):
-        if employee:
+        if employee and hasattr(employee, 'organization') and employee.organization:
             return employee.organization
         orgs = self.request.user.organization.all()
         if orgs.exists():
             return orgs.first()
+        if getattr(self.request.user, 'is_superuser', False) or getattr(self.request.user, 'is_hr', False):
+            return Organization.objects.first()
         return None
 
     def get_queryset(self):
@@ -39,8 +41,13 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
         all_tasks = Task.objects.filter(project__in=projects)
         # Admins see all tasks; employees only see tasks assigned to them
         is_admin = user.organization.exists() or user.is_superuser or getattr(user, 'is_hr', False)
+        assigned_to_id = self.request.GET.get('assigned_to')
+        
         if is_admin:
+            if assigned_to_id:
+                return all_tasks.filter(assigned_to_id=assigned_to_id).order_by('-id')
             return all_tasks.order_by('-id')
+            
         if employee:
             return all_tasks.filter(assigned_to=employee).order_by('-id')
         return Task.objects.none()
@@ -67,11 +74,13 @@ class TaskRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             return None
             
     def _get_org(self, employee):
-        if employee:
+        if employee and hasattr(employee, 'organization') and employee.organization:
             return employee.organization
         orgs = self.request.user.organization.all()
         if orgs.exists():
             return orgs.first()
+        if getattr(self.request.user, 'is_superuser', False) or getattr(self.request.user, 'is_hr', False):
+            return Organization.objects.first()
         return None
 
     def get_queryset(self):
@@ -137,14 +146,18 @@ class ProjectListAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def get(self, request):
-        try:
-            org = request.user.employee.organization
-        except Exception:
-            orgs = request.user.organization.all()
-            if orgs.exists():
-                org = orgs.first()
-            else:
-                return Response([])
+        user = request.user
+        org = None
+        if hasattr(user, 'employee') and getattr(user.employee, 'organization', None):
+            org = user.employee.organization
+        elif user.organization.exists():
+            org = user.organization.first()
+        elif getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False):
+            from organization.models import Organization
+            org = Organization.objects.first()
+            
+        if not org:
+            return Response([])
                 
         projects = Project.objects.filter(organization=org)
         data = [{'id': p.id, 'title': p.title} for p in projects]

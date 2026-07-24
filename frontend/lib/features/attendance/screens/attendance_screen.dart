@@ -62,18 +62,24 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   bool _autoInFlight = false;
   bool _hasPromptedAutoAttendance = false;
 
+  // Live location for map
+  Position? _currentPosition;
+  GoogleMapController? _liveMapController;
+
   @override
   void initState() {
     super.initState();
     _adminTabs = TabController(length: 3, vsync: this);
     WidgetsBinding.instance.addObserver(this);
     _loadAll().then((_) => _attemptAutoAttendance());
+    _startLiveLocation();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _autoActionTimer?.cancel();
+    _liveMapController?.dispose();
     _adminTabs.dispose();
     super.dispose();
   }
@@ -82,7 +88,18 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _attemptAutoAttendance();
+      _startLiveLocation();
     }
+  }
+
+  Future<void> _startLiveLocation() async {
+    try {
+      final pos = await _getLocation();
+      if (mounted) setState(() => _currentPosition = pos);
+      _liveMapController?.animateCamera(
+        CameraUpdate.newLatLng(LatLng(pos.latitude, pos.longitude)),
+      );
+    } catch (_) {}
   }
 
   Future<void> _attemptAutoAttendance() async {
@@ -270,7 +287,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       if (user?.employeeId == null) return;
       final res = await ApiService().get('${AppConstants.attendanceBase}/list/');
       if (!mounted) return;
-      final all = res.data is List ? res.data as List : [];
+      final all = res.data is List ? res.data as List : (res.data['results'] ?? []);
       final myLogs =
           all.where((a) => a['employee_id'] == user?.employeeId).toList();
       setState(() => _dailyHistory = myLogs);
@@ -284,7 +301,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           await ApiService().get('${AppConstants.attendanceBase}/list/');
       if (mounted) {
         setState(() {
-          _orgLogs = res.data is List ? res.data : [];
+          _orgLogs = res.data is List ? res.data : (res.data['results'] ?? []);
           _orgLogsLoading = false;
         });
       }
@@ -424,9 +441,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             AppColors.warning);
       } else if (msg
           .toLowerCase()
-          .contains('not within the office or remote work radius')) {
+          .contains('not within the office radius')) {
         _showSnack(
-            '⚠️ You need to be at the office or your approved remote location to check in.',
+            '⚠️ You need to be at the office to check in. Ask your admin to grant remote work permission.',
             AppColors.warning);
       } else {
         _showSnack('❌ $msg', AppColors.error);
@@ -481,7 +498,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       setState(() {
         _isCheckedIn = false;
         _checkInTime = null;
-        _lastAction = 'Checked out at ${res.data['check_in_time']}';
+        _lastAction = 'Checked out at ${res.data['check_out_time']}';
       });
       _showSnack('✅ Checked out successfully!', AppColors.success);
       await _loadStats();
@@ -491,9 +508,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       final msg = ApiService.getErrorMessage(e);
       if (msg
           .toLowerCase()
-          .contains('not within the office or remote work radius')) {
+          .contains('not within the office radius')) {
         _showSnack(
-            '⚠️ You need to be at the office or your approved remote location to check out.',
+            '⚠️ You need to be at the office to check out. Ask your admin to grant remote work permission.',
             AppColors.warning);
       } else {
         _showSnack('❌ $msg', AppColors.error);
@@ -764,9 +781,78 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           const Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                  'Note: Check-in and check-out both require you to be within 50m of your office or your approved remote location.',
+                  'Note: Office employees must be within 50 m of the office to check in/out. Employees with remote work permission approved by an admin can check in from anywhere.',
                   style:
                       TextStyle(color: AppColors.textSecondary, fontSize: 12))),
+
+          // ── Live Location Map (Admin only) ───────────────────────────────
+          if (ref.watch(currentUserProvider)?.canManage == true) ...[
+            const SizedBox(height: 24),
+            const Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Live Location Overview',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                height: 220,
+                child: _currentPosition == null
+                    ? Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceDark,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 8),
+                              Text('Fetching location…',
+                                  style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                      )
+                    : GoogleMap(
+                        onMapCreated: (c) => _liveMapController = c,
+                        initialCameraPosition: CameraPosition(
+                          target: LatLng(
+                            _currentPosition!.latitude,
+                            _currentPosition!.longitude,
+                          ),
+                          zoom: 16,
+                        ),
+                        myLocationEnabled: true,
+                        myLocationButtonEnabled: false,
+                        zoomControlsEnabled: false,
+                        markers: {
+                          Marker(
+                            markerId: const MarkerId('you'),
+                            position: LatLng(
+                              _currentPosition!.latitude,
+                              _currentPosition!.longitude,
+                            ),
+                            infoWindow: const InfoWindow(title: 'You are here'),
+                          ),
+                        },
+                      ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: _startLiveLocation,
+                icon: const Icon(Icons.my_location, size: 14),
+                label: const Text('Refresh Location',
+                    style: TextStyle(fontSize: 12)),
+              ),
+            ),
+          ],
         ]),
       );
 
@@ -795,6 +881,18 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (log['history'] != null && (log['history'] as List).isNotEmpty) ...[
+                  const Text("Session History", style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  ...List.generate((log['history'] as List).length, (i) {
+                    final h = log['history'][i];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text('Session ${i + 1} - In: ${formatTime(h['in']?.toString())} | Out: ${formatTime(h['out']?.toString())}', style: const TextStyle(fontSize: 14)),
+                    );
+                  }),
+                  const SizedBox(height: 24),
+                ],
                 const Text("Photos",
                     style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
@@ -837,40 +935,70 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   height: 250,
                   child: Builder(
                     builder: (context) {
-                      double? lat = double.tryParse(
+                      double? inLat = double.tryParse(
                           log['check_in_lat']?.toString() ?? '');
-                      double? lng = double.tryParse(
+                      double? inLng = double.tryParse(
                           log['check_in_lng']?.toString() ?? '');
-                      if (lat != null && lng != null) {
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: GoogleMap(
-                            initialCameraPosition: CameraPosition(
-                              target: LatLng(lat, lng),
-                              zoom: 15,
-                            ),
-                            markers: {
-                              Marker(
-                                markerId: const MarkerId('checkin'),
-                                position: LatLng(lat, lng),
-                                infoWindow: const InfoWindow(
-                                    title: 'Check-In Location'),
-                              ),
-                            },
-                            zoomControlsEnabled: false,
-                            myLocationButtonEnabled: false,
+                      double? outLat = double.tryParse(
+                          log['check_out_lat']?.toString() ?? '');
+                      double? outLng = double.tryParse(
+                          log['check_out_lng']?.toString() ?? '');
+
+                      if (inLat == null && outLat == null) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.borderDark),
                           ),
+                          child: const Center(
+                              child: Text(
+                                  "No location data recorded for this attendance.")),
                         );
                       }
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.borderDark),
+
+                      final markers = <Marker>{};
+                      LatLng center = LatLng(
+                        inLat ?? outLat!,
+                        inLng ?? outLng!,
+                      );
+
+                      if (inLat != null && inLng != null) {
+                        markers.add(Marker(
+                          markerId: const MarkerId('checkin'),
+                          position: LatLng(inLat, inLng),
+                          icon: BitmapDescriptor.defaultMarkerWithHue(
+                              BitmapDescriptor.hueGreen),
+                          infoWindow: const InfoWindow(
+                              title: '✅ Check-In Location'),
+                        ));
+                      }
+                      if (outLat != null && outLng != null) {
+                        markers.add(Marker(
+                          markerId: const MarkerId('checkout'),
+                          position: LatLng(outLat, outLng),
+                          icon: BitmapDescriptor.defaultMarkerWithHue(
+                              BitmapDescriptor.hueRed),
+                          infoWindow: const InfoWindow(
+                              title: '🚪 Check-Out Location'),
+                        ));
+                        // Correctly average the two pin coordinates for the camera center
+                        final centerLat = ((inLat ?? outLat) + outLat) / 2;
+                        final centerLng = ((inLng ?? outLng) + outLng) / 2;
+                        center = LatLng(centerLat, centerLng);
+                      }
+
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: GoogleMap(
+                          initialCameraPosition: CameraPosition(
+                            target: center,
+                            zoom: 15,
+                          ),
+                          markers: markers,
+                          zoomControlsEnabled: true,
+                          myLocationButtonEnabled: false,
                         ),
-                        child: const Center(
-                            child: Text(
-                                "No location data recorded for this check-in.")),
                       );
                     },
                   ),

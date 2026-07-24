@@ -93,6 +93,9 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
         employeeId = res.data['id'];
       } else {
         employeeId = widget.employee!['id'];
+        // Ensure official and personal emails are also updated to match
+        data['official_email'] = _email;
+        data['personal_email'] = _email;
         await ApiService().patch('${AppConstants.organizationBase}/employees/$employeeId/', data: data);
       }
 
