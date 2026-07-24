@@ -21,12 +21,13 @@ class SalaryTransactionSerializer(serializers.ModelSerializer):
     no_of_days_present = serializers.ReadOnlyField()
     paid_leaves = serializers.ReadOnlyField()
     unpaid_leaves = serializers.ReadOnlyField()
+    half_leaves = serializers.ReadOnlyField()
     deduction = serializers.ReadOnlyField()
 
     class Meta:
         model = SalaryTransaction
         fields = ['id', 'organization', 'salary', 'fiscal_year', 'date', 'content',
-                  'status', 'net_salary', 'holidays', 'no_of_days_present', 'paid_leaves', 'unpaid_leaves', 'deduction']
+                  'status', 'net_salary', 'holidays', 'no_of_days_present', 'paid_leaves', 'unpaid_leaves', 'half_leaves', 'deduction']
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
@@ -43,3 +44,4 @@ class NetSalarySerializer(serializers.Serializer):
     no_of_days_present = serializers.IntegerField()
     paid_leaves = serializers.IntegerField()
     unpaid_leaves = serializers.IntegerField()
+    half_leaves = serializers.IntegerField()

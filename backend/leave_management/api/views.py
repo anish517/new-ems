@@ -123,6 +123,9 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
         if user.organization.exists():
             is_admin = True
             org = user.organization.first()
+        elif getattr(user, 'is_hr', False) and hasattr(user, 'employee'):
+            is_admin = True
+            org = user.employee.organization
 
         try:
             employee = user.employee

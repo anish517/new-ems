@@ -25,7 +25,7 @@ class LeaveBalance(models.Model):
     leave_type = models.ForeignKey(
         LeaveType, on_delete=models.CASCADE, null=True)
     quota = models.IntegerField(default=0)
-    leaves_taken = models.IntegerField(default=0, null=True)
+    leaves_taken = models.FloatField(default=0, null=True)
 
     def __str__(self) -> str:
         return self.employee.user.full_name
@@ -48,6 +48,13 @@ class LeaveRequest(models.Model):
     is_paid = models.BooleanField(default=False)
     remarks = models.TextField(max_length=5000)
     created_at = NepaliDateField(null=True, blank=True)
+    
+    is_half_day = models.BooleanField(default=False)
+    HALF_DAY_CHOICES = (
+        ('First Half', 'First Half'),
+        ('Second Half', 'Second Half'),
+    )
+    half_day_period = models.CharField(max_length=20, choices=HALF_DAY_CHOICES, null=True, blank=True)
 
     def __str__(self):
         return f'{self.subject}-{self.is_approved}'
@@ -58,6 +65,8 @@ class LeaveRequest(models.Model):
 
     @property
     def no_days(self):
+        if self.is_half_day:
+            return 0.5
         return (self.till_date - self.from_date).days + 1
 
     @property
@@ -70,7 +79,7 @@ class LeaveRequest(models.Model):
         total_days = 0
         for leave_request in leave_requests:
             if leave_request.from_date.year == int(year) and leave_request.from_date.month == int(month):
-                if leave_request.is_paid:
+                if leave_request.is_paid and leave_request.is_approved:
                     total_days += leave_request.no_days
 
         return total_days
@@ -82,10 +91,19 @@ class LeaveRequest(models.Model):
         for leave_request in leave_requests:
 
             if leave_request.from_date.year == int(year) and leave_request.from_date.month == int(month):
-                if not leave_request.is_paid:
+                if not leave_request.is_paid and leave_request.is_approved:
                     total_days += leave_request.no_days
 
         return total_days
+
+    @staticmethod
+    def get_total_half_leaves(employee: Employee, year: int, month: int):
+        leave_requests = LeaveRequest.objects.filter(employee=employee, is_half_day=True, is_approved=True)
+        total_half_days = 0
+        for leave_request in leave_requests:
+            if leave_request.from_date.year == int(year) and leave_request.from_date.month == int(month):
+                total_half_days += 1
+        return total_half_days
 
 
 class LeaveRequestFiles(models.Model):

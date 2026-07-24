@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:nepali_utils/nepali_utils.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
@@ -16,6 +20,8 @@ class AdminDashboard extends ConsumerStatefulWidget {
 class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   int _employeeCount = 0;
   int _pendingLeaves = 0;
+  int _onTimeToday = 0;
+  List<double> _weeklyAttendance = List.filled(7, 0.0);
   bool _loading = true;
 
   @override
@@ -27,18 +33,15 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   Future<void> _loadStats() async {
     setState(() => _loading = true);
     try {
-      // Employee count
-      final empRes = await ApiService().get(
-          '${AppConstants.organizationBase}/employees/');
-      final employees = empRes.data is List
-          ? empRes.data
-          : (empRes.data['results'] ?? []);
+      final empRes =
+          await ApiService().get('${AppConstants.organizationBase}/employees/');
+      final employees =
+          empRes.data is List ? empRes.data : (empRes.data['results'] ?? []);
       if (!mounted) return;
       setState(() => _employeeCount = (employees as List).length);
 
-      // Pending leave requests
-      final leaveRes = await ApiService().get(
-          '${AppConstants.leaveBase}/leave-requests/');
+      final leaveRes =
+          await ApiService().get('${AppConstants.leaveBase}/leave-requests/');
       final leaves = leaveRes.data is List
           ? leaveRes.data
           : (leaveRes.data['results'] ?? []);
@@ -48,6 +51,64 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             .where((l) => l['is_approved'] != true && l['is_reviewed'] != true)
             .length;
       });
+
+      // Load attendance data for on-time count and weekly chart
+      try {
+        final attRes =
+            await ApiService().get('${AppConstants.attendanceBase}/list/');
+        final attData =
+            attRes.data is List ? attRes.data : (attRes.data['results'] ?? []);
+        if (attData is List && attData.isNotEmpty) {
+          final now = NepaliDateTime.now();
+          final today =
+              '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+          // Count on-time check-ins (before or at 9:00 AM)
+          int onTime = 0;
+          final weekCounts = List<int>.filled(7, 0); // Mon=0..Sun=6
+
+          for (final log in attData) {
+            final dateStr = log['date']?.toString() ?? '';
+            if (dateStr.isEmpty) continue;
+
+            // Day-of-week for chart
+            try {
+              final d = NepaliDateTime.parse(dateStr);
+              // NepaliDateTime.weekday: 1=Sun .. 7=Sat
+              // Chart index: 0=Mon, 1=Tue, ..., 5=Sat, 6=Sun
+              final index = (d.weekday == 1) ? 6 : d.weekday - 2;
+              weekCounts[index]++;
+            } catch (_) {}
+
+            // On-time today
+            if (dateStr == today) {
+              final checkInStr = log['check_in_time']?.toString();
+              if (checkInStr != null) {
+                try {
+                  final parts = checkInStr.split(':');
+                  final h = int.parse(parts[0]);
+                  final m = parts.length > 1 ? int.parse(parts[1]) : 0;
+                  // On time if check-in at or before 9:00 AM
+                  if (h < 9 || (h == 9 && m == 0)) onTime++;
+                } catch (_) {}
+              }
+            }
+          }
+
+          // Normalize weekly counts relative to total employees
+          final maxCount = weekCounts.reduce((a, b) => a > b ? a : b);
+          final normalized = weekCounts
+              .map((c) => maxCount > 0 ? (c / maxCount) * 90.0 : 0.0)
+              .toList();
+
+          if (mounted) {
+            setState(() {
+              _onTimeToday = onTime;
+              _weeklyAttendance = normalized;
+            });
+          }
+        }
+      } catch (_) {}
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
@@ -57,130 +118,520 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Admin Dashboard',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-          Text(user?.fullName ?? 'Admin',
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-        ]),
-        centerTitle: false,
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadStats),
-          IconButton(
-            icon: const Icon(Iconsax.notification),
-            onPressed: () => context.go('/notifications'),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: () => context.go('/profile'),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: AppColors.primary,
-                child: Text(user?.firstName[0].toUpperCase() ?? 'A',
-                    style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
+      backgroundColor: AppColors.bgDark,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Welcome Back,',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(color: AppColors.textSecondary)),
+                        Text(user?.fullName ?? 'Admin',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Iconsax.notification),
+                        onPressed: () => context.go('/notifications'),
+                        style: IconButton.styleFrom(
+                            backgroundColor: AppColors.surfaceDark),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () => context.go('/profile'),
+                        child: CircleAvatar(
+                          radius: 22,
+                          backgroundColor: AppColors.primary,
+                          backgroundImage: user?.profilePicture != null
+                              ? NetworkImage(user!.profilePicture!)
+                              : null,
+                          child: user?.profilePicture == null
+                              ? Text(user?.firstName[0].toUpperCase() ?? 'A',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold))
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ),
+              const SizedBox(height: 32),
+              if (_loading)
+                const Center(child: CircularProgressIndicator())
+              else
+                LayoutBuilder(builder: (context, constraints) {
+                  final isMobile = constraints.maxWidth < 600;
+                  if (isMobile) {
+                    return Column(children: [
+                      _KpiCard(
+                          title: 'Total Employees',
+                          value: '$_employeeCount',
+                          icon: Iconsax.people,
+                          color: AppColors.primary),
+                      const SizedBox(height: 16),
+                      _KpiCard(
+                          title: 'Pending Leaves',
+                          value: '$_pendingLeaves',
+                          icon: Iconsax.calendar_remove,
+                          color: AppColors.warning),
+                      const SizedBox(height: 16),
+                      _KpiCard(
+                          title: 'On Time Today',
+                          value: '$_onTimeToday',
+                          icon: Iconsax.clock,
+                          color: AppColors.success),
+                    ]);
+                  }
+                  return Row(children: [
+                    Expanded(
+                        child: _KpiCard(
+                            title: 'Total Employees',
+                            value: '$_employeeCount',
+                            icon: Iconsax.people,
+                            color: AppColors.primary)),
+                    const SizedBox(width: 16),
+                    Expanded(
+                        child: _KpiCard(
+                            title: 'Pending Leaves',
+                            value: '$_pendingLeaves',
+                            icon: Iconsax.calendar_remove,
+                            color: AppColors.warning)),
+                    const SizedBox(width: 16),
+                    Expanded(
+                        child: _KpiCard(
+                            title: 'On Time Today',
+                            value: '$_onTimeToday',
+                            icon: Iconsax.clock,
+                            color: AppColors.success)),
+                  ]);
+                }),
+              const SizedBox(height: 32),
+              LayoutBuilder(builder: (context, constraints) {
+                final isMobile = constraints.maxWidth < 800;
+                return Flex(
+                  direction: isMobile ? Axis.vertical : Axis.horizontal,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: isMobile
+                          ? double.infinity
+                          : constraints.maxWidth * 0.64,
+                      height: 300,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceDark,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10)
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Attendance Overview',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 24),
+                          Expanded(
+                            child: BarChart(BarChartData(
+                              alignment: BarChartAlignment.spaceAround,
+                              maxY: 100,
+                              barTouchData: BarTouchData(enabled: false),
+                              titlesData: FlTitlesData(
+                                show: true,
+                                bottomTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (v, meta) {
+                                    const days = [
+                                      'Mon',
+                                      'Tue',
+                                      'Wed',
+                                      'Thu',
+                                      'Fri',
+                                      'Sat',
+                                      'Sun'
+                                    ];
+                                    final i = v.toInt();
+                                    return SideTitleWidget(
+                                        axisSide: meta.axisSide,
+                                        child: Text(
+                                            i >= 0 && i < 7 ? days[i] : '',
+                                            style: const TextStyle(
+                                                color: AppColors.textSecondary,
+                                                fontSize: 12)));
+                                  },
+                                )),
+                                leftTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false)),
+                                topTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false)),
+                                rightTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false)),
+                              ),
+                              gridData: FlGridData(show: false),
+                              borderData: FlBorderData(show: false),
+                              barGroups: List.generate(7, (i) {
+                                final val = i < _weeklyAttendance.length
+                                    ? _weeklyAttendance[i]
+                                    : 0.0;
+                                final isWeekend = i >= 5;
+                                return isWeekend
+                                    ? _bar(i, val,
+                                        color: AppColors.textSecondary)
+                                    : _bar(i, val);
+                              }),
+                            )),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (isMobile)
+                      const SizedBox(height: 24)
+                    else
+                      const SizedBox(width: 24),
+                    Container(
+                      width: isMobile
+                          ? double.infinity
+                          : constraints.maxWidth * 0.33,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceDark,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10)
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Quick Actions',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 16),
+                          _QuickActionBtn(
+                            icon: Iconsax.document_download,
+                            label: 'Attendance Report (CSV)',
+                            color: AppColors.info,
+                            onTap: () => _showReportDialog('attendance'),
+                          ),
+                          const SizedBox(height: 12),
+                          _QuickActionBtn(
+                            icon: Iconsax.document_download,
+                            label: 'Salary Report (CSV)',
+                            color: AppColors.success,
+                            onTap: () => _showReportDialog('salary'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              }),
+              const SizedBox(height: 32),
+              const Text('Management Modules',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              LayoutBuilder(builder: (context, constraints) {
+                int count = 3;
+                if (constraints.maxWidth < 500)
+                  count = 1;
+                else if (constraints.maxWidth < 800) count = 2;
+                final ratio = constraints.maxWidth < 500 ? 4.0 : 2.5;
+                return GridView.count(
+                  crossAxisCount: count,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  childAspectRatio: ratio,
+                  children: [
+                    _ModuleTile(
+                        icon: Iconsax.people,
+                        title: 'Employees',
+                        subtitle: 'Manage organization staff',
+                        onTap: () => context.go('/employees')),
+                    _ModuleTile(
+                        icon: Iconsax.clock,
+                        title: 'Attendance',
+                        subtitle: 'View check-ins & logs',
+                        onTap: () => context.go('/attendance')),
+                    _ModuleTile(
+                        icon: Iconsax.calendar_remove,
+                        title: 'Leaves',
+                        subtitle: 'Review leave requests',
+                        onTap: () => context.go('/leave')),
+                    _ModuleTile(
+                        icon: Iconsax.money,
+                        title: 'Salary',
+                        subtitle: 'Process monthly payroll',
+                        onTap: () => context.go('/salary')),
+                    _ModuleTile(
+                        icon: Iconsax.task_square,
+                        title: 'Tasks',
+                        subtitle: 'Assign and track projects',
+                        onTap: () => context.go('/tasks')),
+                    _ModuleTile(
+                        icon: Iconsax.star1,
+                        title: 'Performance',
+                        subtitle: 'Review employee scores',
+                        onTap: () => context.go('/performance')),
+                    _ModuleTile(
+                        icon: Iconsax.message_text,
+                        title: 'Notices',
+                        subtitle: 'Publish announcements',
+                        onTap: () => context.go('/noticeboard')),
+                    _ModuleTile(
+                        icon: Iconsax.calendar,
+                        title: 'Calendar',
+                        subtitle: 'Holidays & Events',
+                        onTap: () => context.go('/calendar')),
+                    _ModuleTile(
+                        icon: Iconsax.message_question,
+                        title: 'Feedback',
+                        subtitle: 'Employee complaints',
+                        onTap: () => context.go('/feedback')),
+                  ],
+                );
+              }),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  BarChartGroupData _bar(int x, double y, {Color color = AppColors.primary}) {
+    return BarChartGroupData(x: x, barRods: [
+      BarChartRodData(
+          toY: y,
+          color: color,
+          width: 16,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(4))),
+    ]);
+  }
+
+  Future<void> _showReportDialog(String type) async {
+    final now = NepaliDateTime.now();
+    int selectedYear = now.year;
+    int selectedMonth = now.month;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            title: Text(
+                'Generate ${type == 'attendance' ? 'Attendance' : 'Salary'} Report'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<int>(
+                  initialValue: selectedYear,
+                  decoration: const InputDecoration(labelText: 'Year'),
+                  items: List.generate(11, (index) {
+                    final y = (now.year - 5) + index;
+                    return DropdownMenuItem(
+                        value: y, child: Text(y.toString()));
+                  }),
+                  onChanged: (val) => setState(() => selectedYear = val!),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int>(
+                  value: selectedMonth,
+                  decoration: const InputDecoration(labelText: 'Month'),
+                  items: List.generate(12, (index) {
+                    final m = index + 1;
+                    return DropdownMenuItem(value: m, child: Text('Month $m'));
+                  }),
+                  onChanged: (val) => setState(() => selectedMonth = val!),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel')),
+              ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Download')),
+            ],
+          );
+        });
+      },
+    );
+
+    if (result == true) {
+      final storage = const FlutterSecureStorage();
+      final token = await storage.read(key: AppConstants.accessTokenKey) ?? '';
+      final baseUrl = AppConstants.baseUrl;
+      final endpoint = type == 'attendance'
+          ? AppConstants.attendanceBase
+          : AppConstants.salaryBase;
+      final url =
+          '$baseUrl$endpoint/generate-report/?year=$selectedYear&month=$selectedMonth&token=$token';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Downloading $type report...')));
+      }
+      launchUrlString(url, mode: LaunchMode.externalApplication);
+    }
+  }
+}
+
+class _KpiCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+  const _KpiCard(
+      {required this.title,
+      required this.value,
+      required this.icon,
+      required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceDark,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadStats,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // Stats row
-            _loading
-                ? const Center(child: CircularProgressIndicator())
-                : Column(children: [
-                    Row(children: [
-                      Expanded(child: _StatCard('Total Employees',
-                          '$_employeeCount', Iconsax.people, AppColors.primary)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _StatCard('Pending Leaves',
-                          '$_pendingLeaves', Iconsax.calendar_remove, AppColors.warning)),
-                    ]),
-                  ]),
-            const SizedBox(height: 24),
-
-            // Management actions
-            const Text('Management',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-            const SizedBox(height: 12),
-            _ManagementTile(Iconsax.people, 'Employee Management',
-                'Add, edit, deactivate employees', () => context.go('/employees')),
-            _ManagementTile(Iconsax.clock, 'Attendance Monitor',
-                'View all employee attendance', () => context.go('/attendance')),
-            _ManagementTile(Iconsax.calendar_remove, 'Leave Approvals',
-                'Review and approve leave requests', () => context.go('/leave')),
-            _ManagementTile(Iconsax.money, 'Salary Management',
-                'Process monthly payroll', () => context.go('/salary')),
-            _ManagementTile(Iconsax.task_square, 'Projects & Tasks',
-                'Manage projects and assign tasks', () => context.go('/tasks')),
-            _ManagementTile(Iconsax.message_text, 'Notice Board',
-                'Post organization notices', () => context.go('/noticeboard')),
-            _ManagementTile(Iconsax.calendar, 'Calendar',
-                'Manage events and holidays', () => context.go('/calendar')),
-            _ManagementTile(Iconsax.star1, 'Performance & Score',
-                'Review employee performance', () => context.go('/performance')),
-            _ManagementTile(Iconsax.message_question, 'Feedback / Complaints',
-                'Review employee complaints', () => context.go('/feedback')),
-          ]),
+      child: Row(children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12)),
+          child: Icon(icon, color: color, size: 24),
         ),
+        const SizedBox(width: 16),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title,
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13)),
+          const SizedBox(height: 4),
+          Text(value,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+        ]),
+      ]),
+    );
+  }
+}
+
+class _QuickActionBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _QuickActionBtn(
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Text(label,
+                  style: TextStyle(color: color, fontWeight: FontWeight.w600))),
+          Icon(Icons.chevron_right, color: color, size: 20),
+        ]),
       ),
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  final String label, value;
+class _ModuleTile extends StatelessWidget {
   final IconData icon;
-  final Color color;
-  const _StatCard(this.label, this.value, this.icon, this.color);
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: color.withValues(alpha: 0.3)),
-    ),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(icon, color: color, size: 22),
-      const SizedBox(height: 8),
-      Text(value,
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
-      Text(label,
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-    ]),
-  );
-}
-
-class _ManagementTile extends StatelessWidget {
-  final IconData icon;
-  final String title, subtitle;
+  final String title;
+  final String subtitle;
   final VoidCallback onTap;
-  const _ManagementTile(this.icon, this.title, this.subtitle, this.onTap);
+  const _ModuleTile(
+      {required this.icon,
+      required this.title,
+      required this.subtitle,
+      required this.onTap});
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: const EdgeInsets.symmetric(vertical: 4),
-    leading: Container(
-      width: 44, height: 44,
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceDark,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderDark),
+        ),
+        child: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: AppColors.primary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(title,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 14)),
+              Text(subtitle,
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 12)),
+            ],
+          )),
+          const Icon(Icons.chevron_right,
+              color: AppColors.textSecondary, size: 18),
+        ]),
       ),
-      child: Icon(icon, color: AppColors.primary, size: 20),
-    ),
-    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-    subtitle: Text(subtitle,
-        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-    trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
-    onTap: onTap,
-  );
+    );
+  }
 }

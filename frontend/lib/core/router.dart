@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/auth/providers/auth_provider.dart';
@@ -13,6 +12,7 @@ import '../features/noticeboard/screens/noticeboard_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/employee/screens/employee_list_screen.dart';
+import '../features/employee/screens/employee_detail_screen.dart';
 import '../features/feedback/screens/feedback_screen.dart';
 import '../features/calendar/screens/calendar_screen.dart';
 import '../features/performance/screens/performance_screen.dart';
@@ -63,6 +63,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: '/employees',
               builder: (_, __) => const EmployeeListScreen()),
+          GoRoute(
+              path: '/employees/:id',
+              builder: (context, state) => EmployeeDetailScreen(id: int.parse(state.pathParameters['id']!))),
           GoRoute(
               path: '/feedback', builder: (_, __) => const FeedbackScreen()),
           GoRoute(

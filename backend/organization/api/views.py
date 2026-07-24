@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework.generics import CreateAPIView, RetrieveAPIView, RetrieveUpdateDestroyAPIView, ListAPIView
+from rest_framework.generics import CreateAPIView, RetrieveAPIView, RetrieveUpdateDestroyAPIView, ListAPIView, ListCreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication
 
@@ -45,10 +45,16 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         return Response({'message': 'Password updated successfully'}, status=status.HTTP_200_OK)
 
 
-class EmployeeAddressCreateView(CreateAPIView):
-    "API view to create new employee address"
+class EmployeeAddressCreateView(ListCreateAPIView):
+    "API view to list and create employee addresses"
     serializer_class = AddressSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        employee_id = self.request.GET.get('employee')
+        if employee_id:
+            return Address.objects.filter(employee_id=employee_id)
+        return Address.objects.none()
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, many=True)

@@ -33,7 +33,7 @@ dependencies:
 
   # Image & File
   cached_network_image: ^3.3.1
-  image_picker: ^1.0.7
+  image_picker: ^1.2.3
   file_picker: ^8.0.3
 
   # Charts
@@ -52,7 +52,7 @@ dependencies:
 
   # Utils
   shared_preferences: ^2.2.3
-  url_launcher: ^6.2.6
+  url_launcher: ^6.3.2
   timeago: ^3.6.1
   equatable: ^2.0.5
 
@@ -60,6 +60,8 @@ dependencies:
   nepali_utils: ^3.0.8
   firebase_core: ^4.12.1
   firebase_messaging: ^16.4.3
+  google_maps_flutter: ^2.18.0
+  google_maps_flutter_web: ^0.6.3
 dev_dependencies:
   flutter_test:
     sdk: flutter

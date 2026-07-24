@@ -132,6 +132,11 @@ class SalaryTransaction(models.Model):
             self.salary.employee, self.date.year, self.date.month)
 
     @property
+    def half_leaves(self):
+        return LeaveRequest.get_total_half_leaves(
+            self.salary.employee, self.date.year, self.date.month)
+
+    @property
     def deduction(self):
         return self.salary.basic_salary - self.net_salary
 

@@ -7,7 +7,7 @@ class UserProfile {
   final String? profilePicture;
   final bool isStaff;
   final bool isSuperuser;
-  final String role;        // 'super_admin' | 'org_admin' | 'employee'
+  final String role;        // 'super_admin' | 'org_admin' | 'hr' | 'employee'
   final int? employeeId;
   final int? organizationId;
 
@@ -41,6 +41,7 @@ class UserProfile {
 
   bool get isOrgAdmin   => role == 'org_admin';
   bool get isSuperAdmin => role == 'super_admin';
+  bool get isHr         => role == 'hr';
   bool get isEmployee   => role == 'employee';
-  bool get canManage    => isOrgAdmin || isSuperAdmin;
+  bool get canManage    => isOrgAdmin || isSuperAdmin || isHr;
 }

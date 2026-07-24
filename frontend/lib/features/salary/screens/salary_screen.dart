@@ -263,7 +263,9 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               itemBuilder: (ctx, i) {
                 final tx = _allTransactions[i];
                 return _TransactionTile(tx,
-                    empName: _empName(tx['employee'] ?? 0), isAdmin: true, onDelete: () => _deleteTransaction(tx['id']));
+                    empName: _empName(tx['employee'] ?? 0),
+                    isAdmin: true,
+                    onDelete: () => _deleteTransaction(tx['id']));
               },
             ),
     );
@@ -274,14 +276,16 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Transaction'),
-        content: const Text('Are you sure you want to delete this salary transaction?'),
+        content: const Text(
+            'Are you sure you want to delete this salary transaction?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.pop(ctx, true), 
-            child: const Text('Delete')
-          ),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete')),
         ],
       ),
     );
@@ -290,9 +294,15 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
     try {
       await ApiService().delete('${AppConstants.salaryBase}/transactions/$id/');
       _loadData();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transaction deleted successfully'), backgroundColor: AppColors.success));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Transaction deleted successfully'),
+            backgroundColor: AppColors.success));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(ApiService.getErrorMessage(e)),
+            backgroundColor: AppColors.error));
     }
   }
 
@@ -356,6 +366,8 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               '${_myNetSalary?['paid_leaves'] ?? '—'}'),
           _InfoRow(Iconsax.calendar_remove, 'Unpaid Leaves',
               '${_myNetSalary?['unpaid_leaves'] ?? '—'}'),
+          _InfoRow(Iconsax.clock, 'Half Leaves',
+              '${_myNetSalary?['half_leaves'] ?? '—'}'),
 
           // Transactions history
           if (_myTransactions.isNotEmpty) ...[
@@ -530,7 +542,8 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
       if (mounted) {
         setState(() {
           _netSalaryInfo = res.data;
-          _netSalaryController.text = (_netSalaryInfo!['net_salary'] ?? '').toString();
+          _netSalaryController.text =
+              (_netSalaryInfo!['net_salary'] ?? '').toString();
         });
       }
     } catch (_) {}
@@ -748,21 +761,28 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                         '${_netSalaryInfo!['paid_leaves']}'),
                     _InfoRow(Iconsax.calendar_remove, 'Unpaid Leaves',
                         '${_netSalaryInfo!['unpaid_leaves']}'),
+                    _InfoRow(Iconsax.clock, 'Half Leaves',
+                        '${_netSalaryInfo!['half_leaves'] ?? 0}'),
                     _InfoRow(Iconsax.calendar, 'Holidays',
                         '${_netSalaryInfo!['holidays']}'),
                     const Divider(color: Colors.white24),
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8.0, horizontal: 16.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Expanded(
                             child: Row(
                               children: [
-                                Icon(Iconsax.money_recive, size: 20, color: AppColors.primary),
+                                Icon(Iconsax.money_recive,
+                                    size: 20, color: AppColors.primary),
                                 SizedBox(width: 8),
                                 Expanded(
-                                  child: Text('Net Salary Payable', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                  child: Text('Net Salary Payable',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textPrimary)),
                                 ),
                               ],
                             ),
@@ -772,11 +792,14 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                             child: TextFormField(
                               controller: _netSalaryController,
                               keyboardType: TextInputType.number,
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary),
                               decoration: const InputDecoration(
                                 prefixText: 'NPR ',
                                 isDense: true,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 8),
                                 border: OutlineInputBorder(),
                               ),
                             ),
@@ -859,11 +882,6 @@ class _EmployeeSalaryDetailSheetState
     }
   }
 
-  String _fmt(dynamic val) {
-    if (val == null) return 'N/A';
-    final n = double.tryParse(val.toString()) ?? 0;
-    return 'NPR ${n.toStringAsFixed(0)}';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -911,7 +929,11 @@ class _EmployeeSalaryDetailSheetState
           const Divider(),
           const SizedBox(height: 16),
           // Base salary info
-          _InfoRow(Iconsax.money_4, 'Basic Salary', widget.basicSalary),
+          _InfoRow(
+            Iconsax.money_4,
+            'Basic Salary',
+            widget.basicSalary,
+          ),
           _InfoRow(Iconsax.buildings_2, 'Remote Salary', widget.remoteSalary),
           const SizedBox(height: 8),
           const Divider(),
@@ -941,6 +963,8 @@ class _EmployeeSalaryDetailSheetState
                 '${_netInfo!['paid_leaves'] ?? 0} days'),
             _InfoRow(Iconsax.calendar_remove, 'Unpaid Leaves Taken',
                 '${_netInfo!['unpaid_leaves'] ?? 0} days'),
+            _InfoRow(Iconsax.clock, 'Half Leaves Taken',
+                '${_netInfo!['half_leaves'] ?? 0} days'),
           ],
           const SizedBox(height: 24),
         ]),
@@ -968,8 +992,8 @@ class _PayslipItem extends StatelessWidget {
 class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label, value;
-  final bool bold;
-  const _InfoRow(this.icon, this.label, this.value, {this.bold = false});
+  const _InfoRow(this.icon, this.label, this.value);
+
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -978,12 +1002,9 @@ class _InfoRow extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
               child: Text(label,
-                  style: TextStyle(
-                      fontWeight: bold ? FontWeight.bold : FontWeight.normal))),
+                  style: const TextStyle(fontWeight: FontWeight.normal))),
           Text(value,
-              style: TextStyle(
-                  fontWeight: bold ? FontWeight.bold : FontWeight.w500,
-                  color: bold ? AppColors.success : null)),
+              style: const TextStyle(fontWeight: FontWeight.w500)),
         ]),
       );
 }
@@ -993,7 +1014,8 @@ class _TransactionTile extends StatelessWidget {
   final String? empName;
   final bool isAdmin;
   final VoidCallback? onDelete;
-  const _TransactionTile(this.tx, {this.empName, this.isAdmin = false, this.onDelete});
+  const _TransactionTile(this.tx,
+      {this.empName, this.isAdmin = false, this.onDelete});
   @override
   Widget build(BuildContext context) => Card(
         margin: const EdgeInsets.only(bottom: 8),
@@ -1033,7 +1055,9 @@ class _TransactionTile extends StatelessWidget {
                       onTap: onDelete,
                       child: const Padding(
                         padding: EdgeInsets.only(top: 4.0),
-                        child: Text('Delete', style: TextStyle(color: AppColors.error, fontSize: 12)),
+                        child: Text('Delete',
+                            style: TextStyle(
+                                color: AppColors.error, fontSize: 12)),
                       ),
                     )
                 ],
@@ -1069,6 +1093,12 @@ class _TransactionTile extends StatelessWidget {
                 icon: Iconsax.calendar_remove,
                 label: 'Unpaid Leaves',
                 value: '${tx['unpaid_leaves'] ?? 0}',
+              )),
+              Expanded(
+                  child: _MiniStat(
+                icon: Iconsax.clock,
+                label: 'Half Leaves',
+                value: '${tx['half_leaves'] ?? 0}',
               )),
             ]),
             if (tx['fiscal_year'] != null) ...[

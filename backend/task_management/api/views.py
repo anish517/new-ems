@@ -38,7 +38,7 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
         projects = Project.objects.filter(organization=org)
         all_tasks = Task.objects.filter(project__in=projects)
         # Admins see all tasks; employees only see tasks assigned to them
-        is_admin = user.organization.exists() or user.is_superuser
+        is_admin = user.organization.exists() or user.is_superuser or getattr(user, 'is_hr', False)
         if is_admin:
             return all_tasks.order_by('-id')
         if employee:
