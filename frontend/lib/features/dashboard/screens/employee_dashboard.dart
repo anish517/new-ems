@@ -42,46 +42,20 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
     final unread = ref.watch(unreadCountProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Good ${_greeting()}, ${user?.firstName ?? ''}!',
-              style: const TextStyle(fontSize: 16)),
-          const Text('Welcome back', style: TextStyle(fontSize: 12,
-              color: AppColors.textSecondary)),
-        ]),
-        centerTitle: false,
-        actions: [
-          Stack(children: [
-            IconButton(icon: const Icon(Iconsax.notification),
-                onPressed: () => context.go('/notifications')),
-            if (unread > 0)
-              Positioned(right: 8, top: 8,
-                child: Container(
-                  width: 8, height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.error, shape: BoxShape.circle),
-                )),
-          ]),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: () => context.go('/profile'),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: AppColors.primary,
-                child: Text(user?.firstName[0].toUpperCase() ?? 'U',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: _loadData,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
-          child: Column(children: [
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+            // Greeting
+            Text('Good ${_greeting()}, ${user?.firstName ?? ''}!',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text('Welcome back', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+            const SizedBox(height: 16),
+            
             // Attendance card
             _AttendanceSummaryCard(data: _attendanceData, isLoading: _isLoading),
             const SizedBox(height: 16),

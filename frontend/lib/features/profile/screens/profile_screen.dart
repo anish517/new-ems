@@ -6,11 +6,58 @@ import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 
-class ProfileScreen extends ConsumerWidget {
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
+
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _isUploading = false;
+
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    try {
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+      if (image == null) return;
+      
+      setState(() => _isUploading = true);
+      final bytes = await image.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      
+      // Send to backend
+      final ext = image.name.split('.').last.toLowerCase();
+      final dataUri = 'data:image/$ext;base64,$base64Image';
+      
+      await ApiService().patch('/api/auth/me/', data: {'profile_picture': dataUri});
+      
+      // Refresh user
+      await ref.read(authProvider.notifier).refreshUser();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Profile picture updated successfully!'),
+          backgroundColor: AppColors.success,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed to update picture: ${ApiService.getErrorMessage(e)}'),
+          backgroundColor: AppColors.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
@@ -19,13 +66,40 @@ class ProfileScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(24),
         child: Column(children: [
           // Avatar
-          CircleAvatar(
-            radius: 48,
-            backgroundColor: AppColors.primary,
-            child: Text(
-              user?.firstName[0].toUpperCase() ?? 'U',
-              style: const TextStyle(
-                  fontSize: 36, color: Colors.white, fontWeight: FontWeight.bold),
+          GestureDetector(
+            onTap: _isUploading ? null : _pickAndUploadImage,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 48,
+                  backgroundColor: AppColors.primary,
+                  backgroundImage: user?.profilePicture != null
+                      ? NetworkImage(user!.profilePicture!)
+                      : null,
+                  child: user?.profilePicture == null
+                      ? Text(
+                          user?.firstName[0].toUpperCase() ?? 'U',
+                          style: const TextStyle(
+                              fontSize: 36, color: Colors.white, fontWeight: FontWeight.bold),
+                        )
+                      : null,
+                ),
+                if (_isUploading)
+                  const CircularProgressIndicator(color: Colors.white),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),

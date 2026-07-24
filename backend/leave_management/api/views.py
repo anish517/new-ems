@@ -40,21 +40,17 @@ class EmployeeLeaveCountDetailAPIView(APIView):
             employee = None
             return Response({'message': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        all_approved_leave_requests = LeaveRequest.objects.filter(
-            employee=employee, is_approved=True, is_reviewed=True).order_by('-created_at')
-
-        total_no_of_leaves = 0
+        from django.db.models import Sum
         current_year = nepali_datetime.datetime.today().year
 
-        for leave_request in all_approved_leave_requests:
-            if leave_request.created_at.year == current_year:
-                total_no_of_leaves += leave_request.no_days
+        all_approved_leave_requests = LeaveRequest.objects.filter(
+            employee=employee, is_approved=True, is_reviewed=True
+        )
 
-        leave_types = LeaveType.objects.filter(
-            organization=employee.organization)
-        no_of_allowed_leaves = 0
-        for leave_type in leave_types:
-            no_of_allowed_leaves += leave_type.maximum_leave
+        total_no_of_leaves = sum(lr.no_days for lr in all_approved_leave_requests if getattr(lr.created_at, 'year', None) == current_year)
+
+        leave_types = LeaveType.objects.filter(organization=employee.organization)
+        no_of_allowed_leaves = leave_types.aggregate(Sum('maximum_leave'))['maximum_leave__sum'] or 0
 
         remaining_leaves = no_of_allowed_leaves - total_no_of_leaves
         if remaining_leaves <= 0:
@@ -123,9 +119,12 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
         if user.organization.exists():
             is_admin = True
             org = user.organization.first()
-        elif getattr(user, 'is_hr', False) and hasattr(user, 'employee'):
+        elif getattr(user, 'is_hr', False):
             is_admin = True
-            org = user.employee.organization
+            org = getattr(user.employee, 'organization', None) if hasattr(user, 'employee') else None
+            if not org:
+                from organization.models import Organization
+                org = Organization.objects.first()
 
         try:
             employee = user.employee
@@ -141,7 +140,7 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
         employeeId = self.request.GET.get('employee', None)
         if employeeId:
             try:
-                emp = Employee.objects.get(id=employeeId, organization=org)
+                emp = Employee.objects.get(id=employeeId, post__department__organization=org)
                 return LeaveRequest.objects.filter(organization=org, employee=emp).order_by('-id')
             except Employee.DoesNotExist:
                 return LeaveRequest.objects.none()
@@ -190,10 +189,6 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
             is_reviewed=False,
         )
 
-    def list(self, request, *args, **kwargs):
-        qs = self.get_queryset()
-        serializer = self.get_serializer(qs, many=True)
-        return Response(data=serializer.data, status=status.HTTP_200_OK)
 
 
 
@@ -207,7 +202,13 @@ class LeaveBalanceDetailAPIView(generics.RetrieveUpdateAPIView):
             employee = self.request.user.employee
         except:
             return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
-        return LeaveBalance.objects.filter(organization=employee.organization)
+            
+        org = getattr(employee, 'organization', None)
+        if not org and getattr(self.request.user, 'is_hr', False):
+            from organization.models import Organization
+            org = Organization.objects.first()
+            
+        return LeaveBalance.objects.filter(organization=org)
 
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)

@@ -21,6 +21,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   int _employeeCount = 0;
   int _pendingLeaves = 0;
   int _onTimeToday = 0;
+  List<String> _onTimeTodayNames = [];
+  List<String> _alwaysOnTimeEmployees = [];
   List<double> _weeklyAttendance = List.filled(7, 0.0);
   bool _loading = true;
 
@@ -29,6 +31,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     super.initState();
     _loadStats();
   }
+
+  // Zero-padded YYYY-MM-DD, matching the format used for string-based
+  // date comparisons against the API's `date` field.
+  String _fmtDate(NepaliDateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   Future<void> _loadStats() async {
     setState(() => _loading = true);
@@ -60,42 +67,105 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             attRes.data is List ? attRes.data : (attRes.data['results'] ?? []);
         if (attData is List && attData.isNotEmpty) {
           final now = NepaliDateTime.now();
-          final today =
-              '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+          final today = _fmtDate(now);
 
-          // Count on-time check-ins (before or at 9:00 AM)
-          int onTime = 0;
+          // Current week window (Monday -> Sunday) for the bar chart,
+          // so it resets each week instead of accumulating all-time totals.
+          // NepaliDateTime.weekday: 1=Sun .. 7=Sat
+          final daysSinceMonday = now.weekday == 1 ? 6 : now.weekday - 2;
+          final weekStart = now.subtract(Duration(days: daysSinceMonday));
+          final weekEnd = weekStart.add(const Duration(days: 6));
+          final weekStartStr = _fmtDate(weekStart);
+          final weekEndStr = _fmtDate(weekEnd);
+
+          // Office hours: 10:00 AM - 5:00 PM.
+          // "On time" window: check-in between 10:00 AM and 10:30 AM inclusive.
+          const onTimeStartMinutes = 10 * 60; // 10:00 AM
+          const onTimeEndMinutes = 10 * 60 + 30; // 10:30 AM
+
           final weekCounts = List<int>.filled(7, 0); // Mon=0..Sun=6
+          final onTimeTodayNames = <String>[];
+
+          // employeeKey -> display name
+          final employeeNames = <String, String>{};
+          // employeeKey -> { date -> wasOnTimeThatDay }
+          final employeeAttendance = <String, Map<String, bool>>{};
 
           for (final log in attData) {
             final dateStr = log['date']?.toString() ?? '';
             if (dateStr.isEmpty) continue;
 
-            // Day-of-week for chart
-            try {
-              final d = NepaliDateTime.parse(dateStr);
-              // NepaliDateTime.weekday: 1=Sun .. 7=Sat
-              // Chart index: 0=Mon, 1=Tue, ..., 5=Sat, 6=Sun
-              final index = (d.weekday == 1) ? 6 : d.weekday - 2;
-              weekCounts[index]++;
-            } catch (_) {}
+            // NOTE: adjust these field lookups to match your actual
+            // /attendance/list/ response shape (verify against the API,
+            // e.g. via the Node/Express attendance controller or a sample
+            // response) - this tries the common shapes but silently falls
+            // back to 'Unknown' / the raw id if none match.
+            final employeeName = (log['employee_name'] ??
+                    log['employeeName'] ??
+                    (log['employee'] is Map
+                        ? (log['employee']['full_name'] ??
+                            log['employee']['fullName'] ??
+                            log['employee']['name'])
+                        : null) ??
+                    'Unknown')
+                .toString();
+            final employeeKey = (log['employee_id'] ??
+                    log['employeeId'] ??
+                    (log['employee'] is Map
+                        ? (log['employee']['_id'] ?? log['employee']['id'])
+                        : log['employee']) ??
+                    employeeName)
+                .toString();
 
-            // On-time today
-            if (dateStr == today) {
-              final checkInStr = log['check_in_time']?.toString();
-              if (checkInStr != null) {
-                try {
-                  final parts = checkInStr.split(':');
-                  final h = int.parse(parts[0]);
-                  final m = parts.length > 1 ? int.parse(parts[1]) : 0;
-                  // On time if check-in at or before 9:00 AM
-                  if (h < 9 || (h == 9 && m == 0)) onTime++;
-                } catch (_) {}
-              }
+            // Day-of-week for chart - only count if within the current week
+            if (dateStr.compareTo(weekStartStr) >= 0 &&
+                dateStr.compareTo(weekEndStr) <= 0) {
+              try {
+                final d = NepaliDateTime.parse(dateStr);
+                // NepaliDateTime.weekday: 1=Sun .. 7=Sat
+                // Chart index: 0=Mon, 1=Tue, ..., 5=Sat, 6=Sun
+                final index = (d.weekday == 1) ? 6 : d.weekday - 2;
+                weekCounts[index]++;
+              } catch (_) {}
+            }
+
+            // Determine on-time status for this log entry
+            bool isOnTime = false;
+            final checkInStr = log['check_in_time']?.toString();
+            if (checkInStr != null && checkInStr.isNotEmpty) {
+              try {
+                final parts = checkInStr.split(':');
+                final h = int.parse(parts[0]);
+                final m = parts.length > 1 ? int.parse(parts[1]) : 0;
+                final totalMinutes = h * 60 + m;
+                isOnTime = totalMinutes >= onTimeStartMinutes &&
+                    totalMinutes <= onTimeEndMinutes;
+              } catch (_) {}
+            }
+
+            employeeNames[employeeKey] = employeeName;
+            employeeAttendance.putIfAbsent(employeeKey, () => {});
+            // If an employee has more than one log for the same date,
+            // treat the day as on-time only if every entry that day was.
+            final existing = employeeAttendance[employeeKey]![dateStr];
+            employeeAttendance[employeeKey]![dateStr] =
+                existing == null ? isOnTime : (existing && isOnTime);
+
+            if (dateStr == today && isOnTime) {
+              onTimeTodayNames.add(employeeName);
             }
           }
 
-          // Normalize weekly counts relative to total employees
+          // Employees on-time on every single day they have a record for
+          final alwaysOnTime = <String>[];
+          employeeAttendance.forEach((key, dailyMap) {
+            if (dailyMap.isNotEmpty &&
+                dailyMap.values.every((onTime) => onTime)) {
+              alwaysOnTime.add(employeeNames[key] ?? 'Unknown');
+            }
+          });
+
+          // Normalize this week's counts relative to its busiest day
           final maxCount = weekCounts.reduce((a, b) => a > b ? a : b);
           final normalized = weekCounts
               .map((c) => maxCount > 0 ? (c / maxCount) * 90.0 : 0.0)
@@ -103,7 +173,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
           if (mounted) {
             setState(() {
-              _onTimeToday = onTime;
+              _onTimeToday = onTimeTodayNames.length;
+              _onTimeTodayNames = onTimeTodayNames;
+              _alwaysOnTimeEmployees = alwaysOnTime;
               _weeklyAttendance = normalized;
             });
           }
@@ -121,7 +193,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       backgroundColor: AppColors.bgDark,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding:
+              const EdgeInsets.only(left: 16, right: 24, top: 24, bottom: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -198,7 +271,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                           title: 'On Time Today',
                           value: '$_onTimeToday',
                           icon: Iconsax.clock,
-                          color: AppColors.success),
+                          color: AppColors.success,
+                          onTap: _onTimeTodayNames.isEmpty
+                              ? null
+                              : () => _showNamesDialog(
+                                  'On Time Today', _onTimeTodayNames)),
                     ]);
                   }
                   return Row(children: [
@@ -221,7 +298,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                             title: 'On Time Today',
                             value: '$_onTimeToday',
                             icon: Iconsax.clock,
-                            color: AppColors.success)),
+                            color: AppColors.success,
+                            onTap: _onTimeTodayNames.isEmpty
+                                ? null
+                                : () => _showNamesDialog(
+                                    'On Time Today', _onTimeTodayNames))),
                   ]);
                 }),
               const SizedBox(height: 32),
@@ -352,6 +433,126 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 );
               }),
               const SizedBox(height: 32),
+              if (_onTimeTodayNames.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceDark,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10)
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Iconsax.clock,
+                              color: AppColors.success, size: 20),
+                          const SizedBox(width: 8),
+                          const Text('On Time Today (10:00–10:30 AM)',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _onTimeTodayNames.length,
+                        separatorBuilder: (_, __) => const Divider(
+                            height: 1, color: AppColors.borderDark),
+                        itemBuilder: (_, i) => ListTile(
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 8),
+                          leading: CircleAvatar(
+                            backgroundColor:
+                                AppColors.primary.withValues(alpha: 0.1),
+                            child: const Icon(Iconsax.user,
+                                color: AppColors.primary, size: 18),
+                          ),
+                          title: Text(_onTimeTodayNames[i],
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w600)),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.success.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color:
+                                      AppColors.success.withValues(alpha: 0.3)),
+                            ),
+                            child: const Text('On Time',
+                                style: TextStyle(
+                                    color: AppColors.success,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
+              if (_alwaysOnTimeEmployees.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceDark,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10)
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Iconsax.medal_star,
+                              color: AppColors.success, size: 20),
+                          const SizedBox(width: 8),
+                          const Text('Always On Time (10:00–10:30 AM)',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Employees who checked in within the on-time window every recorded day',
+                        style: TextStyle(
+                            color: AppColors.textSecondary, fontSize: 12),
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _alwaysOnTimeEmployees
+                            .map((name) => Chip(
+                                  label: Text(name),
+                                  backgroundColor:
+                                      AppColors.success.withValues(alpha: 0.12),
+                                  side: BorderSide(
+                                      color: AppColors.success
+                                          .withValues(alpha: 0.3)),
+                                ))
+                            .toList(),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
               const Text('Management Modules',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
@@ -434,6 +635,32 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     ]);
   }
 
+  void _showNamesDialog(String title, List<String> names) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: names.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (_, i) => ListTile(
+              dense: true,
+              leading: const Icon(Iconsax.user, size: 18),
+              title: Text(names[i]),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showReportDialog(String type) async {
     final now = NepaliDateTime.now();
     int selectedYear = now.year;
@@ -507,42 +734,49 @@ class _KpiCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
+  final VoidCallback? onTap;
   const _KpiCard(
       {required this.title,
       required this.value,
       required this.icon,
-      required this.color});
+      required this.color,
+      this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
-        ],
-      ),
-      child: Row(children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12)),
-          child: Icon(icon, color: color, size: 24),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceDark,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
+          ],
         ),
-        const SizedBox(width: 16),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title,
-              style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 13)),
-          const SizedBox(height: 4),
-          Text(value,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+        child: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 13)),
+            const SizedBox(height: 4),
+            Text(value,
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+          ]),
         ]),
-      ]),
+      ),
     );
   }
 }

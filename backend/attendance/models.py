@@ -25,41 +25,37 @@ class RemoteWorkPermission(models.Model):
     remote_lat = models.FloatField(default=0)
     remote_lng = models.FloatField(default=0)
 
-    def has_perm(self):
+    def has_perm(self, current_lat: float, current_lng: float) -> bool:
         """
-        Checks if the remote user is within a 50-meter radius of the organization's primary location.
+        Checks if the given coordinates are within a 50-meter radius of this
+        employee's approved remote work location.
+
+        Args:
+            current_lat (float): Current latitude of the employee.
+            current_lng (float): Current longitude of the employee.
 
         Returns:
-            bool: True if the user is within the 50-meter radius, False otherwise.
+            bool: True if within the remote-work radius AND permission is granted.
         """
-        organization = self.employee.organization
-        organization_location = OrganizationAddress.objects.filter(
-            organization=organization, primary=True
-        ).first()
-
-        if not organization_location:
+        if not self.is_allowed:
             return False
 
         EARTH_RADIUS = 6371000
         RADIUS_METERS = 50
 
-        delta_lat = radians(organization_location.latitude - self.remote_lat)
-        delta_lon = radians(organization_location.longitude - self.remote_lng)
+        delta_lat = radians(self.remote_lat - current_lat)
+        delta_lon = radians(self.remote_lng - current_lng)
 
         a = (
             sin(delta_lat / 2) ** 2
-            + cos(radians(self.remote_lat)) *
-            cos(radians(organization_location.latitude)) *
+            + cos(radians(current_lat)) *
+            cos(radians(self.remote_lat)) *
             sin(delta_lon / 2) ** 2
         )
         c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
         distance = EARTH_RADIUS * c
-
-        if distance <= RADIUS_METERS and self.is_allowed:
-            return True
-        else:
-            return False
+        return distance <= RADIUS_METERS
 
 
 class CheckInOut(models.Model):
@@ -303,7 +299,7 @@ class Attendance(models.Model):
         notification = Notification.objects.create(
             user=employee.user,
             title=f'{employee} checked out',
-            message=f'{employee} checked out at {check_in_out.check_in}',
+            message=f'{employee} checked out at {check_in_out.check_out}',
             is_read=False,
         )
 
@@ -311,7 +307,7 @@ class Attendance(models.Model):
             notification = Notification.objects.create(
                 user=user,
                 title=f'{employee} checked out',
-                message=f'{employee} checked out at {check_in_out.check_in}',
+                message=f'{employee} checked out at {check_in_out.check_out}',
                 is_read=False,
             )
 
@@ -483,11 +479,13 @@ class Attendance(models.Model):
         return Attendance.objects.filter(id__in=filter_attendance_id_list).order_by('date')
 
     @staticmethod
-    def get_no_of_present_days(employee: Employee, year: int = datetime.today(), month: int = datetime.today().month) -> int:
+    def get_no_of_present_days(employee: Employee, year: int = None, month: int = None) -> int:
+        if year is None:
+            year = datetime.today().year
+        if month is None:
+            month = datetime.today().month
         total_attendance = Attendance.get_attendance_of_selected_month(
             employee=employee, year=year, month=month)
-        no_of_present_days = []
         attendance_list = [
             attendance for attendance in total_attendance if attendance.has_checked_in()]
-
         return len(attendance_list)

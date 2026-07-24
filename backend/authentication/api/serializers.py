@@ -60,15 +60,21 @@ class AccountSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         instance = self.instance
+        print(f"DEBUG validate_email: initial instance={instance}")
         if not instance and getattr(self, 'parent', None) and getattr(self.parent, 'instance', None):
             if hasattr(self.parent.instance, 'user'):
                 instance = self.parent.instance.user
+                print(f"DEBUG validate_email: resolved instance from parent: {instance}, pk={instance.pk if instance else None}")
 
         if instance:
-            if Account.objects.filter(email=value).exclude(pk=instance.pk).exists():
+            exists = Account.objects.filter(email=value).exclude(pk=instance.pk).exists()
+            print(f"DEBUG validate_email: checking with instance pk={instance.pk}, value={value}, exists={exists}")
+            if exists:
                 raise serializers.ValidationError("An account with this email already exists.")
         else:
-            if Account.objects.filter(email=value).exists():
+            exists = Account.objects.filter(email=value).exists()
+            print(f"DEBUG validate_email: checking without instance, value={value}, exists={exists}")
+            if exists:
                 raise serializers.ValidationError("An account with this email already exists.")
         return value
 

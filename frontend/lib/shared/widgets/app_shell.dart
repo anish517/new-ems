@@ -1,10 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../features/auth/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/constants/app_constants.dart';
 
 class AppShell extends ConsumerWidget {
   final Widget child;
@@ -28,7 +29,13 @@ class AppShell extends ConsumerWidget {
       _NavItem('/', Iconsax.home_2, 'Dashboard'),
       _NavItem('/employees', Iconsax.people, 'Employees'),
       _NavItem('/attendance', Iconsax.clock, 'Attendance'),
+      _NavItem('/leave', Iconsax.calendar_remove, 'Leaves'),
       _NavItem('/salary', Iconsax.money, 'Salary'),
+      _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
+      _NavItem('/performance', Iconsax.star1, 'Performance'),
+      _NavItem('/noticeboard', Iconsax.message_text, 'Notices'),
+      _NavItem('/calendar', Iconsax.calendar, 'Calendar'),
+      _NavItem('/feedback', Iconsax.message_question, 'Feedback'),
       _NavItem('/profile', Iconsax.user, 'Profile'),
     ];
 
@@ -145,10 +152,15 @@ class AppShell extends ConsumerWidget {
                 child: CircleAvatar(
                   radius: 18,
                   backgroundColor: AppColors.primary,
-                  child: Text(
-                    user?.firstName.isNotEmpty == true ? user!.firstName[0].toUpperCase() : 'A',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
+                  backgroundImage: user?.profilePicture != null
+                      ? NetworkImage(user!.profilePicture!)
+                      : null,
+                  child: user?.profilePicture == null
+                      ? Text(
+                          user?.firstName.isNotEmpty == true ? user!.firstName[0].toUpperCase() : 'A',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                        )
+                      : null,
                 ),
               ),
             ),
@@ -163,7 +175,7 @@ class AppShell extends ConsumerWidget {
       backgroundColor: AppColors.bgDark,
       body: Row(
         children: [
-          SizedBox(width: 250, child: sidebarContent),
+          SizedBox(width: 200, child: sidebarContent),
           Expanded(child: child),
         ],
       ),
