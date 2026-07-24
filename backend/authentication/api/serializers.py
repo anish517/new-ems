@@ -49,6 +49,7 @@ class Base64ImageField(serializers.ImageField):
 class AccountSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
     profile_picture = Base64ImageField(required=False, allow_null=True)
+    email = serializers.EmailField(validators=[])
 
     class Meta:
         model = Account
@@ -58,8 +59,13 @@ class AccountSerializer(serializers.ModelSerializer):
         read_only_fields = ['date_joined', 'last_login']
 
     def validate_email(self, value):
-        if self.instance:
-            if Account.objects.filter(email=value).exclude(pk=self.instance.pk).exists():
+        instance = self.instance
+        if not instance and getattr(self, 'parent', None) and getattr(self.parent, 'instance', None):
+            if hasattr(self.parent.instance, 'user'):
+                instance = self.parent.instance.user
+
+        if instance:
+            if Account.objects.filter(email=value).exclude(pk=instance.pk).exists():
                 raise serializers.ValidationError("An account with this email already exists.")
         else:
             if Account.objects.filter(email=value).exists():
@@ -101,6 +107,8 @@ class MeSerializer(serializers.ModelSerializer):
     def get_role(self, obj):
         if obj.is_superuser:
             return 'super_admin'
+        if getattr(obj, 'is_hr', False):
+            return 'hr'
         try:
             employee = obj.employee
             if employee.organization and obj in employee.organization.admin_users.all():

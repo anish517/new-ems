@@ -29,7 +29,9 @@ class AttendanceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Attendance
-        fields = ['id', 'date', 'employee',
+        fields = ['id', 'date', 'employee', 'is_remote',
+                  'check_in_lat', 'check_in_lng', 'check_in_photo',
+                  'check_out_lat', 'check_out_lng', 'check_out_photo',
                   'check_ins_outs', 'total_working_hours']
 
     def get_total_working_hours(self, obj):

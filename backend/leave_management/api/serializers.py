@@ -35,6 +35,7 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
             'from_date', 'till_date', 'subject',
             'is_approved', 'is_reviewed', 'is_paid',
             'remarks', 'employee', 'organization',
+            'is_half_day', 'half_day_period',
         ]
         read_only_fields = ['id', 'created_at', 'no_days']
         extra_kwargs = {

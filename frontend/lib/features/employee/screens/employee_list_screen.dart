@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
@@ -96,57 +97,7 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> {
   }).toList();
 
   void _showEmployeeDetails(Map e) {
-    final user = e['user'] ?? {};
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surfaceDark,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(left: 24, right: 24, top: 24, bottom: MediaQuery.of(context).padding.bottom + 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                  child: const Icon(Icons.person, size: 30, color: AppColors.primary),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim(), 
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      Text(e['employee_type'] ?? 'Employee', style: const TextStyle(color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const Text('Contact Information', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            _DetailRow(icon: Icons.email_outlined, label: 'Email', value: user['email'] ?? 'N/A'),
-            _DetailRow(icon: Icons.phone_outlined, label: 'Phone', value: e['phone_no'] ?? 'N/A'),
-            const SizedBox(height: 20),
-            const Text('Work Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            _DetailRow(icon: Icons.business_outlined, label: 'Department', value: e['department_name'] ?? 'N/A'),
-            _DetailRow(icon: Icons.badge_outlined, label: 'Designation', value: e['designation_title'] ?? 'N/A'),
-            const SizedBox(height: 20),
-            const Text('Personal Info', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            _DetailRow(icon: Icons.calendar_today_outlined, label: 'Date of Birth', value: e['date_of_birth'] ?? 'N/A'),
-            _DetailRow(icon: Icons.people_outline, label: 'Gender', value: e['gender'] ?? 'N/A'),
-          ],
-        ),
-      ),
-    );
+    context.push('/employees/${e['id']}');
   }
 
   @override
@@ -235,35 +186,4 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> {
       ),
     ]),
   );
-}
-
-class _DetailRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  const _DetailRow({required this.icon, required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: AppColors.surfaceDark, borderRadius: BorderRadius.circular(8)),
-              child: Icon(icon, size: 20, color: AppColors.primary),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                  Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
 }

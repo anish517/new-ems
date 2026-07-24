@@ -5,6 +5,11 @@ from rest_framework import status
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.http import HttpResponse
+import csv
+from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+from django.contrib.auth import get_user_model
 
 from attendance.models import Attendance
 from calendar_app.utilities import count_holidays, count_saturdays
@@ -92,6 +97,8 @@ class NetSalaryAPIView(generics.RetrieveAPIView):
             year, month) + count_holidays(salary.employee.organization, year, month)
         unpaid_leaves = LeaveRequest.get_total_unpaid_leaves(
             salary.employee, year, month)
+        half_leaves = LeaveRequest.get_total_half_leaves(
+            salary.employee, year, month)
 
         # Prepare data for the response
         data = {
@@ -100,6 +107,7 @@ class NetSalaryAPIView(generics.RetrieveAPIView):
             "no_of_days_present": no_of_days_present,
             "paid_leaves": paid_leaves,
             "unpaid_leaves": unpaid_leaves,
+            "half_leaves": half_leaves,
         }
         serializer = NetSalarySerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -201,3 +209,55 @@ class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
         )
         serializer = self.get_serializer(st)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class GenerateSalaryReportAPIView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not (request.user.is_superuser or getattr(request.user, 'is_hr', False) or (hasattr(request.user, 'employee') and request.user.employee.organization.admin_users.filter(id=request.user.id).exists())):
+            return Response({'error': 'You do not have permission to generate this report.'}, status=status.HTTP_403_FORBIDDEN)
+
+        year_str = request.GET.get('year')
+        month_str = request.GET.get('month')
+        if not year_str or not month_str:
+            return Response({'error': 'Year and month query parameters are required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        year = int(year_str)
+        month = int(month_str)
+
+        try:
+            organization = request.user.employee.organization
+        except Exception:
+            organization = None
+
+        if organization:
+            salaries = Salary.objects.filter(organization=organization)
+        else:
+            salaries = Salary.objects.all()
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="salary_report_{year}_{month}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['Employee Name', 'Email', 'Basic Salary', 'Remote Salary', 'Days Present', 'Paid Leaves', 'Unpaid Leaves', 'Half Leaves', 'Net Salary'])
+
+        for salary in salaries:
+            net_salary = Salary.calculate_net_salary(employee=salary.employee, year=year, month=month)
+            no_of_days_present = Attendance.get_no_of_present_days(salary.employee, year, month)
+            paid_leaves = LeaveRequest.get_total_paid_leaves(salary.employee, year, month)
+            unpaid_leaves = LeaveRequest.get_total_unpaid_leaves(salary.employee, year, month)
+            half_leaves = LeaveRequest.get_total_half_leaves(salary.employee, year, month)
+            
+            writer.writerow([
+                str(salary.employee),
+                salary.employee.user.email,
+                salary.basic_salary,
+                salary.remote_salary,
+                no_of_days_present,
+                paid_leaves,
+                unpaid_leaves,
+                half_leaves,
+                net_salary
+            ])
+
+        return response

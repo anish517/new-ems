@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:dio/dio.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
@@ -176,8 +179,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     try {
       final pos = await _getLocation();
       final res = await ApiService().post(AppConstants.checkIn, data: {
-        'latitude': pos.latitude,
-        'longitude': pos.longitude,
+        'latitude': pos.latitude.toString(),
+        'longitude': pos.longitude.toString(),
       });
       if (!mounted) return;
       setState(() {
@@ -201,8 +204,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     try {
       final pos = await _getLocation();
       final res = await ApiService().post(AppConstants.checkOut, data: {
-        'latitude': pos.latitude,
-        'longitude': pos.longitude,
+        'latitude': pos.latitude.toString(),
+        'longitude': pos.longitude.toString(),
       });
       if (!mounted) return;
       setState(() {
@@ -384,11 +387,25 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
     setState(() => _isLoading = true);
     try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 50,
+      );
+
+      if (image == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
       final pos = await _getLocation();
-      final res = await ApiService().post(AppConstants.checkIn, data: {
-        'latitude': pos.latitude,
-        'longitude': pos.longitude,
+      final formData = FormData.fromMap({
+        'latitude': pos.latitude.toString(),
+        'longitude': pos.longitude.toString(),
+        'photo': MultipartFile.fromBytes(await image.readAsBytes(), filename: 'checkin.jpg'),
       });
+
+      final res = await ApiService().uploadFile(AppConstants.checkIn, formData);
       if (!mounted) return;
       setState(() {
         _isCheckedIn = true;
@@ -441,11 +458,25 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
     setState(() => _isLoading = true);
     try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 50,
+      );
+
+      if (image == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
       final pos = await _getLocation();
-      final res = await ApiService().post(AppConstants.checkOut, data: {
-        'latitude': pos.latitude,
-        'longitude': pos.longitude,
+      final formData = FormData.fromMap({
+        'latitude': pos.latitude.toString(),
+        'longitude': pos.longitude.toString(),
+        'photo': MultipartFile.fromBytes(await image.readAsBytes(), filename: 'checkout.jpg'),
       });
+
+      final res = await ApiService().uploadFile(AppConstants.checkOut, formData);
       if (!mounted) return;
       setState(() {
         _isCheckedIn = false;
@@ -727,7 +758,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   style: TextStyle(color: AppColors.textSecondary)),
             )
           else
-            ...(_dailyHistory).map((log) => _AttendanceLogTile(log: log)),
+            ...(_dailyHistory).map((log) => _AttendanceLogTile(log: log, onTap: () => _showLogDetails(log))),
 
           const SizedBox(height: 16),
           const Align(
@@ -738,6 +769,123 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       TextStyle(color: AppColors.textSecondary, fontSize: 12))),
         ]),
       );
+
+  void _showLogDetails(Map log) {
+    String formatTime(String? t) {
+      if (t == null || t.isEmpty) return '-';
+      return t.split('.')[0];
+    }
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Attendance Log: ${log['date']}'),
+            const SizedBox(height: 4),
+            Text(
+              'In: ${formatTime(log['check_in_time']?.toString())} | Out: ${formatTime(log['check_out_time']?.toString())}',
+              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 500,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Photos",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        children: [
+                          const Text("Check-In"),
+                          const SizedBox(height: 4),
+                          log['check_in_photo'] != null
+                              ? Image.network(log['check_in_photo'],
+                                  height: 150, fit: BoxFit.cover)
+                              : const Text("No photo",
+                                  style: TextStyle(color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          const Text("Check-Out"),
+                          const SizedBox(height: 4),
+                          log['check_out_photo'] != null
+                              ? Image.network(log['check_out_photo'],
+                                  height: 150, fit: BoxFit.cover)
+                              : const Text("No photo",
+                                  style: TextStyle(color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const Text("Map View",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 250,
+                  child: Builder(
+                    builder: (context) {
+                      double? lat = double.tryParse(
+                          log['check_in_lat']?.toString() ?? '');
+                      double? lng = double.tryParse(
+                          log['check_in_lng']?.toString() ?? '');
+                      if (lat != null && lng != null) {
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: GoogleMap(
+                            initialCameraPosition: CameraPosition(
+                              target: LatLng(lat, lng),
+                              zoom: 15,
+                            ),
+                            markers: {
+                              Marker(
+                                markerId: const MarkerId('checkin'),
+                                position: LatLng(lat, lng),
+                                infoWindow: const InfoWindow(
+                                    title: 'Check-In Location'),
+                              ),
+                            },
+                            zoomControlsEnabled: false,
+                            myLocationButtonEnabled: false,
+                          ),
+                        );
+                      }
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.borderDark),
+                        ),
+                        child: const Center(
+                            child: Text(
+                                "No location data recorded for this check-in.")),
+                      );
+                    },
+                  ),
+                )
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text("Close"))
+        ],
+      ),
+    );
+  }
 
   Widget _buildOrgLogs() => _orgLogsLoading
       ? const Center(child: CircularProgressIndicator())
@@ -753,7 +901,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   itemCount: _orgLogs.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (_, i) =>
-                      _AttendanceLogTile(log: _orgLogs[i], showName: true, onDelete: () => _deleteLog(_orgLogs[i]['id'])),
+                      _AttendanceLogTile(
+                          log: _orgLogs[i], 
+                          showName: true, 
+                          onDelete: () => _deleteLog(_orgLogs[i]['id']),
+                          onTap: () => _showLogDetails(_orgLogs[i]),
+                      ),
                 ),
         );
 
@@ -826,7 +979,8 @@ class _AttendanceLogTile extends StatelessWidget {
   final Map log;
   final bool showName;
   final VoidCallback? onDelete;
-  const _AttendanceLogTile({required this.log, this.showName = false, this.onDelete});
+  final VoidCallback? onTap;
+  const _AttendanceLogTile({required this.log, this.showName = false, this.onDelete, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -835,11 +989,19 @@ class _AttendanceLogTile extends StatelessWidget {
     final isRemote = log['is_remote'] == true;
     final hours = log['total_hours'] ?? 0;
 
+    String formatTime(String? t) {
+      if (t == null || t.isEmpty) return '-';
+      return t.split('.')[0];
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 4),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(children: [
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(children: [
           Container(
             width: 42,
             height: 42,
@@ -874,7 +1036,7 @@ class _AttendanceLogTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Wrap(children: [
                   if (checkedIn)
-                    Text('In: ${log['check_in_time']}',
+                    Text('In: ${formatTime(log['check_in_time']?.toString())}',
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.success)),
                   if (checkedIn && checkedOut)
@@ -882,7 +1044,7 @@ class _AttendanceLogTile extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 12, color: AppColors.textSecondary)),
                   if (checkedOut)
-                    Text('Out: ${log['check_out_time']}',
+                    Text('Out: ${formatTime(log['check_out_time']?.toString())}',
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.error)),
                   if (!checkedIn)
@@ -914,6 +1076,7 @@ class _AttendanceLogTile extends StatelessWidget {
               onPressed: onDelete,
             ),
         ]),
+        ),
       ),
     );
   }

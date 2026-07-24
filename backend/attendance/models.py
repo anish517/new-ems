@@ -82,22 +82,24 @@ class Attendance(models.Model):
     is_remote = models.BooleanField(default=False, null=True, blank=True)
     check_in_lat = models.CharField(max_length=255, null=True, blank=True)
     check_in_lng = models.CharField(max_length=255, null=True, blank=True)
+    check_in_photo = models.ImageField(upload_to='attendance/', null=True, blank=True)
     check_out_lat = models.CharField(max_length=255, null=True, blank=True)
     check_out_lng = models.CharField(max_length=255, null=True, blank=True)
+    check_out_photo = models.ImageField(upload_to='attendance/', null=True, blank=True)
 
     def __str__(self):
         return f"Attendance on {self.date} for {self.employee}"
 
     @property
     def total_working_hours(self):
-        total_seconds = sum(
-            (
-                datetime.combine(self.date, check_in_out.check_out)
-                - datetime.combine(self.date, check_in_out.check_in)
-            ).total_seconds()
-            for check_in_out in self.check_ins_outs.all()
-            if check_in_out.check_in and check_in_out.check_out
-        )
+        total_seconds = 0
+        for check_in_out in self.check_ins_outs.all():
+            if check_in_out.check_in and check_in_out.check_out:
+                cin = datetime.combine(self.date, check_in_out.check_in)
+                cout = datetime.combine(self.date, check_in_out.check_out)
+                if cout < cin:
+                    cout += timedelta(days=1)
+                total_seconds += (cout - cin).total_seconds()
         return (format_timedelta(timedelta(seconds=total_seconds)), total_seconds)
 
     def check_in_timestamp(self):
@@ -133,10 +135,11 @@ class Attendance(models.Model):
 
         # Calculate durations for each check-in and check-out pair
         for check_in, check_out in zip(check_ins, check_outs):
-            total_seconds += (
-                (datetime.combine(today, check_out.check_out) -
-                 datetime.combine(today, check_in.check_in)).total_seconds()
-            )
+            cin = datetime.combine(today, check_in.check_in)
+            cout = datetime.combine(today, check_out.check_out)
+            if cout < cin:
+                cout += timedelta(days=1)
+            total_seconds += (cout - cin).total_seconds()
 
         # If there are check-ins without corresponding check-outs, add time till now
         if check_ins and (not check_outs or len(check_ins) > len(check_outs)):
@@ -169,7 +172,7 @@ class Attendance(models.Model):
         return recent_check_in if recent_check_in else None
 
     @staticmethod
-    def check_in(employee: Employee, lat: float, lng: float, within_radius: bool):
+    def check_in(employee: Employee, lat: float, lng: float, within_radius: bool, photo=None):
         """
         Handles the check-in process for an employee.
 
@@ -197,7 +200,8 @@ class Attendance(models.Model):
             defaults={
                 'check_in_lat': lat,
                 'check_in_lng': lng,
-                'is_remote': not within_radius
+                'is_remote': not within_radius,
+                'check_in_photo': photo
             }
         )
 
@@ -206,6 +210,8 @@ class Attendance(models.Model):
             attendance.check_in_lat = lat
             attendance.check_in_lng = lng
             attendance.is_remote = not within_radius
+            if photo:
+                attendance.check_in_photo = photo
             attendance.save()
 
         # Ensure there are no open check-ins without a check-out
@@ -238,7 +244,7 @@ class Attendance(models.Model):
         return check_in_out
 
     @staticmethod
-    def check_out(employee, lat, lng, within_radius):
+    def check_out(employee, lat, lng, within_radius, photo=None):
         """
         Handles the check-out process for an employee.
 
@@ -271,6 +277,8 @@ class Attendance(models.Model):
         attendance.check_out_lat = lat
         attendance.check_out_lng = lng
         attendance.is_remote = not within_radius
+        if photo:
+            attendance.check_out_photo = photo
         attendance.save()
 
         # Find the open check-in record

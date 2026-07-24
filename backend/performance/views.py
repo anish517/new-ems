@@ -18,7 +18,11 @@ class PerformanceCategoryViewSet(viewsets.ModelViewSet):
         user = self.request.user
         try:
             org = user.organization.first()
-            return PerformanceCategory.objects.filter(organization=org)
+            if not org and hasattr(user, 'employee'):
+                org = user.employee.organization
+            if org:
+                return PerformanceCategory.objects.filter(organization=org)
+            return PerformanceCategory.objects.none()
         except Exception:
             return PerformanceCategory.objects.none()
 
@@ -38,14 +42,18 @@ class PerformanceReviewListCreateView(generics.ListCreateAPIView):
         employee_id = self.request.GET.get('employee')
 
         # Admin: see all reviews (optionally filtered by employee)
-        is_admin = user.organization.exists() or user.is_superuser
+        is_admin = user.organization.exists() or user.is_superuser or getattr(user, 'is_hr', False)
         if is_admin:
             if employee_id:
                 return PerformanceReview.objects.filter(employee_id=employee_id)
             # Get org employees
             try:
                 org = user.organization.first()
-                return PerformanceReview.objects.filter(employee__organization=org)
+                if not org and hasattr(user, 'employee'):
+                    org = user.employee.organization
+                if org:
+                    return PerformanceReview.objects.filter(employee__organization=org)
+                return PerformanceReview.objects.all()
             except Exception:
                 return PerformanceReview.objects.all()
 
@@ -73,11 +81,15 @@ class PerformanceReviewRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyA
     
     def get_queryset(self):
         user = self.request.user
-        is_admin = user.organization.exists() or user.is_superuser
+        is_admin = user.organization.exists() or user.is_superuser or getattr(user, 'is_hr', False)
         if is_admin:
             try:
                 org = user.organization.first()
-                return PerformanceReview.objects.filter(employee__organization=org)
+                if not org and hasattr(user, 'employee'):
+                    org = user.employee.organization
+                if org:
+                    return PerformanceReview.objects.filter(employee__organization=org)
+                return PerformanceReview.objects.all()
             except Exception:
                 return PerformanceReview.objects.all()
         # Employees should not be able to update/destroy, but maybe retrieve. 

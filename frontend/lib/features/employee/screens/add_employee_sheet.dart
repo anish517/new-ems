@@ -14,12 +14,18 @@ class AddEmployeeSheet extends StatefulWidget {
 
 class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
   final _formKey = GlobalKey<FormState>();
-  
+
   String _fname = '', _lname = '', _email = '', _password = '';
   String _phone = '', _gender = 'male', _employeeType = 'full_time';
   DateTime _dob = DateTime.now();
   final _dobCtrl = TextEditingController();
   bool _isLoading = false;
+
+  // Address fields
+  String _street = '', _district = '', _state = '';
+
+  // Bank fields
+  String _bankName = '', _accountNumber = '';
 
   @override
   void initState() {
@@ -74,6 +80,8 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
         'phone_no': _phone,
       };
 
+      int? employeeId;
+
       if (widget.employee == null) {
         data['post'] = 1; // Default post
         data['father_name'] = 'N/A';
@@ -81,9 +89,37 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
         data['personal_email'] = _email;
         data['is_active'] = true;
         data['employee_type'] = _employeeType;
-        await ApiService().post('${AppConstants.organizationBase}/employees/', data: data);
+        final res = await ApiService().post('${AppConstants.organizationBase}/employees/', data: data);
+        employeeId = res.data['id'];
       } else {
-        await ApiService().patch('${AppConstants.organizationBase}/employees/${widget.employee!['id']}/', data: data);
+        employeeId = widget.employee!['id'];
+        await ApiService().patch('${AppConstants.organizationBase}/employees/$employeeId/', data: data);
+      }
+
+      // Save address if any fields are filled
+      if (employeeId != null && (_street.isNotEmpty || _district.isNotEmpty || _state.isNotEmpty)) {
+        try {
+          await ApiService().post('${AppConstants.organizationBase}/addresses/', data: [
+            {
+              'employee': employeeId,
+              'type': 'permanent',
+              'street': _street,
+              'district': _district,
+              'state': _state,
+            }
+          ]);
+        } catch (_) {}
+      }
+
+      // Save bank details if any fields are filled
+      if (employeeId != null && (_bankName.isNotEmpty || _accountNumber.isNotEmpty)) {
+        try {
+          await ApiService().post('${AppConstants.organizationBase}/bank-details/', data: {
+            'employee': employeeId,
+            'bank_name': _bankName,
+            'account_number': _accountNumber,
+          });
+        } catch (_) {}
       }
 
       if (mounted) {
@@ -101,6 +137,11 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
     }
   }
 
+  Widget _sectionTitle(String title) => Padding(
+    padding: const EdgeInsets.only(top: 20, bottom: 8),
+    child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -115,8 +156,11 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(widget.employee == null ? 'Add New Employee' : 'Edit Employee', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(widget.employee == null ? 'Add New Employee' : 'Edit Employee',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
+
+              // ── Basic Info ──────────────────────────────────────
               Row(children: [
                 Expanded(child: TextFormField(
                   initialValue: _fname,
@@ -155,11 +199,12 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: DropdownButtonFormField<String>(
-                  initialValue: _gender,
+                  value: _gender,
                   decoration: const InputDecoration(labelText: 'Gender'),
                   items: const [
                     DropdownMenuItem(value: 'male', child: Text('Male')),
                     DropdownMenuItem(value: 'female', child: Text('Female')),
+                    DropdownMenuItem(value: 'others', child: Text('Others')),
                   ],
                   onChanged: (v) => setState(() => _gender = v!),
                 )),
@@ -167,12 +212,11 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(child: DropdownButtonFormField<String>(
-                  initialValue: _employeeType,
+                  value: _employeeType,
                   decoration: const InputDecoration(labelText: 'Employee Type'),
                   items: const [
                     DropdownMenuItem(value: 'full_time', child: Text('Full Time')),
                     DropdownMenuItem(value: 'part_time', child: Text('Part Time')),
-                    DropdownMenuItem(value: 'contract', child: Text('Contract')),
                     DropdownMenuItem(value: 'intern', child: Text('Intern')),
                   ],
                   onChanged: (v) => setState(() => _employeeType = v!),
@@ -188,10 +232,45 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                   ),
                 )),
               ]),
+
+              // ── Address ────────────────────────────────────────
+              _sectionTitle('Address (Permanent)'),
+              Row(children: [
+                Expanded(child: TextFormField(
+                  decoration: const InputDecoration(labelText: 'Street'),
+                  onSaved: (v) => _street = v ?? '',
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(
+                  decoration: const InputDecoration(labelText: 'District'),
+                  onSaved: (v) => _district = v ?? '',
+                )),
+              ]),
+              const SizedBox(height: 12),
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'State / Province'),
+                onSaved: (v) => _state = v ?? '',
+              ),
+
+              // ── Bank Details ───────────────────────────────────
+              _sectionTitle('Bank Details'),
+              Row(children: [
+                Expanded(child: TextFormField(
+                  decoration: const InputDecoration(labelText: 'Bank Name'),
+                  onSaved: (v) => _bankName = v ?? '',
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(
+                  decoration: const InputDecoration(labelText: 'Account Number'),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => _accountNumber = v ?? '',
+                )),
+              ]),
+
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _isLoading ? null : _submit,
-                child: _isLoading 
+                child: _isLoading
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
                     : Text(widget.employee == null ? 'Add Employee' : 'Save Changes')
               )

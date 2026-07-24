@@ -31,6 +31,7 @@ class AppConstants {
   // ─── Roles ─────────────────────────────────────────────────────────────────
   static const String roleSuperAdmin = 'super_admin';
   static const String roleOrgAdmin = 'org_admin';
+  static const String roleHr = 'hr';
   static const String roleEmployee = 'employee';
 
   // ─── GPS ───────────────────────────────────────────────────────────────────

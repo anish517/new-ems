@@ -10,5 +10,6 @@ urlpatterns = [
     path('transactions/organization/',
          views.OrganizationSalaryTransactionListAPIView.as_view()),
     path('net-salary/<int:salary_id>/',
-         views.NetSalaryAPIView.as_view(), name='employee-salary-info')
+         views.NetSalaryAPIView.as_view(), name='employee-salary-info'),
+    path('generate-report/', views.GenerateSalaryReportAPIView.as_view(), name='generate-report'),
 ]
