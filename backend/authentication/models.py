@@ -48,7 +48,7 @@ class Account(AbstractBaseUser):
     is_superuser = models.BooleanField(default=False, null=True, blank=True)
     is_hr = models.BooleanField(default=False, null=True, blank=True)
     profile_picture = models.ImageField(
-        upload_to='users/', default='placeholder/placeholder.png', null=True, blank=True)
+        upload_to='users/', null=True, blank=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
@@ -69,7 +69,7 @@ class Account(AbstractBaseUser):
         return self.is_superuser
 
     def get_profile_picture(self):
-        return getattr(self.profile_picture, 'url') if self.profile_picture else '/static/images/placeholder/placeholder.png'
+        return getattr(self.profile_picture, 'url') if self.profile_picture else None
 
 
 User = get_user_model()

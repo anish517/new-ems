@@ -89,11 +89,25 @@ class BankDetailViewSet(viewsets.ModelViewSet):
     serializer_class = BankDetailSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        qs = BankDetail.objects.all()
+        employee_id = self.request.query_params.get('employee')
+        if employee_id:
+            qs = qs.filter(employee_id=employee_id)
+        return qs
+
 
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Document.objects.all()
+        employee_id = self.request.query_params.get('employee')
+        if employee_id:
+            qs = qs.filter(employee_id=employee_id)
+        return qs
 
 
 class EmployeeAnalysisReportListAPIView(ListAPIView):

@@ -9,6 +9,7 @@ import '../../../core/constants/app_constants.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EmployeeDetailScreen extends ConsumerStatefulWidget {
   final int id;
@@ -31,6 +32,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   int _taskCount = 0;
   List<dynamic> _addresses = [];
   List<dynamic> _bankDetails = [];
+  List<dynamic> _documents = [];
 
   @override
   void initState() {
@@ -206,12 +208,25 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         }
       } catch (_) {}
 
+      // Fetch documents
+      List<dynamic> docs = [];
+      try {
+        final docRes = await ApiService().get(
+            '${AppConstants.organizationBase}/documents/?employee=${widget.id}');
+        if (docRes.data is List) {
+          docs = docRes.data as List;
+        } else if (docRes.data['results'] != null) {
+          docs = docRes.data['results'];
+        }
+      } catch (_) {}
+
       if (!mounted) return;
       setState(() {
         _employee = res.data;
         _attendanceStats = stats;
         _addresses = addresses;
         _bankDetails = bankDetails;
+        _documents = docs;
         _loading = false;
       });
     } catch (e) {
@@ -472,6 +487,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                   children: [
                     _infoChip(
                         Iconsax.mobile, 'Phone', emp['phone_no'] ?? 'N/A'),
+                    _infoChip(Iconsax.user, 'Father\'s Name', emp['father_name'] ?? 'N/A'),
+                    _infoChip(Iconsax.health, 'Blood Group', emp['blood_group'] ?? 'N/A'),
+                    _infoChip(Iconsax.call, 'Alt Contact', emp['alternative_contact_number'] ?? 'N/A'),
                     _infoChip(
                         Iconsax.profile_circle,
                         'Gender',
@@ -507,6 +525,12 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 );
               }),
             ),
+
+            const SizedBox(height: 32),
+            const Text('Documents',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            _buildDocumentsSection(context),
 
             const SizedBox(height: 32),
             const Text('Recent Attendance Logs',
@@ -847,6 +871,77 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           )
         ],
       ),
+    );
+  }
+
+  Widget _buildDocumentsSection(BuildContext context) {
+    if (_documents.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceDark,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Text('No documents found.', style: TextStyle(color: AppColors.textSecondary)),
+        ),
+      );
+    }
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
+      children: _documents.map((doc) {
+        final String name = doc['name'] ?? 'Document';
+        final String url = doc['file'] ?? '';
+        final bool isImage = url.toLowerCase().endsWith('.png') ||
+            url.toLowerCase().endsWith('.jpg') ||
+            url.toLowerCase().endsWith('.jpeg');
+        return InkWell(
+          onTap: () async {
+            if (isImage) {
+              showDialog(
+                context: context,
+                builder: (ctx) => Dialog(
+                  child: InteractiveViewer(
+                    child: Image.network(url),
+                  ),
+                ),
+              );
+            } else if (url.isNotEmpty) {
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              }
+            }
+          },
+          child: Container(
+            width: 120,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceDark,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.borderDark),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  isImage ? Iconsax.image : Iconsax.document,
+                  size: 40,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  name,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
