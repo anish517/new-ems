@@ -493,7 +493,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
           ]),
           const SizedBox(height: 12),
           DropdownButtonFormField<int>(
-            value: _selProject,
+            initialValue: _selProject,
             hint: const Text('Select Project'),
             items: _projects.map((p) => DropdownMenuItem<int>(
               value: p['id'], child: Text(p['title'] ?? p['name'] ?? ''),
@@ -502,7 +502,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<int>(
-            value: _selEmployee,
+            initialValue: _selEmployee,
             hint: const Text('Assign To'),
             items: _employees.map((e) {
               final user = e['user'] ?? {};
@@ -514,7 +514,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _priority,
+            initialValue: _priority,
             items: const [
               DropdownMenuItem(value: 'low', child: Text('Low Priority')),
               DropdownMenuItem(value: 'medium', child: Text('Medium Priority')),

@@ -148,7 +148,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ),
 
                   const SizedBox(height: 24),
-                  Center(
+                  const Center(
                     child: Text(
                       'Contact your admin if you forgot your credentials',
                       style: TextStyle(

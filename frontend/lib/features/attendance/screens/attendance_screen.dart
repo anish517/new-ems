@@ -907,7 +907,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                               ? Image.network(log['check_in_photo'],
                                   height: 150, fit: BoxFit.cover)
                               : const Text("No photo",
-                                  style: TextStyle(color: Colors.grey)),
+                                  style: TextStyle(color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -921,7 +921,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                               ? Image.network(log['check_out_photo'],
                                   height: 150, fit: BoxFit.cover)
                               : const Text("No photo",
-                                  style: TextStyle(color: Colors.grey)),
+                                  style: TextStyle(color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -947,7 +947,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       if (inLat == null && outLat == null) {
                         return Container(
                           decoration: BoxDecoration(
-                            color: Colors.grey.withValues(alpha: 0.1),
+                            color: AppColors.borderDark.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: AppColors.borderDark),
                           ),

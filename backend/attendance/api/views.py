@@ -66,6 +66,7 @@ class RetrieveTotalWorkingHourAPIView(APIView):
         # Calculate expected monthly working hours dynamically from org shift
         try:
             import datetime as _dt
+            import nepali_datetime as _ndt
             org = employee.organization
             if org.opening_time and org.closing_time:
                 open_dt = _dt.datetime.combine(_dt.date.today(), org.opening_time)
@@ -74,12 +75,26 @@ class RetrieveTotalWorkingHourAPIView(APIView):
             else:
                 shift_hours = 8.0  # default 8-hour day
 
-            # Count weekdays in the selected month using nepali calendar
+            # Count working days (Mon–Sat) in the Nepali month, excluding Sundays
+            # In Nepal, Sunday (weekday=6 in Python's isoweekday: Mon=1..Sun=7) is the weekly off
             from calendar_app.utilities import total_days_in_month as nepali_total_days
             selected_y = int(selected_year) if selected_year else current_year
             selected_m = int(selected_month) if selected_month else current_month
             days_in_month = nepali_total_days(year=selected_y, month=selected_m)
-            expected_monthly_hours = round(shift_hours * days_in_month, 2)
+
+            # Count Sundays in the selected Nepali month
+            working_days = 0
+            for day in range(1, days_in_month + 1):
+                try:
+                    nep_date = _ndt.date(selected_y, selected_m, day)
+                    # Convert to Python date to get weekday; isoweekday() Sun=7
+                    py_date = nep_date.to_datetime_date()
+                    if py_date.isoweekday() != 7:  # 7 = Sunday
+                        working_days += 1
+                except Exception:
+                    pass
+
+            expected_monthly_hours = round(shift_hours * working_days, 2)
         except Exception:
             expected_monthly_hours = 182  # safe fallback
 

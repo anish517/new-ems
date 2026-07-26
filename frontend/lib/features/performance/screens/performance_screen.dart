@@ -294,7 +294,9 @@ class _ReviewCard extends StatelessWidget {
                     onUpdate();
                   }
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e))));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e))));
+                  }
                 } finally {
                   if (context.mounted) setState(() => saving = false);
                 }
@@ -335,10 +337,12 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
   Future<void> _loadEmployees() async {
     try {
       final res = await ApiService().get('/api/organization/employees/');
-      if (mounted) setState(() {
-        _employees = res.data is List ? res.data : (res.data['results'] ?? []);
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _employees = res.data is List ? res.data : (res.data['results'] ?? []);
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -381,7 +385,7 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
           const Text('New Performance Review', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           DropdownButtonFormField<int>(
-            value: _selEmployee,
+            initialValue: _selEmployee,
             hint: const Text('Select Employee'),
             items: _employees.map((e) {
               final user = e['user'] ?? {};
@@ -393,7 +397,7 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<int>(
-            value: _selCategory,
+            initialValue: _selCategory,
             hint: const Text('Select Category (Optional)'),
             items: widget.categories.map((c) {
               return DropdownMenuItem<int>(

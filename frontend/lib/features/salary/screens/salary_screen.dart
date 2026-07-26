@@ -294,15 +294,17 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
     try {
       await ApiService().delete('${AppConstants.salaryBase}/transactions/$id/');
       _loadData();
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Transaction deleted successfully'),
             backgroundColor: AppColors.success));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(ApiService.getErrorMessage(e)),
             backgroundColor: AppColors.error));
+      }
     }
   }
 
@@ -324,7 +326,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                    colors: [Color(0xFF1E3A5F), Color(0xFF0F2D4A)]),
+                    colors: [AppColors.surfaceDark, AppColors.bgDark]),
                 borderRadius: BorderRadius.circular(20)),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -575,8 +577,10 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
       Navigator.pop(context);
       widget.onCreated();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${ApiService.getErrorMessage(e)}')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${ApiService.getErrorMessage(e)}')));
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -626,8 +630,9 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                                               ApiService.getErrorMessage(e))));
                                 }
                               } finally {
-                                if (ctx.mounted)
+                                if (ctx.mounted) {
                                   setStateDialog(() => saving = false);
+                                }
                               }
                             },
                       child: saving
@@ -643,9 +648,10 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading)
+    if (_loading) {
       return const SizedBox(
           height: 200, child: Center(child: CircularProgressIndicator()));
+    }
     return SingleChildScrollView(
       padding: EdgeInsets.only(
         left: 24,
@@ -681,8 +687,9 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                 isExpanded: true,
                 items: widget.salaries
                     .fold<List<dynamic>>([], (prev, curr) {
-                      if (!prev.any((e) => e['id'] == curr['id']))
+                      if (!prev.any((e) => e['id'] == curr['id'])) {
                         prev.add(curr);
+                      }
                       return prev;
                     })
                     .map((s) => DropdownMenuItem<int>(
@@ -713,8 +720,9 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                             ]
                           : _fiscalYears
                               .fold<List<dynamic>>([], (prev, curr) {
-                                if (!prev.any((e) => e['id'] == curr['id']))
+                                if (!prev.any((e) => e['id'] == curr['id'])) {
                                   prev.add(curr);
+                                }
                                 return prev;
                               })
                               .map((f) => DropdownMenuItem<int>(
@@ -782,24 +790,25 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                                   child: Text('Net Salary Payable',
                                       style: TextStyle(
                                           fontWeight: FontWeight.w600,
-                                          color: AppColors.textPrimary)),
+                                          color: Colors.white)),
                                 ),
                               ],
                             ),
                           ),
                           SizedBox(
-                            width: 100,
+                            width: 140,
                             child: TextFormField(
                               controller: _netSalaryController,
                               keyboardType: TextInputType.number,
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary),
+                                  color: Colors.white),
                               decoration: const InputDecoration(
                                 prefixText: 'NPR ',
+                                prefixStyle: TextStyle(color: Colors.white70),
                                 isDense: true,
                                 contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 8),
+                                    horizontal: 12, vertical: 8),
                                 border: OutlineInputBorder(),
                               ),
                             ),
@@ -867,11 +876,12 @@ class _EmployeeSalaryDetailSheetState
       final res = await ApiService().get(
         '${AppConstants.salaryBase}/net-salary/${widget.salaryId}/',
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _netInfo = res.data;
           _loading = false;
         });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -881,7 +891,6 @@ class _EmployeeSalaryDetailSheetState
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -1003,8 +1012,7 @@ class _InfoRow extends StatelessWidget {
           Expanded(
               child: Text(label,
                   style: const TextStyle(fontWeight: FontWeight.normal))),
-          Text(value,
-              style: const TextStyle(fontWeight: FontWeight.w500)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
         ]),
       );
 }

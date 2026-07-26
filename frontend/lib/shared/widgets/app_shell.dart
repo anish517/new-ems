@@ -5,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../features/auth/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/constants/app_constants.dart';
 
 class AppShell extends ConsumerWidget {
   final Widget child;
@@ -40,7 +39,8 @@ class AppShell extends ConsumerWidget {
     ];
 
     final navItems = isAdmin ? adminNav : employeeNav;
-    final currentIndex = navItems.indexWhere((i) => location.startsWith(i.route));
+    final currentIndex =
+        navItems.indexWhere((i) => location.startsWith(i.route));
     final isMobile = MediaQuery.of(context).size.width < 700;
 
     Widget sidebarContent = Container(
@@ -49,13 +49,17 @@ class AppShell extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(24),
+            const Padding(
+              padding: EdgeInsets.all(24),
               child: Row(
                 children: [
-                  const Icon(Iconsax.box, color: AppColors.primary, size: 32),
-                  const SizedBox(width: 12),
-                  const Text('EMS', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Icon(Iconsax.box, color: AppColors.primary, size: 32),
+                  SizedBox(width: 12),
+                  Text('EMS',
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
                 ],
               ),
             ),
@@ -67,7 +71,8 @@ class AppShell extends ConsumerWidget {
                   final item = navItems[i];
                   final isSelected = currentIndex == i;
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
                     child: InkWell(
                       onTap: () {
                         if (isMobile) Navigator.pop(context);
@@ -75,20 +80,31 @@ class AppShell extends ConsumerWidget {
                       },
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
+                          color: isSelected
+                              ? AppColors.primary.withValues(alpha: 0.1)
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
                           children: [
-                            Icon(item.icon, color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 20),
+                            Icon(item.icon,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary,
+                                size: 20),
                             const SizedBox(width: 16),
                             Text(item.label,
-                              style: TextStyle(
-                                color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                              )),
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                )),
                           ],
                         ),
                       ),
@@ -103,7 +119,8 @@ class AppShell extends ConsumerWidget {
                 onTap: () => ref.read(authProvider.notifier).logout(),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
                     color: AppColors.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -112,7 +129,10 @@ class AppShell extends ConsumerWidget {
                     children: [
                       Icon(Iconsax.logout, color: AppColors.error, size: 20),
                       SizedBox(width: 16),
-                      Text('Log out', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+                      Text('Log out',
+                          style: TextStyle(
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
@@ -135,11 +155,14 @@ class AppShell extends ConsumerWidget {
         appBar: AppBar(
           backgroundColor: AppColors.surfaceDark,
           elevation: 0,
-          leading: Builder(builder: (ctx) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () => Scaffold.of(ctx).openDrawer(),
-          )),
-          title: const Text('EMS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+          leading: Builder(
+              builder: (ctx) => IconButton(
+                    icon: const Icon(Icons.menu, color: Colors.white),
+                    onPressed: () => Scaffold.of(ctx).openDrawer(),
+                  )),
+          title: const Text('EMS',
+              style:
+                  TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
           actions: [
             IconButton(
               icon: const Icon(Iconsax.notification, color: Colors.white),
@@ -157,8 +180,13 @@ class AppShell extends ConsumerWidget {
                       : null,
                   child: user?.profilePicture == null
                       ? Text(
-                          user?.firstName.isNotEmpty == true ? user!.firstName[0].toUpperCase() : 'A',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                          user?.firstName.isNotEmpty == true
+                              ? user!.firstName[0].toUpperCase()
+                              : 'A',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
                         )
                       : null,
                 ),

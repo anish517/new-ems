@@ -382,22 +382,6 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       ],
                     ),
                   ),
-                  Row(
-                    children: [
-                      IconButton(
-                          icon: const Icon(Iconsax.printer,
-                              color: AppColors.primary),
-                          onPressed: () {}),
-                      IconButton(
-                          icon: const Icon(Iconsax.card,
-                              color: AppColors.success),
-                          onPressed: () {}),
-                      IconButton(
-                          icon: const Icon(Iconsax.setting,
-                              color: AppColors.accent),
-                          onPressed: () {}),
-                    ],
-                  )
                 ],
               ),
             ),
@@ -711,7 +695,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                               ? Image.network(log['check_in_photo'],
                                   height: 150, fit: BoxFit.cover)
                               : const Text("No photo",
-                                  style: TextStyle(color: Colors.grey)),
+                                  style: TextStyle(color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -725,7 +709,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                               ? Image.network(log['check_out_photo'],
                                   height: 150, fit: BoxFit.cover)
                               : const Text("No photo",
-                                  style: TextStyle(color: Colors.grey)),
+                                  style: TextStyle(color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -766,7 +750,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       }
                       return Container(
                         decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.1),
+                          color: AppColors.borderDark.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: AppColors.borderDark),
                         ),

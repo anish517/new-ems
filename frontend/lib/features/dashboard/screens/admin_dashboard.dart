@@ -364,14 +364,14 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                                 fontSize: 12)));
                                   },
                                 )),
-                                leftTitles: AxisTitles(
+                                leftTitles: const AxisTitles(
                                     sideTitles: SideTitles(showTitles: false)),
-                                topTitles: AxisTitles(
+                                topTitles: const AxisTitles(
                                     sideTitles: SideTitles(showTitles: false)),
-                                rightTitles: AxisTitles(
+                                rightTitles: const AxisTitles(
                                     sideTitles: SideTitles(showTitles: false)),
                               ),
-                              gridData: FlGridData(show: false),
+                              gridData: const FlGridData(show: false),
                               borderData: FlBorderData(show: false),
                               barGroups: List.generate(7, (i) {
                                 final val = i < _weeklyAttendance.length
@@ -449,12 +449,12 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      const Row(
                         children: [
                           Icon(Iconsax.clock,
                               color: AppColors.success, size: 20),
-                          const SizedBox(width: 8),
-                          const Text('On Time Today (10:00–10:30 AM)',
+                          SizedBox(width: 8),
+                          Text('On Time Today (10:00–10:30 AM)',
                               style: TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold)),
                         ],
@@ -517,12 +517,12 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      const Row(
                         children: [
                           Icon(Iconsax.medal_star,
                               color: AppColors.success, size: 20),
-                          const SizedBox(width: 8),
-                          const Text('Always On Time (10:00–10:30 AM)',
+                          SizedBox(width: 8),
+                          Text('Always On Time (10:00–10:30 AM)',
                               style: TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold)),
                         ],
@@ -558,9 +558,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               const SizedBox(height: 16),
               LayoutBuilder(builder: (context, constraints) {
                 int count = 3;
-                if (constraints.maxWidth < 500)
+                if (constraints.maxWidth < 500) {
                   count = 1;
-                else if (constraints.maxWidth < 800) count = 2;
+                } else if (constraints.maxWidth < 800) {
+                  count = 2;
+                }
                 final ratio = constraints.maxWidth < 500 ? 4.0 : 2.5;
                 return GridView.count(
                   crossAxisCount: count,
@@ -688,7 +690,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<int>(
-                  value: selectedMonth,
+                  initialValue: selectedMonth,
                   decoration: const InputDecoration(labelText: 'Month'),
                   items: List.generate(12, (index) {
                     final m = index + 1;
@@ -712,9 +714,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     );
 
     if (result == true) {
-      final storage = const FlutterSecureStorage();
+      const storage = FlutterSecureStorage();
       final token = await storage.read(key: AppConstants.accessTokenKey) ?? '';
-      final baseUrl = AppConstants.baseUrl;
+      const baseUrl = AppConstants.baseUrl;
       final endpoint = type == 'attendance'
           ? AppConstants.attendanceBase
           : AppConstants.salaryBase;
