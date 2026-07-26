@@ -3,8 +3,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import 'dart:io';
-import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
+import 'package:dio/dio.dart';
 
 class AddEmployeeSheet extends StatefulWidget {
   final VoidCallback onSuccess;
@@ -121,6 +121,15 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
+    
+    if (widget.employee == null && _selectedFiles.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Please attach at least one document for the new employee (e.g. Citizenship, PAN, CV).'),
+        backgroundColor: AppColors.error
+      ));
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -207,15 +216,14 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
             } else {
               fileBytes = await File(file.path!).readAsBytes();
             }
-            final b64 = base64Encode(fileBytes);
-            final ext = file.extension ?? file.name.split('.').last;
-            final mimeStr = "data:application/$ext;base64,$b64";
             
-            await ApiService().post('${AppConstants.organizationBase}/documents/', data: {
+            final formData = FormData.fromMap({
               'employee': employeeId,
               'name': file.name,
-              'file': mimeStr,
+              'file': MultipartFile.fromBytes(fileBytes, filename: file.name),
             });
+            
+            await ApiService().post('${AppConstants.organizationBase}/documents/', data: formData);
           } catch (e) {
             debugPrint('Failed to upload document: $e');
           }
@@ -346,7 +354,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: DropdownButtonFormField<String>(
-                  value: _bloodGroup,
+                  initialValue: _bloodGroup,
                   decoration: const InputDecoration(labelText: 'Blood Group'),
                   items: const [
                     DropdownMenuItem(value: 'A+', child: Text('A+')),

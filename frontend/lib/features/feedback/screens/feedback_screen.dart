@@ -44,7 +44,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
     final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Feedback & Complaints')),
+      appBar: AppBar(title: const Text('Feedback & Complaints'), actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _loadComplaints)]), 
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showSubmitDialog(context),
         backgroundColor: AppColors.primary,

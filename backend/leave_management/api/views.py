@@ -140,22 +140,32 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
 
         # Check for specific employee filter
         employeeId = self.request.GET.get('employee', None)
+        qs = LeaveRequest.objects.none()
+        
         if employeeId:
             try:
                 emp = Employee.objects.get(id=employeeId, post__department__organization=org)
-                return LeaveRequest.objects.filter(organization=org, employee=emp).order_by('-id')
+                qs = LeaveRequest.objects.filter(organization=org, employee=emp).order_by('-id')
             except Employee.DoesNotExist:
-                return LeaveRequest.objects.none()
+                qs = LeaveRequest.objects.none()
+        elif is_admin or user.is_superuser:
+            qs = LeaveRequest.objects.filter(organization=org).order_by('-id')
+        elif employee:
+            qs = LeaveRequest.objects.filter(organization=org, employee=employee).order_by('-id')
 
-        # If admin, return all requests for the organization
-        if is_admin or user.is_superuser:
-            return LeaveRequest.objects.filter(organization=org).order_by('-id')
-            
-        # If employee, return only their requests
-        if employee:
-            return LeaveRequest.objects.filter(organization=org, employee=employee).order_by('-id')
-            
-        return LeaveRequest.objects.none()
+        start_date_str = self.request.GET.get('start_date')
+        end_date_str = self.request.GET.get('end_date')
+        if start_date_str and end_date_str:
+            try:
+                sy, sm, sd = map(int, start_date_str.split('-'))
+                ey, em, ed = map(int, end_date_str.split('-'))
+                start_date = nepali_datetime.date(sy, sm, sd)
+                end_date = nepali_datetime.date(ey, em, ed)
+                qs = qs.filter(from_date__gte=start_date, from_date__lte=end_date)
+            except Exception:
+                pass
+                
+        return qs
 
     def perform_create(self, serializer):
         try:

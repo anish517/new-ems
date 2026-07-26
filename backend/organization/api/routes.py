@@ -19,4 +19,5 @@ urlpatterns = [
     path('department/<int:pk>/',
          views.DepartmentRetrieveUpdateDeleteAPIView.as_view()),
     path('address/set/', views.SetOrganizationAddressView.as_view()),
+    path('employees/<int:employee_id>/report/', views.EmployeeReportAPIView.as_view()),
 ]

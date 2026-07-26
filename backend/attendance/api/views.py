@@ -42,27 +42,65 @@ class RetrieveTotalWorkingHourAPIView(APIView):
 
         selected_year = request.GET.get('nepali_year') or request.GET.get('selected_year')
         selected_month = request.GET.get('nepali_month') or request.GET.get('selected_month')
-        current_month = nepali_datetime.date.today().month
-        current_year = nepali_datetime.date.today().year
-
-        y = int(selected_year) if selected_year else current_year
-        m = int(selected_month) if selected_month else current_month
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
 
         all_attendance = Attendance.objects.filter(
             organization=employee.organization, 
             employee=employee
         ).prefetch_related('check_ins_outs')
 
-        monthly_attendance = [a for a in all_attendance if getattr(a.date, 'year', None) == y and getattr(a.date, 'month', None) == m]
+        if start_date_str and end_date_str:
+            try:
+                sy, sm, sd = map(int, start_date_str.split('-'))
+                ey, em, ed = map(int, end_date_str.split('-'))
+                s_nepali = nepali_datetime.date(sy, sm, sd)
+                e_nepali = nepali_datetime.date(ey, em, ed)
+                monthly_attendance = [a for a in all_attendance if a.date >= s_nepali and a.date <= e_nepali]
+                
+                # Calculate working days in range
+                working_days = 0
+                curr = s_nepali
+                while curr <= e_nepali:
+                    py_date = curr.to_datetime_date()
+                    if py_date.isoweekday() != 7:
+                        working_days += 1
+                    try:
+                        curr = curr + nepali_datetime.timedelta(days=1)
+                    except Exception:
+                        break # Simplistic fallback
+                
+                total_no_of_days_present = len([a for a in monthly_attendance if a.has_checked_in()])
+            except Exception:
+                monthly_attendance = []
+                working_days = 0
+                total_no_of_days_present = 0
+        else:
+            current_month = nepali_datetime.date.today().month
+            current_year = nepali_datetime.date.today().year
+            y = int(selected_year) if selected_year else current_year
+            m = int(selected_month) if selected_month else current_month
+            monthly_attendance = [a for a in all_attendance if getattr(a.date, 'year', None) == y and getattr(a.date, 'month', None) == m]
+            total_no_of_days_present = Attendance.get_no_of_present_days(employee=employee, year=y, month=m)
+            
+            # Count Sundays in the selected Nepali month
+            from calendar_app.utilities import total_days_in_month as nepali_total_days
+            days_in_month = nepali_total_days(year=y, month=m)
+            working_days = 0
+            for day in range(1, days_in_month + 1):
+                try:
+                    nep_date = nepali_datetime.date(y, m, day)
+                    py_date = nep_date.to_datetime_date()
+                    if py_date.isoweekday() != 7:  # 7 = Sunday
+                        working_days += 1
+                except Exception:
+                    pass
 
         current_month_total_working_hour = 0
         for attendance in monthly_attendance:
             _, total_working_seconds = attendance.total_working_hours
             current_month_total_working_hour += total_working_seconds / 3600
             
-        total_no_of_days_present = Attendance.get_no_of_present_days(
-            employee=employee, year=y, month=m)
-
         # Calculate expected monthly working hours dynamically from org shift
         try:
             import datetime as _dt
@@ -74,25 +112,6 @@ class RetrieveTotalWorkingHourAPIView(APIView):
                 shift_hours = (close_dt - open_dt).total_seconds() / 3600
             else:
                 shift_hours = 8.0  # default 8-hour day
-
-            # Count working days (Mon–Sat) in the Nepali month, excluding Sundays
-            # In Nepal, Sunday (weekday=6 in Python's isoweekday: Mon=1..Sun=7) is the weekly off
-            from calendar_app.utilities import total_days_in_month as nepali_total_days
-            selected_y = int(selected_year) if selected_year else current_year
-            selected_m = int(selected_month) if selected_month else current_month
-            days_in_month = nepali_total_days(year=selected_y, month=selected_m)
-
-            # Count Sundays in the selected Nepali month
-            working_days = 0
-            for day in range(1, days_in_month + 1):
-                try:
-                    nep_date = _ndt.date(selected_y, selected_m, day)
-                    # Convert to Python date to get weekday; isoweekday() Sun=7
-                    py_date = nep_date.to_datetime_date()
-                    if py_date.isoweekday() != 7:  # 7 = Sunday
-                        working_days += 1
-                except Exception:
-                    pass
 
             expected_monthly_hours = round(shift_hours * working_days, 2)
         except Exception:
@@ -318,20 +337,30 @@ class AttendanceListAPIView(APIView):
             except Exception:
                 pass
                 
-        ny = request.GET.get('nepali_year')
-        nm = request.GET.get('nepali_month')
-        if ny and nm:
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
+        if start_date_str and end_date_str:
             try:
-                y = int(ny)
-                m = int(nm)
-                from calendar_app.utilities import total_days_in_month
-                import nepali_datetime
-                days = total_days_in_month(y, m)
-                start_date = nepali_datetime.date(y, m, 1)
-                end_date = nepali_datetime.date(y, m, days)
-                qs = qs.filter(date__gte=start_date, date__lte=end_date)
+                sy, sm, sd = map(int, start_date_str.split('-'))
+                ey, em, ed = map(int, end_date_str.split('-'))
+                qs = qs.filter(date__gte=nepali_datetime.date(sy, sm, sd), date__lte=nepali_datetime.date(ey, em, ed))
             except Exception:
                 pass
+        else:
+            ny = request.GET.get('nepali_year')
+            nm = request.GET.get('nepali_month')
+            if ny and nm:
+                try:
+                    y = int(ny)
+                    m = int(nm)
+                    from calendar_app.utilities import total_days_in_month
+                    import nepali_datetime
+                    days = total_days_in_month(y, m)
+                    start_date = nepali_datetime.date(y, m, 1)
+                    end_date = nepali_datetime.date(y, m, days)
+                    qs = qs.filter(date__gte=start_date, date__lte=end_date)
+                except Exception:
+                    pass
 
         from rest_framework.pagination import PageNumberPagination
         paginator = PageNumberPagination()

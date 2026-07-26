@@ -1,7 +1,7 @@
 class AppConstants {
   // ─── API Base URL ──────────────────────────────────────────────────────────
   static const String baseUrl =
-      'http://192.168.1.8:8000'; // Change to your server IP
+      'http://192.168.16.113:8000'; // Change to your server IP
 
   // ─── Endpoints ─────────────────────────────────────────────────────────────
   static const String tokenEndpoint = '/api/auth/token/';

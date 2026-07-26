@@ -158,7 +158,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
     final isAdmin = user?.canManage ?? false;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppBar(actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _loadLeaves)], 
         title: const Text('Leave Management'),
         bottom: TabBar(controller: _tabs, tabs: [
           Tab(text: isAdmin ? 'All Leaves' : 'My Leaves'),

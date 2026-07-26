@@ -26,6 +26,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   Map<String, dynamic>? _employee;
   Map<String, dynamic>? _attendanceStats;
   List<dynamic> _attendanceLogs = [];
+  DateTime? _startDate;
+  DateTime? _endDate;
 
   double _avgPerformance = 0.0;
   num _approvedLeaves = 0;
@@ -75,21 +77,114 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     }
   }
 
+  Future<void> _pickDateRange() async {
+    final start = await showDatePicker(
+      context: context,
+      initialDate: _startDate ?? DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      helpText: 'Select Start Date',
+    );
+    if (start == null) return;
+
+    if (!mounted) return;
+    final end = await showDatePicker(
+      context: context,
+      initialDate: _endDate ?? start,
+      firstDate: start,
+      lastDate: DateTime.now(),
+      helpText: 'Select End Date',
+    );
+    if (end == null) return;
+
+    setState(() {
+      _startDate = start;
+      _endDate = end;
+      _loading = true;
+    });
+    _loadAll();
+  }
+
+  Future<void> _downloadReport() async {
+    try {
+      String startStr = '';
+      String endStr = '';
+      if (_startDate != null && _endDate != null) {
+        final nStart = _startDate!.toNepaliDateTime();
+        final nEnd = _endDate!.toNepaliDateTime();
+        startStr =
+            '${nStart.year}-${nStart.month.toString().padLeft(2, '0')}-${nStart.day.toString().padLeft(2, '0')}';
+        endStr =
+            '${nEnd.year}-${nEnd.month.toString().padLeft(2, '0')}-${nEnd.day.toString().padLeft(2, '0')}';
+      } else {
+        final dateProv = ref.read(nepaliDateProvider);
+        final y = dateProv.year;
+        final m = dateProv.month;
+        final d = NepaliDateTime(y, m).totalDays;
+        startStr = '$y-${m.toString().padLeft(2, '0')}-01';
+        endStr = '$y-${m.toString().padLeft(2, '0')}-$d';
+      }
+
+      final url =
+          '${AppConstants.organizationBase}/employees/${widget.id}/report/?start_date=$startStr&end_date=$endStr';
+      final response = await ApiService().get(url);
+
+      final String csv = response.data.toString();
+      final dataUri = "data:text/csv;charset=utf-8,${Uri.encodeComponent(csv)}";
+
+      await launchUrl(Uri.parse(dataUri));
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to download report: $e')));
+    }
+  }
+
   Future<void> _loadAll() async {
     try {
       final res = await ApiService()
           .get('${AppConstants.organizationBase}/employees/${widget.id}/');
 
       Map<String, dynamic>? stats;
+      final dateProv = ref.read(nepaliDateProvider);
+      String startStr = '';
+      String endStr = '';
+      if (_startDate != null && _endDate != null) {
+        final nStart = _startDate!.toNepaliDateTime();
+        final nEnd = _endDate!.toNepaliDateTime();
+        startStr =
+            '${nStart.year}-${nStart.month.toString().padLeft(2, '0')}-${nStart.day.toString().padLeft(2, '0')}';
+        endStr =
+            '${nEnd.year}-${nEnd.month.toString().padLeft(2, '0')}-${nEnd.day.toString().padLeft(2, '0')}';
+      } else {
+        final y = dateProv.year;
+        final m = dateProv.month;
+        final d = NepaliDateTime(y, m).totalDays;
+        startStr = '$y-${m.toString().padLeft(2, '0')}-01';
+        endStr = '$y-${m.toString().padLeft(2, '0')}-$d';
+      }
+
+      final dateQuery = '&start_date=$startStr&end_date=$endStr';
+
+      setState(() {
+        _latestSalary = 0.0;
+        _avgPerformance = 0.0;
+        _attendanceLogs = [];
+        _approvedLeaves = 0;
+        _taskCount = 0;
+        _documents = [];
+        _loading = true;
+      });
+
       try {
         final statRes = await ApiService().get(
-            '${AppConstants.attendanceBase}/total-working-hour/${widget.id}/');
+            '${AppConstants.attendanceBase}/total-working-hour/${widget.id}/?start_date=$startStr&end_date=$endStr');
         stats = statRes.data;
       } catch (_) {}
 
       try {
-        final listRes = await ApiService()
-            .get('${AppConstants.attendanceBase}/list/?employee=${widget.id}');
+        final listRes = await ApiService().get(
+            '${AppConstants.attendanceBase}/list/?employee=${widget.id}$dateQuery');
         final listData = listRes.data is List
             ? listRes.data
             : (listRes.data['results'] ?? []);
@@ -104,7 +199,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
 
       try {
         final perfRes = await ApiService()
-            .get('/api/performance/reviews/?employee=${widget.id}');
+            .get('/api/performance/reviews/?employee=${widget.id}$dateQuery');
         final perfData = perfRes.data is List
             ? perfRes.data
             : (perfRes.data['results'] ?? []);
@@ -124,8 +219,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       } catch (_) {}
 
       try {
-        final leaveRes = await ApiService()
-            .get('${AppConstants.leaveBase}/leave-requests/?employee=${widget.id}');
+        final leaveRes = await ApiService().get(
+            '${AppConstants.leaveBase}/leave-requests/?employee=${widget.id}$dateQuery');
         final leaveData = leaveRes.data is List
             ? leaveRes.data
             : (leaveRes.data['results'] ?? leaveRes.data);
@@ -146,7 +241,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
 
       try {
         final salRes = await ApiService().get(
-            '${AppConstants.salaryBase}/transactions/organization/?employee=${widget.id}');
+            '${AppConstants.salaryBase}/transactions/organization/?employee=${widget.id}$dateQuery');
         final salData = salRes.data is List
             ? salRes.data
             : (salRes.data['results'] ?? salRes.data);
@@ -156,17 +251,18 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                   s['employee'] == widget.id || s['employee_id'] == widget.id)
               .toList();
           if (mySalaries.isNotEmpty) {
-            mySalaries.sort((a, b) => (b['id'] ?? 0).compareTo(a['id'] ?? 0));
-            _latestSalary = double.tryParse(
-                    mySalaries.first['net_salary']?.toString() ?? '0') ??
-                0.0;
+            double totalSal = 0.0;
+            for (var s in mySalaries) {
+              totalSal += double.tryParse(s['net_salary']?.toString() ?? '0') ?? 0.0;
+            }
+            _latestSalary = totalSal;
           }
         }
       } catch (_) {}
 
       try {
         final taskRes = await ApiService()
-            .get('${AppConstants.taskBase}/tasks/?assigned_to=${widget.id}');
+            .get('${AppConstants.taskBase}/tasks/?assigned_to=${widget.id}$dateQuery');
         final taskData = taskRes.data is List
             ? taskRes.data
             : (taskRes.data['results'] ?? taskRes.data);
@@ -299,7 +395,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(nepaliDateProvider, (_, __) => _loadAll());
-    
+
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -322,16 +418,77 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           children: [
             // Top breadcrumb and back button
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(
-                  icon: const Icon(Iconsax.arrow_left),
-                  onPressed: () => context.pop(),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Iconsax.arrow_left),
+                      onPressed: () => context.pop(),
+                    ),
+                    Text('Organization > Employees > Detail',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleSmall
+                            ?.copyWith(color: AppColors.textSecondary)),
+                  ],
                 ),
-                Text('Organization > Employees > Detail',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(color: AppColors.textSecondary)),
+                Expanded(
+                  child: Wrap(
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceDark,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.borderDark),
+                        ),
+                        child: Text(
+                          _startDate != null && _endDate != null
+                              ? '${_startDate!.toNepaliDateTime().toString().split(' ')[0]} to ${_endDate!.toNepaliDateTime().toString().split(' ')[0]}'
+                              : 'This Month',
+                          style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.calendar_month, size: 18),
+                        label: const Text('Filter'),
+                        onPressed: _pickDateRange,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(0, 40),
+                          backgroundColor: AppColors.surfaceDark,
+                          foregroundColor: AppColors.textPrimary,
+                          elevation: 0,
+                          side: const BorderSide(color: AppColors.borderDark),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 0),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.download, size: 18),
+                        label: const Text('Report'),
+                        onPressed: _downloadReport,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(0, 40),
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 0),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -490,9 +647,12 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                   children: [
                     _infoChip(
                         Iconsax.mobile, 'Phone', emp['phone_no'] ?? 'N/A'),
-                    _infoChip(Iconsax.user, 'Father\'s Name', emp['father_name'] ?? 'N/A'),
-                    _infoChip(Iconsax.health, 'Blood Group', emp['blood_group'] ?? 'N/A'),
-                    _infoChip(Iconsax.call, 'Alt Contact', emp['alternative_contact_number'] ?? 'N/A'),
+                    _infoChip(Iconsax.user, 'Father\'s Name',
+                        emp['father_name'] ?? 'N/A'),
+                    _infoChip(Iconsax.health, 'Blood Group',
+                        emp['blood_group'] ?? 'N/A'),
+                    _infoChip(Iconsax.call, 'Alt Contact',
+                        emp['alternative_contact_number'] ?? 'N/A'),
                     _infoChip(
                         Iconsax.profile_circle,
                         'Gender',
@@ -688,6 +848,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       if (t == null || t.isEmpty) return '-';
       return t.split('.')[0];
     }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -698,7 +859,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             const SizedBox(height: 4),
             Text(
               'In: ${formatTime(log['check_in_time']?.toString())} | Out: ${formatTime(log['check_out_time']?.toString())}',
-              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -722,7 +884,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                               ? Image.network(log['check_in_photo'],
                                   height: 150, fit: BoxFit.cover)
                               : const Text("No photo",
-                                  style: TextStyle(color: AppColors.textSecondary)),
+                                  style: TextStyle(
+                                      color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -736,7 +899,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                               ? Image.network(log['check_out_photo'],
                                   height: 150, fit: BoxFit.cover)
                               : const Text("No photo",
-                                  style: TextStyle(color: AppColors.textSecondary)),
+                                  style: TextStyle(
+                                      color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -820,11 +984,15 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-              'Attendance Calendar ($year-${month.toString().padLeft(2, '0')})',
-              style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Attendance Calendar',
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 12),
           Expanded(
             child: GridView.builder(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -849,7 +1017,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 if (!isValid) return const SizedBox();
 
                 final isPresent = presentDates.contains(dateStr);
-                final isToday = (day == now.day && month == now.month && year == now.year);
+                final isToday =
+                    (day == now.day && month == now.month && year == now.year);
 
                 return Container(
                   decoration: BoxDecoration(
@@ -888,7 +1057,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Center(
-          child: Text('No documents found.', style: TextStyle(color: AppColors.textSecondary)),
+          child: Text('No documents found.',
+              style: TextStyle(color: AppColors.textSecondary)),
         ),
       );
     }

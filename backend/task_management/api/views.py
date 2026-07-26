@@ -43,6 +43,19 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
         # Admins see all tasks; employees only see tasks assigned to them
         is_admin = user.organization.exists() or user.is_superuser or getattr(user, 'is_hr', False)
         assigned_to_id = self.request.GET.get('assigned_to')
+
+        start_date_str = self.request.GET.get('start_date')
+        end_date_str = self.request.GET.get('end_date')
+        if start_date_str and end_date_str:
+            try:
+                import nepali_datetime
+                sy, sm, sd = map(int, start_date_str.split('-'))
+                ey, em, ed = map(int, end_date_str.split('-'))
+                start_date = nepali_datetime.date(sy, sm, sd)
+                end_date = nepali_datetime.date(ey, em, ed)
+                all_tasks = all_tasks.filter(planned_start_date__gte=start_date, planned_start_date__lte=end_date)
+            except Exception:
+                pass
         
         if is_admin:
             if assigned_to_id:

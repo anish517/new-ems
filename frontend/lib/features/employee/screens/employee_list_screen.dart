@@ -124,6 +124,9 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> with Si
     return Scaffold(
     appBar: AppBar(
       title: const Text('Employees'),
+      actions: [
+        IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+      ],
       bottom: TabBar(
         controller: _tabController,
         tabs: const [
@@ -227,12 +230,19 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> with Si
                         }
                       },
                       itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'salary', child: Text('Add Salary')),
+                        const PopupMenuItem(value: 'edit', child: Text('Edit')),
                         const PopupMenuItem(value: 'password', child: Text('Change Password')),
-                        const PopupMenuItem(value: 'edit', child: Text('Edit Employee')),
+                        const PopupMenuItem(value: 'salary', child: Text('Manage Salary')),
                         const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.error))),
                       ],
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.delete_forever, color: AppColors.error),
+                      tooltip: 'Permanently Delete',
+                      onPressed: () => _deleteEmployee(e['id']),
                     ),
+
                 ],
               ),
             ));
