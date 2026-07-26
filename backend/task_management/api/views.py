@@ -14,6 +14,7 @@ from .serializers import TaskSerializer
 class TaskListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated]
+    nepali_date_filter_field = 'planned_start_date'
 
     def _get_employee(self):
         try:
@@ -100,7 +101,15 @@ class EmployeeTaskSummaryAPIView(APIView):
             employee = Employee.objects.get(id=employee_id)
         except Employee.DoesNotExist:
             return Response(data={'error': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
-        data = get_employee_task_summary(employee=employee)
+            
+        ny = request.GET.get('nepali_year')
+        nm = request.GET.get('nepali_month')
+        
+        if ny and nm:
+            data = get_employee_task_summary(employee=employee, year=int(ny), month=int(nm))
+        else:
+            data = get_employee_task_summary(employee=employee)
+            
         return Response(data=data, status=status.HTTP_200_OK)
 
 
@@ -112,7 +121,15 @@ class OrganizationTaskSummaryAPIView(APIView):
             organization = Organization.objects.get(id=organization_id)
         except Organization.DoesNotExist:
             return Response(data={'error': 'Organization not found'}, status=status.HTTP_404_NOT_FOUND)
-        data = get_organization_task_summary(organization=organization)
+            
+        ny = request.GET.get('nepali_year')
+        nm = request.GET.get('nepali_month')
+        
+        if ny and nm:
+            data = get_organization_task_summary(organization=organization, year=int(ny), month=int(nm))
+        else:
+            data = get_organization_task_summary(organization=organization)
+            
         return Response(data=data, status=status.HTTP_200_OK)
 
 
@@ -122,11 +139,17 @@ class ProjectTaskSummaryAPIView(APIView):
     def get(self, request, project_id):
         try:
             project = Project.objects.get(id=project_id)
-
         except Project.DoesNotExist:
             return Response(data={'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        data = get_project_task_summary(project=project)
+        ny = request.GET.get('nepali_year')
+        nm = request.GET.get('nepali_month')
+        
+        if ny and nm:
+            data = get_project_task_summary(project=project, year=int(ny), month=int(nm))
+        else:
+            data = get_project_task_summary(project=project)
+            
         return Response(data=data, status=status.HTTP_200_OK)
 
 

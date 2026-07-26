@@ -10,6 +10,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../core/providers/date_provider.dart';
 
 class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
@@ -187,6 +188,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(nepaliDateProvider, (_, __) => _loadStats());
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(

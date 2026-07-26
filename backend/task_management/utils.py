@@ -57,9 +57,15 @@ def get_employee_task_summary(employee: Employee, year: int = TODAY.year, month:
     return data
 
 
-def get_organization_task_summary(organization: Organization):
+def get_organization_task_summary(organization: Organization, year: int = TODAY.year, month: int = TODAY.month):
     tasks = Task.objects.filter(
         created_by__post__department__organization=organization)
+        
+    filtered_tasks_id = []
+    for task in tasks:
+        if getattr(task.planned_start_date, 'year', None) == year and getattr(task.planned_start_date, 'month', None) == month:
+            filtered_tasks_id.append(task.pk)
+    tasks = tasks.filter(id__in=filtered_tasks_id)
 
     data = {
         'name': organization.name,
@@ -70,8 +76,14 @@ def get_organization_task_summary(organization: Organization):
     return data
 
 
-def get_project_task_summary(project: Project):
+def get_project_task_summary(project: Project, year: int = TODAY.year, month: int = TODAY.month):
     tasks = Task.objects.filter(project=project)
+    
+    filtered_tasks_id = []
+    for task in tasks:
+        if getattr(task.planned_start_date, 'year', None) == year and getattr(task.planned_start_date, 'month', None) == month:
+            filtered_tasks_id.append(task.pk)
+    tasks = tasks.filter(id__in=filtered_tasks_id)
 
     data = {
         'id': project.pk,

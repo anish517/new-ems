@@ -6,6 +6,7 @@ import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'package:nepali_utils/nepali_utils.dart';
+import '../../../core/providers/date_provider.dart';
 
 class SalaryScreen extends ConsumerStatefulWidget {
   const SalaryScreen({super.key});
@@ -131,6 +132,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(nepaliDateProvider, (_, __) => _loadData());
     final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
 
     return Scaffold(

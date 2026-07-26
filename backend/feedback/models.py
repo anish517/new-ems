@@ -6,6 +6,7 @@ from nepali_datetime_field.models import NepaliDateField
 
 
 from organization.models import Employee, Organization
+from utils.models import SoftDeleteModel
 
 # Create your models here.
 
@@ -35,7 +36,7 @@ class ComplainCategory(models.Model):
         verbose_name_plural = 'Categories'
 
 
-class Complain(models.Model):
+class Complain(SoftDeleteModel):
     VISIBILITY_CHOICES = (
         ('anonymous', 'Anonymous'),
         ('identified', 'Identified')

@@ -7,6 +7,7 @@ import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
+import '../../../core/providers/date_provider.dart';
 
 class EmployeeDashboard extends ConsumerStatefulWidget {
   const EmployeeDashboard({super.key});
@@ -45,6 +46,7 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(nepaliDateProvider, (_, __) => _loadData());
     final user = ref.watch(currentUserProvider);
     ref.watch(unreadCountProvider);
 

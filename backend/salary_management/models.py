@@ -8,6 +8,7 @@ from fiscal_year.models import FiscalYear
 from organization.models import Employee, Organization
 from leave_management.models import LeaveRequest
 from calendar_app.utilities import count_saturdays, count_holidays, total_days_in_month
+from utils.models import SoftDeleteModel
 
 # Create your models here.
 
@@ -27,7 +28,7 @@ class NepaliMonthChoices(models.TextChoices):
     CHAITRA = 'CHA', 'Chaitra'
 
 
-class Salary(models.Model):
+class Salary(SoftDeleteModel):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True)
     employee = models.OneToOneField(
@@ -87,7 +88,7 @@ class Salary(models.Model):
         return round(gross_salary)
 
 
-class SalaryTransaction(models.Model):
+class SalaryTransaction(SoftDeleteModel):
     organization = models.ForeignKey(
         Organization, on_delete=models.SET_NULL, null=True)
     salary = models.ForeignKey(
@@ -103,8 +104,30 @@ class SalaryTransaction(models.Model):
 
     manual_net_salary = models.FloatField(null=True, blank=True, verbose_name="Manually Entered Net Salary")
 
-    @property
-    def net_salary(self):
+    stored_net_salary = models.FloatField(null=True, blank=True)
+    stored_holidays = models.IntegerField(null=True, blank=True)
+    stored_no_of_days_present = models.FloatField(null=True, blank=True)
+    stored_paid_leaves = models.FloatField(null=True, blank=True)
+    stored_unpaid_leaves = models.FloatField(null=True, blank=True)
+    stored_half_leaves = models.FloatField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.date and self.salary:
+            if self.stored_holidays is None:
+                self.stored_holidays = self.calc_holidays()
+            if self.stored_no_of_days_present is None:
+                self.stored_no_of_days_present = self.calc_no_of_days_present()
+            if self.stored_paid_leaves is None:
+                self.stored_paid_leaves = self.calc_paid_leaves()
+            if self.stored_unpaid_leaves is None:
+                self.stored_unpaid_leaves = self.calc_unpaid_leaves()
+            if self.stored_half_leaves is None:
+                self.stored_half_leaves = self.calc_half_leaves()
+            if self.stored_net_salary is None:
+                self.stored_net_salary = self.calc_net_salary()
+        super().save(*args, **kwargs)
+
+    def calc_net_salary(self):
         if self.manual_net_salary is not None:
             return self.manual_net_salary
         net_salary = Salary.calculate_net_salary(
@@ -112,33 +135,66 @@ class SalaryTransaction(models.Model):
         return net_salary
 
     @property
-    def holidays(self):
+    def net_salary(self):
+        if self.stored_net_salary is not None:
+            return self.stored_net_salary
+        return self.calc_net_salary()
+
+    def calc_holidays(self):
         return count_saturdays(
             self.date.year, self.date.month) + count_holidays(self.salary.employee.organization, self.date.year, self.date.month)
 
     @property
-    def no_of_days_present(self):
+    def holidays(self):
+        if self.stored_holidays is not None:
+            return self.stored_holidays
+        return self.calc_holidays()
+
+    def calc_no_of_days_present(self):
         return Attendance.get_no_of_present_days(
             self.salary.employee, self.date.year, self.date.month)
 
     @property
-    def paid_leaves(self):
+    def no_of_days_present(self):
+        if self.stored_no_of_days_present is not None:
+            return self.stored_no_of_days_present
+        return self.calc_no_of_days_present()
+
+    def calc_paid_leaves(self):
         return LeaveRequest.get_total_paid_leaves(
             self.salary.employee, self.date.year, self.date.month)
 
     @property
-    def unpaid_leaves(self):
+    def paid_leaves(self):
+        if self.stored_paid_leaves is not None:
+            return self.stored_paid_leaves
+        return self.calc_paid_leaves()
+
+    def calc_unpaid_leaves(self):
         return LeaveRequest.get_total_unpaid_leaves(
             self.salary.employee, self.date.year, self.date.month)
 
     @property
-    def half_leaves(self):
+    def unpaid_leaves(self):
+        if self.stored_unpaid_leaves is not None:
+            return self.stored_unpaid_leaves
+        return self.calc_unpaid_leaves()
+
+    def calc_half_leaves(self):
         return LeaveRequest.get_total_half_leaves(
             self.salary.employee, self.date.year, self.date.month)
 
     @property
+    def half_leaves(self):
+        if self.stored_half_leaves is not None:
+            return self.stored_half_leaves
+        return self.calc_half_leaves()
+
+    @property
     def deduction(self):
-        return self.salary.basic_salary - self.net_salary
+        if self.salary and self.salary.basic_salary and self.net_salary:
+            return self.salary.basic_salary - self.net_salary
+        return 0
 
 
 class SalaryTransactionReview(models.Model):

@@ -41,7 +41,8 @@ class EmployeeLeaveCountDetailAPIView(APIView):
             return Response({'message': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
 
         from django.db.models import Sum
-        current_year = nepali_datetime.datetime.today().year
+        ny = request.GET.get('nepali_year')
+        current_year = int(ny) if ny else nepali_datetime.datetime.today().year
 
         all_approved_leave_requests = LeaveRequest.objects.filter(
             employee=employee, is_approved=True, is_reviewed=True
@@ -109,6 +110,7 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
     model = LeaveRequest
     serializer_class = LeaveRequestSerializer
     permission_classes = [IsAuthenticated]
+    nepali_date_filter_field = 'from_date'
 
     def get_queryset(self):
         user = self.request.user

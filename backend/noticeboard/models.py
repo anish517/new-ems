@@ -2,10 +2,11 @@ from django.db import models
 from django_ckeditor_5.fields import CKEditor5Field
 from nepali_datetime_field.models import NepaliDateField
 from organization.models import Organization, Employee
+from utils.models import SoftDeleteModel
 
 # Create your models here.
 
-class Notice(models.Model):
+class Notice(SoftDeleteModel):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
     created_by = models.ForeignKey(Employee, on_delete=models.CASCADE, null=True, blank=True)
     date = NepaliDateField(null=True, blank=True)

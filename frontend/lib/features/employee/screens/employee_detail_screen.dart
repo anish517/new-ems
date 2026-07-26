@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:nepali_utils/nepali_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/providers/date_provider.dart';
 import '../../../core/constants/app_constants.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -297,6 +298,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(nepaliDateProvider, (_, __) => _loadAll());
+    
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -799,6 +802,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
 
   Widget _buildCalendar() {
     final now = NepaliDateTime.now();
+    final year = ApiService.globalNepaliYear ?? now.year;
+    final month = ApiService.globalNepaliMonth ?? now.month;
     final presentDates =
         _attendanceLogs.map((e) => e['date'].toString()).toSet();
 
@@ -816,7 +821,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-              'Attendance Calendar (${now.year}-${now.month.toString().padLeft(2, '0')})',
+              'Attendance Calendar ($year-${month.toString().padLeft(2, '0')})',
               style:
                   const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
@@ -833,7 +838,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 final day = index + 1;
                 // Since exact days in month varies, we'll try to parse, if it fails it's out of month
                 String dateStr =
-                    '${now.year}-${now.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
+                    '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
                 bool isValid = true;
                 try {
                   NepaliDateTime.parse(dateStr);
@@ -844,7 +849,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 if (!isValid) return const SizedBox();
 
                 final isPresent = presentDates.contains(dateStr);
-                final isToday = day == now.day;
+                final isToday = (day == now.day && month == now.month && year == now.year);
 
                 return Container(
                   decoration: BoxDecoration(

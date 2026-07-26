@@ -16,21 +16,40 @@ from organization.models import (
 
 
 class DepartmentRetrieveUpdateDeleteAPIView(RetrieveUpdateDestroyAPIView):
+    nepali_date_filter_field = False
     serializer_class = DepartmentSerializer
     permission_classes = [IsAuthenticated]
     queryset = Department.objects.all()
 
 
 class EmployeeViewSet(viewsets.ModelViewSet):
-    queryset = Employee.objects.all()
+    nepali_date_filter_field = False
     serializer_class = EmployeeSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # For retrieve/update/destroy: use all_objects so archived employees are accessible
+        if self.action in ('retrieve', 'update', 'partial_update', 'destroy'):
+            return Employee.all_objects.all()
+        # For list: default manager (active only), filtered by org
+        user = self.request.user
+        if user.organization.exists():
+            return Employee.objects.filter(
+                post__department__organization=user.organization.first()
+            )
+        try:
+            return Employee.objects.filter(
+                post__department__organization=user.employee.organization
+            )
+        except Exception:
+            return Employee.objects.all()
 
     def perform_destroy(self, instance):
         user = instance.user
         instance.delete()
         if user:
-            user.delete()
+            user.is_active = False
+            user.save()
 
     @action(detail=True, methods=['post'])
     def reset_password(self, request, pk=None):
@@ -46,6 +65,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
 
 class EmployeeAddressCreateView(ListCreateAPIView):
+    nepali_date_filter_field = False
     "API view to list and create employee addresses"
     serializer_class = AddressSerializer
     permission_classes = [IsAuthenticated]
@@ -64,6 +84,7 @@ class EmployeeAddressCreateView(ListCreateAPIView):
 
 
 class EmployeeAddressDetailView(RetrieveUpdateDestroyAPIView):
+    nepali_date_filter_field = False
     serializer_class = AddressSerializer
     permission_classes = [IsAuthenticated]
 
@@ -73,18 +94,21 @@ class EmployeeAddressDetailView(RetrieveUpdateDestroyAPIView):
 
 
 class NationalIdViewSet(viewsets.ModelViewSet):
+    nepali_date_filter_field = False
     queryset = NationalIdDetail.objects.all()
     serializer_class = NationalIDDetailSerializer
     permission_classes = [IsAuthenticated]
 
 
 class QualificationViewSet(viewsets.ModelViewSet):
+    nepali_date_filter_field = False
     queryset = Qualification.objects.all()
     serializer_class = QualificationSerializer
     permission_classes = [IsAuthenticated]
 
 
 class BankDetailViewSet(viewsets.ModelViewSet):
+    nepali_date_filter_field = False
     queryset = BankDetail.objects.all()
     serializer_class = BankDetailSerializer
     permission_classes = [IsAuthenticated]
@@ -98,6 +122,7 @@ class BankDetailViewSet(viewsets.ModelViewSet):
 
 
 class DocumentViewSet(viewsets.ModelViewSet):
+    nepali_date_filter_field = False
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     permission_classes = [IsAuthenticated]
@@ -111,6 +136,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
 
 class EmployeeAnalysisReportListAPIView(ListAPIView):
+    nepali_date_filter_field = False
     serializer_class = EmployeeAnalysisReportSerializer
     permission_classes = [IsAuthenticated]
 
@@ -133,11 +159,11 @@ class EmployeeAnalysisReportListAPIView(ListAPIView):
             if report.date.year == year:
                 yearly_reports.append(report)
         serializer = self.get_serializer(yearly_reports, many=True)
-        time.sleep(2)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
 
 
 class OrganizationFileRetrieveAPIView(RetrieveAPIView):
+    nepali_date_filter_field = False
     serializer_class = OrganizationFileSerializer
 
     def get_queryset(self):
