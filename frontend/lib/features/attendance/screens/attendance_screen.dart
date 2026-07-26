@@ -184,6 +184,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
     _autoActionTimer = Timer(const Duration(seconds: 5), () async {
       if (!cancelled && mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         await onFire();
       }
       if (!completer.isCompleted) completer.complete();
@@ -552,6 +553,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
   void _showSnack(String msg, Color color) {
     if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
       backgroundColor: color,
