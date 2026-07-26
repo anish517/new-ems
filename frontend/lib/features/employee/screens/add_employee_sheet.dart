@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
+import 'dart:io';
+import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
 
 class AddEmployeeSheet extends StatefulWidget {
   final VoidCallback onSuccess;
@@ -20,11 +23,18 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
   DateTime _dob = DateTime.now();
   final _dobCtrl = TextEditingController();
   bool _isLoading = false;
+  bool _isLoadingDetails = false;
+
+  String _fatherName = '', _bloodGroup = 'A+', _altPhone = '';
+  final List<PlatformFile> _selectedFiles = [];
+  List<dynamic> _existingDocuments = [];
 
   // Address fields
+  int? _addressId;
   String _street = '', _district = '', _state = '';
 
   // Bank fields
+  int? _bankDetailId;
   String _bankName = '', _accountNumber = '';
 
   @override
@@ -43,8 +53,54 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
           _dob = DateTime.parse(widget.employee!['date_of_birth']);
         } catch (_) {}
       }
+      _fatherName = widget.employee!['father_name'] ?? '';
+      _bloodGroup = widget.employee!['blood_group'] ?? 'A+';
+      _altPhone = widget.employee!['alternative_contact_number'] ?? '';
+      _fetchExtraDetails(widget.employee!['id']);
     }
     _dobCtrl.text = "${_dob.year}-${_dob.month.toString().padLeft(2, '0')}-${_dob.day.toString().padLeft(2, '0')}";
+  }
+
+  Future<void> _fetchExtraDetails(int empId) async {
+    setState(() => _isLoadingDetails = true);
+    try {
+      final addrRes = await ApiService().get('${AppConstants.organizationBase}/addresses/?employee=$empId');
+      final addrs = addrRes.data is List ? addrRes.data : addrRes.data['results'];
+      if (addrs != null && addrs.isNotEmpty) {
+        final addr = addrs.first;
+        _addressId = addr['id'];
+        _street = addr['street'] ?? '';
+        _district = addr['district'] ?? '';
+        _state = addr['state'] ?? '';
+      }
+
+      final bankRes = await ApiService().get('${AppConstants.organizationBase}/bank-details/?employee=$empId');
+      final banks = bankRes.data is List ? bankRes.data : bankRes.data['results'];
+      if (banks != null && banks.isNotEmpty) {
+        final bank = banks.first;
+        _bankDetailId = bank['id'];
+        _bankName = bank['bank_name'] ?? '';
+        _accountNumber = bank['account_number'] ?? '';
+      }
+
+      final docRes = await ApiService().get('${AppConstants.organizationBase}/documents/?employee=$empId');
+      final docs = docRes.data is List ? docRes.data : docRes.data['results'];
+      if (docs != null && docs.isNotEmpty) {
+        _existingDocuments = docs;
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _isLoadingDetails = false);
+  }
+
+  Future<void> _deleteDocument(int docId) async {
+    try {
+      await ApiService().delete('${AppConstants.organizationBase}/documents/$docId/');
+      setState(() {
+        _existingDocuments.removeWhere((d) => d['id'] == docId);
+      });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete document')));
+    }
   }
 
   Future<void> _pickDate() async {
@@ -78,13 +134,15 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
         'gender': _gender,
         'date_of_birth': "${_dob.year}-${_dob.month.toString().padLeft(2, '0')}-${_dob.day.toString().padLeft(2, '0')}",
         'phone_no': _phone,
+        'father_name': _fatherName,
+        'blood_group': _bloodGroup,
+        'alternative_contact_number': _altPhone,
       };
 
       int? employeeId;
 
       if (widget.employee == null) {
         data['post'] = 1; // Default post
-        data['father_name'] = 'N/A';
         data['official_email'] = _email;
         data['personal_email'] = _email;
         data['is_active'] = true;
@@ -102,27 +160,66 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
       // Save address if any fields are filled
       if (employeeId != null && (_street.isNotEmpty || _district.isNotEmpty || _state.isNotEmpty)) {
         try {
-          await ApiService().post('${AppConstants.organizationBase}/addresses/', data: [
-            {
-              'employee': employeeId,
-              'type': 'permanent',
-              'street': _street,
-              'district': _district,
-              'state': _state,
-            }
-          ]);
-        } catch (_) {}
+          final addrData = {
+            'employee': employeeId,
+            'type': 'permanent',
+            'street': _street,
+            'district': _district,
+            'state': _state,
+          };
+          if (_addressId != null) {
+            await ApiService().patch('${AppConstants.organizationBase}/addresses/$_addressId/', data: addrData);
+          } else {
+            await ApiService().post('${AppConstants.organizationBase}/addresses/', data: [addrData]);
+          }
+        } catch (e) {
+          debugPrint('Address save error: $e');
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save Address: ${ApiService.getErrorMessage(e)}')));
+        }
       }
 
       // Save bank details if any fields are filled
       if (employeeId != null && (_bankName.isNotEmpty || _accountNumber.isNotEmpty)) {
         try {
-          await ApiService().post('${AppConstants.organizationBase}/bank-details/', data: {
+          final bankData = {
             'employee': employeeId,
             'bank_name': _bankName,
             'account_number': _accountNumber,
-          });
-        } catch (_) {}
+          };
+          if (_bankDetailId != null) {
+            await ApiService().patch('${AppConstants.organizationBase}/bank-details/$_bankDetailId/', data: bankData);
+          } else {
+            await ApiService().post('${AppConstants.organizationBase}/bank-details/', data: bankData);
+          }
+        } catch (e) {
+          debugPrint('Bank save error: $e');
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save Bank Details: ${ApiService.getErrorMessage(e)}')));
+        }
+      }
+
+      // Upload documents
+      if (employeeId != null && _selectedFiles.isNotEmpty) {
+        for (final file in _selectedFiles) {
+          try {
+            List<int> fileBytes;
+            if (file.bytes != null) {
+              fileBytes = file.bytes!;
+            } else {
+              fileBytes = await File(file.path!).readAsBytes();
+            }
+            final b64 = base64Encode(fileBytes);
+            final ext = file.extension ?? file.name.split('.').last;
+            final mimeStr = "data:application/$ext;base64,$b64";
+            
+            await ApiService().post('${AppConstants.organizationBase}/documents/', data: {
+              'employee': employeeId,
+              'name': file.name,
+              'file': mimeStr,
+            });
+          } catch (e) {
+            debugPrint('Failed to upload document: $e');
+          }
+        }
       }
 
       if (mounted) {
@@ -155,7 +252,9 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          child: Column(
+          child: _isLoadingDetails
+              ? const SizedBox(height: 300, child: Center(child: CircularProgressIndicator()))
+              : Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -235,22 +334,59 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                   ),
                 )),
               ]),
+              const SizedBox(height: 12),
+              
+              // ── Additional Personal Info ────────────────────────
+              _sectionTitle('Additional Personal Info'),
+              Row(children: [
+                Expanded(child: TextFormField(
+                  initialValue: _fatherName,
+                  decoration: const InputDecoration(labelText: 'Father\'s Name'),
+                  onSaved: (v) => _fatherName = v ?? '',
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: DropdownButtonFormField<String>(
+                  value: _bloodGroup,
+                  decoration: const InputDecoration(labelText: 'Blood Group'),
+                  items: const [
+                    DropdownMenuItem(value: 'A+', child: Text('A+')),
+                    DropdownMenuItem(value: 'A-', child: Text('A-')),
+                    DropdownMenuItem(value: 'B+', child: Text('B+')),
+                    DropdownMenuItem(value: 'B-', child: Text('B-')),
+                    DropdownMenuItem(value: 'AB+', child: Text('AB+')),
+                    DropdownMenuItem(value: 'AB-', child: Text('AB-')),
+                    DropdownMenuItem(value: 'O+', child: Text('O+')),
+                    DropdownMenuItem(value: 'O-', child: Text('O-')),
+                  ],
+                  onChanged: (v) => setState(() => _bloodGroup = v!),
+                )),
+              ]),
+              const SizedBox(height: 12),
+              TextFormField(
+                initialValue: _altPhone,
+                decoration: const InputDecoration(labelText: 'Alternative Contact Number'),
+                onSaved: (v) => _altPhone = v ?? '',
+              ),
+              const SizedBox(height: 12),
 
               // ── Address ────────────────────────────────────────
               _sectionTitle('Address (Permanent)'),
               Row(children: [
                 Expanded(child: TextFormField(
+                  initialValue: _street,
                   decoration: const InputDecoration(labelText: 'Street'),
                   onSaved: (v) => _street = v ?? '',
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: TextFormField(
+                  initialValue: _district,
                   decoration: const InputDecoration(labelText: 'District'),
                   onSaved: (v) => _district = v ?? '',
                 )),
               ]),
               const SizedBox(height: 12),
               TextFormField(
+                initialValue: _state,
                 decoration: const InputDecoration(labelText: 'State / Province'),
                 onSaved: (v) => _state = v ?? '',
               ),
@@ -259,16 +395,56 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
               _sectionTitle('Bank Details'),
               Row(children: [
                 Expanded(child: TextFormField(
+                  initialValue: _bankName,
                   decoration: const InputDecoration(labelText: 'Bank Name'),
                   onSaved: (v) => _bankName = v ?? '',
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: TextFormField(
+                  initialValue: _accountNumber,
                   decoration: const InputDecoration(labelText: 'Account Number'),
                   keyboardType: TextInputType.number,
                   onSaved: (v) => _accountNumber = v ?? '',
                 )),
               ]),
+
+              // ── Documents ──────────────────────────────────────
+              _sectionTitle('Documents'),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await FilePicker.platform.pickFiles(allowMultiple: true);
+                  if (result != null) {
+                    setState(() => _selectedFiles.addAll(result.files));
+                  }
+                },
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Attach Documents'),
+              ),
+              if (_selectedFiles.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _selectedFiles.map((f) => Chip(
+                    label: Text(f.name, style: const TextStyle(fontSize: 12)),
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                    onDeleted: () => setState(() => _selectedFiles.remove(f)),
+                  )).toList(),
+                ),
+              ],
+              if (_existingDocuments.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                const Text('Existing Documents:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _existingDocuments.map((doc) => Chip(
+                    label: Text(doc['name'] ?? 'Doc', style: const TextStyle(fontSize: 12)),
+                    deleteIcon: const Icon(Icons.delete, size: 16, color: Colors.red),
+                    onDeleted: () => _deleteDocument(doc['id']),
+                  )).toList(),
+                ),
+              ],
 
               const SizedBox(height: 24),
               ElevatedButton(

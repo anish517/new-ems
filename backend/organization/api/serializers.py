@@ -94,6 +94,8 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "gender",
             "date_of_birth",
             "father_name",
+            "blood_group",
+            "alternative_contact_number",
             "phone_no",
             "official_email",
             "personal_email",

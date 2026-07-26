@@ -16,7 +16,7 @@ def get_employees_list_with_task(organization: Organization) -> list:
             'id': employee.id,
             'name': employee.user.full_name,
             'email': employee.official_email,
-            'profile_picture': getattr(employee.user.profile_picture, 'url') if employee.user.profile_picture else '/static/images/placeholder/placeholder.png',
+            'profile_picture': getattr(employee.user.profile_picture, 'url') if employee.user.profile_picture else None,
             'pending_tasks': tasks.filter(status='to-do'),
             'on_going_tasks': tasks.filter(status='in-progress'),
             'completed_tasks': tasks.filter(status='done'),
@@ -39,7 +39,7 @@ def get_employee_task_summary(employee: Employee, year: int = TODAY.year, month:
         data = {
             'name': employee.user.full_name,
             'email': employee.official_email,
-            'profile_picture': getattr(employee.user.profile_picture, 'url') if employee.user.profile_picture else '/static/images/placeholder/placeholder.png',
+            'profile_picture': getattr(employee.user.profile_picture, 'url') if employee.user.profile_picture else None,
             'pending_tasks': 0,
             'on_going_tasks': 0,
             'completed_tasks': 100
@@ -48,7 +48,7 @@ def get_employee_task_summary(employee: Employee, year: int = TODAY.year, month:
         data = {
             'name': employee.user.full_name,
             'email': employee.official_email,
-            'profile_picture': getattr(employee.user.profile_picture, 'url') if employee.user.profile_picture else '/static/images/placeholder/placeholder.png',
+            'profile_picture': getattr(employee.user.profile_picture, 'url') if employee.user.profile_picture else None,
             'pending_tasks': tasks.filter(status='to-do').count(),
             'on_going_tasks': tasks.filter(status='in-progress').count(),
             'completed_tasks': tasks.filter(status='done').count()
