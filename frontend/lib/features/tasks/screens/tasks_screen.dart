@@ -7,28 +7,24 @@ import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'package:nepali_utils/nepali_utils.dart';
+import '../../../core/providers/date_provider.dart';
 
 // ─── Date formatter ───────────────────────────────────────────────────────
 String _fmtDate(String? raw, {String? fallback}) {
-  DateTime? parseDate(String? s) {
-    if (s == null || s.isEmpty) return null;
+  if (raw == null && fallback == null) return '';
+  final s = raw ?? fallback!;
+  try {
+    if (s.contains('T')) {
+      return NepaliDateFormat('dd MMM yyyy').format(DateTime.parse(s).toNepaliDateTime());
+    }
+    return NepaliDateFormat('dd MMM yyyy').format(NepaliDateTime.parse(s));
+  } catch (_) {
     try {
-      if (s.contains('T')) return DateTime.parse(s);
-      return NepaliDateTime.parse(s).toDateTime();
+      return DateFormat('dd MMM yyyy').format(DateTime.parse(s));
     } catch (_) {
-      try {
-        return DateTime.parse(s);
-      } catch (_) {
-        return null;
-      }
+      return s;
     }
   }
-
-  final date = parseDate(raw) ?? parseDate(fallback);
-  if (date != null) {
-    return DateFormat('dd MMM yyyy').format(date);
-  }
-  return DateFormat('dd MMM yyyy').format(DateTime.now());
 }
 
 class TasksScreen extends ConsumerStatefulWidget {
@@ -304,6 +300,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(nepaliDateProvider, (_, __) => _loadTasks());
     final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
 
     return DefaultTabController(

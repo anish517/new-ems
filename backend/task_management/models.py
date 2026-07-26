@@ -5,10 +5,11 @@ from django_ckeditor_5.fields import CKEditor5Field
 from nepali_datetime_field.models import NepaliDateField
 
 from organization.models import Employee, Organization
+from utils.models import SoftDeleteModel
 # Create your models here.
 
 
-class Project(models.Model):
+class Project(SoftDeleteModel):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True)
     title = models.CharField(max_length=255, null=True)
@@ -82,7 +83,7 @@ class ProjectFile(models.Model):
         verbose_name_plural = 'Project files'
 
 
-class Task(models.Model):
+class Task(SoftDeleteModel):
     STATUS_CHOICES = (
         ('to-do', 'To Do'),
         ('in-progress', 'In Progress'),

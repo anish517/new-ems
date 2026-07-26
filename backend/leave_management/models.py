@@ -4,6 +4,7 @@ from django_ckeditor_5.fields import CKEditor5Field
 from tinymce.models import HTMLField
 
 from organization.models import Employee, Organization
+from utils.models import SoftDeleteModel
 
 # Create your models here.
 
@@ -31,7 +32,7 @@ class LeaveBalance(models.Model):
         return self.employee.user.full_name
 
 
-class LeaveRequest(models.Model):
+class LeaveRequest(SoftDeleteModel):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True)
     employee = models.ForeignKey(

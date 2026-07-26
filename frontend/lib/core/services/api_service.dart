@@ -9,6 +9,9 @@ class ApiService {
   late final Dio _dio;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
+  static int? globalNepaliYear;
+  static int? globalNepaliMonth;
+
   ApiService._internal() {
     _dio = Dio(BaseOptions(
       baseUrl: AppConstants.baseUrl,
@@ -71,7 +74,10 @@ class ApiService {
   }
 
   Future<Response> get(String path, {Map<String, dynamic>? queryParams}) {
-    return _dio.get(path, queryParameters: queryParams);
+    final params = queryParams != null ? Map<String, dynamic>.from(queryParams) : <String, dynamic>{};
+    if (globalNepaliYear != null) params['nepali_year'] = globalNepaliYear;
+    if (globalNepaliMonth != null) params['nepali_month'] = globalNepaliMonth;
+    return _dio.get(path, queryParameters: params);
   }
 
   Future<Response> post(String path, {dynamic data}) {

@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../core/providers/date_provider.dart';
 
 class FeedbackScreen extends ConsumerStatefulWidget {
   const FeedbackScreen({super.key});
@@ -39,6 +40,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(nepaliDateProvider, (_, __) => _loadComplaints());
     final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
 
     return Scaffold(

@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../features/auth/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import 'global_month_year_picker.dart';
 
 class AppShell extends ConsumerWidget {
   final Widget child;
@@ -62,6 +63,10 @@ class AppShell extends ConsumerWidget {
                           color: Colors.white)),
                 ],
               ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: GlobalMonthYearPicker(),
             ),
             const SizedBox(height: 8),
             Expanded(

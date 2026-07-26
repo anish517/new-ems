@@ -4,6 +4,28 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../core/providers/date_provider.dart';
+import 'package:nepali_utils/nepali_utils.dart';
+import 'package:intl/intl.dart';
+
+// ─── Date formatter ───────────────────────────────────────────────────────
+String _fmtDate(String? raw, {String? fallback}) {
+  if (raw == null && fallback == null) return '';
+  final s = raw ?? fallback!;
+  try {
+    if (s.contains('T')) {
+      return NepaliDateFormat('dd MMM yyyy')
+          .format(DateTime.parse(s).toNepaliDateTime());
+    }
+    return NepaliDateFormat('dd MMM yyyy').format(NepaliDateTime.parse(s));
+  } catch (_) {
+    try {
+      return DateFormat('dd MMM yyyy').format(DateTime.parse(s));
+    } catch (_) {
+      return s;
+    }
+  }
+}
 
 class PerformanceScreen extends ConsumerStatefulWidget {
   const PerformanceScreen({super.key});
@@ -51,6 +73,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(nepaliDateProvider, (_, __) => _loadAll());
     final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
 
     return Scaffold(
@@ -151,7 +174,7 @@ class _ReviewCard extends StatelessWidget {
               ),
               Row(
                 children: [
-                  Text(review['created_at']?.split('T')[0] ?? '',
+                  Text(_fmtDate(review['created_at']),
                       style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   if (review['category_name'] != null) ...[
                     const SizedBox(width: 8),

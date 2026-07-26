@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils.text import slugify
 from nepali_datetime_field.models import NepaliDateField
+from utils.models import SoftDeleteModel
 
 User = get_user_model()
 
@@ -150,7 +151,7 @@ class Post(models.Model):
         return self.department.organization
 
 
-class Employee(models.Model):
+class Employee(SoftDeleteModel):
     GENDER_CHOICES = (
         ("male", "Male"),
         ("female", "Female"),
@@ -201,6 +202,12 @@ class Employee(models.Model):
 
     def __str__(self):
         return f"{self.user.full_name}"
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        if self.user:
+            self.user.is_active = False
+            self.user.save()
 
     @property
     def get_id(self):

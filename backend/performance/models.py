@@ -1,6 +1,7 @@
 from django.db import models
 from organization.models import Employee, Organization
 from authentication.models import Account
+from utils.models import SoftDeleteModel
 
 
 class PerformanceCategory(models.Model):
@@ -16,7 +17,7 @@ class PerformanceCategory(models.Model):
         return self.name
 
 
-class PerformanceReview(models.Model):
+class PerformanceReview(SoftDeleteModel):
     employee = models.ForeignKey(
         Employee, on_delete=models.CASCADE, related_name='reviews')
     reviewer = models.ForeignKey(

@@ -40,8 +40,8 @@ class RetrieveTotalWorkingHourAPIView(APIView):
         except Employee.DoesNotExist:
             return Response({'message': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        selected_year = request.GET.get('selected_year')
-        selected_month = request.GET.get('selected_month')
+        selected_year = request.GET.get('nepali_year') or request.GET.get('selected_year')
+        selected_month = request.GET.get('nepali_month') or request.GET.get('selected_month')
         current_month = nepali_datetime.date.today().month
         current_year = nepali_datetime.date.today().year
 
@@ -315,6 +315,21 @@ class AttendanceListAPIView(APIView):
             try:
                 y, m, d = map(int, date_str.split('-'))
                 qs = qs.filter(date=nepali_datetime.date(y, m, d))
+            except Exception:
+                pass
+                
+        ny = request.GET.get('nepali_year')
+        nm = request.GET.get('nepali_month')
+        if ny and nm:
+            try:
+                y = int(ny)
+                m = int(nm)
+                from calendar_app.utilities import total_days_in_month
+                import nepali_datetime
+                days = total_days_in_month(y, m)
+                start_date = nepali_datetime.date(y, m, 1)
+                end_date = nepali_datetime.date(y, m, days)
+                qs = qs.filter(date__gte=start_date, date__lte=end_date)
             except Exception:
                 pass
 

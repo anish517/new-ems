@@ -10,7 +10,7 @@ from notification.models import Notification
 # Create your models here.
 
 from django.db import models
-
+from utils.models import SoftDeleteModel
 
 def format_timedelta(td):
     hours, remainder = divmod(td.seconds, 3600)
@@ -69,7 +69,7 @@ class CheckInOut(models.Model):
         return f"Check-in: {self.check_in}, Check-out: {self.check_out} for {self.attendance.date}"
 
 
-class Attendance(models.Model):
+class Attendance(SoftDeleteModel):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     employee = models.ForeignKey(
         Employee, on_delete=models.CASCADE, related_name="attendance"
