@@ -202,7 +202,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: DropdownButtonFormField<String>(
-                  value: _gender,
+                  initialValue: _gender,
                   decoration: const InputDecoration(labelText: 'Gender'),
                   items: const [
                     DropdownMenuItem(value: 'male', child: Text('Male')),
@@ -215,7 +215,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(child: DropdownButtonFormField<String>(
-                  value: _employeeType,
+                  initialValue: _employeeType,
                   decoration: const InputDecoration(labelText: 'Employee Type'),
                   items: const [
                     DropdownMenuItem(value: 'full_time', child: Text('Full Time')),

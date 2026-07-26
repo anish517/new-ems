@@ -189,9 +189,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           'end': dateStr,
                           'is_important': isImportant,
                         });
-                        if (mounted) Navigator.pop(ctx);
+                        if (!ctx.mounted) return;
+                        Navigator.pop(ctx);
                         _loadEvents();
                       } catch (e) {
+                        if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Failed to add event: $e')));
                       }

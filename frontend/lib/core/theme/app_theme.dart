@@ -42,14 +42,20 @@ class AppColors {
 }
 
 class AppTheme {
+  // Single seed color drives the entire M3 tonal palette
+  static const Color _seed = AppColors.primary; // Indigo 0xFF4F46E5
+
   static ThemeData get darkTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    colorScheme: ColorScheme.dark(
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: _seed,
+      brightness: Brightness.dark,
+      // Override key roles so our hand-picked colors still win
       primary: AppColors.primary,
       secondary: AppColors.accent,
-      surface: AppColors.surfaceDark,
       error: AppColors.error,
+      surface: AppColors.surfaceDark,
     ),
     scaffoldBackgroundColor: AppColors.bgDark,
     textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
@@ -81,6 +87,13 @@ class AppTheme {
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(double.infinity, 52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.surfaceDark,
@@ -107,16 +120,32 @@ class AppTheme {
       type: BottomNavigationBarType.fixed,
       elevation: 0,
     ),
+    chipTheme: ChipThemeData(
+      backgroundColor: AppColors.cardDark,
+      selectedColor: AppColors.primary.withValues(alpha: 0.3),
+      labelStyle: const TextStyle(color: Colors.white),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    ),
+    dividerTheme: const DividerThemeData(
+      color: AppColors.borderDark,
+      thickness: 0.5,
+    ),
+    listTileTheme: const ListTileThemeData(
+      tileColor: Colors.transparent,
+      iconColor: AppColors.textSecondary,
+    ),
   );
 
   static ThemeData get lightTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    colorScheme: ColorScheme.light(
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: _seed,
+      brightness: Brightness.light,
       primary: AppColors.primary,
       secondary: AppColors.accent,
-      surface: AppColors.surfaceLight,
       error: AppColors.error,
+      surface: AppColors.surfaceLight,
     ),
     scaffoldBackgroundColor: AppColors.bgLight,
     textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme),
@@ -148,6 +177,13 @@ class AppTheme {
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(double.infinity, 52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.cardLight,
@@ -164,6 +200,20 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppColors.primary, width: 2),
       ),
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: AppColors.cardLight,
+      selectedColor: AppColors.primary.withValues(alpha: 0.15),
+      labelStyle: const TextStyle(color: AppColors.textPrimary),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    ),
+    dividerTheme: const DividerThemeData(
+      color: AppColors.borderLight,
+      thickness: 0.5,
+    ),
+    listTileTheme: const ListTileThemeData(
+      tileColor: Colors.transparent,
+      iconColor: AppColors.textSecondary,
     ),
   );
 }

@@ -32,14 +32,21 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
       final res = await ApiService().get(
         '${AppConstants.attendanceBase}/total-working-hour/${user!.employeeId}/',
       );
-      if (mounted) setState(() { _attendanceData = res.data; _isLoading = false; });
-    } catch (_) { if (mounted) setState(() => _isLoading = false); }
+      if (mounted) {
+        setState(() {
+          _attendanceData = res.data;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final user  = ref.watch(currentUserProvider);
-    final unread = ref.watch(unreadCountProvider);
+    final user = ref.watch(currentUserProvider);
+    ref.watch(unreadCountProvider);
 
     return Scaffold(
       body: RefreshIndicator(
@@ -47,17 +54,19 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             // Greeting
             Text('Good ${_greeting()}, ${user?.firstName ?? ''}!',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const Text('Welcome back', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text('Welcome back',
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
             const SizedBox(height: 16),
-            
+
             // Attendance card
-            _AttendanceSummaryCard(data: _attendanceData, isLoading: _isLoading),
+            _AttendanceSummaryCard(
+                data: _attendanceData, isLoading: _isLoading),
             const SizedBox(height: 16),
 
             // Quick actions grid
@@ -65,23 +74,25 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             const SizedBox(height: 12),
             GridView.count(
-              crossAxisCount: 2, shrinkWrap: true,
+              crossAxisCount: 2,
+              shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 12, mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
               childAspectRatio: 1.4,
               children: [
                 _QuickCard('Check In/Out', Iconsax.clock, AppColors.primary,
                     () => context.go('/attendance')),
-                _QuickCard('Apply Leave', Iconsax.calendar_remove, AppColors.warning,
-                    () => context.go('/leave')),
+                _QuickCard('Apply Leave', Iconsax.calendar_remove,
+                    AppColors.warning, () => context.go('/leave')),
                 _QuickCard('My Tasks', Iconsax.task_square, AppColors.accent,
                     () => context.go('/tasks')),
                 _QuickCard('Salary', Iconsax.money, AppColors.success,
                     () => context.go('/salary')),
                 _QuickCard('Noticeboard', Iconsax.message_text, AppColors.info,
                     () => context.go('/noticeboard')),
-                _QuickCard('Feedback', Iconsax.message_question, AppColors.remote,
-                    () => context.go('/feedback')),
+                _QuickCard('Feedback', Iconsax.message_question,
+                    AppColors.remote, () => context.go('/feedback')),
                 _QuickCard('Performance', Iconsax.star1, AppColors.warning,
                     () => context.go('/performance')),
               ],
@@ -121,19 +132,21 @@ class _AttendanceSummaryCard extends StatelessWidget {
       child: isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('This Month', style: TextStyle(
-                  color: Colors.white70, fontSize: 13)),
+              const Text('This Month',
+                  style: TextStyle(color: Colors.white70, fontSize: 13)),
               const SizedBox(height: 4),
               Text('${data?['total_working_hour'] ?? 0} hrs worked',
-                  style: const TextStyle(color: Colors.white,
-                      fontSize: 24, fontWeight: FontWeight.bold)),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               Row(children: [
                 _StatChip('Days Present',
                     '${data?['total_no_of_days_present'] ?? 0}'),
                 const SizedBox(width: 12),
-                _StatChip('Remaining',
-                    '${data?['remaining_working_hour'] ?? 0} hrs'),
+                _StatChip(
+                    'Remaining', '${data?['remaining_working_hour'] ?? 0} hrs'),
               ]),
             ]),
     );
@@ -147,17 +160,19 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.2),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Column(children: [
-      Text(value, style: const TextStyle(
-          color: Colors.white, fontWeight: FontWeight.bold)),
-      Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
-    ]),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(children: [
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold)),
+          Text(label,
+              style: const TextStyle(color: Colors.white70, fontSize: 11)),
+        ]),
+      );
 }
 
 class _QuickCard extends StatelessWidget {
@@ -169,25 +184,26 @@ class _QuickCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(16),
-    child: Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
-          Text(label, style: TextStyle(
-              fontWeight: FontWeight.w600, fontSize: 13, color: color)),
-        ],
-      ),
-    ),
-  );
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 28),
+              const SizedBox(height: 8),
+              Text(label,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 13, color: color)),
+            ],
+          ),
+        ),
+      );
 }

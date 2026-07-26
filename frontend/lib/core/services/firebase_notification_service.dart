@@ -46,7 +46,7 @@ class FirebaseNotificationService {
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('User granted permission for notifications');
+      debugPrint('User granted permission for notifications');
     }
 
     if (!kIsWeb) {
@@ -66,8 +66,8 @@ class FirebaseNotificationService {
 
     // Listen for messages while app is in foreground
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Got a message whilst in the foreground!');
-      print('Message data: ${message.data}');
+      debugPrint('Got a message whilst in the foreground!');
+      debugPrint('Message data: ${message.data}');
 
       if (message.notification != null) {
         if (!kIsWeb) {
@@ -107,11 +107,11 @@ class FirebaseNotificationService {
     if (payload == null) return;
     try {
       final data = jsonDecode(payload);
-      print("Notification tapped with payload: $data");
+      debugPrint("Notification tapped with payload: $data");
       // Add logic here to navigate using GoRouter depending on data['type']
       // e.g. if type == 'task', GoRouter.of(context).go('/tasks')
     } catch (e) {
-      print("Error parsing payload: $e");
+      debugPrint("Error parsing payload: $e");
     }
   }
 
@@ -122,12 +122,12 @@ class FirebaseNotificationService {
     try {
       final fcmToken = await _fcm.getToken();
       if (fcmToken != null) {
-        print("FCM Token: $fcmToken");
+        debugPrint("FCM Token: $fcmToken");
         final api = ApiService();
         await api.post('/api/notifications/device-token/', data: {'token': fcmToken});
       }
     } catch (e) {
-      print("Failed to register FCM token: $e");
+      debugPrint("Failed to register FCM token: $e");
     }
   }
 
