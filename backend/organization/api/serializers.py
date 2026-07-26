@@ -167,7 +167,7 @@ class Base64FileField(serializers.FileField):
 
 class DocumentSerializer(serializers.ModelSerializer):
 
-    file = Base64FileField(required=False, allow_null=True)
+    file = serializers.FileField(required=False, allow_null=True)
 
     class Meta:
         model = Document

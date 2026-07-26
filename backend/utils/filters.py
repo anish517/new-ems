@@ -11,6 +11,8 @@ class GlobalContextFilter(BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         nepali_year = request.query_params.get('nepali_year')
         nepali_month = request.query_params.get('nepali_month')
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
         status_param = request.query_params.get('status')
         
         # 1. Base Queryset adjustment for Soft Deletes
@@ -29,7 +31,33 @@ class GlobalContextFilter(BaseFilterBackend):
                 elif 'created_at' in model_fields:
                     date_field = 'created_at'
             
-            if nepali_year and nepali_month and date_field and date_field in model_fields:
+            if start_date and end_date and date_field and date_field in model_fields:
+                field_type = type(model_fields[date_field]).__name__
+                try:
+                    sy, sm, sd = map(int, start_date.split('-'))
+                    ey, em, ed = map(int, end_date.split('-'))
+                    if field_type in ['CharField', 'TextField']:
+                        queryset = queryset.filter(**{
+                            f"{date_field}__gte": start_date,
+                            f"{date_field}__lte": end_date,
+                        })
+                    elif field_type in ['DateTimeField', 'DateField']:
+                        s_nepali = nepali_datetime.date(sy, sm, sd)
+                        e_nepali = nepali_datetime.date(ey, em, ed)
+                        queryset = queryset.filter(**{
+                            f"{date_field}__date__gte": s_nepali.to_datetime_date(),
+                            f"{date_field}__date__lte": e_nepali.to_datetime_date(),
+                        })
+                    elif field_type == 'NepaliDateField':
+                        s_nepali = nepali_datetime.date(sy, sm, sd)
+                        e_nepali = nepali_datetime.date(ey, em, ed)
+                        queryset = queryset.filter(**{
+                            f"{date_field}__gte": s_nepali,
+                            f"{date_field}__lte": e_nepali,
+                        })
+                except Exception:
+                    pass
+            elif nepali_year and nepali_month and date_field and date_field in model_fields:
                 ny = int(nepali_year)
                 nm = int(nepali_month)
                 field_type = type(model_fields[date_field]).__name__
@@ -68,7 +96,8 @@ class GlobalContextFilter(BaseFilterBackend):
                         pass
 
         # 3. Apply final Status Filter (Active vs Archived)
-        if has_soft_delete:
+        action = getattr(view, 'action', None)
+        if has_soft_delete and action not in ('retrieve', 'update', 'partial_update', 'destroy'):
             if status_param == 'archived':
                 queryset = queryset.filter(is_deleted=True)
             else:

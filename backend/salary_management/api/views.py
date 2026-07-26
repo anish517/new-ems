@@ -183,17 +183,33 @@ class SalaryTransactionListAPIView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         selected_year = self.request.GET.get('year', None)
+        start_date_str = self.request.GET.get('start_date')
+        end_date_str = self.request.GET.get('end_date')
+        
         qs = self.get_queryset()
         yearly_transaction_history = []
-
-        if selected_year:
-            current_year = int(selected_year)
+        
+        if start_date_str and end_date_str:
+            try:
+                sy, sm, sd = map(int, start_date_str.split('-'))
+                ey, em, ed = map(int, end_date_str.split('-'))
+                start_date = nepali_datetime.date(sy, sm, sd)
+                end_date = nepali_datetime.date(ey, em, ed)
+                for transaction in qs:
+                    if start_date <= transaction.date <= end_date:
+                        yearly_transaction_history.append(transaction)
+            except Exception:
+                pass
         else:
-            current_year = nepali_datetime.date.today().year
+            if selected_year:
+                current_year = int(selected_year)
+            else:
+                current_year = nepali_datetime.date.today().year
 
-        for transaction in qs:
-            if transaction.date.year == current_year:
-                yearly_transaction_history.append(transaction)
+            for transaction in qs:
+                if transaction.date.year == current_year:
+                    yearly_transaction_history.append(transaction)
+                    
         serializer = self.get_serializer(yearly_transaction_history, many=True)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
 
@@ -206,10 +222,20 @@ class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
     def get_queryset(self):
         organization = _get_org(self.request.user)
         qs = SalaryTransaction.objects.filter(organization=organization).order_by('-date')
-        # Allow filtering by employee ID for the admin employee detail view
+        
         employee_id = self.request.GET.get('employee')
         if employee_id:
             qs = qs.filter(salary__employee_id=employee_id)
+            
+        start_date_str = self.request.GET.get('start_date')
+        end_date_str = self.request.GET.get('end_date')
+        if start_date_str and end_date_str:
+            try:
+                sy, sm, sd = map(int, start_date_str.split('-'))
+                ey, em, ed = map(int, end_date_str.split('-'))
+                qs = qs.filter(date__gte=nepali_datetime.date(sy, sm, sd), date__lte=nepali_datetime.date(ey, em, ed))
+            except Exception:
+                pass
         return qs
 
     def create(self, request, *args, **kwargs):

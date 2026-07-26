@@ -26,6 +26,12 @@ class SoftDeleteModel(models.Model):
         self.deleted_at = timezone.now()
         self.save()
 
+    def hard_delete(self, using=None, keep_parents=False):
+        """
+        Permanently delete the object from the database.
+        """
+        return super().delete(using=using, keep_parents=keep_parents)
+
     def restore(self):
         """
         Restore a soft-deleted object.

@@ -46,10 +46,17 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         user = instance.user
-        instance.delete()
-        if user:
-            user.is_active = False
-            user.save()
+        if instance.is_deleted:
+            # If already soft-deleted, perform a hard delete
+            instance.hard_delete()
+            if user:
+                user.delete() # Completely delete the user account too
+        else:
+            # First time: soft delete
+            instance.delete()
+            if user:
+                user.is_active = False
+                user.save()
 
     @action(detail=True, methods=['post'])
     def reset_password(self, request, pk=None):
@@ -150,10 +157,25 @@ class EmployeeAnalysisReportListAPIView(ListAPIView):
         return EmployeeAnalysisReport.objects.filter(employee=employee).order_by('date')
 
     def list(self, request, *args, **kwargs):
+        qs = self.get_queryset()
+        
+        start_date_str = self.request.GET.get('start_date')
+        end_date_str = self.request.GET.get('end_date')
+        if start_date_str and end_date_str:
+            try:
+                sy, sm, sd = map(int, start_date_str.split('-'))
+                ey, em, ed = map(int, end_date_str.split('-'))
+                start_date = nepali_datetime.date(sy, sm, sd)
+                end_date = nepali_datetime.date(ey, em, ed)
+                qs = qs.filter(date__gte=start_date, date__lte=end_date)
+                serializer = self.get_serializer(qs, many=True)
+                return Response(data=serializer.data, status=status.HTTP_200_OK)
+            except Exception:
+                pass
+
         year = int(self.request.GET.get(
             'year', nepali_datetime.date.today().year))
 
-        qs = self.get_queryset()
         yearly_reports = []
         for report in qs:
             if report.date.year == year:
@@ -214,3 +236,74 @@ class SetOrganizationAddressView(APIView):
             }
         )
         return Response({'message': 'Organization address configured successfully.'}, status=status.HTTP_200_OK)
+
+
+class EmployeeReportAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, employee_id):
+        import csv
+        from django.http import HttpResponse
+        from attendance.models import Attendance
+        from salary_management.models import SalaryTransaction
+        
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
+        
+        try:
+            employee = Employee.objects.get(id=employee_id)
+        except Employee.DoesNotExist:
+            return Response({'error': 'Employee not found.'}, status=status.HTTP_404_NOT_FOUND)
+            
+        attendances = Attendance.objects.filter(employee=employee).order_by('date')
+        transactions = SalaryTransaction.objects.filter(salary__employee=employee).order_by('date')
+        
+        if start_date_str and end_date_str:
+            try:
+                sy, sm, sd = map(int, start_date_str.split('-'))
+                ey, em, ed = map(int, end_date_str.split('-'))
+                start_date = nepali_datetime.date(sy, sm, sd)
+                end_date = nepali_datetime.date(ey, em, ed)
+                
+                attendances = attendances.filter(date__gte=start_date, date__lte=end_date)
+                transactions = transactions.filter(date__gte=start_date, date__lte=end_date)
+            except Exception:
+                pass
+                
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="employee_report_{employee_id}.csv"'
+        
+        writer = csv.writer(response)
+        
+        # Attendance section
+        writer.writerow(['ATTENDANCE DATA'])
+        writer.writerow(['Date', 'Check In', 'Check Out', 'Is Remote', 'Status', 'Working Hours'])
+        for att in attendances:
+            first_ci = att.check_ins_outs.order_by('id').first()
+            last_co = att.check_ins_outs.order_by('-id').first()
+            ci_time = first_ci.check_in if first_ci else '-'
+            co_time = last_co.check_out if (last_co and last_co.check_out) else '-'
+            _, total_secs = att.total_working_hours
+            
+            writer.writerow([
+                str(att.date),
+                ci_time,
+                co_time,
+                'Yes' if att.is_remote else 'No',
+                'Present' if att.has_checked_in() else 'Absent',
+                round(total_secs / 3600, 2)
+            ])
+            
+        writer.writerow([])
+        writer.writerow(['SALARY DATA'])
+        writer.writerow(['Date', 'Fiscal Year', 'Content', 'Net Salary', 'Status'])
+        for txn in transactions:
+            writer.writerow([
+                str(txn.date),
+                str(txn.fiscal_year),
+                txn.content,
+                txn.net_salary,
+                'Paid' if txn.status else 'Pending'
+            ])
+            
+        return response
