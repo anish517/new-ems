@@ -185,8 +185,11 @@ class Employee(SoftDeleteModel):
     father_name = models.CharField(
         max_length=255, null=False, blank=False, verbose_name="Father's name"
     )
+    grandfather_name = models.CharField(
+        max_length=255, null=True, blank=True, verbose_name="Grandfather's name"
+    )
     blood_group = models.CharField(max_length=5, null=True, blank=True)
-    alternative_contact_number = models.CharField(max_length=255, null=True, blank=True)
+    emergency_phone_number = models.CharField(max_length=255, null=True, blank=True)
     phone_no = models.CharField(max_length=255, null=False, blank=False)
     official_email = models.EmailField(max_length=255, null=False, blank=False)
     personal_email = models.EmailField(max_length=255, null=False, blank=False)
