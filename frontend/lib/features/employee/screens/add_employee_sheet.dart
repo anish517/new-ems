@@ -25,7 +25,8 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
   bool _isLoading = false;
   bool _isLoadingDetails = false;
 
-  String _fatherName = '', _bloodGroup = 'A+', _altPhone = '';
+  String _fatherName = '', _grandfatherName = '', _bloodGroup = 'A+', _altPhone = '';
+  String _personalEmail = '';
   final List<PlatformFile> _selectedFiles = [];
   List<dynamic> _existingDocuments = [];
 
@@ -54,8 +55,10 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
         } catch (_) {}
       }
       _fatherName = widget.employee!['father_name'] ?? '';
+      _grandfatherName = widget.employee!['grandfather_name'] ?? '';
       _bloodGroup = widget.employee!['blood_group'] ?? 'A+';
-      _altPhone = widget.employee!['alternative_contact_number'] ?? '';
+      _altPhone = widget.employee!['emergency_phone_number'] ?? widget.employee!['alternative_contact_number'] ?? '';
+      _personalEmail = widget.employee!['personal_email'] ?? '';
       _fetchExtraDetails(widget.employee!['id']);
     }
     _dobCtrl.text = "${_dob.year}-${_dob.month.toString().padLeft(2, '0')}-${_dob.day.toString().padLeft(2, '0')}";
@@ -144,8 +147,9 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
         'date_of_birth': "${_dob.year}-${_dob.month.toString().padLeft(2, '0')}-${_dob.day.toString().padLeft(2, '0')}",
         'phone_no': _phone,
         'father_name': _fatherName,
+        'grandfather_name': _grandfatherName,
         'blood_group': _bloodGroup,
-        'alternative_contact_number': _altPhone,
+        'emergency_phone_number': _altPhone,
       };
 
       int? employeeId;
@@ -153,7 +157,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
       if (widget.employee == null) {
         data['post'] = 1; // Default post
         data['official_email'] = _email;
-        data['personal_email'] = _email;
+        data['personal_email'] = _personalEmail.isNotEmpty ? _personalEmail : _email;
         data['is_active'] = true;
         data['employee_type'] = _employeeType;
         final res = await ApiService().post('${AppConstants.organizationBase}/employees/', data: data);
@@ -162,7 +166,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
         employeeId = widget.employee!['id'];
         // Ensure official and personal emails are also updated to match
         data['official_email'] = _email;
-        data['personal_email'] = _email;
+        data['personal_email'] = _personalEmail.isNotEmpty ? _personalEmail : _email;
         await ApiService().patch('${AppConstants.organizationBase}/employees/$employeeId/', data: data);
       }
 
@@ -289,9 +293,15 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
               const SizedBox(height: 12),
               TextFormField(
                 initialValue: _email,
-                decoration: const InputDecoration(labelText: 'Email Address'),
+                decoration: const InputDecoration(labelText: 'Official Email'),
                 validator: (v) => v!.contains('@') ? null : 'Invalid email',
                 onSaved: (v) => _email = v!,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                initialValue: _personalEmail,
+                decoration: const InputDecoration(labelText: 'Personal Email'),
+                onSaved: (v) => _personalEmail = v ?? '',
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -353,6 +363,14 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                   onSaved: (v) => _fatherName = v ?? '',
                 )),
                 const SizedBox(width: 12),
+                Expanded(child: TextFormField(
+                  initialValue: _grandfatherName,
+                  decoration: const InputDecoration(labelText: 'Grandfather\'s Name'),
+                  onSaved: (v) => _grandfatherName = v ?? '',
+                )),
+              ]),
+              const SizedBox(height: 12),
+              Row(children: [
                 Expanded(child: DropdownButtonFormField<String>(
                   initialValue: _bloodGroup,
                   decoration: const InputDecoration(labelText: 'Blood Group'),
@@ -368,13 +386,13 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                   ],
                   onChanged: (v) => setState(() => _bloodGroup = v!),
                 )),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(
+                  initialValue: _altPhone,
+                  decoration: const InputDecoration(labelText: 'Emergency Phone Number'),
+                  onSaved: (v) => _altPhone = v ?? '',
+                )),
               ]),
-              const SizedBox(height: 12),
-              TextFormField(
-                initialValue: _altPhone,
-                decoration: const InputDecoration(labelText: 'Alternative Contact Number'),
-                onSaved: (v) => _altPhone = v ?? '',
-              ),
               const SizedBox(height: 12),
 
               // ── Address ────────────────────────────────────────
