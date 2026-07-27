@@ -43,12 +43,14 @@ class Salary(SoftDeleteModel):
                             verbose_name='Employee provident fund (EPF)')
     citizen_investment_trust = models.FloatField(default=0, null=True)
     insurance = models.FloatField(default=0, null=True)
+    tax_rate = models.FloatField(default=0, null=True, blank=True,
+                                 verbose_name='Tax Rate (%)')
 
     def __str__(self) -> str:
         return f'{self.employee.user.full_name}'
 
     @staticmethod
-    def calculate_gross_salary(employee: Employee, year: int, month: int):
+    def calculate_gross_salary(employee: Employee, year: int, month: int, holidays_override=None):
         organization = employee.organization
 
         basic_salary_per_day = Salary.objects.get(
@@ -70,8 +72,11 @@ class Salary(SoftDeleteModel):
         paid_leaves = LeaveRequest.get_total_paid_leaves(
             employee=employee, year=year, month=month)
 
-        holidays = count_saturdays(year=year, month=month) + count_holidays(
-            organization, year=year, month=month)
+        if holidays_override is not None:
+            holidays = holidays_override
+        else:
+            holidays = count_saturdays(year=year, month=month) + count_holidays(
+                organization, year=year, month=month)
 
         remote_salary = remote_attendance * remote_salary_per_day
         basic_salary = site_attendance * basic_salary_per_day
@@ -82,10 +87,28 @@ class Salary(SoftDeleteModel):
         return round(gross_salary)
 
     @staticmethod
-    def calculate_net_salary(employee: Employee, year: int, month: int):
+    def calculate_net_salary(employee: Employee, year: int, month: int, holidays_override=None, ssf_override=None, epf_override=None, tds_override=None):
         gross_salary = Salary.calculate_gross_salary(
-            employee=employee, year=year, month=month)
-        return round(gross_salary)
+            employee=employee, year=year, month=month, holidays_override=holidays_override)
+        try:
+            salary_obj = Salary.objects.get(employee=employee)
+            # Apply tax based on tax_rate percentage
+            tax_rate = salary_obj.tax_rate or 0
+            
+            if tds_override is not None:
+                tds_amount = tds_override
+            else:
+                tds_amount = round((gross_salary * tax_rate) / 100) if tax_rate > 0 else (salary_obj.tds or 0)
+                
+            ssf = ssf_override if ssf_override is not None else (salary_obj.ssf or 0)
+            epf = epf_override if epf_override is not None else (salary_obj.epf or 0)
+            cit = salary_obj.citizen_investment_trust or 0
+            insurance = salary_obj.insurance or 0
+            total_deductions = tds_amount + ssf + epf + cit + insurance
+            net = gross_salary - total_deductions
+        except Exception:
+            net = gross_salary
+        return round(net)
 
 
 class SalaryTransaction(SoftDeleteModel):
@@ -103,6 +126,8 @@ class SalaryTransaction(SoftDeleteModel):
         return f'{self.salary.employee.user.full_name}'
 
     manual_net_salary = models.FloatField(null=True, blank=True, verbose_name="Manually Entered Net Salary")
+    incentive = models.FloatField(default=0, null=True, blank=True, verbose_name='Incentive / Bonus')
+    total_expense = models.FloatField(null=True, blank=True, verbose_name='Total Expense (Employer Cost)')
 
     stored_net_salary = models.FloatField(null=True, blank=True)
     stored_holidays = models.IntegerField(null=True, blank=True)
@@ -110,6 +135,9 @@ class SalaryTransaction(SoftDeleteModel):
     stored_paid_leaves = models.FloatField(null=True, blank=True)
     stored_unpaid_leaves = models.FloatField(null=True, blank=True)
     stored_half_leaves = models.FloatField(null=True, blank=True)
+    transaction_ssf = models.FloatField(default=None, null=True, blank=True)
+    transaction_epf = models.FloatField(default=None, null=True, blank=True)
+    transaction_tds = models.FloatField(default=None, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if self.date and self.salary:
@@ -125,14 +153,26 @@ class SalaryTransaction(SoftDeleteModel):
                 self.stored_half_leaves = self.calc_half_leaves()
             if self.stored_net_salary is None:
                 self.stored_net_salary = self.calc_net_salary()
+            # Compute total employer expense: net + tds + ssf + epf (net already includes incentive)
+            if self.total_expense is None and self.salary:
+                net = self.stored_net_salary or 0
+                tds = self.transaction_tds if self.transaction_tds is not None else (round((self.gross_salary * (self.salary.tax_rate or 0)) / 100) if (self.salary.tax_rate or 0) > 0 else (self.salary.tds or 0))
+                ssf = self.transaction_ssf if self.transaction_ssf is not None else (self.salary.ssf or 0)
+                epf = self.transaction_epf if self.transaction_epf is not None else (self.salary.epf or 0)
+                self.total_expense = round(net + tds + ssf + epf)
         super().save(*args, **kwargs)
 
     def calc_net_salary(self):
         if self.manual_net_salary is not None:
+            # The manual net salary from the frontend already includes the incentive
             return self.manual_net_salary
         net_salary = Salary.calculate_net_salary(
-            employee=self.salary.employee, year=self.date.year, month=self.date.month)
-        return net_salary
+            employee=self.salary.employee, year=self.date.year, month=self.date.month,
+            holidays_override=self.stored_holidays,
+            ssf_override=self.transaction_ssf,
+            epf_override=self.transaction_epf,
+            tds_override=self.transaction_tds)
+        return net_salary + (self.incentive or 0)
 
     @property
     def net_salary(self):
@@ -189,6 +229,19 @@ class SalaryTransaction(SoftDeleteModel):
         if self.stored_half_leaves is not None:
             return self.stored_half_leaves
         return self.calc_half_leaves()
+
+    @property
+    def gross_salary(self):
+        """Gross before incentive and deductions."""
+        if self.salary and self.date:
+            try:
+                return Salary.calculate_gross_salary(
+                    employee=self.salary.employee,
+                    year=self.date.year, month=self.date.month,
+                    holidays_override=self.stored_holidays)
+            except Exception:
+                return 0
+        return 0
 
     @property
     def deduction(self):
