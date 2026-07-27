@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
@@ -17,6 +18,7 @@ class SalaryScreen extends ConsumerStatefulWidget {
 class _SalaryScreenState extends ConsumerState<SalaryScreen>
     with SingleTickerProviderStateMixin {
   late TabController _adminTabs;
+  int? _graphEmployeeId; // selected employee for graph
 
   // Employee View State
   Map<String, dynamic>? _mySalary;
@@ -33,7 +35,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
   @override
   void initState() {
     super.initState();
-    _adminTabs = TabController(length: 2, vsync: this);
+    _adminTabs = TabController(length: 3, vsync: this);
     _loadData();
   }
 
@@ -147,6 +149,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                 tabs: const [
                   Tab(text: 'Base Salaries'),
                   Tab(text: 'Issue & History'),
+                  Tab(text: 'Analytics'),
                 ],
               )
             : null,
@@ -170,6 +173,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                       children: [
                         _buildAdminSalariesTab(),
                         _buildAdminTransactionsTab(),
+                        _buildAnalyticsTab(),
                       ],
                     )
                   : _buildEmployeeView(),
@@ -394,6 +398,8 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
         TextEditingController(text: salaryRecord['basic_salary'].toString());
     final remoteCtrl =
         TextEditingController(text: salaryRecord['remote_salary'].toString());
+    final taxRateCtrl = TextEditingController(
+        text: (salaryRecord['tax_rate'] ?? 0).toString());
     bool saving = false;
 
     showModalBottomSheet(
@@ -429,6 +435,16 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                   decoration:
                       const InputDecoration(labelText: 'Remote Salary (NPR)'),
                 ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: taxRateCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Tax Rate (%)',
+                    helperText: 'e.g. 5 for 5% TDS on gross salary',
+                    suffixText: '%',
+                  ),
+                ),
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: saving
@@ -441,6 +457,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                                 data: {
                                   'basic_salary': basicCtrl.text,
                                   'remote_salary': remoteCtrl.text,
+                                  'tax_rate': taxRateCtrl.text,
                                 });
                             if (context.mounted) {
                               Navigator.pop(context);
@@ -481,6 +498,190 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
       ),
     );
   }
+
+  // ── Analytics / Graph Tab ────────────────────────────────────────────────
+  Widget _buildAnalyticsTab() {
+    final salariesWithEmployees = _allSalaries.where((s) => s['employee'] != null).toList();
+    final graphTransactions = _graphEmployeeId != null
+        ? (_allTransactions
+            .where((tx) => tx['employee'] == _graphEmployeeId)
+            .toList()
+          ..sort((a, b) => ((a as Map)['date'] ?? '').compareTo((b as Map)['date'] ?? '')))
+        : <dynamic>[];
+
+    // Build chart data
+    final netSpots = <FlSpot>[];
+    final expenseSpots = <FlSpot>[];
+    final months = <int, String>{};
+
+    for (var i = 0; i < graphTransactions.length; i++) {
+      final tx = graphTransactions[i] as Map;
+      final net = (tx['net_salary'] ?? 0).toDouble();
+      final exp = (tx['total_expense'] ?? net).toDouble();
+      final dateStr = tx['date'] as String? ?? '';
+      months[i] = dateStr;
+      netSpots.add(FlSpot(i.toDouble(), net));
+      expenseSpots.add(FlSpot(i.toDouble(), exp));
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Salary Analytics',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          // Employee dropdown
+          DropdownButtonFormField<int>(
+            value: _graphEmployeeId,
+            hint: const Text('Select Employee to View Graph'),
+            isExpanded: true,
+            items: salariesWithEmployees
+                .map((s) => DropdownMenuItem<int>(
+                      value: s['employee'] as int,
+                      child: Text(_empName(s['employee'] as int)),
+                    ))
+                .toList(),
+            onChanged: (v) => setState(() => _graphEmployeeId = v),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: AppColors.surfaceDark,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          if (_graphEmployeeId == null)
+            Container(
+              padding: const EdgeInsets.all(32),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceDark,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: const [
+                  Icon(Iconsax.chart_2, size: 48, color: AppColors.primary),
+                  SizedBox(height: 16),
+                  Text('Select an employee above to view their salary trend graph',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.textSecondary)),
+                ],
+              ),
+            )
+          else if (graphTransactions.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(32),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceDark,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Text('No salary transactions found for this employee.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary)),
+            )
+          else ...[
+            // Chart legend
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Container(width: 14, height: 14, decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(3))),
+              const SizedBox(width: 6),
+              const Text('Net Salary', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 24),
+              Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(3))),
+              const SizedBox(width: 6),
+              const Text('Total Expense', style: TextStyle(fontSize: 12)),
+            ]),
+            const SizedBox(height: 16),
+            Container(
+              height: 260,
+              padding: const EdgeInsets.fromLTRB(8, 20, 24, 12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceDark,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
+              ),
+              child: LineChart(
+                LineChartData(
+                  minX: 0,
+                  maxX: (netSpots.length - 1).toDouble().clamp(0, double.infinity),
+                  gridData: FlGridData(
+                    show: true,
+                    drawHorizontalLine: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (_) => FlLine(
+                      color: Colors.white10,
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 56,
+                        getTitlesWidget: (v, meta) => Text(
+                          'NPR ${(v / 1000).toStringAsFixed(0)}k',
+                          style: const TextStyle(fontSize: 9, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 28,
+                        getTitlesWidget: (v, meta) {
+                          final idx = v.toInt();
+                          return Text(
+                            months[idx] ?? '',
+                            style: const TextStyle(fontSize: 9, color: AppColors.textSecondary),
+                          );
+                        },
+                      ),
+                    ),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: netSpots,
+                      isCurved: true,
+                      color: AppColors.primary,
+                      barWidth: 3,
+                      dotData: const FlDotData(show: true),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: AppColors.primary.withValues(alpha: 0.10),
+                      ),
+                    ),
+                    LineChartBarData(
+                      spots: expenseSpots,
+                      isCurved: true,
+                      color: Colors.orange,
+                      barWidth: 2,
+                      dotData: const FlDotData(show: true),
+                      dashArray: [5, 3],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Transactions summary table
+            const Text('Transaction History', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            ...graphTransactions.map((tx) => _TransactionTile(
+              tx as Map<String, dynamic>,
+              empName: _empName(_graphEmployeeId!),
+              isAdmin: true,
+              onDelete: () => _deleteTransaction(tx['id']),
+            )),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 // ─── Shared Components ────────────────────────────────────────────────────────
@@ -508,12 +709,23 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
   }();
   Map<String, dynamic>? _netSalaryInfo;
   final TextEditingController _netSalaryController = TextEditingController();
+  final TextEditingController _incentiveController = TextEditingController(text: '0');
+  final TextEditingController _holidaysController = TextEditingController();
+  final TextEditingController _ssfController = TextEditingController();
+  final TextEditingController _epfController = TextEditingController();
+  final TextEditingController _tdsController = TextEditingController();
+  String _emailPreference = 'official'; // 'official', 'personal', 'both', 'none'
   bool _loading = true;
   bool _saving = false;
 
   @override
   void dispose() {
     _netSalaryController.dispose();
+    _incentiveController.dispose();
+    _holidaysController.dispose();
+    _ssfController.dispose();
+    _epfController.dispose();
+    _tdsController.dispose();
     super.dispose();
   }
 
@@ -537,17 +749,28 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
     }
   }
 
-  Future<void> _loadNetSalary() async {
+  Future<void> _loadNetSalary({bool clear = true}) async {
     if (_selSalaryId == null) return;
-    setState(() => _netSalaryInfo = null);
+    if (clear) setState(() => _netSalaryInfo = null);
     try {
-      final res = await ApiService()
-          .get('/api/salary-management/net-salary/$_selSalaryId/?date=$_date');
+      String url = '/api/salary-management/net-salary/$_selSalaryId/?date=$_date';
+      if (_holidaysController.text.trim().isNotEmpty) url += '&holidays=${_holidaysController.text.trim()}';
+      if (_ssfController.text.trim().isNotEmpty) url += '&ssf=${_ssfController.text.trim()}';
+      if (_epfController.text.trim().isNotEmpty) url += '&epf=${_epfController.text.trim()}';
+      if (_tdsController.text.trim().isNotEmpty) url += '&tds=${_tdsController.text.trim()}';
+      if (_incentiveController.text.trim().isNotEmpty) url += '&incentive=${_incentiveController.text.trim()}';
+      final res = await ApiService().get(url);
       if (mounted) {
         setState(() {
           _netSalaryInfo = res.data;
+          // Only update the net salary controller if the user isn't actively typing in it
+          // Actually, net salary is updated from the server response
           _netSalaryController.text =
               (_netSalaryInfo!['net_salary'] ?? '').toString();
+          if (_holidaysController.text.isEmpty) _holidaysController.text = (_netSalaryInfo!['holidays'] ?? '').toString();
+          if (_tdsController.text.isEmpty) _tdsController.text = (_netSalaryInfo!['tds'] ?? '').toString();
+          if (_ssfController.text.isEmpty) _ssfController.text = (_netSalaryInfo!['ssf'] ?? '').toString();
+          if (_epfController.text.isEmpty) _epfController.text = (_netSalaryInfo!['epf'] ?? '').toString();
         });
       }
     } catch (_) {}
@@ -574,6 +797,12 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
         'date': _date,
         'status': true,
         'net_salary': _netSalaryController.text.trim(),
+        'incentive': _incentiveController.text.trim(),
+        'email_preference': _emailPreference,
+        'holidays': _holidaysController.text.trim(),
+        'ssf': _ssfController.text.trim(),
+        'epf': _epfController.text.trim(),
+        'tds': _tdsController.text.trim(),
       });
       if (!mounted) return;
       Navigator.pop(context);
@@ -586,6 +815,39 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Widget _buildEditableRow(IconData icon, String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: Colors.white54),
+              const SizedBox(width: 8),
+              Text(label, style: const TextStyle(color: Colors.white70)),
+            ],
+          ),
+          SizedBox(
+            width: 80,
+            child: TextFormField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.right,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (_) => _loadNetSalary(clear: false),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showAddFiscalYearDialog() async {
@@ -773,8 +1035,12 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                         '${_netSalaryInfo!['unpaid_leaves']}'),
                     _InfoRow(Iconsax.clock, 'Half Leaves',
                         '${_netSalaryInfo!['half_leaves'] ?? 0}'),
-                    _InfoRow(Iconsax.calendar, 'Holidays',
-                        '${_netSalaryInfo!['holidays']}'),
+                    const Divider(color: Colors.white24),
+                    _buildEditableRow(Iconsax.calendar, 'Holidays', _holidaysController),
+                    _buildEditableRow(Iconsax.award, 'Incentive / Bonus', _incentiveController),
+                    _buildEditableRow(Iconsax.minus, 'Tax (TDS)', _tdsController),
+                    _buildEditableRow(Iconsax.minus, 'SSF Deduction', _ssfController),
+                    _buildEditableRow(Iconsax.minus, 'EPF Deduction', _epfController),
                     const Divider(color: Colors.white24),
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -820,6 +1086,22 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                     ),
                   ]),
                 ),
+              const SizedBox(height: 12),
+              // Email preference dropdown
+              DropdownButtonFormField<String>(
+                value: _emailPreference,
+                decoration: const InputDecoration(
+                  labelText: 'Send Salary Slip Email To',
+                  prefixIcon: Icon(Iconsax.sms),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'official', child: Text('Official Email')),
+                  DropdownMenuItem(value: 'personal', child: Text('Personal Email')),
+                  DropdownMenuItem(value: 'both', child: Text('Both Emails')),
+                  DropdownMenuItem(value: 'none', child: Text('Do Not Send')),
+                ],
+                onChanged: (v) => setState(() => _emailPreference = v!),
+              ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed:
