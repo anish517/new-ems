@@ -183,13 +183,15 @@ class SalaryTransaction(SoftDeleteModel):
                 self.stored_half_leaves = self.calc_half_leaves()
             if self.stored_net_salary is None:
                 self.stored_net_salary = self.calc_net_salary()
-            # Compute total employer expense: net + tds + ssf + epf (net already includes incentive)
+            # Compute total employer expense: net + tds + ssf + epf + cit + insurance
             if self.total_expense is None and self.salary:
                 net = self.stored_net_salary or 0
                 tds = self.transaction_tds if self.transaction_tds is not None else (round((self.gross_salary * (self.salary.tax_rate or 0)) / 100) if (self.salary.tax_rate or 0) > 0 else (self.salary.tds or 0))
                 ssf = self.transaction_ssf if self.transaction_ssf is not None else (self.salary.ssf or 0)
                 epf = self.transaction_epf if self.transaction_epf is not None else (self.salary.epf or 0)
-                self.total_expense = round(net + tds + ssf + epf)
+                cit = self.salary.citizen_investment_trust or 0
+                insurance = self.salary.insurance or 0
+                self.total_expense = round(net + tds + ssf + epf + cit + insurance)
         super().save(*args, **kwargs)
 
     def calc_net_salary(self):
