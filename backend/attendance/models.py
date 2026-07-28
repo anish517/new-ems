@@ -482,3 +482,22 @@ class Attendance(SoftDeleteModel):
         attendance_list = [
             attendance for attendance in total_attendance if attendance.has_checked_in()]
         return len(attendance_list)
+
+
+class RemoteWorkRequest(SoftDeleteModel):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+    employee = models.ForeignKey(
+        Employee, on_delete=models.CASCADE, related_name='remote_work_requests'
+    )
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Remote Request by {self.employee} ({self.status})"

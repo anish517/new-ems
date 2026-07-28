@@ -194,47 +194,157 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
       onRefresh: _loadData,
       child: _allSalaries.isEmpty
           ? const Center(child: Text('No salary configurations found.'))
-          : ListView.separated(
+          : SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16).copyWith(bottom: 80),
-              itemCount: _allSalaries.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (ctx, i) {
-                final s = _allSalaries[i];
-                final empId = s['employee'] as int? ?? 0;
-                return Card(
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: AppColors.primaryDark,
-                      child: Icon(Iconsax.money_recive,
-                          color: Colors.white, size: 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Company Salary Distribution', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  Container(
+                    height: 250,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceDark,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    title: Text(_empName(empId),
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(
-                        'Basic: ${_fmt(s['basic_salary'])}  |  Remote: ${_fmt(s['remote_salary'])}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.visibility_outlined,
-                              color: AppColors.primary, size: 20),
-                          tooltip: 'View Salary Detail',
-                          onPressed: () =>
-                              _showEmployeeSalaryDetail(ctx, s, empId),
+                    child: _buildAllEmployeesSalaryChart(),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text('Base Salaries', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _allSalaries.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (ctx, i) {
+                      final s = _allSalaries[i];
+                      final empId = s['employee'] as int? ?? 0;
+                      return Card(
+                        child: ListTile(
+                          leading: const CircleAvatar(
+                            backgroundColor: AppColors.primaryDark,
+                            child: Icon(Iconsax.money_recive,
+                                color: Colors.white, size: 18),
+                          ),
+                          title: Text(_empName(empId),
+                              style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text(
+                              'Basic: ${_fmt(s['basic_salary'])}  |  Remote: ${_fmt(s['remote_salary'])}'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.visibility_outlined,
+                                    color: AppColors.primary, size: 20),
+                                tooltip: 'View Salary Detail',
+                                onPressed: () =>
+                                    _showEmployeeSalaryDetail(ctx, s, empId),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined,
+                                    color: AppColors.textSecondary, size: 20),
+                                tooltip: 'Edit Base Salary',
+                                onPressed: () => _showEditBaseSalarySheet(ctx, s),
+                              ),
+                            ],
+                          ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined,
-                              color: AppColors.textSecondary, size: 20),
-                          tooltip: 'Edit Base Salary',
-                          onPressed: () => _showEditBaseSalarySheet(ctx, s),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildAllEmployeesSalaryChart() {
+    if (_allSalaries.isEmpty) return const SizedBox.shrink();
+    
+    // Build bar groups
+    final barGroups = <BarChartGroupData>[];
+    double maxY = 0;
+
+    for (int i = 0; i < _allSalaries.length; i++) {
+      final s = _allSalaries[i];
+      final basic = (s['basic_salary'] ?? 0).toDouble();
+      if (basic > maxY) maxY = basic;
+      
+      barGroups.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: basic,
+              color: AppColors.primary,
+              width: 16,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Add padding to maxY
+    maxY = maxY + (maxY * 0.1);
+    if (maxY == 0) maxY = 100;
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: maxY,
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                final i = value.toInt();
+                if (i < 0 || i >= _allSalaries.length) return const SizedBox.shrink();
+                final empId = _allSalaries[i]['employee'] as int? ?? 0;
+                final name = _empName(empId);
+                final shortName = name.split(' ').first;
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    shortName,
+                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 );
               },
             ),
+          ),
+          leftTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+        ),
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        barGroups: barGroups,
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final empId = _allSalaries[group.x.toInt()]['employee'] as int? ?? 0;
+              final name = _empName(empId);
+              return BarTooltipItem(
+                '$name\nNPR ${rod.toY.toInt()}',
+                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 
@@ -501,15 +611,34 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
     final expenseSpots = <FlSpot>[];
     final months = <int, String>{};
 
+    double sumNet = 0;
+    double sumTds = 0;
+    double sumSsf = 0;
+    double sumEpf = 0;
+    double sumTotalExpense = 0;
+
     for (var i = 0; i < graphTransactions.length; i++) {
       final tx = graphTransactions[i] as Map;
       final net = (tx['net_salary'] ?? 0).toDouble();
       final exp = (tx['total_expense'] ?? net).toDouble();
+      final tds = (tx['transaction_tds'] ?? 0).toDouble();
+      final ssf = (tx['transaction_ssf'] ?? 0).toDouble();
+      final epf = (tx['transaction_epf'] ?? 0).toDouble();
+      
       final dateStr = tx['date'] as String? ?? '';
       months[i] = dateStr;
       netSpots.add(FlSpot(i.toDouble(), net));
       expenseSpots.add(FlSpot(i.toDouble(), exp));
+      
+      sumNet += net;
+      sumTds += tds;
+      sumSsf += ssf;
+      sumEpf += epf;
+      sumTotalExpense += exp;
     }
+
+    final sumOther = sumTotalExpense - (sumNet + sumTds + sumSsf + sumEpf);
+    final pieDataReady = sumTotalExpense > 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -655,6 +784,64 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               ),
             ),
             const SizedBox(height: 24),
+            
+            // Pie Chart for Total Breakdown
+            if (pieDataReady) ...[
+              const Text('All-Time Aggregate Breakdown', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceDark,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: SizedBox(
+                        height: 180,
+                        child: PieChart(
+                          PieChartData(
+                            sectionsSpace: 2,
+                            centerSpaceRadius: 40,
+                            sections: [
+                              if (sumNet > 0) PieChartSectionData(color: AppColors.primary, value: sumNet, title: '${((sumNet / sumTotalExpense) * 100).toStringAsFixed(1)}%', radius: 50, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                              if (sumTds > 0) PieChartSectionData(color: Colors.redAccent, value: sumTds, title: '${((sumTds / sumTotalExpense) * 100).toStringAsFixed(1)}%', radius: 50, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                              if (sumSsf > 0) PieChartSectionData(color: Colors.green, value: sumSsf, title: '${((sumSsf / sumTotalExpense) * 100).toStringAsFixed(1)}%', radius: 50, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                              if (sumEpf > 0) PieChartSectionData(color: Colors.purpleAccent, value: sumEpf, title: '${((sumEpf / sumTotalExpense) * 100).toStringAsFixed(1)}%', radius: 50, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                              if (sumOther > 0) PieChartSectionData(color: Colors.orangeAccent, value: sumOther, title: '${((sumOther / sumTotalExpense) * 100).toStringAsFixed(1)}%', radius: 50, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _PieLegendIndicator(color: AppColors.primary, text: 'Net Salary', amount: sumNet),
+                          const SizedBox(height: 8),
+                          _PieLegendIndicator(color: Colors.redAccent, text: 'TDS (Tax)', amount: sumTds),
+                          const SizedBox(height: 8),
+                          _PieLegendIndicator(color: Colors.green, text: 'SSF', amount: sumSsf),
+                          const SizedBox(height: 8),
+                          _PieLegendIndicator(color: Colors.purpleAccent, text: 'EPF', amount: sumEpf),
+                          if (sumOther > 0) ...[
+                            const SizedBox(height: 8),
+                            _PieLegendIndicator(color: Colors.orangeAccent, text: 'Other (CIT, Ins.)', amount: sumOther),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
             // Transactions summary table
             const Text('Transaction History', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
@@ -1263,6 +1450,9 @@ class _PayslipItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(children: [
+        Text(label,
+            style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        const SizedBox(height: 8),
         Text(value,
             style: const TextStyle(
                 color: Colors.white,
@@ -1411,6 +1601,53 @@ class _MiniStat extends StatelessWidget {
                 const TextStyle(fontSize: 10, color: AppColors.textSecondary),
             textAlign: TextAlign.center),
       ]);
+}
+
+class _PieLegendIndicator extends StatelessWidget {
+  final Color color;
+  final String text;
+  final double amount;
+
+  const _PieLegendIndicator({
+    required this.color,
+    required this.text,
+    required this.amount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.white70,
+            ),
+          ),
+        ),
+        Text(
+          'NPR ${amount.toStringAsFixed(0)}',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 

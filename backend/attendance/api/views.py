@@ -6,10 +6,10 @@ from rest_framework.permissions import IsAuthenticated, BasePermission
 from django.http import HttpResponse
 import csv
 
-from attendance.models import Attendance, CheckInOut, RemoteWorkPermission
+from attendance.models import Attendance, CheckInOut, RemoteWorkPermission, RemoteWorkRequest
 from attendance.utils import is_within_radius
 from organization.models import Employee, OrganizationAddress, OrganizationSettings
-from .serializers import AttendanceSerializer, RemoteWorkPermissionSerializer
+from .serializers import AttendanceSerializer, RemoteWorkPermissionSerializer, RemoteWorkRequestSerializer
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from django.contrib.auth import get_user_model
@@ -234,6 +234,10 @@ class CheckIn(APIView):
                 return Response(
                     {'error': 'You are not within the office radius. Contact your admin to enable remote work.'},
                     status=status.HTTP_401_UNAUTHORIZED)
+            if not remote_work_permission.has_perm(user_lat, user_lng):
+                return Response(
+                    {'error': 'You are not within the approved 50m radius of your remote work location.'},
+                    status=status.HTTP_401_UNAUTHORIZED)
 
         photo = request.FILES.get('photo')
 
@@ -312,6 +316,10 @@ class CheckOut(APIView):
             if not has_individual_remote:
                 return Response(
                     {'error': 'You are not within the office radius. Contact your admin to enable remote work.'},
+                    status=status.HTTP_401_UNAUTHORIZED)
+            if not remote_work_permission.has_perm(user_lat, user_lng):
+                return Response(
+                    {'error': 'You are not within the approved 50m radius of your remote work location.'},
                     status=status.HTTP_401_UNAUTHORIZED)
 
         photo = request.FILES.get('photo')
@@ -622,3 +630,98 @@ class GenerateAttendanceReportAPIView(APIView):
             ])
 
         return response
+
+
+class RemoteWorkRequestListCreateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        # If user is admin, they see all pending requests for their org
+        if getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False) or (hasattr(user, 'employee') and user.employee.canManage):
+            # Org admin logic
+            org = getattr(user.employee, 'organization', None) if hasattr(user, 'employee') else None
+            if not org:
+                if user.organization.exists():
+                    org = user.organization.first()
+                elif getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False):
+                    from organization.models import Organization
+                    org = Organization.objects.first()
+            
+            if not org:
+                return Response([])
+                
+            qs = RemoteWorkRequest.objects.filter(employee__post__department__organization=org, status='pending').order_by('-created_at')
+        else:
+            # Normal employee sees their own requests
+            if not hasattr(user, 'employee'):
+                return Response({"error": "No employee profile."}, status=status.HTTP_400_BAD_REQUEST)
+            qs = RemoteWorkRequest.objects.filter(employee=user.employee).order_by('-created_at')
+            
+        serializer = RemoteWorkRequestSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        try:
+            employee = request.user.employee
+        except Exception:
+            return Response({"error": "No employee profile."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = RemoteWorkRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            req_obj = serializer.save(employee=employee, status='pending')
+            
+            # Send Notification to Admins
+            org = getattr(employee, 'organization', None)
+            if org:
+                admins = org.admin_users.all()
+                from notification.fcm import notify_user
+                for admin in admins:
+                    notify_user(
+                        user=admin,
+                        notification_type='task', # We can use task or leave as a fallback if remote_work isn't in choices
+                        title='New Remote Work Request',
+                        body=f"{employee.user.full_name} has requested remote work permission.",
+                        reference_id=req_obj.id
+                    )
+            
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminApproveRejectRemoteWorkAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsOrgAdmin]
+
+    def post(self, request, pk):
+        try:
+            req_obj = RemoteWorkRequest.objects.get(id=pk)
+        except RemoteWorkRequest.DoesNotExist:
+            return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        action = request.data.get('status')
+        if action not in ['approved', 'rejected']:
+            return Response({"error": "Invalid status."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        req_obj.status = action
+        req_obj.save()
+        
+        if action == 'approved':
+            # Grant permission globally
+            perm, _ = RemoteWorkPermission.objects.get_or_create(employee=req_obj.employee)
+            perm.remote_lat = req_obj.latitude
+            perm.remote_lng = req_obj.longitude
+            perm.is_allowed = True
+            perm.save()
+            
+        # Send Notification to Employee
+        from notification.fcm import notify_user
+        notify_user(
+            user=req_obj.employee.user,
+            notification_type='task',
+            title='Remote Work Request Updated',
+            body=f"Your remote work request was {action}.",
+            reference_id=req_obj.id
+        )
+        
+        return Response({"message": f"Request {action} successfully."})

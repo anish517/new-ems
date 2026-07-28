@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from organization.models import Employee
-from attendance.models import CheckInOut, Attendance, RemoteWorkPermission
+from attendance.models import CheckInOut, Attendance, RemoteWorkPermission, RemoteWorkRequest
 
 
 class CheckInOutSerializer(serializers.ModelSerializer):
@@ -42,3 +42,11 @@ class RemoteWorkPermissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = RemoteWorkPermission
         fields = '__all__'
+
+class RemoteWorkRequestSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.user.full_name', read_only=True)
+
+    class Meta:
+        model = RemoteWorkRequest
+        fields = '__all__'
+        read_only_fields = ['employee', 'status', 'created_at']

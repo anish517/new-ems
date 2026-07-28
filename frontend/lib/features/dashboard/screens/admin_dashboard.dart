@@ -25,6 +25,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   List<String> _onTimeTodayNames = [];
   List<String> _alwaysOnTimeEmployees = [];
   List<double> _weeklyAttendance = List.filled(7, 0.0);
+  List<dynamic> _pendingRemoteRequests = [];
   bool _loading = true;
 
   @override
@@ -37,6 +38,33 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   // date comparisons against the API's `date` field.
   String _fmtDate(NepaliDateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<void> _actionRemoteRequest(int id, String status) async {
+    try {
+      await ApiService().post(
+        '${AppConstants.attendanceBase}/remote-requests/$id/action/',
+        data: {'status': status},
+      );
+      _loadStats();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Request $status successfully'),
+            backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating request: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
 
   Future<void> _loadStats() async {
     setState(() => _loading = true);
@@ -59,6 +87,17 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             .where((l) => l['is_approved'] != true && l['is_reviewed'] != true)
             .length;
       });
+
+      // Load remote requests
+      try {
+        final remoteRes = await ApiService().get('${AppConstants.attendanceBase}/remote-requests/');
+        final remoteData = remoteRes.data is List ? remoteRes.data : (remoteRes.data['results'] ?? []);
+        if (mounted) {
+          setState(() {
+            _pendingRemoteRequests = (remoteData as List).toList();
+          });
+        }
+      } catch (e) {}
 
       // Load attendance data for on-time count and weekly chart
       try {
@@ -552,6 +591,76 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 32),
+              ],
+              if (_pendingRemoteRequests.isNotEmpty) ...[
+                const Text('Pending Remote Work Requests',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _pendingRemoteRequests.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (_, i) {
+                    final req = _pendingRemoteRequests[i];
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceDark,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.borderDark),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(req['employee_name'] ?? 'Unknown Employee',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              Text(
+                                'Requested on: ${req['created_at'] != null ? req['created_at'].toString().split('T')[0] : 'N/A'}',
+                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text('Reason: ${req['reason']}', style: const TextStyle(fontSize: 14)),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              const Spacer(),
+                              GestureDetector(
+                                onTap: () => _actionRemoteRequest(req['id'], 'rejected'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.redAccent),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text('Reject', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              GestureDetector(
+                                onTap: () => _actionRemoteRequest(req['id'], 'approved'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text('Approve', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 32),
               ],

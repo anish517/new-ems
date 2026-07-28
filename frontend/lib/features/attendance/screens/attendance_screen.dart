@@ -57,6 +57,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   // Remote work permission state
   bool? _hasRemotePermission;
   List _remoteEmployees = [];
+  List _pendingRemoteRequests = [];
   bool _remoteLoading = false;
 
   Timer? _autoActionTimer;
@@ -328,14 +329,50 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     try {
       final res = await ApiService()
           .get('${AppConstants.attendanceBase}/remote-work-permission/list/');
+      
+      final reqRes = await ApiService()
+          .get('${AppConstants.attendanceBase}/remote-requests/');
+          
       if (mounted) {
         setState(() {
           _remoteEmployees = res.data is List ? res.data : [];
+          _pendingRemoteRequests = reqRes.data is List ? reqRes.data : [];
           _remoteLoading = false;
         });
       }
     } catch (_) {
       if (mounted) setState(() => _remoteLoading = false);
+    }
+  }
+
+  Future<void> _requestRemoteWork(String reason) async {
+    try {
+      final pos = await _getLocation();
+      await ApiService().post(
+        '${AppConstants.attendanceBase}/remote-requests/',
+        data: {
+          'latitude': pos.latitude.toString(),
+          'longitude': pos.longitude.toString(),
+          'reason': reason,
+        },
+      );
+      _showSnack('✅ Remote work request submitted successfully!', AppColors.success);
+      _loadRemoteList();
+    } catch (e) {
+      _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
+    }
+  }
+
+  Future<void> _actionRemoteRequest(int id, String action) async {
+    try {
+      await ApiService().post(
+        '${AppConstants.attendanceBase}/remote-requests/$id/action/',
+        data: {'status': action},
+      );
+      _showSnack('✅ Request $action successfully!', AppColors.success);
+      _loadRemoteList();
+    } catch (e) {
+      _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
     }
   }
 
@@ -752,17 +789,57 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       : AppColors.textSecondary,
                 ),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _hasRemotePermission!
-                        ? 'Remote work location approved ✓'
-                        : 'No remote work location approved yet',
-                    style: const TextStyle(fontSize: 13),
+                  Expanded(
+                    child: Text(
+                      _hasRemotePermission!
+                          ? 'Remote work location approved ✓'
+                          : 'No remote work location approved yet',
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   ),
-                ),
-              ]),
-            ),
-          ],
+                  if (!_hasRemotePermission!)
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () {
+                        final ctrl = TextEditingController();
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Request Remote Work', style: TextStyle(fontSize: 16)),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('This will capture your current GPS location and send it to your Admin for approval.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                const SizedBox(height: 16),
+                                TextField(
+                                  controller: ctrl,
+                                  decoration: const InputDecoration(labelText: 'Reason for remote work'),
+                                  maxLines: 3,
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  _requestRemoteWork(ctrl.text);
+                                },
+                                child: const Text('Submit Request'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      child: const Text('Request', style: TextStyle(fontSize: 12)),
+                    ),
+                ]),
+              ),
+            ],
 
           const SizedBox(height: 24),
           const Align(
@@ -1046,64 +1123,130 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       ? const Center(child: CircularProgressIndicator())
       : RefreshIndicator(
           onRefresh: _loadRemoteList,
-          child: _remoteEmployees.isEmpty
-              ? const Center(
-                  child: Text('No employees found.',
-                      style: TextStyle(color: AppColors.textSecondary)))
-              : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _remoteEmployees.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) {
-                    final e = _remoteEmployees[i];
-                    final hasPermission = e['has_remote_permission'] == true;
-                    final employeeId = e['employee_id'] as int;
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_pendingRemoteRequests.isNotEmpty) ...[
+                  const Text('Pending Requests', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                  const SizedBox(height: 12),
+                  ..._pendingRemoteRequests.map((req) {
                     return Card(
-                      child: ListTile(
-                        leading: Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: (hasPermission
-                                    ? AppColors.success
-                                    : AppColors.textSecondary)
-                                .withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            hasPermission
-                                ? Iconsax.tick_circle
-                                : Iconsax.close_circle,
-                            color: hasPermission
-                                ? AppColors.success
-                                : AppColors.textSecondary,
-                            size: 20,
-                          ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(req['employee_name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                Text('Requested on: ${req['created_at'].toString().split('T')[0]}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text('Reason: ${req['reason']}', style: const TextStyle(fontSize: 14)),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                const Spacer(),
+                                GestureDetector(
+                                  onTap: () => _actionRemoteRequest(req['id'], 'rejected'),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.redAccent),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text('Reject', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                GestureDetector(
+                                  onTap: () => _actionRemoteRequest(req['id'], 'approved'),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text('Approve', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        title: Text(e['employee_name'] ?? 'Unknown'),
-                        subtitle: Text(hasPermission
-                            ? 'Remote location approved'
-                            : 'No remote location set'),
-                        trailing: hasPermission
-                            ? IconButton(
-                                icon: const Icon(Icons.remove_circle_outline,
-                                    color: AppColors.error),
-                                tooltip: 'Revoke remote access',
-                                onPressed: () =>
-                                    _removeRemoteLocation(employeeId),
-                              )
-                            : IconButton(
-                                icon: const Icon(
-                                    Icons.add_location_alt_outlined,
-                                    color: AppColors.primary),
-                                tooltip: 'Set remote location (from here)',
-                                onPressed: () => _setRemoteLocation(employeeId),
-                              ),
                       ),
                     );
-                  },
-                ),
+                  }),
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 16),
+                ],
+                const Text('All Employees', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                if (_remoteEmployees.isEmpty)
+                  const Center(child: Text('No employees found.', style: TextStyle(color: AppColors.textSecondary)))
+                else
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _remoteEmployees.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) {
+                      final e = _remoteEmployees[i];
+                      final hasPermission = e['has_remote_permission'] == true;
+                      final employeeId = e['employee_id'] as int;
+                      return Card(
+                        child: ListTile(
+                          leading: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: (hasPermission
+                                      ? AppColors.success
+                                      : AppColors.textSecondary)
+                                  .withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              hasPermission
+                                  ? Iconsax.location_tick
+                                  : Iconsax.location_cross,
+                              color: hasPermission
+                                  ? AppColors.success
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                          title: Text(e['employee_name'] ?? 'Unknown'),
+                          subtitle: Text(hasPermission
+                              ? 'Remote location approved'
+                              : 'No remote location set'),
+                          trailing: hasPermission
+                              ? IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline,
+                                      color: AppColors.error),
+                                  tooltip: 'Revoke remote access',
+                                  onPressed: () =>
+                                      _removeRemoteLocation(employeeId),
+                                )
+                              : IconButton(
+                                  icon: const Icon(
+                                      Icons.add_location_alt_outlined,
+                                      color: AppColors.primary),
+                                  tooltip: 'Set remote location (from here)',
+                                  onPressed: () => _setRemoteLocation(employeeId),
+                                ),
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+          ),
         );
 }
 
