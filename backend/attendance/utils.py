@@ -128,7 +128,7 @@ def average_working_hour(employee: Employee, year: int = TODAY.year, month: int 
     return f"{round(hours)} Hrs {round(minutes)} Mins"
 
 
-def is_within_radius(current_lat: float, current_lng: float, target_lat: float, target_lng: float) -> bool:
+def is_within_radius(current_lat: float, current_lng: float, target_lat: float, target_lng: float, radius_meters: int = 100) -> bool:
     """
     Check if the current location is within a specified radius of the target location.
 
@@ -137,13 +137,13 @@ def is_within_radius(current_lat: float, current_lng: float, target_lat: float, 
         current_lng (float): Current longitude of the user.
         target_lat (float): Latitude of the target location.
         target_lng (float): Longitude of the target location.
+        radius_meters (int): Allowed radius in meters (default 100m, configurable via OrganizationSettings).
 
     Returns:
         bool: True if the current location is within the radius, False otherwise.
     """
 
     EARTH_RADIUS = 6371000  # Earth's radius in meters
-    RADIUS_METERS = 50  # 50m radius — matches the text shown in the app UI
     delta_lat = radians((target_lat) - current_lat)
     delta_lon = radians(target_lng - current_lng)
 
@@ -152,4 +152,4 @@ def is_within_radius(current_lat: float, current_lng: float, target_lat: float, 
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
     distance = EARTH_RADIUS * c
-    return distance <= RADIUS_METERS
+    return distance <= radius_meters

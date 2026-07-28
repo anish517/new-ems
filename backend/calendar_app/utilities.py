@@ -80,15 +80,15 @@ def total_days_in_month(year: int, month: int):
         int: The total number of days in the specified month.
     """
 
-    first_day = datetime.date(year, month, 1)
+    first_day = nepali_datetime.date(year, month, 1)
 
     if month == 12:
-        next_month = datetime.date(year + 1, 1, 1)
+        next_month = nepali_datetime.date(year + 1, 1, 1)
     else:
-        next_month = datetime.date(year, month + 1, 1)
+        next_month = nepali_datetime.date(year, month + 1, 1)
 
     days_in_month = (next_month - first_day).days
-    return days_in_month - 1
+    return days_in_month
 
 
 def get_events(year: int = TODAY.year, month: int = TODAY.month):

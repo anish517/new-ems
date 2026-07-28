@@ -49,11 +49,15 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
         if start_date_str and end_date_str:
             try:
                 import nepali_datetime
+                from django.db.models import Q
                 sy, sm, sd = map(int, start_date_str.split('-'))
                 ey, em, ed = map(int, end_date_str.split('-'))
                 start_date = nepali_datetime.date(sy, sm, sd)
                 end_date = nepali_datetime.date(ey, em, ed)
-                all_tasks = all_tasks.filter(planned_start_date__gte=start_date, planned_start_date__lte=end_date)
+                all_tasks = all_tasks.filter(
+                    Q(planned_start_date__lte=end_date) &
+                    (Q(planned_end_date__gte=start_date) | Q(planned_end_date__isnull=True))
+                )
             except Exception:
                 pass
         

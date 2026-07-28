@@ -8,7 +8,7 @@ import csv
 
 from attendance.models import Attendance, CheckInOut, RemoteWorkPermission
 from attendance.utils import is_within_radius
-from organization.models import Employee, OrganizationAddress
+from organization.models import Employee, OrganizationAddress, OrganizationSettings
 from .serializers import AttendanceSerializer, RemoteWorkPermissionSerializer
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
@@ -179,12 +179,26 @@ class CheckIn(APIView):
             return Response({"error": "No employee profile linked to this account."},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        organization_address = OrganizationAddress.objects.filter(
-            organization=organization, primary=True).first()
-        if organization_address is None:
-            return Response({"error": "Organization address not configured."},
-                            status=status.HTTP_400_BAD_REQUEST)
+        # ── Load Global Settings (master switches + geolocation) ──────────────
+        org_settings = OrganizationSettings.objects.filter(organization=organization).first()
+        enable_in_office = org_settings.enable_in_office_attendance if org_settings else True
+        enable_remote = org_settings.enable_remote_attendance if org_settings else True
+        allowed_radius = (org_settings.allowed_attendance_radius or 100) if org_settings else 100
 
+        # Use settings lat/lng if configured, else fall back to OrganizationAddress
+        office_lat = (org_settings.office_latitude if org_settings and org_settings.office_latitude is not None else None)
+        office_lng = (org_settings.office_longitude if org_settings and org_settings.office_longitude is not None else None)
+
+        if office_lat is None or office_lng is None:
+            organization_address = OrganizationAddress.objects.filter(
+                organization=organization, primary=True).first()
+            if organization_address is None:
+                return Response({"error": "Organization geolocation not configured. Set it in Accounts → Global Settings."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            office_lat = organization_address.latitude
+            office_lng = organization_address.longitude
+
+        # ── Check remote work permission (individual) ─────────────────────────
         try:
             remote_work_permission = request.user.employee.remote_work_permission
             if not remote_work_permission.is_allowed:
@@ -192,17 +206,34 @@ class CheckIn(APIView):
         except Exception:
             remote_work_permission = None
 
+        has_individual_remote = remote_work_permission is not None
+
+        # ── Compute whether within office radius ──────────────────────────────
         within_organization_radius = is_within_radius(
             current_lat=user_lat, current_lng=user_lng,
-            target_lat=organization_address.latitude,
-            target_lng=organization_address.longitude)
+            target_lat=office_lat,
+            target_lng=office_lng,
+            radius_meters=allowed_radius)
 
-        # Remote-permitted employees can check in from anywhere worldwide
-        has_remote_permission = remote_work_permission is not None  # is_allowed already verified above
+        # ── Apply master switches ─────────────────────────────────────────────
+        # Case 1: Employee is in office range but in-office attendance is disabled
+        if within_organization_radius and not enable_in_office:
+            return Response(
+                {'error': 'In-office attendance is currently disabled by your admin.'},
+                status=status.HTTP_403_FORBIDDEN)
 
-        if not within_organization_radius and not has_remote_permission:
-            return Response({'error': 'You are not within the office radius. Contact your admin to enable remote work.'},
-                            status=status.HTTP_401_UNAUTHORIZED)
+        # Case 2: Employee is outside office range
+        if not within_organization_radius:
+            # Global remote toggle is master switch — overrides individual permissions
+            if not enable_remote:
+                return Response(
+                    {'error': 'Remote attendance is currently disabled by your admin.'},
+                    status=status.HTTP_403_FORBIDDEN)
+            # Global remote is on — check individual permission
+            if not has_individual_remote:
+                return Response(
+                    {'error': 'You are not within the office radius. Contact your admin to enable remote work.'},
+                    status=status.HTTP_401_UNAUTHORIZED)
 
         photo = request.FILES.get('photo')
 
@@ -240,12 +271,24 @@ class CheckOut(APIView):
             return Response({"error": "No employee profile linked to this account."},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        organization_address = OrganizationAddress.objects.filter(
-            organization=organization, primary=True).first()
-        if organization_address is None:
-            return Response({"error": "Organization address not configured."},
-                            status=status.HTTP_400_BAD_REQUEST)
+        # ── Load Global Settings (master switches + geolocation) ──────────────
+        org_settings = OrganizationSettings.objects.filter(organization=organization).first()
+        enable_remote = org_settings.enable_remote_attendance if org_settings else True
+        allowed_radius = (org_settings.allowed_attendance_radius or 100) if org_settings else 100
 
+        office_lat = (org_settings.office_latitude if org_settings and org_settings.office_latitude is not None else None)
+        office_lng = (org_settings.office_longitude if org_settings and org_settings.office_longitude is not None else None)
+
+        if office_lat is None or office_lng is None:
+            organization_address = OrganizationAddress.objects.filter(
+                organization=organization, primary=True).first()
+            if organization_address is None:
+                return Response({"error": "Organization geolocation not configured. Set it in Accounts → Global Settings."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            office_lat = organization_address.latitude
+            office_lng = organization_address.longitude
+
+        # ── Check remote work permission (individual) ─────────────────────────
         try:
             remote_work_permission = request.user.employee.remote_work_permission
             if not remote_work_permission.is_allowed:
@@ -253,17 +296,23 @@ class CheckOut(APIView):
         except Exception:
             remote_work_permission = None
 
+        has_individual_remote = remote_work_permission is not None
+
         within_organization_radius = is_within_radius(
             current_lat=user_lat, current_lng=user_lng,
-            target_lat=organization_address.latitude,
-            target_lng=organization_address.longitude)
+            target_lat=office_lat,
+            target_lng=office_lng,
+            radius_meters=allowed_radius)
 
-        # Remote-permitted employees can check out from anywhere worldwide
-        has_remote_permission = remote_work_permission is not None  # is_allowed already verified above
-
-        if not within_organization_radius and not has_remote_permission:
-            return Response({'error': 'You are not within the office radius. Contact your admin to enable remote work.'},
-                            status=status.HTTP_401_UNAUTHORIZED)
+        if not within_organization_radius:
+            if not enable_remote:
+                return Response(
+                    {'error': 'Remote attendance is currently disabled by your admin.'},
+                    status=status.HTTP_403_FORBIDDEN)
+            if not has_individual_remote:
+                return Response(
+                    {'error': 'You are not within the office radius. Contact your admin to enable remote work.'},
+                    status=status.HTTP_401_UNAUTHORIZED)
 
         photo = request.FILES.get('photo')
 

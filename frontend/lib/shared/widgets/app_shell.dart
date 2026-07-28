@@ -30,7 +30,7 @@ class AppShell extends ConsumerWidget {
       _NavItem('/employees', Iconsax.people, 'Employees'),
       _NavItem('/attendance', Iconsax.clock, 'Attendance'),
       _NavItem('/leave', Iconsax.calendar_remove, 'Leaves'),
-      _NavItem('/salary', Iconsax.money, 'Salary'),
+      _NavItem('/salary', Iconsax.money_send, 'Accounts'),
       _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
       _NavItem('/performance', Iconsax.star1, 'Performance'),
       _NavItem('/noticeboard', Iconsax.message_text, 'Notices'),

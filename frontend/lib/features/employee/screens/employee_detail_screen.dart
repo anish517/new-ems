@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:nepali_utils/nepali_utils.dart';
+import 'package:universal_html/html.dart' as html;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/providers/date_provider.dart';
@@ -26,8 +28,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   Map<String, dynamic>? _employee;
   Map<String, dynamic>? _attendanceStats;
   List<dynamic> _attendanceLogs = [];
-  DateTime? _startDate;
-  DateTime? _endDate;
+  NepaliDateTime? _startDate;
+  NepaliDateTime? _endDate;
 
   double _avgPerformance = 0.0;
   num _approvedLeaves = 0;
@@ -78,22 +80,24 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   }
 
   Future<void> _pickDateRange() async {
-    final start = await showDatePicker(
+    final now = NepaliDateTime.now();
+    final NepaliDateTime? start = await showDialog<NepaliDateTime>(
       context: context,
-      initialDate: _startDate ?? DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-      helpText: 'Select Start Date',
+      builder: (ctx) => _NepaliDatePickerDialog(
+        title: 'Select Start Date',
+        initial: _startDate ?? now,
+      ),
     );
     if (start == null) return;
 
     if (!mounted) return;
-    final end = await showDatePicker(
+    final NepaliDateTime? end = await showDialog<NepaliDateTime>(
       context: context,
-      initialDate: _endDate ?? start,
-      firstDate: start,
-      lastDate: DateTime.now(),
-      helpText: 'Select End Date',
+      builder: (ctx) => _NepaliDatePickerDialog(
+        title: 'Select End Date',
+        initial: _endDate ?? start,
+        minDate: start,
+      ),
     );
     if (end == null) return;
 
@@ -110,12 +114,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       String startStr = '';
       String endStr = '';
       if (_startDate != null && _endDate != null) {
-        final nStart = _startDate!.toNepaliDateTime();
-        final nEnd = _endDate!.toNepaliDateTime();
         startStr =
-            '${nStart.year}-${nStart.month.toString().padLeft(2, '0')}-${nStart.day.toString().padLeft(2, '0')}';
+            '${_startDate!.year}-${_startDate!.month.toString().padLeft(2, '0')}-${_startDate!.day.toString().padLeft(2, '0')}';
         endStr =
-            '${nEnd.year}-${nEnd.month.toString().padLeft(2, '0')}-${nEnd.day.toString().padLeft(2, '0')}';
+            '${_endDate!.year}-${_endDate!.month.toString().padLeft(2, '0')}-${_endDate!.day.toString().padLeft(2, '0')}';
       } else {
         final dateProv = ref.read(nepaliDateProvider);
         final y = dateProv.year;
@@ -130,9 +132,15 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       final response = await ApiService().get(url);
 
       final String csv = response.data.toString();
-      final dataUri = "data:text/csv;charset=utf-8,${Uri.encodeComponent(csv)}";
-
-      await launchUrl(Uri.parse(dataUri));
+      
+      final bytes = utf8.encode(csv);
+      final blob = html.Blob([bytes]);
+      final blobUrl = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: blobUrl)
+        ..setAttribute("download", "employee_report_${widget.id}.csv")
+        ..click();
+      html.Url.revokeObjectUrl(blobUrl);
+      
     } catch (e) {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
@@ -150,12 +158,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       String startStr = '';
       String endStr = '';
       if (_startDate != null && _endDate != null) {
-        final nStart = _startDate!.toNepaliDateTime();
-        final nEnd = _endDate!.toNepaliDateTime();
         startStr =
-            '${nStart.year}-${nStart.month.toString().padLeft(2, '0')}-${nStart.day.toString().padLeft(2, '0')}';
+            '${_startDate!.year}-${_startDate!.month.toString().padLeft(2, '0')}-${_startDate!.day.toString().padLeft(2, '0')}';
         endStr =
-            '${nEnd.year}-${nEnd.month.toString().padLeft(2, '0')}-${nEnd.day.toString().padLeft(2, '0')}';
+            '${_endDate!.year}-${_endDate!.month.toString().padLeft(2, '0')}-${_endDate!.day.toString().padLeft(2, '0')}';
       } else {
         final y = dateProv.year;
         final m = dateProv.month;
@@ -451,7 +457,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                         ),
                         child: Text(
                           _startDate != null && _endDate != null
-                              ? '${_startDate!.toNepaliDateTime().toString().split(' ')[0]} to ${_endDate!.toNepaliDateTime().toString().split(' ')[0]}'
+                              ? '${_startDate!.year}-${_startDate!.month.toString().padLeft(2, '0')}-${_startDate!.day.toString().padLeft(2, '0')} to ${_endDate!.year}-${_endDate!.month.toString().padLeft(2, '0')}-${_endDate!.day.toString().padLeft(2, '0')}'
                               : 'This Month',
                           style: const TextStyle(
                               color: AppColors.textPrimary,
@@ -1123,4 +1129,165 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       }).toList(),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Nepali Date Picker Dialog
+// ─────────────────────────────────────────────────────────────────────────────
+class _NepaliDatePickerDialog extends StatefulWidget {
+  final String title;
+  final NepaliDateTime initial;
+  final NepaliDateTime? minDate;
+
+  const _NepaliDatePickerDialog({
+    required this.title,
+    required this.initial,
+    this.minDate,
+  });
+
+  @override
+  State<_NepaliDatePickerDialog> createState() =>
+      _NepaliDatePickerDialogState();
+}
+
+class _NepaliDatePickerDialogState extends State<_NepaliDatePickerDialog> {
+  late int _year;
+  late int _month;
+  late int _day;
+
+  static const _months = [
+    'Baishakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin',
+    'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _year = widget.initial.year;
+    _month = widget.initial.month;
+    _day = widget.initial.day;
+  }
+
+  int get _daysInMonth => NepaliDateTime(_year, _month).totalDays;
+
+  bool _isBeforeMin(int y, int m, int d) {
+    if (widget.minDate == null) return false;
+    final min = widget.minDate!;
+    if (y < min.year) return true;
+    if (y == min.year && m < min.month) return true;
+    if (y == min.year && m == min.month && d < min.day) return true;
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxDay = _daysInMonth;
+    if (_day > maxDay) _day = maxDay;
+
+    return Dialog(
+      backgroundColor: const Color(0xFF1E1E2E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(widget.title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Year Dropdown
+                Expanded(
+                  child: DropdownButton<int>(
+                    value: _year,
+                    isExpanded: true,
+                    dropdownColor: const Color(0xFF2A2A3C),
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    underline: Container(height: 1, color: Colors.white24),
+                    items: List.generate(41, (index) => 2060 + index).map((y) {
+                      return DropdownMenuItem(value: y, child: Center(child: Text(y.toString())));
+                    }).toList(),
+                    onChanged: (v) => setState(() => _year = v!),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Month Dropdown
+                Expanded(
+                  child: DropdownButton<int>(
+                    value: _month,
+                    isExpanded: true,
+                    dropdownColor: const Color(0xFF2A2A3C),
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    underline: Container(height: 1, color: Colors.white24),
+                    items: List.generate(12, (index) {
+                      return DropdownMenuItem(value: index + 1, child: Center(child: Text(_months[index])));
+                    }).toList(),
+                    onChanged: (v) => setState(() {
+                      _month = v!;
+                      if (_day > _daysInMonth) _day = _daysInMonth;
+                    }),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Day Dropdown
+                Expanded(
+                  child: DropdownButton<int>(
+                    value: _day > maxDay ? maxDay : _day,
+                    isExpanded: true,
+                    dropdownColor: const Color(0xFF2A2A3C),
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    underline: Container(height: 1, color: Colors.white24),
+                    items: List.generate(maxDay, (index) => index + 1).map((d) {
+                      return DropdownMenuItem(value: d, child: Center(child: Text(d.toString())));
+                    }).toList(),
+                    onChanged: (v) => setState(() => _day = v!),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${_year}-${_month.toString().padLeft(2, '0')}-${_day.toString().padLeft(2, '0')}',
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel',
+                      style: TextStyle(color: Colors.white70, fontSize: 16)),
+                ),
+                ElevatedButton(
+                  onPressed: _isBeforeMin(_year, _month, _day)
+                      ? null
+                      : () {
+                          Navigator.of(context)
+                              .pop(NepaliDateTime(_year, _month, _day));
+                        },
+                  style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(100, 48), // Override global double.infinity
+                      backgroundColor: const Color(0xFF6C63FF),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                  child: const Text('Select', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      ),
+    );
+  }
+
 }

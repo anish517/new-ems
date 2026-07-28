@@ -398,8 +398,6 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
         TextEditingController(text: salaryRecord['basic_salary'].toString());
     final remoteCtrl =
         TextEditingController(text: salaryRecord['remote_salary'].toString());
-    final taxRateCtrl = TextEditingController(
-        text: (salaryRecord['tax_rate'] ?? 0).toString());
     bool saving = false;
 
     showModalBottomSheet(
@@ -435,16 +433,6 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                   decoration:
                       const InputDecoration(labelText: 'Remote Salary (NPR)'),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: taxRateCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Tax Rate (%)',
-                    helperText: 'e.g. 5 for 5% TDS on gross salary',
-                    suffixText: '%',
-                  ),
-                ),
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: saving
@@ -455,9 +443,8 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                             await ApiService().patch(
                                 '${AppConstants.salaryBase}/salary/${salaryRecord['id']}/',
                                 data: {
-                                  'basic_salary': basicCtrl.text,
-                                  'remote_salary': remoteCtrl.text,
-                                  'tax_rate': taxRateCtrl.text,
+                                  'basic_salary': basicCtrl.text.isEmpty ? '0' : basicCtrl.text,
+                                  'remote_salary': remoteCtrl.text.isEmpty ? '0' : remoteCtrl.text,
                                 });
                             if (context.mounted) {
                               Navigator.pop(context);
@@ -534,7 +521,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
           const SizedBox(height: 16),
           // Employee dropdown
           DropdownButtonFormField<int>(
-            value: _graphEmployeeId,
+            initialValue: _graphEmployeeId,
             hint: const Text('Select Employee to View Graph'),
             isExpanded: true,
             items: salariesWithEmployees
@@ -560,8 +547,8 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                 color: AppColors.surfaceDark,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Column(
-                children: const [
+              child: const Column(
+                children: [
                   Icon(Iconsax.chart_2, size: 48, color: AppColors.primary),
                   SizedBox(height: 16),
                   Text('Select an employee above to view their salary trend graph',
@@ -610,7 +597,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                     show: true,
                     drawHorizontalLine: true,
                     drawVerticalLine: false,
-                    getDrawingHorizontalLine: (_) => FlLine(
+                    getDrawingHorizontalLine: (_) => const FlLine(
                       color: Colors.white10,
                       strokeWidth: 1,
                     ),
@@ -710,6 +697,7 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
   Map<String, dynamic>? _netSalaryInfo;
   final TextEditingController _netSalaryController = TextEditingController();
   final TextEditingController _incentiveController = TextEditingController(text: '0');
+  final TextEditingController _bonusController = TextEditingController(text: '0');
   final TextEditingController _holidaysController = TextEditingController();
   final TextEditingController _ssfController = TextEditingController();
   final TextEditingController _epfController = TextEditingController();
@@ -722,6 +710,7 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
   void dispose() {
     _netSalaryController.dispose();
     _incentiveController.dispose();
+    _bonusController.dispose();
     _holidaysController.dispose();
     _ssfController.dispose();
     _epfController.dispose();
@@ -759,18 +748,18 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
       if (_epfController.text.trim().isNotEmpty) url += '&epf=${_epfController.text.trim()}';
       if (_tdsController.text.trim().isNotEmpty) url += '&tds=${_tdsController.text.trim()}';
       if (_incentiveController.text.trim().isNotEmpty) url += '&incentive=${_incentiveController.text.trim()}';
+      if (_bonusController.text.trim().isNotEmpty) url += '&bonus=${_bonusController.text.trim()}';
       final res = await ApiService().get(url);
       if (mounted) {
         setState(() {
           _netSalaryInfo = res.data;
           // Only update the net salary controller if the user isn't actively typing in it
           // Actually, net salary is updated from the server response
-          _netSalaryController.text =
-              (_netSalaryInfo!['net_salary'] ?? '').toString();
-          if (_holidaysController.text.isEmpty) _holidaysController.text = (_netSalaryInfo!['holidays'] ?? '').toString();
-          if (_tdsController.text.isEmpty) _tdsController.text = (_netSalaryInfo!['tds'] ?? '').toString();
-          if (_ssfController.text.isEmpty) _ssfController.text = (_netSalaryInfo!['ssf'] ?? '').toString();
-          if (_epfController.text.isEmpty) _epfController.text = (_netSalaryInfo!['epf'] ?? '').toString();
+          _netSalaryController.text = (_netSalaryInfo!['net_salary'] ?? '').toString();
+          _holidaysController.text = (_netSalaryInfo!['holidays'] ?? '').toString();
+          _tdsController.text = (_netSalaryInfo!['tds'] ?? '').toString();
+          _ssfController.text = (_netSalaryInfo!['ssf'] ?? '').toString();
+          _epfController.text = (_netSalaryInfo!['epf'] ?? '').toString();
         });
       }
     } catch (_) {}
@@ -798,6 +787,7 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
         'status': true,
         'net_salary': _netSalaryController.text.trim(),
         'incentive': _incentiveController.text.trim(),
+        'bonus': _bonusController.text.trim(),
         'email_preference': _emailPreference,
         'holidays': _holidaysController.text.trim(),
         'ssf': _ssfController.text.trim(),
@@ -817,7 +807,7 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
     }
   }
 
-  Widget _buildEditableRow(IconData icon, String label, TextEditingController controller) {
+  Widget _buildEditableRow(IconData icon, String label, TextEditingController controller, {Function(String)? onChanged}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
       child: Row(
@@ -842,7 +832,7 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                 contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 border: OutlineInputBorder(),
               ),
-              onChanged: (_) => _loadNetSalary(clear: false),
+              onChanged: onChanged ?? (_) => _loadNetSalary(clear: false),
             ),
           ),
         ],
@@ -1037,7 +1027,8 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                         '${_netSalaryInfo!['half_leaves'] ?? 0}'),
                     const Divider(color: Colors.white24),
                     _buildEditableRow(Iconsax.calendar, 'Holidays', _holidaysController),
-                    _buildEditableRow(Iconsax.award, 'Incentive / Bonus', _incentiveController),
+                    _buildEditableRow(Iconsax.award, 'Incentive (TDS auto-calculated)', _incentiveController, onChanged: (_) { _tdsController.clear(); _loadNetSalary(clear: false); }),
+                    _buildEditableRow(Iconsax.gift, 'Bonus (TDS auto-calculated)', _bonusController, onChanged: (_) { _tdsController.clear(); _loadNetSalary(clear: false); }),
                     _buildEditableRow(Iconsax.minus, 'Tax (TDS)', _tdsController),
                     _buildEditableRow(Iconsax.minus, 'SSF Deduction', _ssfController),
                     _buildEditableRow(Iconsax.minus, 'EPF Deduction', _epfController),
@@ -1089,7 +1080,7 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
               const SizedBox(height: 12),
               // Email preference dropdown
               DropdownButtonFormField<String>(
-                value: _emailPreference,
+                initialValue: _emailPreference,
                 decoration: const InputDecoration(
                   labelText: 'Send Salary Slip Email To',
                   prefixIcon: Icon(Iconsax.sms),
@@ -1421,3 +1412,5 @@ class _MiniStat extends StatelessWidget {
             textAlign: TextAlign.center),
       ]);
 }
+
+

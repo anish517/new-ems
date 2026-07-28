@@ -19,7 +19,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
   final _formKey = GlobalKey<FormState>();
 
   String _fname = '', _lname = '', _email = '', _password = '';
-  String _phone = '', _gender = 'male', _employeeType = 'full_time';
+  String _phone = '', _gender = 'male', _employeeType = 'full_time', _maritalStatus = 'single';
   DateTime _dob = DateTime.now();
   final _dobCtrl = TextEditingController();
   bool _isLoading = false;
@@ -48,6 +48,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
       _email = user['email'] ?? '';
       _phone = widget.employee!['phone_no'] ?? '';
       _gender = widget.employee!['gender'] ?? 'male';
+      _maritalStatus = widget.employee!['marital_status'] ?? 'single';
       _employeeType = widget.employee!['employee_type'] ?? 'full_time';
       if (widget.employee!['date_of_birth'] != null) {
         try {
@@ -144,6 +145,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
           if (_password.isNotEmpty) 'password': _password,
         },
         'gender': _gender,
+        'marital_status': _maritalStatus,
         'date_of_birth': "${_dob.year}-${_dob.month.toString().padLeft(2, '0')}-${_dob.day.toString().padLeft(2, '0')}",
         'phone_no': _phone,
         'father_name': _fatherName,
@@ -352,6 +354,16 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                   ),
                 )),
               ]),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _maritalStatus,
+                decoration: const InputDecoration(labelText: 'Marital Status'),
+                items: const [
+                  DropdownMenuItem(value: 'single', child: Text('Single')),
+                  DropdownMenuItem(value: 'married', child: Text('Married')),
+                ],
+                onChanged: (v) => setState(() => _maritalStatus = v!),
+              ),
               const SizedBox(height: 12),
               
               // ── Additional Personal Info ────────────────────────

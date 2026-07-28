@@ -10,9 +10,11 @@ from rest_framework.authentication import SessionAuthentication
 
 from rest_framework.decorators import action
 from organization.api.serializers import (BankDetailSerializer, DocumentSerializer, EmployeeAnalysisReportSerializer, EmployeeSerializer,
-                                          NationalIDDetailSerializer, OrganizationFileSerializer, AddressSerializer, QualificationSerializer, DepartmentSerializer)
+                                          NationalIDDetailSerializer, OrganizationFileSerializer, AddressSerializer, QualificationSerializer,
+                                          DepartmentSerializer, OrganizationSettingsSerializer)
 from organization.models import (
-    Address, BankDetail, Department, Document, Employee, EmployeeAnalysisReport, OrganizationFile, NationalIdDetail, Qualification)
+    Address, BankDetail, Department, Document, Employee, EmployeeAnalysisReport,
+    OrganizationFile, NationalIdDetail, Qualification, OrganizationSettings)
 
 
 class DepartmentRetrieveUpdateDeleteAPIView(RetrieveUpdateDestroyAPIView):
@@ -31,18 +33,24 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         # For retrieve/update/destroy: use all_objects so archived employees are accessible
         if self.action in ('retrieve', 'update', 'partial_update', 'destroy'):
             return Employee.all_objects.all()
-        # For list: default manager (active only), filtered by org
+            
+        # Determine base manager based on time-travel or archived status request
+        is_time_travel = self.request.query_params.get('nepali_year') and self.request.query_params.get('nepali_month')
+        is_archived = self.request.query_params.get('status') == 'archived'
+        base_manager = Employee.all_objects if (is_time_travel or is_archived) else Employee.objects
+        
+        # For list: filtered by org securely
         user = self.request.user
         if user.organization.exists():
-            return Employee.objects.filter(
+            return base_manager.filter(
                 post__department__organization=user.organization.first()
             )
         try:
-            return Employee.objects.filter(
+            return base_manager.filter(
                 post__department__organization=user.employee.organization
             )
         except Exception:
-            return Employee.objects.all()
+            return base_manager.all()
 
     def perform_destroy(self, instance):
         user = instance.user
@@ -307,3 +315,19 @@ class EmployeeReportAPIView(APIView):
             ])
             
         return response
+
+
+class OrganizationSettingsView(RetrieveUpdateDestroyAPIView):
+    """Retrieve or update the settings for the authenticated user's organization."""
+    serializer_class = OrganizationSettingsSerializer
+    permission_classes = [IsAuthenticated]
+    nepali_date_filter_field = False
+
+    def get_object(self):
+        user = self.request.user
+        if user.organization.exists():
+            org = user.organization.first()
+        else:
+            return Response({"detail": "No organization found."}, status=404)
+        settings, _ = OrganizationSettings.objects.get_or_create(organization=org)
+        return settings
