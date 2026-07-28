@@ -149,7 +149,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => _ComplaintDetailsSheet(
         complaint: c, 
@@ -162,7 +162,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
   void _showSubmitDialog(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: context.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         builder: (_) => _SubmitComplaintSheet(onSuccess: _loadComplaints),
@@ -441,3 +441,7 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
     );
   }
 }
+
+
+
+

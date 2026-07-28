@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import 'global_month_year_picker.dart';
+import 'common_widgets.dart';
 
 class AppShell extends ConsumerWidget {
   final Widget child;
@@ -45,22 +46,22 @@ class AppShell extends ConsumerWidget {
     final isMobile = MediaQuery.of(context).size.width < 700;
 
     Widget sidebarContent = Container(
-      color: AppColors.surfaceDark,
+      color: context.surface,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(24),
+            Padding(
+              padding: const EdgeInsets.all(24),
               child: Row(
                 children: [
-                  Icon(Iconsax.box, color: AppColors.primary, size: 32),
-                  SizedBox(width: 12),
+                  const Icon(Iconsax.box, color: AppColors.primary, size: 32),
+                  const SizedBox(width: 12),
                   Text('EMS',
                       style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white)),
+                          color: context.textPrimary)),
                 ],
               ),
             ),
@@ -119,6 +120,29 @@ class AppShell extends ConsumerWidget {
               ),
             ),
             Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.brightness_medium, color: AppColors.primary, size: 20),
+                        SizedBox(width: 16),
+                        Text('Theme', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                    const ThemeToggleBtn(),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
               padding: const EdgeInsets.all(16),
               child: InkWell(
                 onTap: () => ref.read(authProvider.notifier).logout(),
@@ -151,26 +175,27 @@ class AppShell extends ConsumerWidget {
     // ── Mobile: use Drawer + BottomNavigationBar ───────────────────────────────
     if (isMobile) {
       return Scaffold(
-        backgroundColor: AppColors.bgDark,
+        backgroundColor: context.bg,
         drawer: Drawer(
           width: 260,
-          backgroundColor: AppColors.surfaceDark,
+          backgroundColor: context.surface,
           child: sidebarContent,
         ),
         appBar: AppBar(
-          backgroundColor: AppColors.surfaceDark,
+          backgroundColor: context.surface,
           elevation: 0,
           leading: Builder(
               builder: (ctx) => IconButton(
-                    icon: const Icon(Icons.menu, color: Colors.white),
+                    icon: Icon(Icons.menu, color: context.textPrimary),
                     onPressed: () => Scaffold.of(ctx).openDrawer(),
                   )),
-          title: const Text('EMS',
+          title: Text('EMS',
               style:
-                  TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  TextStyle(fontWeight: FontWeight.bold, color: context.textPrimary)),
           actions: [
+            const ThemeToggleBtn(),
             IconButton(
-              icon: const Icon(Iconsax.notification, color: Colors.white),
+              icon: Icon(Iconsax.notification, color: context.textPrimary),
               onPressed: () => context.go('/notifications'),
             ),
             GestureDetector(
@@ -205,7 +230,7 @@ class AppShell extends ConsumerWidget {
 
     // ── Desktop/Tablet: permanent sidebar ─────────────────────────────────────
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: context.bg,
       body: Row(
         children: [
           SizedBox(width: 200, child: sidebarContent),
@@ -222,3 +247,7 @@ class _NavItem {
   final String label;
   _NavItem(this.route, this.icon, this.label);
 }
+
+
+
+

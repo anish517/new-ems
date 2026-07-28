@@ -15,9 +15,9 @@ class AuthState {
 
   AuthState copyWith({UserProfile? user, bool? isLoading, String? error}) =>
       AuthState(
-        user:      user      ?? this.user,
+        user: user ?? this.user,
         isLoading: isLoading ?? this.isLoading,
-        error:     error,
+        error: error,
       );
 }
 

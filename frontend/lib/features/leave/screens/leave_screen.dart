@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/nepali_date_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
@@ -254,7 +255,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
   void _showApplyLeaveDialog(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: ctx.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         builder: (_) => _ApplyLeaveSheet(onSuccess: _loadLeaves),
@@ -590,11 +591,12 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
   String _halfDayPeriod = 'First Half';
 
   Future<void> _pickDate(bool isFrom) async {
-    final picked = await showDatePicker(
+    final picked = await showDialog<NepaliDateTime>(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      builder: (ctx) => NepaliDatePickerDialog(
+        title: 'Select Date',
+        initial: NepaliDateTime.now(),
+      ),
     );
     if (picked != null) {
       setState(() {
@@ -669,9 +671,11 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('Apply for Leave',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Apply for Leave',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: context.textPrimary)),
                   const SizedBox(height: 20),
                   TextFormField(
                     decoration: const InputDecoration(labelText: 'Subject'),
@@ -715,8 +719,10 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                   ),
                   const SizedBox(height: 12),
                   SwitchListTile(
-                    title: const Text('Paid Leave'),
-                    subtitle: const Text('Toggle off for unpaid leave'),
+                    title: Text('Paid Leave',
+                        style: TextStyle(color: context.textPrimary)),
+                    subtitle: Text('Toggle off for unpaid leave',
+                        style: TextStyle(color: context.textSecondary)),
                     value: _isPaid,
                     onChanged: (v) => setState(() => _isPaid = v),
                     activeThumbColor: AppColors.primary,
@@ -913,3 +919,4 @@ class _DetailRow extends StatelessWidget {
     );
   }
 }
+

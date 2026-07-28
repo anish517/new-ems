@@ -162,7 +162,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => _EditProfileSheet(
@@ -176,7 +176,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _showChangePassword(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: context.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         builder: (_) => const _ChangePasswordSheet(),
@@ -415,3 +415,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
         ),
       );
 }
+
+
+
+

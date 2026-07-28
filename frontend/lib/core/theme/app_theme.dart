@@ -218,6 +218,18 @@ class AppTheme {
   );
 }
 
+extension ThemeColors on BuildContext {
+  bool get isDark => Theme.of(this).brightness == Brightness.dark;
+
+  Color get bg => isDark ? AppColors.bgDark : AppColors.bgLight;
+  Color get surface => isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+  Color get card => isDark ? AppColors.cardDark : AppColors.cardLight;
+  Color get border => isDark ? AppColors.borderDark : AppColors.borderLight;
+  
+  Color get textPrimary => isDark ? Colors.white : AppColors.textPrimary;
+  Color get textSecondary => AppColors.textSecondary; // same for both usually
+}
+
 class AppScrollBehavior extends MaterialScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => {
@@ -226,3 +238,4 @@ class AppScrollBehavior extends MaterialScrollBehavior {
         PointerDeviceKind.trackpad,
       };
 }
+

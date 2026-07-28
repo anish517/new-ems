@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/providers/theme_provider.dart';
 
 /// Full-screen loading placeholder
 class LoadingWidget extends StatelessWidget {
@@ -111,8 +113,47 @@ class ShimmerCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     height: height,
     decoration: BoxDecoration(
-      color: AppColors.cardDark,
+      color: context.card,
       borderRadius: BorderRadius.circular(16),
     ),
   );
 }
+
+/// Theme Toggle Button
+
+class ThemeToggleBtn extends ConsumerWidget {
+  const ThemeToggleBtn({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(themeProvider);
+    IconData icon = Icons.brightness_auto;
+    if (mode == ThemeMode.light) icon = Icons.light_mode;
+    if (mode == ThemeMode.dark) icon = Icons.dark_mode;
+
+    return PopupMenuButton<ThemeMode>(
+      icon: Icon(icon, color: context.textPrimary),
+      tooltip: 'Change Theme',
+      color: context.surface,
+      onSelected: (m) => ref.read(themeProvider.notifier).setTheme(m),
+      itemBuilder: (ctx) => [
+        PopupMenuItem(
+          value: ThemeMode.system,
+          child: Text('System Default', style: TextStyle(color: context.textPrimary)),
+        ),
+        PopupMenuItem(
+          value: ThemeMode.light,
+          child: Text('Light Mode', style: TextStyle(color: context.textPrimary)),
+        ),
+        PopupMenuItem(
+          value: ThemeMode.dark,
+          child: Text('Dark Mode', style: TextStyle(color: context.textPrimary)),
+        ),
+      ],
+    );
+  }
+}
+
+
+
+

@@ -134,7 +134,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: context.surface,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) {
           return Padding(
@@ -229,7 +229,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       body: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 600), child: Column(children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          color: AppColors.surfaceDark,
+          color: context.surface,
           child: Row(children: [
             IconButton(
                 icon: const Icon(Icons.chevron_left), onPressed: _prevMonth),
@@ -244,7 +244,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ]),
         ),
         Container(
-          color: AppColors.surfaceDark,
+          color: context.surface,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -317,7 +317,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               : isToday
                                   ? null
                                   : Border.all(
-                                      color: AppColors.surfaceDark, width: 0.5),
+                                      color: context.surface, width: 0.5),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -403,3 +403,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 }
+
+
+
+

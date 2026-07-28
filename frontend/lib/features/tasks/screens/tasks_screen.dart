@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/nepali_date_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
@@ -135,7 +136,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (sheetCtx) => DraggableScrollableSheet(
@@ -218,7 +219,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceDark.withValues(alpha: 0.5),
+                  color: context.surface.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.2)),
                 ),
@@ -255,7 +256,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     final current = task['status'] as String? ?? 'to-do';
     showModalBottomSheet(
       context: ctx,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (sheetCtx) => Padding(
@@ -339,7 +340,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (sheetCtx) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
@@ -385,14 +386,14 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
   bool _saving = false;
 
   Future<void> _pickDate(bool isFrom) async {
-    final picked = await showDatePicker(
+    final nepaliPicked = await showDialog<NepaliDateTime>(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      builder: (ctx) => NepaliDatePickerDialog(
+        title: 'Select Date',
+        initial: NepaliDateTime.now(),
+      ),
     );
-    if (picked != null) {
-      final nepaliPicked = picked.toNepaliDateTime();
+    if (nepaliPicked != null) {
       setState(() {
         final dateStr = '${nepaliPicked.year}-${nepaliPicked.month.toString().padLeft(2, '0')}-${nepaliPicked.day.toString().padLeft(2, '0')}';
         if (isFrom) {
@@ -608,3 +609,8 @@ class _TaskList extends StatelessWidget {
             );
           });
 }
+
+
+
+
+

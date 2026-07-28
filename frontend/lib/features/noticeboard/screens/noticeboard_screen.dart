@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/nepali_date_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
@@ -179,7 +180,7 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => DraggableScrollableSheet(
@@ -243,7 +244,7 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
   void _showCreateNotice(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: context.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         builder: (_) => _CreateNoticeSheet(onSuccess: _loadNotices),
@@ -266,14 +267,14 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
   bool _isLoading = false;
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final nepaliPicked = await showDialog<NepaliDateTime>(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      builder: (ctx) => NepaliDatePickerDialog(
+        title: 'Select Date',
+        initial: NepaliDateTime.now(),
+      ),
     );
-    if (picked != null) {
-      final nepaliPicked = picked.toNepaliDateTime();
+    if (nepaliPicked != null) {
       setState(() {
         final dateStr =
             '${nepaliPicked.year}-${nepaliPicked.month.toString().padLeft(2, '0')}-${nepaliPicked.day.toString().padLeft(2, '0')}';
@@ -367,3 +368,8 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
         ),
       );
 }
+
+
+
+
+

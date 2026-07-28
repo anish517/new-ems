@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../shared/widgets/common_widgets.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/providers/date_provider.dart';
 
@@ -231,7 +232,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: context.bg,
       body: SafeArea(
         child: SingleChildScrollView(
           padding:
@@ -261,11 +262,13 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   ),
                   Row(
                     children: [
+                      const ThemeToggleBtn(),
+                      const SizedBox(width: 8),
                       IconButton(
                         icon: const Icon(Iconsax.notification),
                         onPressed: () => context.go('/notifications'),
                         style: IconButton.styleFrom(
-                            backgroundColor: AppColors.surfaceDark),
+                            backgroundColor: context.surface),
                       ),
                       const SizedBox(width: 12),
                       GestureDetector(
@@ -360,7 +363,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       height: 300,
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceDark,
+                        color: context.surface,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -439,7 +442,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                           : constraints.maxWidth * 0.33,
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceDark,
+                        color: context.surface,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -479,7 +482,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceDark,
+                    color: context.surface,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
@@ -505,8 +508,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: _onTimeTodayNames.length,
-                        separatorBuilder: (_, __) => const Divider(
-                            height: 1, color: AppColors.borderDark),
+                        separatorBuilder: (_, __) => Divider(height: 1, color: context.border),
                         itemBuilder: (_, i) => ListTile(
                           contentPadding:
                               const EdgeInsets.symmetric(vertical: 8),
@@ -547,7 +549,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceDark,
+                    color: context.surface,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
@@ -608,9 +610,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     return Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceDark,
+                        color: context.surface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.borderDark),
+                        border: Border.all(color: context.border),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -621,7 +623,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                               Text(req['employee_name'] ?? 'Unknown Employee',
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                               Text(
-                                'Requested on: ${req['created_at'] != null ? req['created_at'].toString().split('T')[0] : 'N/A'}',
+                                'Requested on: ${req['created_at'] != null ? _fmtDate(DateTime.parse(req['created_at']).toNepaliDateTime()) : 'N/A'}',
                                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                               ),
                             ],
@@ -863,7 +865,7 @@ class _KpiCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: AppColors.surfaceDark,
+          color: context.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -949,9 +951,9 @@ class _ModuleTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surfaceDark,
+          color: context.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.borderDark),
+          border: Border.all(color: context.border),
         ),
         child: Row(children: [
           Container(
@@ -982,3 +984,8 @@ class _ModuleTile extends StatelessWidget {
     );
   }
 }
+
+
+
+
+

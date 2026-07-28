@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/nepali_date_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
@@ -83,7 +84,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     final now = NepaliDateTime.now();
     final NepaliDateTime? start = await showDialog<NepaliDateTime>(
       context: context,
-      builder: (ctx) => _NepaliDatePickerDialog(
+      builder: (ctx) => NepaliDatePickerDialog(
         title: 'Select Start Date',
         initial: _startDate ?? now,
       ),
@@ -93,7 +94,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     if (!mounted) return;
     final NepaliDateTime? end = await showDialog<NepaliDateTime>(
       context: context,
-      builder: (ctx) => _NepaliDatePickerDialog(
+      builder: (ctx) => NepaliDatePickerDialog(
         title: 'Select End Date',
         initial: _endDate ?? start,
         minDate: start,
@@ -344,7 +345,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   void _showAttendanceLogs() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: context.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -377,7 +378,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                           final checkIn = log['check_in_time'] ?? '--:--';
                           final checkOut = log['check_out_time'] ?? '--:--';
                           return Card(
-                            color: AppColors.bgDark,
+                            color: context.bg,
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(
                               leading: const Icon(Iconsax.calendar_1,
@@ -416,7 +417,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     final role = user['role'] ?? 'employee';
 
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: context.bg,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -451,16 +452,15 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceDark,
+                          color: context.surface,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.borderDark),
+                          border: Border.all(color: context.border),
                         ),
                         child: Text(
                           _startDate != null && _endDate != null
                               ? '${_startDate!.year}-${_startDate!.month.toString().padLeft(2, '0')}-${_startDate!.day.toString().padLeft(2, '0')} to ${_endDate!.year}-${_endDate!.month.toString().padLeft(2, '0')}-${_endDate!.day.toString().padLeft(2, '0')}'
                               : 'This Month',
-                          style: const TextStyle(
-                              color: AppColors.textPrimary,
+                          style: TextStyle(color: context.textPrimary,
                               fontSize: 14,
                               fontWeight: FontWeight.bold),
                         ),
@@ -471,10 +471,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                         onPressed: _pickDateRange,
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size(0, 40),
-                          backgroundColor: AppColors.surfaceDark,
-                          foregroundColor: AppColors.textPrimary,
+                          backgroundColor: context.surface,
+                          foregroundColor: context.textPrimary,
                           elevation: 0,
-                          side: const BorderSide(color: AppColors.borderDark),
+                          side: BorderSide(color: context.border),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 0),
                         ),
@@ -503,7 +503,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppColors.surfaceDark,
+                color: context.surface,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -630,7 +630,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.surfaceDark,
+                color: context.surface,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -754,7 +754,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: context.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -804,7 +804,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: context.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
@@ -815,7 +815,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         physics: const NeverScrollableScrollPhysics(),
         itemCount: _attendanceLogs.length,
         separatorBuilder: (_, __) =>
-            const Divider(height: 1, color: AppColors.borderDark),
+            Divider(height: 1, color: context.border),
         itemBuilder: (context, index) {
           final log = _attendanceLogs[index];
           return Padding(
@@ -951,9 +951,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       }
                       return Container(
                         decoration: BoxDecoration(
-                          color: AppColors.borderDark.withValues(alpha: 0.1),
+                          color: context.border.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.borderDark),
+                          border: Border.all(color: context.border),
                         ),
                         child: const Center(
                             child: Text(
@@ -985,7 +985,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       height: 400,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: context.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
@@ -1034,7 +1034,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                   decoration: BoxDecoration(
                     color: isPresent
                         ? AppColors.success.withValues(alpha: 0.2)
-                        : AppColors.bgDark,
+                        : context.bg,
                     border: isToday
                         ? Border.all(color: AppColors.primary, width: 2)
                         : null,
@@ -1045,7 +1045,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     day.toString(),
                     style: TextStyle(
                       color:
-                          isPresent ? AppColors.success : AppColors.textPrimary,
+                          isPresent ? AppColors.success : context.textPrimary,
                       fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
@@ -1063,7 +1063,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColors.surfaceDark,
+          color: context.surface,
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Center(
@@ -1103,9 +1103,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             width: 120,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.surfaceDark,
+              color: context.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.borderDark),
+              border: Border.all(color: context.border),
             ),
             child: Column(
               children: [
@@ -1132,162 +1132,5 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Nepali Date Picker Dialog
-// ─────────────────────────────────────────────────────────────────────────────
-class _NepaliDatePickerDialog extends StatefulWidget {
-  final String title;
-  final NepaliDateTime initial;
-  final NepaliDateTime? minDate;
 
-  const _NepaliDatePickerDialog({
-    required this.title,
-    required this.initial,
-    this.minDate,
-  });
 
-  @override
-  State<_NepaliDatePickerDialog> createState() =>
-      _NepaliDatePickerDialogState();
-}
-
-class _NepaliDatePickerDialogState extends State<_NepaliDatePickerDialog> {
-  late int _year;
-  late int _month;
-  late int _day;
-
-  static const _months = [
-    'Baishakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin',
-    'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _year = widget.initial.year;
-    _month = widget.initial.month;
-    _day = widget.initial.day;
-  }
-
-  int get _daysInMonth => NepaliDateTime(_year, _month).totalDays;
-
-  bool _isBeforeMin(int y, int m, int d) {
-    if (widget.minDate == null) return false;
-    final min = widget.minDate!;
-    if (y < min.year) return true;
-    if (y == min.year && m < min.month) return true;
-    if (y == min.year && m == min.month && d < min.day) return true;
-    return false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final maxDay = _daysInMonth;
-    if (_day > maxDay) _day = maxDay;
-
-    return Dialog(
-      backgroundColor: const Color(0xFF1E1E2E),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(widget.title,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Year Dropdown
-                Expanded(
-                  child: DropdownButton<int>(
-                    value: _year,
-                    isExpanded: true,
-                    dropdownColor: const Color(0xFF2A2A3C),
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    underline: Container(height: 1, color: Colors.white24),
-                    items: List.generate(41, (index) => 2060 + index).map((y) {
-                      return DropdownMenuItem(value: y, child: Center(child: Text(y.toString())));
-                    }).toList(),
-                    onChanged: (v) => setState(() => _year = v!),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Month Dropdown
-                Expanded(
-                  child: DropdownButton<int>(
-                    value: _month,
-                    isExpanded: true,
-                    dropdownColor: const Color(0xFF2A2A3C),
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    underline: Container(height: 1, color: Colors.white24),
-                    items: List.generate(12, (index) {
-                      return DropdownMenuItem(value: index + 1, child: Center(child: Text(_months[index])));
-                    }).toList(),
-                    onChanged: (v) => setState(() {
-                      _month = v!;
-                      if (_day > _daysInMonth) _day = _daysInMonth;
-                    }),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Day Dropdown
-                Expanded(
-                  child: DropdownButton<int>(
-                    value: _day > maxDay ? maxDay : _day,
-                    isExpanded: true,
-                    dropdownColor: const Color(0xFF2A2A3C),
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    underline: Container(height: 1, color: Colors.white24),
-                    items: List.generate(maxDay, (index) => index + 1).map((d) {
-                      return DropdownMenuItem(value: d, child: Center(child: Text(d.toString())));
-                    }).toList(),
-                    onChanged: (v) => setState(() => _day = v!),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${_year}-${_month.toString().padLeft(2, '0')}-${_day.toString().padLeft(2, '0')}',
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel',
-                      style: TextStyle(color: Colors.white70, fontSize: 16)),
-                ),
-                ElevatedButton(
-                  onPressed: _isBeforeMin(_year, _month, _day)
-                      ? null
-                      : () {
-                          Navigator.of(context)
-                              .pop(NepaliDateTime(_year, _month, _day));
-                        },
-                  style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(100, 48), // Override global double.infinity
-                      backgroundColor: const Color(0xFF6C63FF),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                  child: const Text('Select', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      ),
-    );
-  }
-
-}

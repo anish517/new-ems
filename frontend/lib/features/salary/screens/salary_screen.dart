@@ -206,7 +206,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                     height: 250,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceDark,
+                      color: context.surface,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: _buildAllEmployeesSalaryChart(),
@@ -226,8 +226,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                         child: ListTile(
                           leading: const CircleAvatar(
                             backgroundColor: AppColors.primaryDark,
-                            child: Icon(Iconsax.money_recive,
-                                color: Colors.white, size: 18),
+                            child: Icon(Iconsax.money_recive, color: Colors.white, size: 18),
                           ),
                           title: Text(_empName(empId),
                               style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -301,6 +300,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
+              interval: _allSalaries.length <= 8 ? 1.0 : (_allSalaries.length / 8).ceilToDouble(),
               getTitlesWidget: (value, meta) {
                 final i = value.toInt();
                 if (i < 0 || i >= _allSalaries.length) return const SizedBox.shrink();
@@ -354,7 +354,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => _EmployeeSalaryDetailSheet(
@@ -441,22 +441,22 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [AppColors.surfaceDark, AppColors.bgDark]),
+                gradient: LinearGradient(
+                    colors: [context.surface, context.bg]),
                 borderRadius: BorderRadius.circular(20)),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Current Month Salary Estimate',
-                  style: TextStyle(color: Colors.white70, fontSize: 13)),
+              Text('Current Month Salary Estimate',
+                  style: TextStyle(color: context.textSecondary, fontSize: 13)),
               const SizedBox(height: 8),
               Text(
                   _fmt(_myNetSalary?['net_salary'] ??
                       _mySalary?['basic_salary']),
-                  style: const TextStyle(
-                      color: Colors.white,
+                  style: TextStyle(
+                      color: context.textPrimary,
                       fontSize: 32,
                       fontWeight: FontWeight.bold)),
-              const Divider(color: Colors.white24, height: 32),
+              Divider(color: context.border, height: 32),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 _PayslipItem('Basic', _fmt(_mySalary?['basic_salary'])),
                 _PayslipItem('Remote', _fmt(_mySalary?['remote_salary'])),
@@ -513,7 +513,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: context.surface,
       builder: (sheetCtx) => StatefulBuilder(builder: (context, setState) {
         return Padding(
           padding: EdgeInsets.only(
@@ -585,7 +585,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (sheetCtx) => _CreateSalarySheet(
@@ -662,7 +662,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
             onChanged: (v) => setState(() => _graphEmployeeId = v),
             decoration: InputDecoration(
               filled: true,
-              fillColor: AppColors.surfaceDark,
+              fillColor: context.surface,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             ),
           ),
@@ -673,7 +673,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               padding: const EdgeInsets.all(32),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: AppColors.surfaceDark,
+                color: context.surface,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Column(
@@ -691,7 +691,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               padding: const EdgeInsets.all(32),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: AppColors.surfaceDark,
+                color: context.surface,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Text('No salary transactions found for this employee.',
@@ -714,7 +714,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               height: 260,
               padding: const EdgeInsets.fromLTRB(8, 20, 24, 12),
               decoration: BoxDecoration(
-                color: AppColors.surfaceDark,
+                color: context.surface,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
               ),
@@ -726,8 +726,8 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                     show: true,
                     drawHorizontalLine: true,
                     drawVerticalLine: false,
-                    getDrawingHorizontalLine: (_) => const FlLine(
-                      color: Colors.white10,
+                    getDrawingHorizontalLine: (_) => FlLine(
+                      color: context.border,
                       strokeWidth: 1,
                     ),
                   ),
@@ -747,6 +747,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 28,
+                        interval: netSpots.length <= 6 ? 1.0 : (netSpots.length / 6).ceilToDouble(),
                         getTitlesWidget: (v, meta) {
                           final idx = v.toInt();
                           return Text(
@@ -792,7 +793,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceDark,
+                  color: context.surface,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
                 ),
@@ -1002,9 +1003,9 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: Colors.white54),
+              Icon(icon, size: 18, color: context.textSecondary),
               const SizedBox(width: 8),
-              Text(label, style: const TextStyle(color: Colors.white70)),
+              Text(label, style: TextStyle(color: context.textSecondary)),
             ],
           ),
           SizedBox(
@@ -1013,7 +1014,7 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
               controller: controller,
               keyboardType: TextInputType.number,
               textAlign: TextAlign.right,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: TextStyle(color: context.textPrimary, fontSize: 14),
               decoration: const InputDecoration(
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -1037,10 +1038,10 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
             builder: (context, setStateDialog) => AlertDialog(
                   backgroundColor: AppColors.accent,
                   title: const Text('Add Fiscal Year',
-                      style: TextStyle(color: AppColors.textPrimary)),
+                      style: TextStyle(color: Colors.white)),
                   content: TextField(
                     controller: titleController,
-                    style: const TextStyle(color: AppColors.textPrimary),
+                    style: TextStyle(color: context.textPrimary),
                     decoration: const InputDecoration(
                         hintText: 'e.g. 2082/83',
                         hintStyle: TextStyle(color: AppColors.textSecondary)),
@@ -1212,14 +1213,14 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                         '${_netSalaryInfo!['unpaid_leaves']}'),
                     _InfoRow(Iconsax.clock, 'Half Leaves',
                         '${_netSalaryInfo!['half_leaves'] ?? 0}'),
-                    const Divider(color: Colors.white24),
+                    Divider(color: context.border),
                     _buildEditableRow(Iconsax.calendar, 'Holidays', _holidaysController),
                     _buildEditableRow(Iconsax.award, 'Incentive (TDS auto-calculated)', _incentiveController, onChanged: (_) { _tdsController.clear(); _loadNetSalary(clear: false); }),
                     _buildEditableRow(Iconsax.gift, 'Bonus (TDS auto-calculated)', _bonusController, onChanged: (_) { _tdsController.clear(); _loadNetSalary(clear: false); }),
                     _buildEditableRow(Iconsax.minus, 'Tax (TDS)', _tdsController),
                     _buildEditableRow(Iconsax.minus, 'SSF Deduction', _ssfController),
                     _buildEditableRow(Iconsax.minus, 'EPF Deduction', _epfController),
-                    const Divider(color: Colors.white24),
+                    Divider(color: context.border),
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           vertical: 8.0, horizontal: 16.0),
@@ -1246,16 +1247,16 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                             child: TextFormField(
                               controller: _netSalaryController,
                               keyboardType: TextInputType.number,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white),
-                              decoration: const InputDecoration(
+                                  color: context.textPrimary),
+                              decoration: InputDecoration(
                                 prefixText: 'NPR ',
-                                prefixStyle: TextStyle(color: Colors.white70),
+                                prefixStyle: TextStyle(color: context.textSecondary),
                                 isDense: true,
-                                contentPadding: EdgeInsets.symmetric(
+                                contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 8),
-                                border: OutlineInputBorder(),
+                                border: const OutlineInputBorder(),
                               ),
                             ),
                           ),
@@ -1451,15 +1452,15 @@ class _PayslipItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(children: [
         Text(label,
-            style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            style: TextStyle(color: context.textSecondary, fontSize: 13)),
         const SizedBox(height: 8),
         Text(value,
-            style: const TextStyle(
-                color: Colors.white,
+            style: TextStyle(
+                color: context.textPrimary,
                 fontWeight: FontWeight.bold,
                 fontSize: 16)),
         Text(label,
-            style: const TextStyle(color: Colors.white60, fontSize: 12)),
+            style: TextStyle(color: context.textSecondary, fontSize: 12)),
       ]);
 }
 
@@ -1500,8 +1501,7 @@ class _TransactionTile extends StatelessWidget {
               const CircleAvatar(
                   backgroundColor: AppColors.success,
                   radius: 18,
-                  child: Icon(Iconsax.money_recive,
-                      color: Colors.white, size: 16)),
+                  child: Icon(Iconsax.money_recive, color: Colors.white, size: 16)),
               const SizedBox(width: 12),
               Expanded(
                   child: Column(
@@ -1630,24 +1630,25 @@ class _PieLegendIndicator extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: Colors.white70,
+              color: context.textSecondary,
             ),
           ),
         ),
         Text(
           'NPR ${amount.toStringAsFixed(0)}',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: context.textPrimary,
           ),
         ),
       ],
     );
   }
 }
+
 
 

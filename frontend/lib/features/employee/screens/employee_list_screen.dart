@@ -142,7 +142,7 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> with Si
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
-          backgroundColor: AppColors.surfaceDark,
+          backgroundColor: context.surface,
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
           builder: (_) => AddEmployeeSheet(onSuccess: _load),
         );
@@ -182,9 +182,16 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> with Si
             final name = '${e['user']?['first_name'] ?? ''} ';
             return Card(child: ListTile(
               onTap: () => _showEmployeeDetails(e),
-              leading: CircleAvatar(backgroundColor: AppColors.primary,
-                child: Text(name.isNotEmpty ? name[0] : '?',
-                  style: const TextStyle(color: Colors.white))),
+              leading: CircleAvatar(
+                backgroundColor: AppColors.primary,
+                backgroundImage: e['user']?['profile_picture'] != null
+                    ? NetworkImage(e['user']['profile_picture'])
+                    : null,
+                child: e['user']?['profile_picture'] == null
+                    ? Text(name.isNotEmpty ? name[0] : '?',
+                        style: const TextStyle(color: Colors.white))
+                    : null,
+              ),
               title: Row(
                 children: [
                   Text(name.trim()),
@@ -211,7 +218,7 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> with Si
                           showModalBottomSheet(
                             context: context,
                             isScrollControlled: true,
-                            backgroundColor: AppColors.surfaceDark,
+                            backgroundColor: context.surface,
                             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
                             builder: (_) => AddEmployeeSheet(onSuccess: _load, employee: e),
                           );
@@ -223,7 +230,7 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> with Si
                           showModalBottomSheet(
                             context: context,
                             isScrollControlled: true,
-                            backgroundColor: AppColors.surfaceDark,
+                            backgroundColor: context.surface,
                             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
                             builder: (_) => AddSalarySheet(employeeId: e['id'], employeeName: name.trim()),
                           );
@@ -250,3 +257,7 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> with Si
     );
   }
 }
+
+
+
+

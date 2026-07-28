@@ -28,7 +28,7 @@ class GlobalMonthYearPicker extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight.withValues(alpha: 0.1),
+        color: context.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
       ),
@@ -38,7 +38,7 @@ class GlobalMonthYearPicker extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Data Period', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text('Data Period', style: TextStyle(color: context.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
               GestureDetector(
                 onTap: () => ref.read(nepaliDateProvider.notifier).resetToCurrent(),
                 child: const Icon(Icons.restore, size: 16, color: AppColors.primary),
@@ -53,10 +53,10 @@ class GlobalMonthYearPicker extends ConsumerWidget {
                 child: DropdownButton<int>(
                   isExpanded: true,
                   value: dateState.month,
-                  dropdownColor: AppColors.surfaceDark,
+                  dropdownColor: context.surface,
                   underline: const SizedBox(),
-                  icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                  icon: Icon(Icons.arrow_drop_down, color: context.textSecondary),
+                  style: TextStyle(color: context.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
                   items: nepaliMonths.entries.map((e) {
                     return DropdownMenuItem<int>(
                       value: e.key,
@@ -74,10 +74,10 @@ class GlobalMonthYearPicker extends ConsumerWidget {
                 child: DropdownButton<int>(
                   isExpanded: true,
                   value: dateState.year,
-                  dropdownColor: AppColors.surfaceDark,
+                  dropdownColor: context.surface,
                   underline: const SizedBox(),
-                  icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                  icon: Icon(Icons.arrow_drop_down, color: context.textSecondary),
+                  style: TextStyle(color: context.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
                   items: List.generate(30, (index) => 2075 + index).map((year) {
                     return DropdownMenuItem<int>(
                       value: year,
@@ -96,3 +96,7 @@ class GlobalMonthYearPicker extends ConsumerWidget {
     );
   }
 }
+
+
+
+

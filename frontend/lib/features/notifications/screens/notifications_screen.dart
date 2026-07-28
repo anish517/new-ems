@@ -28,7 +28,7 @@ class NotificationsScreen extends ConsumerWidget {
                       return ListTile(
                         leading: CircleAvatar(
                           backgroundColor: (n['is_read'] == true)
-                              ? AppColors.cardDark
+                              ? context.card
                               : AppColors.primary,
                           child: const Icon(Icons.notifications_outlined,
                               color: Colors.white, size: 18),
@@ -45,3 +45,7 @@ class NotificationsScreen extends ConsumerWidget {
     );
   }
 }
+
+
+
+
