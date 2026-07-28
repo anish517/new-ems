@@ -15,11 +15,8 @@ class GlobalContextFilter(BaseFilterBackend):
         end_date = request.query_params.get('end_date')
         status_param = request.query_params.get('status')
         
-        # 1. Base Queryset adjustment for Soft Deletes
+        # 1. Check for Soft Deletes support
         has_soft_delete = hasattr(queryset.model, 'is_deleted')
-        if has_soft_delete and hasattr(queryset.model, 'all_objects'):
-            # Always start with all_objects so we can manually filter time-travel or archived
-            queryset = queryset.model.all_objects.all()
 
         # 2. Date Filtering
         date_field = getattr(view, 'nepali_date_filter_field', None)

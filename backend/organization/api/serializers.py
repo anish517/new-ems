@@ -13,6 +13,7 @@ from organization.models import (
     NationalIdDetail,
     OrganizationFile,
     Organization,
+    OrganizationSettings,
     Department,
     OrganizationFolder,
     Post,
@@ -187,4 +188,18 @@ class EmployeeAnalysisReportSerializer(serializers.ModelSerializer):
             "task_score",
             "attendance_score",
             "analysis_score",
+        ]
+
+
+class OrganizationSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganizationSettings
+        fields = [
+            "id",
+            "organization",
+            "office_latitude",
+            "office_longitude",
+            "allowed_attendance_radius",
+            "enable_in_office_attendance",
+            "enable_remote_attendance",
         ]

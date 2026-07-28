@@ -53,10 +53,11 @@ class Salary(SoftDeleteModel):
     def calculate_gross_salary(employee: Employee, year: int, month: int, holidays_override=None):
         organization = employee.organization
 
+        days_in_month = total_days_in_month(year, month)
         basic_salary_per_day = Salary.objects.get(
-            employee=employee).basic_salary / 30
+            employee=employee).basic_salary / days_in_month
         remote_salary_per_day = Salary.objects.get(
-            employee=employee).remote_salary / 30
+            employee=employee).remote_salary / days_in_month
 
         attendances = Attendance.get_attendance_of_selected_month(
             employee=employee, year=year, month=month)
@@ -86,20 +87,48 @@ class Salary(SoftDeleteModel):
             (paid_holidays * basic_salary_per_day)
         return round(gross_salary)
 
-    @staticmethod
-    def calculate_net_salary(employee: Employee, year: int, month: int, holidays_override=None, ssf_override=None, epf_override=None, tds_override=None):
-        gross_salary = Salary.calculate_gross_salary(
+    @classmethod
+    def calculate_net_salary(cls, employee, year, month, holidays_override=None, ssf_override=None, epf_override=None, tds_override=None, incentive_override=0, bonus_override=0):
+        gross_salary = cls.calculate_gross_salary(
             employee=employee, year=year, month=month, holidays_override=holidays_override)
         try:
             salary_obj = Salary.objects.get(employee=employee)
-            # Apply tax based on tax_rate percentage
-            tax_rate = salary_obj.tax_rate or 0
-            
+
             if tds_override is not None:
                 tds_amount = tds_override
             else:
-                tds_amount = round((gross_salary * tax_rate) / 100) if tax_rate > 0 else (salary_obj.tds or 0)
+                # Try dynamic tax bands first
+                org = employee.organization
+                marital = (getattr(employee, 'marital_status', 'single') or 'single').lower()
                 
+                annualized_salary = (gross_salary * 12)
+                
+                from salary_management.models import SalaryTaxBand, IncentiveTaxBand, BonusTaxBand, get_tax_from_bands
+                if org:
+                    bands = SalaryTaxBand.objects.filter(organization=org, marital_status=marital)
+                else:
+                    bands = SalaryTaxBand.objects.filter(marital_status=marital)
+                    
+                if bands.exists():
+                    base_tds = get_tax_from_bands(bands, annualized_salary) / 12.0
+                else:
+                    tax_rate = salary_obj.tax_rate or 0
+                    base_tds = round((gross_salary * tax_rate) / 100) if tax_rate > 0 else (salary_obj.tds or 0)
+                
+                incentive_tax = 0.0
+                if incentive_override > 0:
+                    inc_bands = IncentiveTaxBand.objects.filter(organization=org) if org else IncentiveTaxBand.objects.all()
+                    if inc_bands.exists():
+                        incentive_tax = get_tax_from_bands(inc_bands, incentive_override)
+                
+                bonus_tax = 0.0
+                if bonus_override > 0:
+                    bon_bands = BonusTaxBand.objects.filter(organization=org) if org else BonusTaxBand.objects.all()
+                    if bon_bands.exists():
+                        bonus_tax = get_tax_from_bands(bon_bands, bonus_override)
+                        
+                tds_amount = base_tds + incentive_tax + bonus_tax
+
             ssf = ssf_override if ssf_override is not None else (salary_obj.ssf or 0)
             epf = epf_override if epf_override is not None else (salary_obj.epf or 0)
             cit = salary_obj.citizen_investment_trust or 0
@@ -126,7 +155,8 @@ class SalaryTransaction(SoftDeleteModel):
         return f'{self.salary.employee.user.full_name}'
 
     manual_net_salary = models.FloatField(null=True, blank=True, verbose_name="Manually Entered Net Salary")
-    incentive = models.FloatField(default=0, null=True, blank=True, verbose_name='Incentive / Bonus')
+    incentive = models.FloatField(default=0, null=True, blank=True, verbose_name='Incentive')
+    bonus = models.FloatField(default=0, null=True, blank=True, verbose_name='Bonus')
     total_expense = models.FloatField(null=True, blank=True, verbose_name='Total Expense (Employer Cost)')
 
     stored_net_salary = models.FloatField(null=True, blank=True)
@@ -171,8 +201,10 @@ class SalaryTransaction(SoftDeleteModel):
             holidays_override=self.stored_holidays,
             ssf_override=self.transaction_ssf,
             epf_override=self.transaction_epf,
-            tds_override=self.transaction_tds)
-        return net_salary + (self.incentive or 0)
+            tds_override=self.transaction_tds,
+            incentive_override=self.incentive or 0,
+            bonus_override=self.bonus or 0)
+        return net_salary + (self.incentive or 0) + (self.bonus or 0)
 
     @property
     def net_salary(self):
@@ -259,3 +291,96 @@ class SalaryTransactionReview(models.Model):
         Salary, on_delete=models.CASCADE, null=True, blank=True)
     content = CKEditor5Field(null=True, blank=True, config_name='extends')
     created_at = models.DateField(auto_now_add=True)
+
+
+# ──────────────────────────────────────────────────────────────
+# Tax Band Models (Global Settings / Tax Management)
+# ──────────────────────────────────────────────────────────────
+
+class SalaryTaxBand(models.Model):
+    """Progressive tax bands for salary income, split by marital status."""
+    MARITAL_STATUS_CHOICES = (
+        ("single", "Single"),
+        ("married", "Married"),
+    )
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="salary_tax_bands"
+    )
+    marital_status = models.CharField(
+        max_length=10, choices=MARITAL_STATUS_CHOICES, default="single"
+    )
+    min_salary = models.FloatField(default=0)
+    max_salary = models.FloatField(null=True, blank=True, help_text="Leave blank for no upper limit")
+    tax_percentage = models.FloatField(default=0)
+    order = models.IntegerField(default=0, help_text="Lower number = first band")
+
+    class Meta:
+        ordering = ["marital_status", "order", "min_salary"]
+
+    def __str__(self):
+        upper = f"{self.max_salary}" if self.max_salary else "∞"
+        return f"{self.get_marital_status_display()} | {self.min_salary}–{upper} @ {self.tax_percentage}%"
+
+
+class IncentiveTaxBand(models.Model):
+    """Progressive tax bands for Incentive (TDS) amounts."""
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="incentive_tax_bands"
+    )
+    min_amount = models.FloatField(default=0)
+    max_amount = models.FloatField(null=True, blank=True, help_text="Leave blank for no upper limit")
+    tax_percentage = models.FloatField(default=0)
+    order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "min_amount"]
+
+    def __str__(self):
+        upper = f"{self.max_amount}" if self.max_amount else "∞"
+        return f"Incentive {self.min_amount}–{upper} @ {self.tax_percentage}%"
+
+
+class BonusTaxBand(models.Model):
+    """Progressive tax bands for Bonus (TDS) amounts."""
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="bonus_tax_bands"
+    )
+    min_amount = models.FloatField(default=0)
+    max_amount = models.FloatField(null=True, blank=True, help_text="Leave blank for no upper limit")
+    tax_percentage = models.FloatField(default=0)
+    order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "min_amount"]
+
+    def __str__(self):
+        upper = f"{self.max_amount}" if self.max_amount else "∞"
+        return f"Bonus {self.min_amount}–{upper} @ {self.tax_percentage}%"
+
+
+def get_tax_from_bands(bands, amount):
+    """
+    Given a queryset of tax band objects, calculate the progressive (marginal) tax
+    for `amount`. Bands should be ordered by their minimum thresholds in ascending order.
+    """
+    tax = 0.0
+    for band in bands:
+        min_val = getattr(band, 'min_salary', None)
+        if min_val is None:
+            min_val = getattr(band, 'min_amount', 0)
+            
+        max_val = getattr(band, 'max_salary', None)
+        if max_val is None:
+            max_val = getattr(band, 'max_amount', None)
+        
+        # If the total amount hasn't even reached this band, we skip it
+        if amount <= min_val:
+            continue
+            
+        # Calculate how much of the amount falls strictly within THIS band
+        effective_max = max_val if max_val is not None else float('inf')
+        taxable_in_band = min(amount, effective_max) - min_val
+        
+        tax += (taxable_in_band * band.tax_percentage) / 100
+        
+    return round(tax)

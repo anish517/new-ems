@@ -1,6 +1,9 @@
 from rest_framework import serializers
 
-from salary_management.models import Salary, SalaryTransaction
+from salary_management.models import (
+    Salary, SalaryTransaction,
+    SalaryTaxBand, IncentiveTaxBand, BonusTaxBand
+)
 from organization.api.serializers import EmployeeSerializer
 
 
@@ -26,13 +29,18 @@ class SalaryTransactionSerializer(serializers.ModelSerializer):
     unpaid_leaves = serializers.ReadOnlyField()
     half_leaves = serializers.ReadOnlyField()
     deduction = serializers.ReadOnlyField()
+    employee_name = serializers.CharField(source='salary.employee.user.get_full_name', read_only=True)
 
     class Meta:
         model = SalaryTransaction
-        fields = ['id', 'organization', 'salary', 'fiscal_year', 'date', 'content',
-                  'status', 'net_salary', 'gross_salary', 'incentive', 'total_expense',
-                  'holidays', 'no_of_days_present', 'paid_leaves', 'unpaid_leaves',
-                  'half_leaves', 'deduction']
+        fields = [
+            'id', 'organization', 'salary', 'employee_name', 'fiscal_year', 'date', 'content',
+            'status', 'net_salary', 'gross_salary',
+            'incentive', 'bonus', 'total_expense',
+            'holidays', 'no_of_days_present', 'paid_leaves', 'unpaid_leaves',
+            'half_leaves', 'deduction', 'manual_net_salary',
+            'transaction_ssf', 'transaction_epf', 'transaction_tds',
+        ]
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
@@ -53,3 +61,24 @@ class NetSalarySerializer(serializers.Serializer):
     tds = serializers.FloatField(required=False)
     ssf = serializers.FloatField(required=False)
     epf = serializers.FloatField(required=False)
+
+
+class SalaryTaxBandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalaryTaxBand
+        fields = ['id', 'organization', 'marital_status', 'min_salary', 'max_salary', 'tax_percentage', 'order']
+        read_only_fields = ['organization']
+
+
+class IncentiveTaxBandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IncentiveTaxBand
+        fields = ['id', 'organization', 'min_amount', 'max_amount', 'tax_percentage', 'order']
+        read_only_fields = ['organization']
+
+
+class BonusTaxBandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BonusTaxBand
+        fields = ['id', 'organization', 'min_amount', 'max_amount', 'tax_percentage', 'order']
+        read_only_fields = ['organization']

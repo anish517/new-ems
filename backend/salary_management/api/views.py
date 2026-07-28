@@ -19,9 +19,9 @@ from attendance.models import Attendance
 from calendar_app.utilities import count_holidays, count_saturdays
 from leave_management.models import LeaveRequest
 from organization.models import Employee
-from salary_management.models import Salary, SalaryTransaction
+from salary_management.models import Salary, SalaryTransaction, SalaryTaxBand, IncentiveTaxBand, BonusTaxBand, get_tax_from_bands
 
-from .serializers import SalarySerializer, SalaryTransactionSerializer, NetSalarySerializer
+from .serializers import SalarySerializer, SalaryTransactionSerializer, NetSalarySerializer, SalaryTaxBandSerializer, IncentiveTaxBandSerializer, BonusTaxBandSerializer
 
 class IsSalaryAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -143,14 +143,21 @@ class NetSalaryAPIView(generics.RetrieveAPIView):
         except ValueError:
             incentive_override = 0
 
+        try:
+            bonus_override = float(request.GET.get('bonus')) if request.GET.get('bonus') is not None else 0
+        except ValueError:
+            bonus_override = 0
+
         net_salary = Salary.calculate_net_salary(
             employee=salary.employee, year=year, month=month,
             holidays_override=holidays_override,
             ssf_override=ssf_override,
             epf_override=epf_override,
-            tds_override=tds_override)
+            tds_override=tds_override,
+            incentive_override=incentive_override,
+            bonus_override=bonus_override)
             
-        net_salary += incentive_override
+        net_salary += incentive_override + bonus_override
 
         # Calculate other details (same month as net salary)
         no_of_days_present = Attendance.get_no_of_present_days(
@@ -166,8 +173,37 @@ class NetSalaryAPIView(generics.RetrieveAPIView):
 
         gross_salary = Salary.calculate_gross_salary(
             employee=salary.employee, year=year, month=month, holidays_override=holidays_override)
-        tax_rate = salary.tax_rate or 0
-        tds_amount = tds_override if tds_override is not None else (round((gross_salary * tax_rate) / 100) if tax_rate > 0 else (salary.tds or 0))
+        if tds_override is not None:
+            tds_amount = tds_override
+        else:
+            annualized_salary = (gross_salary * 12)
+            from salary_management.models import SalaryTaxBand, IncentiveTaxBand, BonusTaxBand, get_tax_from_bands
+            marital = (getattr(salary.employee, 'marital_status', 'single') or 'single').lower()
+            org = salary.employee.organization
+            if org:
+                bands = SalaryTaxBand.objects.filter(organization=org, marital_status=marital)
+            else:
+                bands = SalaryTaxBand.objects.filter(marital_status=marital)
+            
+            if bands.exists():
+                base_tds = get_tax_from_bands(bands, annualized_salary) / 12.0
+            else:
+                tax_rate = salary.tax_rate or 0
+                base_tds = round((gross_salary * tax_rate) / 100) if tax_rate > 0 else (salary.tds or 0)
+                
+            incentive_tax = 0.0
+            if incentive_override > 0:
+                inc_bands = IncentiveTaxBand.objects.filter(organization=org) if org else IncentiveTaxBand.objects.all()
+                if inc_bands.exists():
+                    incentive_tax = get_tax_from_bands(inc_bands, incentive_override)
+            
+            bonus_tax = 0.0
+            if bonus_override > 0:
+                bon_bands = BonusTaxBand.objects.filter(organization=org) if org else BonusTaxBand.objects.all()
+                if bon_bands.exists():
+                    bonus_tax = get_tax_from_bands(bon_bands, bonus_override)
+                    
+            tds_amount = base_tds + incentive_tax + bonus_tax
         ssf = ssf_override if ssf_override is not None else (salary.ssf or 0)
         epf = epf_override if epf_override is not None else (salary.epf or 0)
 
@@ -269,7 +305,7 @@ class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
         qs = SalaryTransaction.objects.filter(organization=organization).order_by('-date')
         
         employee_id = self.request.GET.get('employee')
-        if employee_id:
+        if employee_id and employee_id != 'null':
             qs = qs.filter(salary__employee_id=employee_id)
             
         start_date_str = self.request.GET.get('start_date')
@@ -319,6 +355,12 @@ class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
         except (ValueError, TypeError):
             incentive = 0.0
 
+        bonus = request.data.get('bonus', 0)
+        try:
+            bonus = float(bonus)
+        except (ValueError, TypeError):
+            bonus = 0.0
+
         email_preference = request.data.get('email_preference', 'none')  # 'official', 'personal', 'both', 'none'
 
         try:
@@ -341,6 +383,28 @@ class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
         except ValueError:
             tds_val = None
 
+        # ── Dynamic Incentive & Bonus tax calculation ─────────────────────────
+        # Calculate additional TDS from incentive/bonus using dynamic tax bands
+        org_for_tax = organization
+        incentive_tax = 0.0
+        bonus_tax = 0.0
+        if incentive > 0:
+            incentive_bands = IncentiveTaxBand.objects.filter(organization=org_for_tax)
+            if incentive_bands.exists():
+                incentive_tax = get_tax_from_bands(incentive_bands, incentive)
+        if bonus > 0:
+            bonus_bands = BonusTaxBand.objects.filter(organization=org_for_tax)
+            if bonus_bands.exists():
+                bonus_tax = get_tax_from_bands(bonus_bands, bonus)
+
+        # Add incentive_tax + bonus_tax to the transaction TDS
+        if tds_val is None:
+            # Will be calculated in model, but pre-add extra taxes
+            extra_tds = incentive_tax + bonus_tax
+            if extra_tds > 0:
+                # We store this addition; the base salary tds is auto-calculated in model
+                tds_val = extra_tds  # Will be combined with salary-band TDS in calc_net_salary
+
         st = SalaryTransaction.objects.create(
             organization=organization,
             salary=salary,
@@ -350,6 +414,7 @@ class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
             status=status_val,
             manual_net_salary=manual_net,
             incentive=incentive,
+            bonus=bonus,
             stored_holidays=holidays_val,
             transaction_ssf=ssf_val,
             transaction_epf=epf_val,
@@ -374,22 +439,41 @@ class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
 
                 tax_rate = salary.tax_rate or 0
                 gross = st.gross_salary
+                incentive_amt = st.incentive or 0
+                bonus_amt = st.bonus or 0
                 tds_amount = st.transaction_tds if st.transaction_tds is not None else (round((gross * tax_rate) / 100) if tax_rate > 0 else (salary.tds or 0))
                 ssf = st.transaction_ssf if st.transaction_ssf is not None else (salary.ssf or 0)
                 epf = st.transaction_epf if st.transaction_epf is not None else (salary.epf or 0)
+
+                # Separate incentive & bonus taxes for display
+                incentive_tax_display = 0.0
+                bonus_tax_display = 0.0
+                if incentive_amt > 0:
+                    inc_bands = IncentiveTaxBand.objects.filter(organization=st.organization)
+                    if inc_bands.exists():
+                        incentive_tax_display = get_tax_from_bands(inc_bands, incentive_amt)
+                if bonus_amt > 0:
+                    bon_bands = BonusTaxBand.objects.filter(organization=st.organization)
+                    if bon_bands.exists():
+                        bonus_tax_display = get_tax_from_bands(bon_bands, bonus_amt)
+
+                salary_tds = tds_amount - incentive_tax_display - bonus_tax_display
                 total_deductions = tds_amount + ssf + epf
 
                 subject = f'Salary Slip — {month_name} {date_obj.year} | EMS'
                 message_text = (
                     f'Dear {employee_name},\n\n'
                     f'Your salary for {month_name} {date_obj.year} has been processed.\n'
-                    f'  Gross Salary    : NPR {gross:,.0f}\n'
-                    f'  Incentive       : NPR {incentive:,.0f}\n'
-                    f'  TDS ({tax_rate}%)     : NPR {tds_amount:,.0f}\n'
-                    f'  SSF             : NPR {ssf:,.0f}\n'
-                    f'  EPF             : NPR {epf:,.0f}\n'
-                    f'  Total Deductions: NPR {total_deductions:,.0f}\n'
-                    f'  NET SALARY PAID : NPR {st.net_salary:,.0f}\n\n'
+                    f'  Gross Salary       : NPR {gross:,.0f}\n'
+                    f'  Incentive          : NPR {incentive_amt:,.0f}\n'
+                    f'  Bonus              : NPR {bonus_amt:,.0f}\n'
+                    f'  Salary TDS         : NPR {max(salary_tds, 0):,.0f}\n'
+                    f'  Incentive TDS      : NPR {incentive_tax_display:,.0f}\n'
+                    f'  Bonus TDS          : NPR {bonus_tax_display:,.0f}\n'
+                    f'  SSF                : NPR {ssf:,.0f}\n'
+                    f'  EPF                : NPR {epf:,.0f}\n'
+                    f'  Total Deductions   : NPR {total_deductions:,.0f}\n'
+                    f'  NET SALARY PAID    : NPR {st.net_salary:,.0f}\n\n'
                     f'Thank you,\nEMS HR Team'
                 )
 
@@ -423,14 +507,17 @@ th{{background:#f1f5f9;color:#64748b;font-weight:600;font-size:12px;text-transfo
       <thead><tr><th colspan='2'>Earnings</th></tr></thead>
       <tbody>
         <tr><td>Basic (Gross) Salary</td><td class='amt'>NPR {gross:,.0f}</td></tr>
-        <tr><td>Performance Incentive</td><td class='amt'>NPR {incentive:,.0f}</td></tr>
-        <tr class='tr-bold'><td>Total Earnings</td><td class='amt'>NPR {gross + incentive:,.0f}</td></tr>
+        <tr><td>Performance Incentive</td><td class='amt'>NPR {incentive_amt:,.0f}</td></tr>
+        <tr><td>Bonus</td><td class='amt'>NPR {bonus_amt:,.0f}</td></tr>
+        <tr class='tr-bold'><td>Total Earnings</td><td class='amt'>NPR {gross + incentive_amt + bonus_amt:,.0f}</td></tr>
       </tbody>
     </table>
     <table>
       <thead><tr><th colspan='2'>Deductions</th></tr></thead>
       <tbody>
-        <tr><td>TDS ({tax_rate}%)</td><td class='amt ded'>- NPR {tds_amount:,.0f}</td></tr>
+        <tr><td>Salary TDS</td><td class='amt ded'>- NPR {max(salary_tds, 0):,.0f}</td></tr>
+        <tr><td>Incentive TDS</td><td class='amt ded'>- NPR {incentive_tax_display:,.0f}</td></tr>
+        <tr><td>Bonus TDS</td><td class='amt ded'>- NPR {bonus_tax_display:,.0f}</td></tr>
         <tr><td>SSF</td><td class='amt ded'>- NPR {ssf:,.0f}</td></tr>
         <tr><td>EPF</td><td class='amt ded'>- NPR {epf:,.0f}</td></tr>
         <tr class='tr-bold'><td>Total Deductions</td><td class='amt ded'>- NPR {total_deductions:,.0f}</td></tr>
@@ -467,56 +554,227 @@ class GenerateSalaryReportAPIView(generics.GenericAPIView):
     permission_classes = [IsSalaryAdmin]
 
     def get(self, request):
-
         year_str = request.GET.get('year')
         month_str = request.GET.get('month')
-        if not year_str or not month_str:
-            return Response({'error': 'Year and month query parameters are required.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-        year = int(year_str)
-        month = int(month_str)
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
+        employee_id = request.GET.get('employee')
 
         try:
-            organization = request.user.employee.organization
+            organization = _get_org(request.user)
         except Exception:
             organization = None
 
-        if organization:
-            salaries = Salary.objects.filter(organization=organization)
-        else:
-            salaries = Salary.objects.all()
-
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = f'attachment; filename="salary_report_{year}_{month}.csv"'
 
-        writer = csv.writer(response)
-        writer.writerow(['Employee Name', 'Email', 'Basic Salary', 'Remote Salary', 'Days Present', 'Paid Leaves', 'Unpaid Leaves', 'Half Leaves', 'Net Salary'])
+        if start_date_str and end_date_str:
+            # New Advanced Report (Date Range filtered by issued transactions)
+            try:
+                sy, sm, sd = map(int, start_date_str.split('-'))
+                ey, em, ed = map(int, end_date_str.split('-'))
+                start_date = nepali_datetime.date(sy, sm, sd)
+                end_date = nepali_datetime.date(ey, em, ed)
+            except Exception:
+                return Response({'error': 'Invalid date format'}, status=status.HTTP_400_BAD_REQUEST)
 
-        for salary in salaries:
-            # Check if a manual/issued salary transaction exists for this month
-            emp_transactions = SalaryTransaction.objects.filter(salary=salary)
-            transaction = next((t for t in emp_transactions if getattr(t.date, 'year', None) == year and getattr(t.date, 'month', None) == month), None)
+            response['Content-Disposition'] = f'attachment; filename="salary_report_{start_date_str}_to_{end_date_str}.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Date', 'Employee Name', 'Email', 'Basic Salary', 'Remote Salary', 'Days Present',
+                             'Paid Leaves', 'Unpaid Leaves', 'Half Leaves',
+                             'Incentive', 'Bonus', 'Salary TDS', 'Incentive TDS', 'Bonus TDS', 'Total TDS', 'Net Salary'])
             
-            if transaction:
-                net_salary = transaction.net_salary
-            else:
-                net_salary = Salary.calculate_net_salary(employee=salary.employee, year=year, month=month)
+            qs = SalaryTransaction.objects.filter(date__gte=start_date, date__lte=end_date)
+            if organization:
+                qs = qs.filter(organization=organization)
+            if employee_id and employee_id != 'null':
+                qs = qs.filter(salary__employee_id=employee_id)
                 
-            no_of_days_present = Attendance.get_no_of_present_days(salary.employee, year, month)
-            paid_leaves = LeaveRequest.get_total_paid_leaves(salary.employee, year, month)
-            unpaid_leaves = LeaveRequest.get_total_unpaid_leaves(salary.employee, year, month)
-            half_leaves = LeaveRequest.get_total_half_leaves(salary.employee, year, month)
-            
-            writer.writerow([
-                str(salary.employee),
-                salary.employee.user.email,
-                salary.basic_salary,
-                salary.remote_salary,
-                no_of_days_present,
-                paid_leaves,
-                unpaid_leaves,
-                half_leaves,
-                net_salary
-            ])
+            for transaction in qs.order_by('-date'):
+                salary = transaction.salary
+                year = transaction.date.year
+                month = transaction.date.month
+                
+                no_of_days_present = Attendance.get_no_of_present_days(salary.employee, year, month)
+                paid_leaves = LeaveRequest.get_total_paid_leaves(salary.employee, year, month)
+                unpaid_leaves = LeaveRequest.get_total_unpaid_leaves(salary.employee, year, month)
+                half_leaves = LeaveRequest.get_total_half_leaves(salary.employee, year, month)
+                
+                incentive_amt = transaction.incentive or 0
+                bonus_amt = transaction.bonus or 0
+                total_tds = transaction.transaction_tds or 0
 
-        return response
+                incentive_tax = 0.0
+                bonus_tax = 0.0
+                if incentive_amt > 0 and organization:
+                    inc_bands = IncentiveTaxBand.objects.filter(organization=organization)
+                    if inc_bands.exists():
+                        incentive_tax = get_tax_from_bands(inc_bands, incentive_amt)
+                if bonus_amt > 0 and organization:
+                    bon_bands = BonusTaxBand.objects.filter(organization=organization)
+                    if bon_bands.exists():
+                        bonus_tax = get_tax_from_bands(bon_bands, bonus_amt)
+                        
+                salary_tds = total_tds - incentive_tax - bonus_tax
+                
+                writer.writerow([
+                    str(transaction.date),
+                    str(salary.employee.user.full_name),
+                    salary.employee.user.email,
+                    salary.basic_salary,
+                    salary.remote_salary,
+                    no_of_days_present,
+                    paid_leaves,
+                    unpaid_leaves,
+                    half_leaves,
+                    incentive_amt,
+                    bonus_amt,
+                    salary_tds,
+                    incentive_tax,
+                    bonus_tax,
+                    total_tds,
+                    transaction.net_salary
+                ])
+            return response
+
+        elif year_str and month_str:
+            # Legacy Monthly Report (Projection)
+            year = int(year_str)
+            month = int(month_str)
+
+            if organization:
+                salaries = Salary.objects.filter(organization=organization)
+            else:
+                salaries = Salary.objects.all()
+
+            response['Content-Disposition'] = f'attachment; filename="salary_report_{year}_{month}.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Employee Name', 'Email', 'Basic Salary', 'Remote Salary', 'Days Present',
+                             'Paid Leaves', 'Unpaid Leaves', 'Half Leaves',
+                             'Incentive', 'Bonus', 'Total TDS', 'Net Salary'])
+
+            for salary in salaries:
+                emp_transactions = SalaryTransaction.objects.filter(salary=salary)
+                transaction = next((t for t in emp_transactions if getattr(t.date, 'year', None) == year and getattr(t.date, 'month', None) == month), None)
+
+                if transaction:
+                    net_salary = transaction.net_salary
+                    incentive_csv = transaction.incentive or 0
+                    bonus_csv = transaction.bonus or 0
+                    total_tds_csv = transaction.transaction_tds or 0
+                else:
+                    net_salary = Salary.calculate_net_salary(employee=salary.employee, year=year, month=month)
+                    incentive_csv = 0
+                    bonus_csv = 0
+                    total_tds_csv = round((salary.basic_salary * (salary.tax_rate or 0)) / 100) if (salary.tax_rate or 0) > 0 else (salary.tds or 0)
+
+                no_of_days_present = Attendance.get_no_of_present_days(salary.employee, year, month)
+                paid_leaves = LeaveRequest.get_total_paid_leaves(salary.employee, year, month)
+                unpaid_leaves = LeaveRequest.get_total_unpaid_leaves(salary.employee, year, month)
+                half_leaves = LeaveRequest.get_total_half_leaves(salary.employee, year, month)
+
+                writer.writerow([
+                    str(salary.employee),
+                    salary.employee.user.email,
+                    salary.basic_salary,
+                    salary.remote_salary,
+                    no_of_days_present,
+                    paid_leaves,
+                    unpaid_leaves,
+                    half_leaves,
+                    incentive_csv,
+                    bonus_csv,
+                    total_tds_csv,
+                    net_salary
+                ])
+
+            return response
+            
+        else:
+            return Response({'error': 'Either year/month or start_date/end_date query parameters are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ──────────────────────────────────────────────────────────────
+# Tax Band CRUD Views
+# ──────────────────────────────────────────────────────────────
+
+class SalaryTaxBandListCreateView(generics.ListCreateAPIView):
+    serializer_class = SalaryTaxBandSerializer
+    permission_classes = [IsAuthenticated, IsSalaryAdmin]
+    nepali_date_filter_field = False
+
+    def get_queryset(self):
+        user = self.request.user
+        org = user.organization.first() if user.organization.exists() else None
+        if not org:
+            return SalaryTaxBand.objects.none()
+        marital = self.request.GET.get('marital_status')
+        qs = SalaryTaxBand.objects.filter(organization=org)
+        if marital:
+            qs = qs.filter(marital_status=marital)
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        org = user.organization.first() if user.organization.exists() else None
+        serializer.save(organization=org)
+
+
+class SalaryTaxBandDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = SalaryTaxBandSerializer
+    permission_classes = [IsAuthenticated, IsSalaryAdmin]
+    nepali_date_filter_field = False
+
+    def get_queryset(self):
+        user = self.request.user
+        org = user.organization.first() if user.organization.exists() else None
+        return SalaryTaxBand.objects.filter(organization=org)
+
+
+class IncentiveTaxBandListCreateView(generics.ListCreateAPIView):
+    serializer_class = IncentiveTaxBandSerializer
+    permission_classes = [IsAuthenticated, IsSalaryAdmin]
+    nepali_date_filter_field = False
+
+    def get_queryset(self):
+        user = self.request.user
+        org = user.organization.first() if user.organization.exists() else None
+        return IncentiveTaxBand.objects.filter(organization=org) if org else IncentiveTaxBand.objects.none()
+
+    def perform_create(self, serializer):
+        org = self.request.user.organization.first()
+        serializer.save(organization=org)
+
+
+class IncentiveTaxBandDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = IncentiveTaxBandSerializer
+    permission_classes = [IsAuthenticated, IsSalaryAdmin]
+    nepali_date_filter_field = False
+
+    def get_queryset(self):
+        org = self.request.user.organization.first()
+        return IncentiveTaxBand.objects.filter(organization=org)
+
+
+class BonusTaxBandListCreateView(generics.ListCreateAPIView):
+    serializer_class = BonusTaxBandSerializer
+    permission_classes = [IsAuthenticated, IsSalaryAdmin]
+    nepali_date_filter_field = False
+
+    def get_queryset(self):
+        user = self.request.user
+        org = user.organization.first() if user.organization.exists() else None
+        return BonusTaxBand.objects.filter(organization=org) if org else BonusTaxBand.objects.none()
+
+    def perform_create(self, serializer):
+        org = self.request.user.organization.first()
+        serializer.save(organization=org)
+
+
+class BonusTaxBandDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = BonusTaxBandSerializer
+    permission_classes = [IsAuthenticated, IsSalaryAdmin]
+    nepali_date_filter_field = False
+
+    def get_queryset(self):
+        org = self.request.user.organization.first()
+        return BonusTaxBand.objects.filter(organization=org)

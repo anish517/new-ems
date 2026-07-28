@@ -194,8 +194,16 @@ class Employee(SoftDeleteModel):
     official_email = models.EmailField(max_length=255, null=False, blank=False)
     personal_email = models.EmailField(max_length=255, null=False, blank=False)
     is_active = models.BooleanField(default=True, blank=False)
+    MARITAL_STATUS_CHOICES = (
+        ("single", "Single"),
+        ("married", "Married"),
+    )
+
     employee_type = models.CharField(
         max_length=255, null=True, choices=EMPLOYEE_TYPES, default="full_time"
+    )
+    marital_status = models.CharField(
+        max_length=10, choices=MARITAL_STATUS_CHOICES, default="single", null=True, blank=True
     )
 
     class Meta:
@@ -434,3 +442,21 @@ class OrganizationFile(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class OrganizationSettings(models.Model):
+    """Centralized settings for each organization — geolocation, attendance rules."""
+    organization = models.OneToOneField(
+        Organization, on_delete=models.CASCADE, related_name="settings"
+    )
+    # Office geolocation
+    office_latitude = models.FloatField(null=True, blank=True)
+    office_longitude = models.FloatField(null=True, blank=True)
+    allowed_attendance_radius = models.IntegerField(default=100, help_text="Radius in meters")
+
+    # Attendance toggles
+    enable_in_office_attendance = models.BooleanField(default=True)
+    enable_remote_attendance = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Settings for {self.organization.name}"
