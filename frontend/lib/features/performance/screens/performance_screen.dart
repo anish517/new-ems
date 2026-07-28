@@ -126,7 +126,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   void _showCreateReview(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: ctx.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         builder: (_) => _CreateReviewSheet(onSuccess: _loadAll, categories: _categories),
@@ -135,7 +135,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   void _showManageCategories(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: ctx.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         builder: (_) => _ManageCategoriesSheet(categories: _categories, onUpdate: _loadAll),
@@ -227,7 +227,7 @@ class _ReviewCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.surfaceDark.withValues(alpha: 0.5),
+                color: context.surface.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -290,7 +290,7 @@ class _ReviewCard extends StatelessWidget {
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: ctx.surface,
       builder: (sheetCtx) => StatefulBuilder(builder: (context, setState) {
         return Padding(
           padding: EdgeInsets.only(
@@ -528,3 +528,8 @@ class _ManageCategoriesSheetState extends State<_ManageCategoriesSheet> {
     );
   }
 }
+
+
+
+
+

@@ -45,3 +45,7 @@ class UserProfile {
   bool get isEmployee   => role == 'employee';
   bool get canManage    => isOrgAdmin || isSuperAdmin || isHr;
 }
+
+
+
+

@@ -12,6 +12,7 @@ import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../salary/screens/salary_screen.dart';
+import '../../../shared/widgets/nepali_date_picker.dart';
 
 class AccountsScreen extends ConsumerStatefulWidget {
   const AccountsScreen({super.key});
@@ -39,13 +40,11 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: context.bg,
       appBar: AppBar(
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: context.surface,
         elevation: 0,
-        title: const Text('Accounts',
-            style: TextStyle(
-                color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+        title: Text('Accounts', style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.bold)),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -241,7 +240,7 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab>
       child: Column(
         children: [
           Container(
-            color: AppColors.surfaceDark,
+            color: context.surface,
             child: const TabBar(
               indicatorColor: Colors.green,
               labelColor: Colors.green,
@@ -283,7 +282,7 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab>
     String marital = 'single',
   }) {
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: context.bg,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addBand(type, marital: marital),
         backgroundColor: AppColors.primary,
@@ -303,7 +302,7 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab>
                 final max = b[amountKey2];
                 final pct = b['tax_percentage'] ?? 0;
                 return Card(
-                  color: AppColors.surfaceDark,
+                  color: context.surface,
                   margin: const EdgeInsets.only(bottom: 10),
                   child: ListTile(
                     leading: CircleAvatar(
@@ -314,7 +313,7 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab>
                     ),
                     title: Text(
                       'NPR ${_fmt(min)} – ${max == null ? '∞' : 'NPR ${_fmt(max)}'}',
-                      style: const TextStyle(color: AppColors.textPrimary),
+                      style: TextStyle(color: context.textPrimary),
                     ),
                     subtitle: Text('Tax: $pct%',
                         style: const TextStyle(color: AppColors.textSecondary)),
@@ -368,7 +367,7 @@ class _TaxBandDialogState extends State<_TaxBandDialog> {
       backgroundColor: const Color(0xFF1E1E2E),
       title: Text(
           'Add ${widget.type[0].toUpperCase()}${widget.type.substring(1)} Tax Band',
-          style: const TextStyle(color: Colors.white)),
+          style: TextStyle(color: context.textPrimary)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -383,7 +382,7 @@ class _TaxBandDialogState extends State<_TaxBandDialog> {
         TextButton(
             onPressed: () => Navigator.pop(context),
             child:
-                const Text('Cancel', style: TextStyle(color: Colors.white54))),
+                Text('Cancel', style: TextStyle(color: context.textSecondary))),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
           onPressed: () {
@@ -409,12 +408,11 @@ class _TaxBandDialogState extends State<_TaxBandDialog> {
     return TextField(
       controller: c,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: context.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.white54),
-        enabledBorder: const OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.white24)),
+        labelStyle: TextStyle(color: context.textSecondary),
+        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: context.border)),
         focusedBorder: const OutlineInputBorder(
             borderSide: BorderSide(color: AppColors.primary)),
       ),
@@ -571,8 +569,7 @@ class _GlobalSettingsTabState extends ConsumerState<_GlobalSettingsTab> {
         Icon(icon, color: AppColors.primary, size: 20),
         const SizedBox(width: 8),
         Text(title,
-            style: const TextStyle(
-                color: AppColors.textPrimary,
+            style: TextStyle(color: context.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.bold)),
       ],
@@ -586,14 +583,14 @@ class _GlobalSettingsTabState extends ConsumerState<_GlobalSettingsTab> {
       keyboardType: isInt
           ? TextInputType.number
           : const TextInputType.numberWithOptions(decimal: true, signed: true),
-      style: const TextStyle(color: AppColors.textPrimary),
+      style: TextStyle(color: context.textPrimary),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         labelStyle: const TextStyle(color: AppColors.textSecondary),
         hintStyle: const TextStyle(color: AppColors.textSecondary),
         filled: true,
-        fillColor: AppColors.surfaceDark,
+        fillColor: context.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide.none,
@@ -613,12 +610,12 @@ class _GlobalSettingsTabState extends ConsumerState<_GlobalSettingsTab> {
       required ValueChanged<bool> onChanged}) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: context.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: SwitchListTile(
         title:
-            Text(title, style: const TextStyle(color: AppColors.textPrimary)),
+            Text(title, style: TextStyle(color: context.textPrimary)),
         subtitle: Text(subtitle,
             style: const TextStyle(color: AppColors.textSecondary)),
         value: value,
@@ -768,7 +765,7 @@ class _ReportsTabState extends State<_ReportsTab> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.surfaceDark,
+              color: context.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Wrap(
@@ -779,31 +776,93 @@ class _ReportsTabState extends State<_ReportsTab> {
                   width: 200,
                   child: TextField(
                     controller: _startDateController,
-                    decoration: const InputDecoration(labelText: 'Start Date (YYYY-MM-DD)', filled: true),
+                    readOnly: true,
+                    onTap: () async {
+                      final now = NepaliDateTime.now();
+                      NepaliDateTime? initial;
+                      try {
+                        if (_startDateController.text.isNotEmpty) {
+                          initial = NepaliDateTime.parse(_startDateController.text);
+                        }
+                      } catch (e) {}
+
+                      final NepaliDateTime? start = await showDialog<NepaliDateTime>(
+                        context: context,
+                        builder: (ctx) => NepaliDatePickerDialog(
+                          title: 'Select Start Date',
+                          initial: initial ?? now,
+                        ),
+                      );
+                      if (start != null) {
+                        setState(() {
+                          _startDateController.text = start.toString().substring(0, 10);
+                        });
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Start Date (YYYY-MM-DD)', 
+                      filled: true,
+                      suffixIcon: Icon(Icons.calendar_month),
+                    ),
                   ),
                 ),
                 SizedBox(
                   width: 200,
                   child: TextField(
                     controller: _endDateController,
-                    decoration: const InputDecoration(labelText: 'End Date (YYYY-MM-DD)', filled: true),
+                    readOnly: true,
+                    onTap: () async {
+                      final now = NepaliDateTime.now();
+                      NepaliDateTime? initial;
+                      try {
+                        if (_endDateController.text.isNotEmpty) {
+                          initial = NepaliDateTime.parse(_endDateController.text);
+                        }
+                      } catch (e) {}
+                      
+                      NepaliDateTime? minDate;
+                      try {
+                        if (_startDateController.text.isNotEmpty) {
+                          minDate = NepaliDateTime.parse(_startDateController.text);
+                        }
+                      } catch (e) {}
+
+                      final NepaliDateTime? end = await showDialog<NepaliDateTime>(
+                        context: context,
+                        builder: (ctx) => NepaliDatePickerDialog(
+                          title: 'Select End Date',
+                          initial: initial ?? now,
+                          minDate: minDate,
+                        ),
+                      );
+                      if (end != null) {
+                        setState(() {
+                          _endDateController.text = end.toString().substring(0, 10);
+                        });
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'End Date (YYYY-MM-DD)', 
+                      filled: true,
+                      suffixIcon: Icon(Icons.calendar_month),
+                    ),
                   ),
                 ),
                 SizedBox(
                   width: 250,
                   child: DropdownButtonFormField<String?>(
                     value: _selectedEmployee,
-                    dropdownColor: AppColors.surfaceDark,
-                    style: const TextStyle(color: Colors.white),
+                    dropdownColor: context.surface,
+                    style: TextStyle(color: context.textPrimary),
                     decoration: const InputDecoration(labelText: 'Employee', filled: true),
                     items: [
-                      const DropdownMenuItem(value: null, child: Text('All Members', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: null, child: Text('All Members', style: TextStyle(color: context.textPrimary))),
                       ..._employees.map((e) {
                         final u = e['user'] ?? {};
                         final name = '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}'.trim();
                         return DropdownMenuItem(
                           value: e['id'].toString(), 
-                          child: Text(name.isEmpty ? 'Emp #${e['id']}' : name, style: const TextStyle(color: Colors.white))
+                          child: Text(name.isEmpty ? 'Emp #${e['id']}' : name, style: TextStyle(color: context.textPrimary))
                         );
                       }),
                     ],
@@ -842,20 +901,20 @@ class _ReportsTabState extends State<_ReportsTab> {
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: AppColors.surfaceDark,
+                color: context.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: _loading 
                 ? const Center(child: CircularProgressIndicator())
                 : _transactions.isEmpty
-                    ? const Center(child: Text('No salary transactions found for the selected criteria.', style: TextStyle(color: Colors.white54)))
+                    ? Center(child: Text('No salary transactions found for the selected criteria.', style: TextStyle(color: context.textSecondary)))
                     : SingleChildScrollView(
                         scrollDirection: Axis.vertical,
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: DataTable(
-                            headingTextStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                            dataTextStyle: const TextStyle(color: Colors.white70),
+                            headingTextStyle: TextStyle(fontWeight: FontWeight.bold, color: context.textPrimary),
+                            dataTextStyle: TextStyle(color: context.textSecondary),
                             columns: const [
                               DataColumn(label: Text('Date')),
                               DataColumn(label: Text('Employee')),
@@ -886,3 +945,11 @@ class _ReportsTabState extends State<_ReportsTab> {
     );
   }
 }
+
+
+
+
+
+
+
+

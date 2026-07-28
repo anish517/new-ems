@@ -16,23 +16,33 @@ import '../../../core/providers/date_provider.dart';
 
 // ─── Date helper ─────────────────────────────────────────────────────────────
 String _formatDate(String? raw, {String? fallback}) {
-  DateTime? parseDate(String? s) {
+  NepaliDateTime? parseDate(String? s) {
     if (s == null || s.isEmpty) return null;
     try {
-      if (s.contains('T')) return DateTime.parse(s);
-      return NepaliDateTime.parse(s).toDateTime();
+      if (s.contains('T')) return DateTime.parse(s).toNepaliDateTime();
+      return NepaliDateTime.parse(s);
     } catch (_) {
       try {
-        return DateTime.parse(s);
+        return DateTime.parse(s).toNepaliDateTime();
       } catch (_) {
         return null;
       }
     }
   }
 
-  final date = parseDate(raw) ?? parseDate(fallback);
-  if (date != null) return DateFormat('dd MMM yyyy').format(date);
-  return DateFormat('dd MMM yyyy').format(DateTime.now());
+  final dt = parseDate(raw);
+  if (dt == null) return fallback ?? 'Unknown date';
+  return NepaliDateFormat('dd MMM yyyy').format(dt);
+}
+
+String _formatRemoteDate(String? isoString) {
+  if (isoString == null) return 'N/A';
+  try {
+    final nd = DateTime.parse(isoString).toNepaliDateTime();
+    return '${nd.year}-${nd.month.toString().padLeft(2, '0')}-${nd.day.toString().padLeft(2, '0')}';
+  } catch (_) {
+    return isoString.split('T')[0];
+  }
 }
 
 class AttendanceScreen extends ConsumerStatefulWidget {
@@ -751,7 +761,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.surfaceDark,
+                color: context.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(children: [
@@ -881,7 +891,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 child: _currentPosition == null
                     ? Container(
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceDark,
+                          color: context.surface,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Center(
@@ -1028,9 +1038,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       if (inLat == null && outLat == null) {
                         return Container(
                           decoration: BoxDecoration(
-                            color: AppColors.borderDark.withValues(alpha: 0.1),
+                            color: context.border.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.borderDark),
+                            border: Border.all(color: context.border),
                           ),
                           child: const Center(
                               child: Text(
@@ -1143,7 +1153,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(req['employee_name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                Text('Requested on: ${req['created_at'].toString().split('T')[0]}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                Text('Requested on: ${_formatRemoteDate(req['created_at']?.toString())}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                               ],
                             ),
                             const SizedBox(height: 8),
@@ -1380,3 +1390,7 @@ class _StatBox extends StatelessWidget {
         ]),
       );
 }
+
+
+
+
