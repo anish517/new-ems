@@ -5,12 +5,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:nepali_utils/nepali_utils.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../salary/screens/salary_screen.dart';
 import '../../../shared/widgets/nepali_date_picker.dart';
 
@@ -24,11 +25,14 @@ class AccountsScreen extends ConsumerStatefulWidget {
 class _AccountsScreenState extends ConsumerState<AccountsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    // Read role before first frame so tab count is correct
+    _isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
+    _tabController = TabController(length: _isAdmin ? 4 : 1, vsync: this);
   }
 
   @override
@@ -44,34 +48,42 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen>
       appBar: AppBar(
         backgroundColor: context.surface,
         elevation: 0,
-        title: Text('Accounts', style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.bold)),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          indicatorColor: AppColors.primary,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
-          tabs: const [
-            Tab(icon: Icon(Iconsax.money_send), text: 'Payroll'),
-            Tab(icon: Icon(Iconsax.receipt), text: 'Tax Bands'),
-            Tab(icon: Icon(Iconsax.setting_2), text: 'Global Settings'),
-            Tab(icon: Icon(Iconsax.chart), text: 'Reports'),
-          ],
+        title: Text(
+          _isAdmin ? 'Accounts' : 'Payroll',
+          style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.bold),
         ),
+        bottom: _isAdmin
+            ? TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                indicatorColor: AppColors.primary,
+                labelColor: AppColors.primary,
+                unselectedLabelColor: AppColors.textSecondary,
+                tabs: const [
+                  Tab(icon: Icon(Iconsax.money_send), text: 'Payroll'),
+                  Tab(icon: Icon(Iconsax.receipt), text: 'Tax Bands'),
+                  Tab(icon: Icon(Iconsax.setting_2), text: 'Global Settings'),
+                  Tab(icon: Icon(Iconsax.chart), text: 'Reports'),
+                ],
+              )
+            : null,
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          // Tab 1: Payroll — embed existing SalaryScreen
-          SalaryScreen(),
-          // Tab 2: Tax Band Management
-          _TaxManagementTab(),
-          // Tab 3: Global Settings (Geolocation, Attendance)
-          _GlobalSettingsTab(),
-          // Tab 4: Reports placeholder
-          _ReportsTab(),
-        ],
-      ),
+      body: _isAdmin
+          ? TabBarView(
+              controller: _tabController,
+              children: const [
+                // Tab 1: Payroll — embed existing SalaryScreen
+                SalaryScreen(),
+                // Tab 2: Tax Band Management
+                _TaxManagementTab(),
+                // Tab 3: Global Settings (Geolocation, Attendance)
+                _GlobalSettingsTab(),
+                // Tab 4: Reports
+                _ReportsTab(),
+              ],
+            )
+          // Employee: directly shows Payroll (no tab bar)
+          : const SalaryScreen(),
     );
   }
 }
@@ -286,6 +298,7 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab>
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addBand(type, marital: marital),
         backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: Text('Add $label Band'),
       ),

@@ -71,34 +71,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
                   // Logo / Brand
                   Center(
-                    child: Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.primary, AppColors.accent],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      height: 80,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppColors.primary, AppColors.accent],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        borderRadius: BorderRadius.circular(20),
+                        child: const Icon(Icons.business_center_rounded,
+                            color: Colors.white, size: 36),
                       ),
-                      child: const Icon(Icons.business_center_rounded,
-                          color: Colors.white, size: 36),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Center(
-                    child: Text('EMS',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1,
-                        )),
-                  ),
-                  const Center(
-                    child: Text('Employee Management System',
-                        style: TextStyle(
-                            fontSize: 14, color: AppColors.textSecondary)),
                   ),
                   const SizedBox(height: 48),
 

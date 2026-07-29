@@ -134,6 +134,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) {

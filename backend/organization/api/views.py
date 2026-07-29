@@ -11,10 +11,11 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action
 from organization.api.serializers import (BankDetailSerializer, DocumentSerializer, EmployeeAnalysisReportSerializer, EmployeeSerializer,
                                           NationalIDDetailSerializer, OrganizationFileSerializer, AddressSerializer, QualificationSerializer,
-                                          DepartmentSerializer, OrganizationSettingsSerializer)
+                                          DepartmentSerializer, OrganizationSettingsSerializer, EmployeeProfileChangeRequestSerializer)
 from organization.models import (
     Address, BankDetail, Department, Document, Employee, EmployeeAnalysisReport,
-    OrganizationFile, NationalIdDetail, Qualification, OrganizationSettings)
+    OrganizationFile, NationalIdDetail, Qualification, OrganizationSettings,
+    EmployeeProfileChangeRequest)
 
 
 class DepartmentRetrieveUpdateDeleteAPIView(RetrieveUpdateDestroyAPIView):
@@ -331,3 +332,96 @@ class OrganizationSettingsView(RetrieveUpdateDestroyAPIView):
             return Response({"detail": "No organization found."}, status=404)
         settings, _ = OrganizationSettings.objects.get_or_create(organization=org)
         return settings
+
+
+# ─── Employee Profile Change Requests ──────────────────────────────────────
+
+class ProfileChangeRequestListCreateAPIView(ListCreateAPIView):
+    """
+    GET  — Employee sees own requests; admin sees all.
+    POST — Employee submits a change request for phone_no / personal_email / emergency_phone_number.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = EmployeeProfileChangeRequestSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        is_admin = user.organization.exists() or user.is_superuser
+        if is_admin:
+            status_filter = self.request.query_params.get('status')
+            qs = EmployeeProfileChangeRequest.objects.select_related('employee__user')
+            if status_filter:
+                qs = qs.filter(status=status_filter)
+            return qs
+        try:
+            employee = Employee.objects.get(user=user)
+            return EmployeeProfileChangeRequest.objects.filter(employee=employee)
+        except Employee.DoesNotExist:
+            return EmployeeProfileChangeRequest.objects.none()
+
+    def perform_create(self, serializer):
+        from rest_framework.exceptions import PermissionDenied, ValidationError
+        user = self.request.user
+        if user.organization.exists() or user.is_superuser:
+            raise PermissionDenied('Admins cannot submit profile change requests.')
+        try:
+            employee = Employee.objects.get(user=user)
+        except Employee.DoesNotExist:
+            raise PermissionDenied('No employee profile found.')
+
+        field_name = serializer.validated_data.get('field_name')
+        allowed = ('phone_no', 'personal_email', 'emergency_phone_number')
+        if field_name not in allowed:
+            raise ValidationError(f'Only these fields can be changed: {allowed}')
+
+        # Store old value for comparison in admin review
+        old_value = getattr(employee, field_name, '') or ''
+        serializer.save(employee=employee, old_value=str(old_value))
+
+
+class AdminProfileChangeRequestActionAPIView(RetrieveUpdateDestroyAPIView):
+    """
+    PATCH /organization/profile-change-requests/<pk>/action/
+    Admin approves or rejects the request. On approval, value is written to Employee.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = EmployeeProfileChangeRequestSerializer
+    queryset = EmployeeProfileChangeRequest.objects.select_related('employee__user')
+    http_method_names = ['patch', 'get']
+    nepali_date_filter_field = False
+
+    def partial_update(self, request, *args, **kwargs):
+        is_admin = request.user.organization.exists() or request.user.is_superuser
+        if not is_admin:
+            return Response({'error': 'Only admins can review change requests.'}, status=status.HTTP_403_FORBIDDEN)
+
+        instance = self.get_object()
+        action = request.data.get('status')
+        if action not in ('approved', 'rejected'):
+            return Response({'error': 'status must be "approved" or "rejected".'}, status=status.HTTP_400_BAD_REQUEST)
+
+        instance.status = action
+        instance.admin_note = request.data.get('admin_note', '')
+        instance.reviewed_by = request.user
+        instance.save()
+
+        if action == 'approved':
+            instance.apply()
+
+        # Notify employee
+        try:
+            from notification.fcm import notify_user
+            field_label = instance.get_field_name_display()
+            notify_user(
+                user=instance.employee.user,
+                notification_type='task',
+                title='Profile Change Request Updated',
+                body=f'Your request to update {field_label} was {action}.',
+                reference_id=instance.id,
+            )
+        except Exception:
+            pass
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+

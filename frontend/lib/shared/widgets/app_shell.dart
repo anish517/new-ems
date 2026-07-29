@@ -23,6 +23,8 @@ class AppShell extends ConsumerWidget {
       _NavItem('/attendance', Iconsax.clock, 'Attendance'),
       _NavItem('/leave', Iconsax.calendar_remove, 'Leave'),
       _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
+      _NavItem('/noticeboard', Iconsax.message_text, 'Notices'),
+      _NavItem('/policy', Iconsax.document_text, 'Policy'),
       _NavItem('/profile', Iconsax.user, 'Profile'),
     ];
 
@@ -35,6 +37,7 @@ class AppShell extends ConsumerWidget {
       _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
       _NavItem('/performance', Iconsax.star1, 'Performance'),
       _NavItem('/noticeboard', Iconsax.message_text, 'Notices'),
+      _NavItem('/policy', Iconsax.document_text, 'Policy'),
       _NavItem('/calendar', Iconsax.calendar, 'Calendar'),
       _NavItem('/feedback', Iconsax.message_question, 'Feedback'),
       _NavItem('/profile', Iconsax.user, 'Profile'),
@@ -55,13 +58,15 @@ class AppShell extends ConsumerWidget {
               padding: const EdgeInsets.all(24),
               child: Row(
                 children: [
-                  const Icon(Iconsax.box, color: AppColors.primary, size: 32),
-                  const SizedBox(width: 12),
-                  Text('EMS',
-                      style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: context.textPrimary)),
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 40,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Iconsax.box, color: AppColors.primary, size: 32),
+                  ),
+                  // Removed redundant 'OmWay' text since logo contains it
                 ],
               ),
             ),
@@ -172,8 +177,121 @@ class AppShell extends ConsumerWidget {
       ),
     );
 
-    // ── Mobile: use Drawer + BottomNavigationBar ───────────────────────────────
+    // ── Mobile: employee gets BottomNavigationBar; admin keeps Drawer ────────
     if (isMobile) {
+      if (!isAdmin) {
+        // Employee mobile — bottom navigation bar
+        final bottomItems = [
+          _NavItem('/', Iconsax.home_2, 'Home'),
+          _NavItem('/attendance', Iconsax.clock, 'Attendance'),
+          _NavItem('/leave', Iconsax.calendar_remove, 'Leave'),
+          _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
+          _NavItem('/profile', Iconsax.user, 'Profile'),
+        ];
+        final bottomIndex =
+            bottomItems.indexWhere((i) => location.startsWith(i.route));
+
+        return Scaffold(
+          backgroundColor: context.bg,
+          appBar: AppBar(
+            backgroundColor: context.surface,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            title: Text(
+              bottomIndex >= 0 ? bottomItems[bottomIndex].label : 'EMS',
+              style: TextStyle(fontWeight: FontWeight.bold, color: context.textPrimary),
+            ),
+            actions: [
+              const ThemeToggleBtn(),
+              IconButton(
+                icon: Icon(Iconsax.notification, color: context.textPrimary),
+                onPressed: () => context.go('/notifications'),
+              ),
+              GestureDetector(
+                onTap: () => context.go('/profile'),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppColors.primary,
+                    backgroundImage: user?.profilePicture != null
+                        ? NetworkImage(user!.profilePicture!)
+                        : null,
+                    child: user?.profilePicture == null
+                        ? Text(
+                            user?.firstName.isNotEmpty == true
+                                ? user!.firstName[0].toUpperCase()
+                                : 'A',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14),
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          body: child,
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: context.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              child: SizedBox(
+                height: 64,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(bottomItems.length, (i) {
+                    final item = bottomItems[i];
+                    final selected = bottomIndex == i;
+                    return Expanded(
+                      child: InkWell(
+                        onTap: () => context.go(item.route),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              item.icon,
+                              size: 22,
+                              color: selected
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              item.label,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: selected
+                                    ? FontWeight.w700
+                                    : FontWeight.normal,
+                                color: selected
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      // Admin mobile — keeps Drawer
       return Scaffold(
         backgroundColor: context.bg,
         drawer: Drawer(
@@ -232,14 +350,28 @@ class AppShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: context.bg,
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 200, child: sidebarContent),
-          Expanded(child: child),
+          SizedBox(width: 250, child: sidebarContent), // Increased width slightly for better text fit
+          // Divider between sidebar and main content
+          Container(width: 1, color: context.border),
+          Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1400),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: child,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
+
 
 class _NavItem {
   final String route;
@@ -247,6 +379,7 @@ class _NavItem {
   final String label;
   _NavItem(this.route, this.icon, this.label);
 }
+
 
 
 

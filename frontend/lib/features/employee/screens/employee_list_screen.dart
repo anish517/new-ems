@@ -135,13 +135,16 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> with Si
         ],
       ),
     ),
-    floatingActionButton: FloatingActionButton(
+    floatingActionButton: FloatingActionButton.extended(
       backgroundColor: AppColors.primary,
-      child: const Icon(Icons.person_add),
+      icon: const Icon(Icons.person_add, color: Colors.white),
+      label: const Text('Add Employee',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       onPressed: () {
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
+          constraints: const BoxConstraints(maxWidth: 600),
           backgroundColor: context.surface,
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
           builder: (_) => AddEmployeeSheet(onSuccess: _load),
@@ -218,6 +221,7 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> with Si
                           showModalBottomSheet(
                             context: context,
                             isScrollControlled: true,
+                            constraints: const BoxConstraints(maxWidth: 600),
                             backgroundColor: context.surface,
                             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
                             builder: (_) => AddEmployeeSheet(onSuccess: _load, employee: e),
@@ -230,6 +234,7 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> with Si
                           showModalBottomSheet(
                             context: context,
                             isScrollControlled: true,
+                            constraints: const BoxConstraints(maxWidth: 600),
                             backgroundColor: context.surface,
                             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
                             builder: (_) => AddSalarySheet(employeeId: e['id'], employeeName: name.trim()),

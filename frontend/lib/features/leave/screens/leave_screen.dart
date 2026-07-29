@@ -168,8 +168,8 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showApplyLeaveDialog(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Apply Leave'),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Apply Leave', style: TextStyle(color: Colors.white)),
         backgroundColor: AppColors.primary,
       ),
       body: _isLoading
@@ -255,6 +255,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
   void _showApplyLeaveDialog(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
+        constraints: const BoxConstraints(maxWidth: 600),
         backgroundColor: ctx.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),

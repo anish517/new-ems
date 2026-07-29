@@ -501,3 +501,40 @@ class RemoteWorkRequest(SoftDeleteModel):
 
     def __str__(self):
         return f"Remote Request by {self.employee} ({self.status})"
+
+
+class AttendanceCorrectionRequest(SoftDeleteModel):
+    """
+    Allows an employee to request a correction for a missed or incorrect attendance record.
+    An admin can approve (auto-creates Attendance + CheckInOut) or reject the request.
+    """
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+    employee = models.ForeignKey(
+        Employee, on_delete=models.CASCADE, related_name='correction_requests'
+    )
+    requested_date = NepaliDateField()
+    requested_check_in = models.TimeField(null=True, blank=True)
+    requested_check_out = models.TimeField(null=True, blank=True)
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_note = models.TextField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        'authentication.Account',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_corrections',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Correction by {self.employee} for {self.requested_date} ({self.status})"
+

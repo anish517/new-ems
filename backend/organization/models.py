@@ -460,3 +460,48 @@ class OrganizationSettings(models.Model):
 
     def __str__(self):
         return f"Settings for {self.organization.name}"
+
+
+class EmployeeProfileChangeRequest(models.Model):
+    """
+    Tracks self-edit requests from employees for the three allowed contact fields.
+    Admin must approve before the value is written to the Employee model.
+    """
+    ALLOWED_FIELDS = (
+        ('phone_no', 'Phone Number'),
+        ('personal_email', 'Personal Email'),
+        ('emergency_phone_number', 'Emergency Contact'),
+    )
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+
+    employee = models.ForeignKey(
+        Employee, on_delete=models.CASCADE, related_name='profile_change_requests'
+    )
+    field_name = models.CharField(max_length=100, choices=ALLOWED_FIELDS)
+    old_value = models.CharField(max_length=500, null=True, blank=True)
+    new_value = models.CharField(max_length=500)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_note = models.TextField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='reviewed_profile_changes'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.employee} requests {self.field_name} change ({self.status})"
+
+    def apply(self):
+        """Apply the new_value to the employee model. Call only on approval."""
+        if self.field_name in ('phone_no', 'personal_email', 'emergency_phone_number'):
+            setattr(self.employee, self.field_name, self.new_value)
+            self.employee.save(update_fields=[self.field_name])
+

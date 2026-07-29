@@ -25,5 +25,9 @@ urlpatterns = [
     path('remote-requests/', views.RemoteWorkRequestListCreateAPIView.as_view(), name='remote-requests'),
     path('remote-requests/<int:pk>/action/', views.AdminApproveRejectRemoteWorkAPIView.as_view(), name='remote-request-action'),
 
+    # Attendance Correction Requests
+    path('correction-requests/', views.CorrectionRequestListCreateAPIView.as_view(), name='correction-requests'),
+    path('correction-requests/<int:pk>/action/', views.AdminCorrectionRequestActionAPIView.as_view(), name='correction-request-action'),
+
     path('generate-report/', views.GenerateAttendanceReportAPIView.as_view(), name='generate-report'),
 ]
