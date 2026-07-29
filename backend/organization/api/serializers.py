@@ -19,6 +19,7 @@ from organization.models import (
     Post,
     Address,
     Qualification,
+    EmployeeProfileChangeRequest,
 )
 
 
@@ -203,3 +204,27 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
             "enable_in_office_attendance",
             "enable_remote_attendance",
         ]
+
+
+class EmployeeProfileChangeRequestSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.user.full_name', read_only=True)
+    field_label = serializers.CharField(source='get_field_name_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    reviewed_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EmployeeProfileChangeRequest
+        fields = [
+            'id', 'employee', 'employee_name',
+            'field_name', 'field_label',
+            'old_value', 'new_value',
+            'status', 'status_display',
+            'admin_note', 'reviewed_by', 'reviewed_by_name',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['employee', 'old_value', 'status', 'admin_note', 'reviewed_by', 'created_at', 'updated_at']
+
+    def get_reviewed_by_name(self, obj):
+     if obj.reviewed_by:
+        return obj.reviewed_by.full_name or obj.reviewed_by.email
+     return None

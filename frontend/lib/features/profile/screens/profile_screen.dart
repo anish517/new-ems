@@ -18,6 +18,26 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isUploading = false;
+  List _myChangeRequests = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadChangeRequests();
+  }
+
+  Future<void> _loadChangeRequests() async {
+    final user = ref.read(currentUserProvider);
+    if (user?.canManage == true) return; // admins don't need this
+    try {
+      final res = await ApiService().get('/api/organization/profile-change-requests/');
+      if (mounted) {
+        setState(() {
+          _myChangeRequests = res.data is List ? res.data : (res.data['results'] ?? []);
+        });
+      }
+    } catch (_) {}
+  }
 
   Future<void> _pickAndUploadImage() async {
     final picker = ImagePicker();
@@ -143,6 +163,59 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ]),
           ),
 
+          // Employee-only: Request contact field changes
+          if (!(user?.canManage ?? true)) ...[
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Contact Information',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: context.textPrimary)),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: Column(children: [
+                _ContactFieldTile(
+                  icon: Iconsax.call,
+                  label: 'Phone Number',
+                  fieldName: 'phone_no',
+                  pendingRequests: _myChangeRequests,
+                  onRequest: (fieldName, newValue) => _submitContactChange(
+                      fieldName, newValue),
+                ),
+                const Divider(height: 1),
+                _ContactFieldTile(
+                  icon: Iconsax.sms,
+                  label: 'Personal Email',
+                  fieldName: 'personal_email',
+                  pendingRequests: _myChangeRequests,
+                  onRequest: (fieldName, newValue) => _submitContactChange(
+                      fieldName, newValue),
+                ),
+                const Divider(height: 1),
+                _ContactFieldTile(
+                  icon: Icons.emergency_outlined,
+                  label: 'Emergency Contact',
+                  fieldName: 'emergency_phone_number',
+                  pendingRequests: _myChangeRequests,
+                  onRequest: (fieldName, newValue) => _submitContactChange(
+                      fieldName, newValue),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 4),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Changes require admin approval before taking effect.',
+                style: TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary),
+              ),
+            ),
+          ],
+
           const SizedBox(height: 12),
           Card(
             child: ListTile(
@@ -157,11 +230,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  Future<void> _submitContactChange(String fieldName, String newValue) async {
+    try {
+      await ApiService().post(
+        '/api/organization/profile-change-requests/',
+        data: {'field_name': fieldName, 'new_value': newValue},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('✅ Change request submitted! Pending admin approval.'),
+          backgroundColor: AppColors.success,
+        ));
+        _loadChangeRequests();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: ${ApiService.getErrorMessage(e)}'),
+          backgroundColor: AppColors.error,
+        ));
+      }
+    }
+  }
+
   void _showEditProfile(BuildContext ctx, WidgetRef ref) {
     final user = ref.read(currentUserProvider);
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -176,6 +273,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _showChangePassword(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
+        constraints: const BoxConstraints(maxWidth: 600),
         backgroundColor: context.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -415,6 +513,126 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
         ),
       );
 }
+
+
+// ─── Contact Field Tile (Employee self-edit) ──────────────────────────────────
+class _ContactFieldTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String fieldName;
+  final List pendingRequests;
+  final void Function(String fieldName, String newValue) onRequest;
+
+  const _ContactFieldTile({
+    required this.icon,
+    required this.label,
+    required this.fieldName,
+    required this.pendingRequests,
+    required this.onRequest,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = pendingRequests.where((r) =>
+        r['field_name'] == fieldName && r['status'] == 'pending').toList();
+    final hasPending = pending.isNotEmpty;
+
+    return ListTile(
+      leading: Icon(icon, color: AppColors.primary, size: 20),
+      title: Text(label),
+      subtitle: hasPending
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '⏳ Change pending: ${pending.first['new_value']}',
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.warning),
+                  ),
+                ),
+              ],
+            )
+          : null,
+      trailing: IconButton(
+        icon: const Icon(Iconsax.edit, size: 18, color: AppColors.primary),
+        tooltip: 'Request change',
+        onPressed: hasPending
+            ? null
+            : () {
+                final ctrl = TextEditingController();
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  shape: const RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(20))),
+                  builder: (ctx) => Padding(
+                    padding: EdgeInsets.fromLTRB(
+                        16,
+                        16,
+                        16,
+                        MediaQuery.of(ctx).viewInsets.bottom + 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Update $label',
+                            style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        const Text(
+                            'This change will be pending admin approval before it takes effect.',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary)),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: ctrl,
+                          decoration: InputDecoration(
+                            labelText: 'New $label',
+                            prefixIcon: Icon(icon),
+                          ),
+                          keyboardType: fieldName == 'personal_email'
+                              ? TextInputType.emailAddress
+                              : TextInputType.text,
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            icon: const Icon(Iconsax.send_1),
+                            label: const Text('Submit Request'),
+                            onPressed: () {
+                              if (ctrl.text.trim().isEmpty) return;
+                              Navigator.pop(ctx);
+                              onRequest(fieldName, ctrl.text.trim());
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+      ),
+    );
+  }
+}
+
 
 
 

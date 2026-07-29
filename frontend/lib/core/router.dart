@@ -6,10 +6,10 @@ import '../features/dashboard/screens/employee_dashboard.dart';
 import '../features/dashboard/screens/admin_dashboard.dart';
 import '../features/attendance/screens/attendance_screen.dart';
 import '../features/leave/screens/leave_screen.dart';
-import '../features/salary/screens/salary_screen.dart';
 import '../features/accounts/screens/accounts_screen.dart';
 import '../features/tasks/screens/tasks_screen.dart';
 import '../features/noticeboard/screens/noticeboard_screen.dart';
+import '../features/noticeboard/screens/policy_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/employee/screens/employee_list_screen.dart';
@@ -74,11 +74,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: '/performance',
               builder: (_, __) => const PerformanceScreen()),
+          GoRoute(
+              path: '/policy', builder: (_, __) => const PolicyScreen()),
         ],
       ),
     ],
   );
 });
+
 
 
 

@@ -87,16 +87,16 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                   heroTag: 'categories',
                   onPressed: () => _showManageCategories(context),
                   backgroundColor: AppColors.accent,
-                  icon: const Icon(Icons.category, size: 20),
-                  label: const Text('Categories', style: TextStyle(fontSize: 12)),
+                  icon: const Icon(Icons.category, size: 20, color: Colors.white),
+                  label: const Text('Categories', style: TextStyle(fontSize: 12, color: Colors.white)),
                 ),
                 const SizedBox(height: 12),
                 FloatingActionButton.extended(
                   heroTag: 'review',
                   onPressed: () => _showCreateReview(context),
                   backgroundColor: AppColors.primary,
-                  icon: const Icon(Icons.add),
-                  label: const Text('New Review'),
+                  icon: const Icon(Icons.add, color: Colors.white),
+                  label: const Text('New Review', style: TextStyle(color: Colors.white)),
                 ),
               ],
             )
@@ -126,6 +126,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   void _showCreateReview(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
+        constraints: const BoxConstraints(maxWidth: 600),
         backgroundColor: ctx.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -135,6 +136,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   void _showManageCategories(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
+        constraints: const BoxConstraints(maxWidth: 600),
         backgroundColor: ctx.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -290,6 +292,7 @@ class _ReviewCard extends StatelessWidget {
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: ctx.surface,
       builder: (sheetCtx) => StatefulBuilder(builder: (context, setState) {
         return Padding(

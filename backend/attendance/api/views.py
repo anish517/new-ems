@@ -6,10 +6,10 @@ from rest_framework.permissions import IsAuthenticated, BasePermission
 from django.http import HttpResponse
 import csv
 
-from attendance.models import Attendance, CheckInOut, RemoteWorkPermission, RemoteWorkRequest
+from attendance.models import Attendance, CheckInOut, RemoteWorkPermission, RemoteWorkRequest, AttendanceCorrectionRequest
 from attendance.utils import is_within_radius
 from organization.models import Employee, OrganizationAddress, OrganizationSettings
-from .serializers import AttendanceSerializer, RemoteWorkPermissionSerializer, RemoteWorkRequestSerializer
+from .serializers import AttendanceSerializer, RemoteWorkPermissionSerializer, RemoteWorkRequestSerializer, AttendanceCorrectionRequestSerializer
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from django.contrib.auth import get_user_model
@@ -725,3 +725,95 @@ class AdminApproveRejectRemoteWorkAPIView(APIView):
         )
         
         return Response({"message": f"Request {action} successfully."})
+
+
+# ─── Attendance Correction Request ───────────────────────────────────────────
+
+class CorrectionRequestListCreateAPIView(generics.ListCreateAPIView):
+    """
+    GET  — Employee: own requests. Admin: all pending requests.
+    POST — Employee submits a correction request.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = AttendanceCorrectionRequestSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        is_admin = user.organization.exists() or user.is_superuser
+        if is_admin:
+            status_filter = self.request.query_params.get('status', None)
+            qs = AttendanceCorrectionRequest.objects.select_related('employee__user')
+            if status_filter:
+                qs = qs.filter(status=status_filter)
+            return qs
+        # Employee sees only their own
+        try:
+            employee = Employee.objects.get(user=user)
+            return AttendanceCorrectionRequest.objects.filter(employee=employee)
+        except Employee.DoesNotExist:
+            return AttendanceCorrectionRequest.objects.none()
+
+    def perform_create(self, serializer):
+        try:
+            employee = Employee.objects.get(user=self.request.user)
+        except Employee.DoesNotExist:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('No employee profile found for this user.')
+        serializer.save(employee=employee)
+
+
+class AdminCorrectionRequestActionAPIView(APIView):
+    """
+    PATCH /attendance/correction-requests/<pk>/action/
+    Admin approves or rejects a correction request.
+    On approval, auto-creates Attendance + CheckInOut for the requested date.
+    """
+    permission_classes = [IsAuthenticated, IsOrgAdmin]
+
+    def patch(self, request, pk):
+        try:
+            req_obj = AttendanceCorrectionRequest.objects.select_related('employee__user').get(pk=pk)
+        except AttendanceCorrectionRequest.DoesNotExist:
+            return Response({'error': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        action = request.data.get('status')
+        if action not in ['approved', 'rejected']:
+            return Response({'error': 'status must be "approved" or "rejected".'}, status=status.HTTP_400_BAD_REQUEST)
+
+        req_obj.status = action
+        req_obj.admin_note = request.data.get('admin_note', '')
+        req_obj.reviewed_by = request.user
+        req_obj.save()
+
+        if action == 'approved':
+            employee = req_obj.employee
+            org = employee.organization
+            if org:
+                attendance, _ = Attendance.objects.get_or_create(
+                    organization=org,
+                    employee=employee,
+                    date=req_obj.requested_date,
+                )
+                # Create CheckInOut entry
+                CheckInOut.objects.create(
+                    attendance=attendance,
+                    check_in=req_obj.requested_check_in,
+                    check_out=req_obj.requested_check_out,
+                )
+
+        # Notify employee
+        try:
+            from notification.fcm import notify_user
+            notify_user(
+                user=req_obj.employee.user,
+                notification_type='task',
+                title='Attendance Correction Updated',
+                body=f'Your attendance correction for {req_obj.requested_date} was {action}.',
+                reference_id=req_obj.id,
+            )
+        except Exception:
+            pass
+
+        serializer = AttendanceCorrectionRequestSerializer(req_obj)
+        return Response(serializer.data)
+

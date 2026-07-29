@@ -39,6 +39,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   List<dynamic> _addresses = [];
   List<dynamic> _bankDetails = [];
   List<dynamic> _documents = [];
+  List<dynamic> _pendingChangeRequests = [];
 
   @override
   void initState() {
@@ -324,6 +325,18 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         }
       } catch (_) {}
 
+      // Fetch profile change requests (pending only)
+      List<dynamic> changeReqs = [];
+      try {
+        final changeRes = await ApiService().get(
+            '${AppConstants.organizationBase}/profile-change-requests/?employee=${widget.id}&status=pending');
+        if (changeRes.data is List) {
+          changeReqs = changeRes.data as List;
+        } else if (changeRes.data['results'] != null) {
+          changeReqs = changeRes.data['results'];
+        }
+      } catch (_) {}
+
       if (!mounted) return;
       setState(() {
         _employee = res.data;
@@ -331,6 +344,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         _addresses = addresses;
         _bankDetails = bankDetails;
         _documents = docs;
+        _pendingChangeRequests = changeReqs;
         _loading = false;
       });
     } catch (e) {
@@ -342,11 +356,35 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     }
   }
 
+  Future<void> _actionChangeRequest(int requestId, String action) async {
+    try {
+      await ApiService().patch(
+        '${AppConstants.organizationBase}/profile-change-requests/$requestId/action/',
+        data: {'status': action},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(action == 'approved' ? '✅ Change approved!' : '❌ Change rejected.'),
+          backgroundColor: action == 'approved' ? AppColors.success : AppColors.error,
+        ));
+        _loadAll();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: ${ApiService.getErrorMessage(e)}'),
+          backgroundColor: AppColors.error,
+        ));
+      }
+    }
+  }
+
   void _showAttendanceLogs() {
     showModalBottomSheet(
       context: context,
       backgroundColor: context.surface,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 600),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -700,6 +738,89 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             ),
 
             const SizedBox(height: 32),
+
+            // Pending Profile Change Requests
+            if (_pendingChangeRequests.isNotEmpty) ...[
+              Row(children: [
+                const Text('Pending Change Requests',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_pendingChangeRequests.length}',
+                    style: const TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              ...(_pendingChangeRequests.map((req) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(
+                            '${_fieldLabel(req['field_name'] ?? '')} Change',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Requested: ${req['new_value'] ?? '-'}',
+                            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                          ),
+                        ]),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text('PENDING',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.warning)),
+                      ),
+                    ]),
+                    const SizedBox(height: 10),
+                    Row(children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.error,
+                            side: const BorderSide(color: AppColors.error),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                          icon: const Icon(Icons.close, size: 14),
+                          label: const Text('Reject'),
+                          onPressed: () => _actionChangeRequest(req['id'] as int, 'rejected'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                          icon: const Icon(Icons.check, size: 14),
+                          label: const Text('Approve'),
+                          onPressed: () => _actionChangeRequest(req['id'] as int, 'approved'),
+                        ),
+                      ),
+                    ]),
+                  ]),
+                ),
+              ))),
+              const SizedBox(height: 16),
+            ],
+
             const Text('Documents',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
@@ -714,6 +835,15 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         ),
       ),
     );
+  }
+
+  String _fieldLabel(String fieldName) {
+    const labels = {
+      'phone_no': 'Phone Number',
+      'personal_email': 'Personal Email',
+      'emergency_phone_number': 'Emergency Contact',
+    };
+    return labels[fieldName] ?? fieldName.replaceAll('_', ' ').toUpperCase();
   }
 
   Widget _infoChip(IconData icon, String label, String value) {

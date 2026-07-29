@@ -4,7 +4,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/theme/app_theme.dart';
@@ -70,9 +69,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   List _pendingRemoteRequests = [];
   bool _remoteLoading = false;
 
+  // Attendance correction requests
+  List _myCorrectionRequests = [];
+  List _pendingCorrectionRequests = [];
+  bool _correctionLoading = false;
+
   Timer? _autoActionTimer;
   bool _autoInFlight = false;
-  bool _hasPromptedAutoAttendance = false;
+  bool _hasPromptedAutoAttendance = true; // start true so we don't auto-prompt before data loads
 
   // Live location for map
   Position? _currentPosition;
@@ -81,9 +85,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   @override
   void initState() {
     super.initState();
-    _adminTabs = TabController(length: 3, vsync: this);
+    _adminTabs = TabController(length: 4, vsync: this);
     WidgetsBinding.instance.addObserver(this);
-    _loadAll().then((_) => _attemptAutoAttendance());
+    _loadAll().then((_) {
+      _hasPromptedAutoAttendance = false;
+      _attemptAutoAttendance();
+    });
     _startLiveLocation();
   }
 
@@ -261,11 +268,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       _loadStats(),
       _loadDailyHistory(),
       _loadMyRemoteStatus(),
+      _loadMyCorrectionRequests(),
     ]);
     final isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
     if (isAdmin) {
       _loadOrgLogs();
       _loadRemoteList();
+      _loadPendingCorrections();
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -384,6 +393,202 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     } catch (e) {
       _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
     }
+  }
+
+  // ── Correction Requests ─────────────────────────────────────────────────────
+
+  Future<void> _loadMyCorrectionRequests() async {
+    try {
+      final res = await ApiService()
+          .get('${AppConstants.attendanceBase}/correction-requests/');
+      if (mounted) {
+        setState(() => _myCorrectionRequests =
+            res.data is List ? res.data : (res.data['results'] ?? []));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadPendingCorrections() async {
+    setState(() => _correctionLoading = true);
+    try {
+      final res = await ApiService().get(
+          '${AppConstants.attendanceBase}/correction-requests/?status=pending');
+      if (mounted) {
+        setState(() {
+          _pendingCorrectionRequests =
+              res.data is List ? res.data : (res.data['results'] ?? []);
+          _correctionLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _correctionLoading = false);
+    }
+  }
+
+  Future<void> _submitCorrectionRequest({
+    required String date,
+    required String? checkIn,
+    required String? checkOut,
+    required String reason,
+  }) async {
+    try {
+      await ApiService().post(
+        '${AppConstants.attendanceBase}/correction-requests/',
+        data: {
+          'requested_date': date,
+          if (checkIn != null && checkIn.isNotEmpty) 'requested_check_in': checkIn,
+          if (checkOut != null && checkOut.isNotEmpty) 'requested_check_out': checkOut,
+          'reason': reason,
+        },
+      );
+      _showSnack('✅ Correction request submitted!', AppColors.success);
+      _loadMyCorrectionRequests();
+    } catch (e) {
+      _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
+    }
+  }
+
+  Future<void> _actionCorrectionRequest(
+      int id, String action, String adminNote) async {
+    try {
+      await ApiService().patch(
+        '${AppConstants.attendanceBase}/correction-requests/$id/action/',
+        data: {'status': action, 'admin_note': adminNote},
+      );
+      _showSnack('✅ Request $action!', AppColors.success);
+      _loadPendingCorrections();
+    } catch (e) {
+      _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
+    }
+  }
+
+  void _showCorrectionRequestSheet() {
+    final dateCtrl = TextEditingController();
+    final checkInCtrl = TextEditingController();
+    final checkOutCtrl = TextEditingController();
+    final reasonCtrl = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 600),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            16, 16, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Iconsax.calendar_edit, color: AppColors.primary),
+                const SizedBox(width: 8),
+                const Text('Request Attendance Correction',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+                'Submit a request if you missed attendance due to a technical issue.',
+                style: TextStyle(
+                    color: AppColors.textSecondary, fontSize: 12)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: dateCtrl,
+              readOnly: true,
+              decoration: const InputDecoration(
+                labelText: 'Date *',
+                hintText: 'e.g. 2081-03-15',
+                prefixIcon: Icon(Iconsax.calendar_1),
+              ),
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: ctx,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) {
+                  final nd = picked.toNepaliDateTime();
+                  dateCtrl.text =
+                      '${nd.year}-${nd.month.toString().padLeft(2, '0')}-${nd.day.toString().padLeft(2, '0')}';
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: checkInCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Check-in time',
+                      hintText: 'HH:MM',
+                      prefixIcon: Icon(Iconsax.login),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: checkOutCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Check-out time',
+                      hintText: 'HH:MM',
+                      prefixIcon: Icon(Iconsax.logout),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Reason *',
+                hintText: 'Explain why the attendance was missed or incorrect',
+                prefixIcon: Icon(Iconsax.message_text),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Iconsax.send_1),
+                label: const Text('Submit Request'),
+                onPressed: () {
+                  if (dateCtrl.text.isEmpty || reasonCtrl.text.isEmpty) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                        content: Text('Date and Reason are required.')));
+                    return;
+                  }
+                  Navigator.pop(ctx);
+                  _submitCorrectionRequest(
+                    date: dateCtrl.text,
+                    checkIn: checkInCtrl.text,
+                    checkOut: checkOutCtrl.text,
+                    reason: reasonCtrl.text,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _setRemoteLocation(int employeeId) async {
@@ -646,10 +851,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           ],
           bottom: TabBar(
             controller: _adminTabs,
+            isScrollable: true,
             tabs: const [
               Tab(text: 'Check In/Out'),
               Tab(text: 'All Staff Logs'),
               Tab(text: 'Remote Access'),
+              Tab(text: 'Corrections'),
             ],
           ),
         ),
@@ -659,6 +866,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             _buildCheckInUI(),
             _buildOrgLogs(),
             _buildRemoteAccessTab(),
+            _buildAdminCorrectionTab(),
           ],
         ),
       );
@@ -674,6 +882,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       body: RefreshIndicator(
         onRefresh: _loadAll,
         child: _buildCheckInUI(),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Iconsax.calendar_edit),
+        label: const Text('Request Correction'),
+        onPressed: _showCorrectionRequestSheet,
       ),
     );
   }
@@ -875,6 +1090,22 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   'Note: Office employees must be within 50 m of the office to check in/out. Employees with remote work permission approved by an admin can check in from anywhere.',
                   style:
                       TextStyle(color: AppColors.textSecondary, fontSize: 12))),
+
+          // ── My Correction Requests ─────────────────────────────────────────
+          if (_myCorrectionRequests.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('My Correction Requests',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            ),
+            const SizedBox(height: 8),
+            ..._myCorrectionRequests.map((req) => _CorrectionRequestTile(
+                  req: req,
+                  isAdmin: false,
+                  onAction: null,
+                )),
+          ],
 
           // ── Live Location Map (Admin only) ───────────────────────────────
           if (ref.watch(currentUserProvider)?.canManage == true) ...[
@@ -1258,7 +1489,41 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             ),
           ),
         );
+
+  // ── Admin Corrections Tab ────────────────────────────────────────────────────
+  Widget _buildAdminCorrectionTab() {
+    if (_correctionLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_pendingCorrectionRequests.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Iconsax.calendar_tick, size: 56, color: AppColors.textSecondary),
+            SizedBox(height: 12),
+            Text('No pending correction requests',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _pendingCorrectionRequests.length,
+      itemBuilder: (ctx, i) {
+        final req = _pendingCorrectionRequests[i];
+        return _CorrectionRequestTile(
+          req: req,
+          isAdmin: true,
+          onAction: (action, note) =>
+              _actionCorrectionRequest(req['id'] as int, action, note),
+        );
+      },
+    );
+  }
 }
+
 
 class _AttendanceLogTile extends StatelessWidget {
   final Map log;
@@ -1390,6 +1655,132 @@ class _StatBox extends StatelessWidget {
         ]),
       );
 }
+
+
+class _CorrectionRequestTile extends StatelessWidget {
+  final Map req;
+  final bool isAdmin;
+  final void Function(String action, String adminNote)? onAction;
+
+  const _CorrectionRequestTile({
+    required this.req,
+    required this.isAdmin,
+    required this.onAction,
+  });
+
+  Color _statusColor(String? s) {
+    switch (s) {
+      case 'approved':
+        return AppColors.success;
+      case 'rejected':
+        return AppColors.error;
+      default:
+        return AppColors.warning;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = req['status'] as String? ?? 'pending';
+    final noteCtrl = TextEditingController();
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                if (isAdmin)
+                  Text(req['employee_name'] ?? 'Unknown',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('Date: ${req['requested_date'] ?? '-'}',
+                    style: const TextStyle(fontSize: 13)),
+                if (req['requested_check_in'] != null)
+                  Text(
+                      'In: ${req['requested_check_in']}  Out: ${req['requested_check_out'] ?? '-'}',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary)),
+              ]),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: _statusColor(status).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                status.toUpperCase(),
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: _statusColor(status)),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 6),
+          Text('Reason: ${req['reason'] ?? '-'}',
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          if (req['admin_note'] != null && (req['admin_note'] as String).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('Admin note: ${req['admin_note']}',
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary,
+                      fontStyle: FontStyle.italic)),
+            ),
+          if (isAdmin && status == 'pending' && onAction != null) ...[ 
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: noteCtrl,
+                  decoration: const InputDecoration(
+                    hintText: 'Admin note (optional)',
+                    isDense: true,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: const BorderSide(color: AppColors.error),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  icon: const Icon(Icons.close, size: 16),
+                  label: const Text('Reject'),
+                  onPressed: () => onAction!('rejected', noteCtrl.text),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  icon: const Icon(Icons.check, size: 16),
+                  label: const Text('Approve'),
+                  onPressed: () => onAction!('approved', noteCtrl.text),
+                ),
+              ),
+            ]),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
 
 
 
