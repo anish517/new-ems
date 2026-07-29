@@ -136,6 +136,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -256,6 +257,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     final current = task['status'] as String? ?? 'to-do';
     showModalBottomSheet(
       context: ctx,
+      constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
@@ -326,10 +328,12 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                 ]),
               ),
         floatingActionButton: isAdmin
-            ? FloatingActionButton(
+            ? FloatingActionButton.extended(
                 onPressed: () => _showCreateTaskSheet(context),
                 backgroundColor: AppColors.primary,
-                child: const Icon(Icons.add, color: Colors.white),
+                icon: const Icon(Icons.add, color: Colors.white),
+                label: const Text('Assign Task',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
               )
             : null,
       ),
@@ -340,6 +344,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (sheetCtx) => Padding(
@@ -467,7 +472,46 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Create Task', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          // Header
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Iconsax.task_square, color: AppColors.primary, size: 22),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Create Task', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text('Assign a task to an employee under a project',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              ]),
+            ),
+          ]),
+          const SizedBox(height: 16),
+          // Hint card
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.info.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.info.withValues(alpha: 0.25)),
+            ),
+            child: const Row(children: [
+              Icon(Icons.info_outline, color: AppColors.info, size: 16),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Select a Project first, then assign it to an employee. '  
+                  'Priority determines visibility order in the task list.',
+                  style: TextStyle(fontSize: 12, color: AppColors.info),
+                ),
+              ),
+            ]),
+          ),
           const SizedBox(height: 16),
           TextField(controller: _titleCtrl, decoration: const InputDecoration(labelText: 'Task Title')),
           const SizedBox(height: 12),
@@ -493,6 +537,10 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
           DropdownButtonFormField<int>(
             initialValue: _selProject,
             hint: const Text('Select Project'),
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Iconsax.briefcase, size: 18),
+              helperText: 'Which project does this task belong to?',
+            ),
             items: _projects.map((p) => DropdownMenuItem<int>(
               value: p['id'], child: Text(p['title'] ?? p['name'] ?? ''),
             )).toList(),
@@ -502,6 +550,10 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
           DropdownButtonFormField<int>(
             initialValue: _selEmployee,
             hint: const Text('Assign To'),
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Iconsax.user, size: 18),
+              helperText: 'Who should complete this task?',
+            ),
             items: _employees.map((e) {
               final user = e['user'] ?? {};
               return DropdownMenuItem<int>(
@@ -521,10 +573,22 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
             onChanged: (v) => setState(() => _priority = v!),
           ),
           const SizedBox(height: 24),
-          ElevatedButton(
+          ElevatedButton.icon(
             onPressed: _saving ? null : _save,
-            child: _saving ? const CircularProgressIndicator() : const Text('Assign Task'),
-          )
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: _saving
+                ? const SizedBox(width: 18, height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Iconsax.tick_circle, size: 18),
+            label: Text(_saving ? 'Saving...' : 'Assign Task',
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(height: 8),
         ],
       ),
     );

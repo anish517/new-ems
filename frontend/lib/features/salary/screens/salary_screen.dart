@@ -354,6 +354,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -513,6 +514,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
       builder: (sheetCtx) => StatefulBuilder(builder: (context, setState) {
         return Padding(
@@ -585,6 +587,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),

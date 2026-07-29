@@ -634,28 +634,29 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                           Row(
                             children: [
                               const Spacer(),
-                              GestureDetector(
-                                onTap: () => _actionRemoteRequest(req['id'], 'rejected'),
-                                child: Container(
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.error,
+                                  side: const BorderSide(color: AppColors.error),
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.redAccent),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text('Reject', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                                  minimumSize: const Size(0, 36),
                                 ),
+                                icon: const Icon(Icons.close, size: 14),
+                                label: const Text('Reject', style: TextStyle(fontWeight: FontWeight.bold)),
+                                onPressed: () => _actionRemoteRequest(req['id'], 'rejected'),
                               ),
                               const SizedBox(width: 12),
-                              GestureDetector(
-                                onTap: () => _actionRemoteRequest(req['id'], 'approved'),
-                                child: Container(
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.success,
+                                  foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text('Approve', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  minimumSize: const Size(0, 36),
+                                  elevation: 0,
                                 ),
+                                icon: const Icon(Icons.check, size: 14),
+                                label: const Text('Approve', style: TextStyle(fontWeight: FontWeight.bold)),
+                                onPressed: () => _actionRemoteRequest(req['id'], 'approved'),
                               ),
                             ],
                           ),

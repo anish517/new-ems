@@ -4,8 +4,8 @@ from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .serializers import NoticeSerializer
-from noticeboard.models import Notice
+from .serializers import NoticeSerializer, CompanyPolicySerializer
+from noticeboard.models import Notice, CompanyPolicy
 
 
 class NoticeboardListView(generics.ListCreateAPIView):
@@ -91,3 +91,57 @@ class NoticeDetailView(generics.RetrieveUpdateDestroyAPIView):
             if user.is_superuser:
                 return Notice.objects.all()
             return Notice.objects.none()
+
+
+# ─── Company Policy ─────────────────────────────────────────────────
+
+class CompanyPolicyListCreateView(generics.ListCreateAPIView):
+    """GET: all active policies for the org. POST: admin only."""
+    serializer_class = CompanyPolicySerializer
+    permission_classes = [IsAuthenticated]
+
+    def _get_org(self):
+        user = self.request.user
+        try:
+            return user.employee.organization
+        except Exception:
+            orgs = user.organization.all()
+            return orgs.first() if orgs.exists() else None
+
+    def get_queryset(self):
+        org = self._get_org()
+        if not org:
+            return CompanyPolicy.objects.none()
+        qs = CompanyPolicy.objects.filter(organization=org, is_active=True)
+        category = self.request.query_params.get('category')
+        if category:
+            qs = qs.filter(category__iexact=category)
+        return qs
+
+    def perform_create(self, serializer):
+        from rest_framework.exceptions import PermissionDenied
+        user = self.request.user
+        is_admin = user.organization.exists() or user.is_superuser
+        if not is_admin:
+            raise PermissionDenied('Only admins can create policies.')
+        org = self._get_org()
+        serializer.save(organization=org, created_by=user)
+
+
+class CompanyPolicyDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Admin: full CRUD. Employee: read-only GET."""
+    serializer_class = CompanyPolicySerializer
+    permission_classes = [IsAuthenticated]
+    queryset = CompanyPolicy.objects.all()
+    http_method_names = ['get', 'patch', 'delete']
+
+    def update(self, request, *args, **kwargs):
+        if not (request.user.organization.exists() or request.user.is_superuser):
+            return Response({'error': 'Only admins can edit policies.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if not (request.user.organization.exists() or request.user.is_superuser):
+            return Response({'error': 'Only admins can delete policies.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
+

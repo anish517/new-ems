@@ -48,8 +48,8 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showSubmitDialog(context),
         backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add),
-        label: const Text('New Complaint'),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('New Complaint', style: TextStyle(color: Colors.white)),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -149,6 +149,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => _ComplaintDetailsSheet(
@@ -162,6 +163,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
   void _showSubmitDialog(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
+        constraints: const BoxConstraints(maxWidth: 600),
         backgroundColor: context.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),

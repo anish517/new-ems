@@ -101,6 +101,7 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
           ? FloatingActionButton.extended(
               onPressed: () => _showCreateNotice(context),
               backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
               icon: const Icon(Icons.add),
               label: const Text('Post Notice'),
             )
@@ -180,6 +181,7 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -244,6 +246,7 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
   void _showCreateNotice(BuildContext ctx) => showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
+        constraints: const BoxConstraints(maxWidth: 600),
         backgroundColor: context.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),

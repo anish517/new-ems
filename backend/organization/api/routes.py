@@ -21,4 +21,7 @@ urlpatterns = [
     path('address/set/', views.SetOrganizationAddressView.as_view()),
     path('employees/<int:employee_id>/report/', views.EmployeeReportAPIView.as_view()),
     path('settings/', views.OrganizationSettingsView.as_view(), name='organization-settings'),
+    # Employee profile self-edit requests
+    path('profile-change-requests/', views.ProfileChangeRequestListCreateAPIView.as_view(), name='profile-change-requests'),
+    path('profile-change-requests/<int:pk>/action/', views.AdminProfileChangeRequestActionAPIView.as_view(), name='profile-change-action'),
 ]
