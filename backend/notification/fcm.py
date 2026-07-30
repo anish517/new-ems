@@ -14,6 +14,16 @@ def _init_firebase():
         _initialized = True
 
 
+def _remove_token(device_token: str):
+    """Delete a dead/invalid device token so it isn't retried again."""
+    try:
+        from notification.models import DeviceToken
+        DeviceToken.objects.filter(token=device_token).delete()
+        print('[FCM] Removed invalid token from DB.')
+    except Exception:
+        pass
+
+
 def send_push_notification(device_token: str, title: str, body: str, data: dict = None):
     """
     Send a real FCM push notification to a device.
@@ -36,17 +46,19 @@ def send_push_notification(device_token: str, title: str, body: str, data: dict 
         )
         messaging.send(message)
         return True
+    except messaging.UnregisteredError:
+        # Token is dead (app uninstalled / data cleared / token rotated).
+        # Caught by exception type since the string repr ("NotRegistered")
+        # doesn't reliably match the fallback string checks below.
+        print(f'[FCM] Token unregistered, removing: {device_token[:12]}...')
+        _remove_token(device_token)
+        return False
     except Exception as e:
         err_str = str(e)
         print(f'[FCM] Error sending push notification: {e}')
-        # Auto-remove invalid/expired tokens so they don't cause repeated errors
+        # Fallback string match for any other invalid-token error shapes
         if 'registration token' in err_str.lower() or 'not a valid' in err_str.lower() or 'unregistered' in err_str.lower():
-            try:
-                from notification.models import DeviceToken
-                DeviceToken.objects.filter(token=device_token).delete()
-                print(f'[FCM] Removed invalid token from DB.')
-            except Exception:
-                pass
+            _remove_token(device_token)
         return False
 
 

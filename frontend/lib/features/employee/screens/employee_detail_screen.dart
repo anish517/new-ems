@@ -766,6 +766,12 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     Row(children: [
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          if ((req['employee_name'] ?? '').toString().isNotEmpty)
+                            Text(
+                              req['employee_name'] as String,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            ),
+                          const SizedBox(height: 2),
                           Text(
                             '${_fieldLabel(req['field_name'] ?? '')} Change',
                             style: const TextStyle(fontWeight: FontWeight.w600),

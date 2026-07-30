@@ -57,6 +57,7 @@ class AttendanceCorrectionRequestSerializer(serializers.ModelSerializer):
     employee_id = serializers.IntegerField(source='employee.id', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     reviewed_by_name = serializers.SerializerMethodField()
+    requested_date = serializers.CharField()
 
     class Meta:
         model = AttendanceCorrectionRequest
@@ -71,6 +72,6 @@ class AttendanceCorrectionRequestSerializer(serializers.ModelSerializer):
 
     def get_reviewed_by_name(self, obj):
         if obj.reviewed_by:
-            return obj.reviewed_by.get_full_name() or obj.reviewed_by.email
+            return obj.reviewed_by.full_name or obj.reviewed_by.email
         return None
 

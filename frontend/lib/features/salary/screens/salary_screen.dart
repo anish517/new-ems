@@ -1205,7 +1205,8 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                      color: AppColors.primaryDark,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      border: Border.all(color: context.border),
                       borderRadius: BorderRadius.circular(12)),
                   child: Column(children: [
                     _InfoRow(Iconsax.calendar, 'Days Present',
@@ -1230,17 +1231,17 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Row(
                               children: [
-                                Icon(Iconsax.money_recive,
+                                const Icon(Iconsax.money_recive,
                                     size: 20, color: AppColors.primary),
-                                SizedBox(width: 8),
+                                const SizedBox(width: 8),
                                 Expanded(
                                   child: Text('Net Salary Payable',
                                       style: TextStyle(
                                           fontWeight: FontWeight.w600,
-                                          color: Colors.white)),
+                                          color: context.textPrimary)),
                                 ),
                               ],
                             ),
@@ -1474,14 +1475,14 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         child: Row(children: [
-          Icon(icon, size: 18, color: AppColors.textSecondary),
+          Icon(icon, size: 18, color: AppColors.primary),
           const SizedBox(width: 12),
           Expanded(
               child: Text(label,
-                  style: const TextStyle(fontWeight: FontWeight.normal))),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+                  style: TextStyle(fontWeight: FontWeight.normal, color: context.textPrimary))),
+          Text(value, style: TextStyle(fontWeight: FontWeight.w600, color: context.textPrimary)),
         ]),
       );
 }
