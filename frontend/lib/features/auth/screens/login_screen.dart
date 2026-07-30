@@ -58,108 +58,111 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
     return Scaffold(
       body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnim,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 48),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 48),
 
-                  // Logo / Brand
-                  Center(
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      height: 80,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppColors.primary, AppColors.accent],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                      // Logo / Brand
+                      Center(
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          height: 80,
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.high,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [AppColors.primary, AppColors.accent],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(Icons.business_center_rounded,
+                                color: Colors.white, size: 36),
                           ),
-                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Icon(Icons.business_center_rounded,
-                            color: Colors.white, size: 36),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 48),
+                      const SizedBox(height: 48),
 
-                  // Email
-                  const Text('Email',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    autocorrect: false,
-                    decoration: const InputDecoration(
-                      //  hintText: 'you@company.com',
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
-                    validator: (v) => (v == null || !v.contains('@'))
-                        ? 'Enter a valid email'
-                        : null,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Password
-                  const Text('Password',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      // hintText: '••••••••',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined),
-                        onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
+                      // Email
+                      const Text('Email',
+                          style:
+                              TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        autocorrect: false,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.email_outlined),
+                        ),
+                        validator: (v) => (v == null || !v.contains('@'))
+                            ? 'Enter a valid email'
+                            : null,
                       ),
-                    ),
-                    validator: (v) => (v == null || v.length < 6)
-                        ? 'Password too short'
-                        : null,
-                  ),
-                  const SizedBox(height: 32),
+                      const SizedBox(height: 20),
 
-                  // Login Button
-                  ElevatedButton(
-                    onPressed: authState.isLoading ? null : _login,
-                    child: authState.isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2))
-                        : const Text('Sign In'),
-                  ),
+                      // Password
+                      const Text('Password',
+                          style:
+                              TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined),
+                            onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword),
+                          ),
+                        ),
+                        validator: (v) => (v == null || v.length < 6)
+                            ? 'Password too short'
+                            : null,
+                      ),
+                      const SizedBox(height: 32),
 
-                  const SizedBox(height: 24),
-                  const Center(
-                    child: Text(
-                      'Contact your admin if you forgot your credentials',
-                      style: TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary),
-                      textAlign: TextAlign.center,
-                    ),
+                      // Login Button
+                      ElevatedButton(
+                        onPressed: authState.isLoading ? null : _login,
+                        child: authState.isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2))
+                            : const Text('Sign In'),
+                      ),
+
+                      const SizedBox(height: 24),
+                      const Center(
+                        child: Text(
+                          'Contact your admin if you forgot your credentials',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
