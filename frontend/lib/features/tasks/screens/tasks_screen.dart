@@ -206,6 +206,11 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                   value: task['project']['name'] ?? 'Unknown'),
               const SizedBox(height: 12),
             ],
+            if (task['rating'] != null) ...[
+              _DetailRow(icon: Iconsax.star1, label: 'Rating',
+                  value: '${task['rating']}/10'),
+              const SizedBox(height: 12),
+            ],
             _DetailRow(icon: Iconsax.calendar, label: 'Start Date',
                 value: _fmtDate(task['planned_start_date']?.toString(), fallback: task['created_at']?.toString())),
             const SizedBox(height: 12),
@@ -387,6 +392,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
   List _employees = [];
   int? _selProject, _selEmployee;
   String _priority = 'medium';
+  double _rating = 5;
   bool _loading = true;
   bool _saving = false;
 
@@ -450,6 +456,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
         'assigned_to': _selEmployee,
         'priority': _priority,
         'status': 'to-do',
+        'rating': _rating.toInt(),
         if (_fromDate.isNotEmpty) 'planned_start_date': _fromDate,
         if (_tillDate.isNotEmpty) 'planned_end_date': _tillDate,
       });
@@ -572,6 +579,17 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
             ],
             onChanged: (v) => setState(() => _priority = v!),
           ),
+          const SizedBox(height: 16),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Task Rating/Score: ${_rating.toInt()}/10', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Slider(
+              value: _rating,
+              min: 1, max: 10, divisions: 9,
+              activeColor: AppColors.primary,
+              label: _rating.toInt().toString(),
+              onChanged: (v) => setState(() => _rating = v),
+            ),
+          ]),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: _saving ? null : _save,
