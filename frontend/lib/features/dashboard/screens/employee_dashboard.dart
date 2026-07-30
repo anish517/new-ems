@@ -61,7 +61,7 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
             // Greeting
             Text('Good ${_greeting()}, ${user?.firstName ?? ''}!',
                 style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    AppTextStyles.sectionTitle),
             const Text('Welcome back',
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
             const SizedBox(height: 16),

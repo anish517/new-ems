@@ -124,9 +124,14 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         final dateProv = ref.read(nepaliDateProvider);
         final y = dateProv.year;
         final m = dateProv.month;
-        final d = NepaliDateTime(y, m).totalDays;
-        startStr = '$y-${m.toString().padLeft(2, '0')}-01';
-        endStr = '$y-${m.toString().padLeft(2, '0')}-$d';
+        if (m == null) {
+          startStr = '$y-01-01';
+          endStr = '$y-12-${NepaliDateTime(y, 12).totalDays}';
+        } else {
+          final d = NepaliDateTime(y, m).totalDays;
+          startStr = '$y-${m.toString().padLeft(2, '0')}-01';
+          endStr = '$y-${m.toString().padLeft(2, '0')}-$d';
+        }
       }
 
       final url =
@@ -144,9 +149,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       html.Url.revokeObjectUrl(blobUrl);
       
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed to download report: $e')));
+      }
     }
   }
 
@@ -167,9 +173,14 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       } else {
         final y = dateProv.year;
         final m = dateProv.month;
-        final d = NepaliDateTime(y, m).totalDays;
-        startStr = '$y-${m.toString().padLeft(2, '0')}-01';
-        endStr = '$y-${m.toString().padLeft(2, '0')}-$d';
+        if (m == null) {
+          startStr = '$y-01-01';
+          endStr = '$y-12-${NepaliDateTime(y, 12).totalDays}';
+        } else {
+          final d = NepaliDateTime(y, m).totalDays;
+          startStr = '$y-${m.toString().padLeft(2, '0')}-01';
+          endStr = '$y-${m.toString().padLeft(2, '0')}-$d';
+        }
       }
 
       final dateQuery = '&start_date=$startStr&end_date=$endStr';
@@ -663,7 +674,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
 
             // Personal Information Section
             const Text('Personal Information',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style: AppTextStyles.pageTitle),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(20),
@@ -743,7 +754,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             if (_pendingChangeRequests.isNotEmpty) ...[
               Row(children: [
                 const Text('Pending Change Requests',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    style: AppTextStyles.pageTitle),
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -828,13 +839,13 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             ],
 
             const Text('Documents',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style: AppTextStyles.pageTitle),
             const SizedBox(height: 16),
             _buildDocumentsSection(context),
 
             const SizedBox(height: 32),
             const Text('Recent Attendance Logs',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style: AppTextStyles.pageTitle),
             const SizedBox(height: 16),
             _buildAttendanceTable(context),
           ],
@@ -1130,11 +1141,11 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Attendance Calendar',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 18, fontWeight: FontWeight.bold)),
             ],
           ),

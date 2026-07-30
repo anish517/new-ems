@@ -64,7 +64,7 @@ class _AddSalarySheetState extends State<AddSalarySheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Add Salary for ${widget.employeeName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Add Salary for ${widget.employeeName}', style: AppTextStyles.pageTitle),
               const SizedBox(height: 16),
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Basic Salary (NPR)'),

@@ -35,15 +35,7 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
     if (mounted) setState(() => _isLoading = false);
   }
 
-  Future<void> _deletePolicy(int id) async {
-    try {
-      await ApiService().delete('/api/noticeboard/policies/$id/');
-      _showSnack('Policy deleted.', AppColors.success);
-      _loadPolicies();
-    } catch (e) {
-      _showSnack(ApiService.getErrorMessage(e), AppColors.error);
-    }
-  }
+
 
   void _showSnack(String msg, Color color) {
     if (!mounted) return;
@@ -77,7 +69,7 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
                 Icon(isEdit ? Iconsax.edit : Iconsax.add_circle, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Text(isEdit ? 'Edit Policy' : 'Add Policy',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    style: AppTextStyles.sectionTitle),
                 const Spacer(),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
               ]),
@@ -129,7 +121,7 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
                     try {
                       if (isEdit) {
                         await ApiService().patch(
-                          '/api/noticeboard/policies/${existing!['id']}/',
+                          '/api/noticeboard/policies/${existing['id']}/',
                           data: {
                             'title': titleCtrl.text.trim(),
                             'category': categoryCtrl.text.trim(),
@@ -226,7 +218,6 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
                               policies: entry.value,
                               isAdmin: isAdmin,
                               onEdit: (p) => _showPolicyForm(existing: p),
-                              onDelete: (id) => _deletePolicy(id),
                             ))
                         .toList(),
                   ),
@@ -240,8 +231,7 @@ class _PolicyCategory extends StatefulWidget {
   final List policies;
   final bool isAdmin;
   final void Function(Map) onEdit;
-  final void Function(int) onDelete;
-  const _PolicyCategory({required this.category, required this.policies, required this.isAdmin, required this.onEdit, required this.onDelete});
+  const _PolicyCategory({required this.category, required this.policies, required this.isAdmin, required this.onEdit});
   @override
   State<_PolicyCategory> createState() => _PolicyCategoryState();
 }
@@ -266,7 +256,7 @@ class _PolicyCategoryState extends State<_PolicyCategory> {
                 style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13)),
           ),
           const SizedBox(width: 8),
-          Text('${widget.policies.length} policies', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          Text('${widget.policies.length} policies', style: AppTextStyles.caption),
           const Spacer(),
           Icon(_expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: AppColors.textSecondary),
         ]),
@@ -276,7 +266,6 @@ class _PolicyCategoryState extends State<_PolicyCategory> {
       ...widget.policies.map((p) => _PolicyCard(
         policy: p, isAdmin: widget.isAdmin,
         onEdit: () => widget.onEdit(p),
-        onDelete: () => widget.onDelete(p['id'] as int),
       )),
     const SizedBox(height: 8),
   ]);
@@ -286,8 +275,7 @@ class _PolicyCard extends StatefulWidget {
   final Map policy;
   final bool isAdmin;
   final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  const _PolicyCard({required this.policy, required this.isAdmin, required this.onEdit, required this.onDelete});
+  const _PolicyCard({required this.policy, required this.isAdmin, required this.onEdit});
   @override
   State<_PolicyCard> createState() => _PolicyCardState();
 }
@@ -313,13 +301,6 @@ class _PolicyCardState extends State<_PolicyCard> {
                 IconButton(
                   icon: const Icon(Iconsax.edit, size: 16, color: AppColors.primary),
                   onPressed: widget.onEdit,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  icon: const Icon(Iconsax.trash, size: 16, color: AppColors.error),
-                  onPressed: widget.onDelete,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),

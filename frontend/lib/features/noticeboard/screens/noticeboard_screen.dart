@@ -59,35 +59,6 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
     }
   }
 
-  Future<void> _deleteNotice(int id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Notice'),
-        content: const Text('Are you sure you want to delete this notice?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.pop(ctx, true), 
-            child: const Text('Delete')
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
-
-    try {
-      await ApiService().delete('${AppConstants.noticesEndpoint}$id/');
-      _loadNotices();
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notice deleted successfully'), backgroundColor: AppColors.success));
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -218,11 +189,6 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                   child: Text(n['title'] ?? '',
                       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 ),
-                if (isAdmin)
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: AppColors.error),
-                    onPressed: () => _deleteNotice(n['id']),
-                  ),
               ],
             ),
             const SizedBox(height: 6),
@@ -333,7 +299,7 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
             child: Column(mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               const Text('Post Notice',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  style: AppTextStyles.pageTitle),
               const SizedBox(height: 20),
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Notice Title'),
