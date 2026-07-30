@@ -23,6 +23,5 @@ class CompanyPolicySerializer(serializers.ModelSerializer):
 
     def get_created_by_name(self, obj):
         if obj.created_by:
-            return obj.created_by.get_full_name() or obj.created_by.email
+            return obj.created_by.full_name or obj.created_by.email
         return None
-
