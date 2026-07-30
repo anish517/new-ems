@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/notifications/providers/notification_provider.dart';
 import '../../core/theme/app_theme.dart';
 import 'global_month_year_picker.dart';
 import 'common_widgets.dart';
@@ -15,6 +16,7 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final unreadCount = ref.watch(unreadCountProvider);
     final location = GoRouterState.of(context).matchedLocation;
     final isAdmin = user?.canManage ?? false;
 
@@ -44,8 +46,10 @@ class AppShell extends ConsumerWidget {
     ];
 
     final navItems = isAdmin ? adminNav : employeeNav;
-    final currentIndex =
-        navItems.indexWhere((i) => location.startsWith(i.route));
+    final currentIndex = navItems.indexWhere((i) {
+      if (i.route == '/') return location == '/';
+      return location.startsWith(i.route);
+    });
     final isMobile = MediaQuery.of(context).size.width < 700;
 
     Widget sidebarContent = Container(
@@ -91,31 +95,50 @@ class AppShell extends ConsumerWidget {
                       },
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
                         decoration: BoxDecoration(
                           color: isSelected
                               ? AppColors.primary.withValues(alpha: 0.1)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Row(
+                        clipBehavior: Clip.hardEdge,
+                        child: Stack(
                           children: [
-                            Icon(item.icon,
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.textSecondary,
-                                size: 20),
-                            const SizedBox(width: 16),
-                            Text(item.label,
-                                style: TextStyle(
-                                  color: isSelected
-                                      ? AppColors.primary
-                                      : AppColors.textSecondary,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
-                                )),
+                            if (isSelected)
+                              Positioned(
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 4,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              child: Row(
+                                children: [
+                                  Icon(item.icon,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.textSecondary,
+                                      size: 20),
+                                  const SizedBox(width: 16),
+                                  Text(item.label,
+                                      style: TextStyle(
+                                        color: isSelected
+                                            ? AppColors.primary
+                                            : AppColors.textSecondary,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                      )),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -188,8 +211,10 @@ class AppShell extends ConsumerWidget {
           _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
           _NavItem('/profile', Iconsax.user, 'Profile'),
         ];
-        final bottomIndex =
-            bottomItems.indexWhere((i) => location.startsWith(i.route));
+        final bottomIndex = bottomItems.indexWhere((i) {
+          if (i.route == '/') return location == '/';
+          return location.startsWith(i.route);
+        });
 
         return Scaffold(
           backgroundColor: context.bg,
@@ -203,9 +228,13 @@ class AppShell extends ConsumerWidget {
             ),
             actions: [
               const ThemeToggleBtn(),
-              IconButton(
-                icon: Icon(Iconsax.notification, color: context.textPrimary),
-                onPressed: () => context.go('/notifications'),
+              Badge(
+                isLabelVisible: unreadCount > 0,
+                label: Text(unreadCount.toString()),
+                child: IconButton(
+                  icon: Icon(Iconsax.notification, color: context.textPrimary),
+                  onPressed: () => context.go('/notifications'),
+                ),
               ),
               GestureDetector(
                 onTap: () => context.go('/profile'),
@@ -312,9 +341,13 @@ class AppShell extends ConsumerWidget {
                   TextStyle(fontWeight: FontWeight.bold, color: context.textPrimary)),
           actions: [
             const ThemeToggleBtn(),
-            IconButton(
-              icon: Icon(Iconsax.notification, color: context.textPrimary),
-              onPressed: () => context.go('/notifications'),
+            Badge(
+              isLabelVisible: unreadCount > 0,
+              label: Text(unreadCount.toString()),
+              child: IconButton(
+                icon: Icon(Iconsax.notification, color: context.textPrimary),
+                onPressed: () => context.go('/notifications'),
+              ),
             ),
             GestureDetector(
               onTap: () => context.go('/profile'),
