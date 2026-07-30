@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/api_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -151,13 +152,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             : const Text('Sign In'),
                       ),
 
-                      const SizedBox(height: 24),
-                      const Center(
-                        child: Text(
-                          'Contact your admin if you forgot your credentials',
-                          style: TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary),
-                          textAlign: TextAlign.center,
+                      const SizedBox(height: 12),
+                      Center(
+                        child: TextButton(
+                          onPressed: () => _showForgotPasswordSheet(context),
+                          child: const Text(
+                            'Forgot Password?',
+                            style: TextStyle(color: AppColors.primary, fontSize: 13),
+                          ),
                         ),
                       ),
                     ],
@@ -165,6 +167,93 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showForgotPasswordSheet(BuildContext ctx) {
+    final emailCtrl = TextEditingController();
+    bool sending = false;
+    String? message;
+
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: ctx.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            left: 24, right: 24, top: 24,
+            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Reset Password',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              const Text(
+                'Enter your admin email address and we will send you a password reset link.',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email Address',
+                  prefixIcon: Icon(Icons.email_outlined),
+                ),
+              ),
+              if (message != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(message!,
+                      style: const TextStyle(color: AppColors.success, fontSize: 13)),
+                ),
+              ],
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: sending
+                    ? null
+                    : () async {
+                        setSheetState(() => sending = true);
+                        try {
+                          await ApiService().post(
+                            '/api/auth/forgot-password/',
+                            data: {'email': emailCtrl.text.trim()},
+                          );
+                          setSheetState(() {
+                            sending = false;
+                            message = 'If this email is registered, a reset link has been sent to your inbox.';
+                          });
+                        } catch (e) {
+                          setSheetState(() => sending = false);
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                              content: Text('Error: ${ApiService.getErrorMessage(e)}'),
+                              backgroundColor: AppColors.error,
+                            ));
+                          }
+                        }
+                      },
+                child: sending
+                    ? const SizedBox(height: 20, width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Send Reset Link'),
+              ),
+            ],
           ),
         ),
       ),

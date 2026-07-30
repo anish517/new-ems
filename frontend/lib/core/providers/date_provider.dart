@@ -4,14 +4,14 @@ import '../services/api_service.dart';
 
 class NepaliDateState {
   final int year;
-  final int month;
+  final int? month; // null means 'Whole Year'
 
-  NepaliDateState({required this.year, required this.month});
+  NepaliDateState({required this.year, this.month});
 
-  NepaliDateState copyWith({int? year, int? month}) {
+  NepaliDateState copyWith({int? year, int? month, bool clearMonth = false}) {
     return NepaliDateState(
       year: year ?? this.year,
-      month: month ?? this.month,
+      month: clearMonth ? null : (month ?? this.month),
     );
   }
 }
@@ -31,15 +31,23 @@ class NepaliDateNotifier extends StateNotifier<NepaliDateState> {
     state = state.copyWith(year: year);
   }
 
-  void setMonth(int month) {
+  void setMonth(int? month) {
     ApiService.globalNepaliMonth = month;
-    state = state.copyWith(month: month);
+    if (month == null) {
+      state = state.copyWith(clearMonth: true);
+    } else {
+      state = state.copyWith(month: month);
+    }
   }
 
-  void setDate(int year, int month) {
+  void setDate(int year, int? month) {
     ApiService.globalNepaliYear = year;
     ApiService.globalNepaliMonth = month;
-    state = state.copyWith(year: year, month: month);
+    if (month == null) {
+      state = state.copyWith(year: year, clearMonth: true);
+    } else {
+      state = state.copyWith(year: year, month: month);
+    }
   }
 
   void resetToCurrent() {

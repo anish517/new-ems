@@ -162,6 +162,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('EMAIL_HOST_USER', default='noreply@ems.local')
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:56027/')
 
 # ─── CKEditor ─────────────────────────────────────────────────────────────────
 CKEDITOR_5_CONFIGS = ckeditor_config.CONFIGS

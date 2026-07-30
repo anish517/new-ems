@@ -167,17 +167,12 @@ class _ReviewCard extends StatelessWidget {
                     child: Text(isAdmin ? review['employee_name'] ?? 'Unknown Employee' : 'Review from ${review['reviewer_name']}',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
-                  if (isAdmin)
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
-                      onPressed: () => _deleteReview(context, review['id']),
-                    ),
                 ],
               ),
               Row(
                 children: [
                   Text(_fmtDate(review['created_at']),
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      style: AppTextStyles.caption),
                   if (review['category_name'] != null) ...[
                     const SizedBox(width: 8),
                     Container(
@@ -212,13 +207,13 @@ class _ReviewCard extends StatelessWidget {
           ]),
           if (review['feedback'] != null && review['feedback'].isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Text('Feedback', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            const Text('Feedback', style: AppTextStyles.caption),
             const SizedBox(height: 4),
             Text(review['feedback']),
           ],
           if (review['suggestion'] != null && review['suggestion'].isNotEmpty) ...[
             const SizedBox(height: 12),
-            const Text('Suggestion', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            const Text('Suggestion', style: AppTextStyles.caption),
             const SizedBox(height: 4),
             Text(review['suggestion']),
           ],
@@ -259,32 +254,7 @@ class _ReviewCard extends StatelessWidget {
     );
   }
 
-  Future<void> _deleteReview(BuildContext context, int id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Review'),
-        content: const Text('Are you sure you want to delete this performance review?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.pop(ctx, true), 
-            child: const Text('Delete')
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
 
-    try {
-      await ApiService().delete('/api/performance/reviews/$id/');
-      onUpdate();
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Review deleted successfully'), backgroundColor: AppColors.success));
-    } catch (e) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
-    }
-  }
 
   void _showReplySheet(BuildContext ctx) {
     final ctrl = TextEditingController();
@@ -299,7 +269,7 @@ class _ReviewCard extends StatelessWidget {
           padding: EdgeInsets.only(
               left: 24, right: 24, top: 24, bottom: MediaQuery.of(context).viewInsets.bottom + 24),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('Reply to Review', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Reply to Review', style: AppTextStyles.pageTitle),
             const SizedBox(height: 16),
             TextField(
               controller: ctrl,
@@ -408,7 +378,7 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
           left: 24, right: 24, top: 24, bottom: MediaQuery.of(context).viewInsets.bottom + 24),
       child: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('New Performance Review', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('New Performance Review', style: AppTextStyles.pageTitle),
           const SizedBox(height: 16),
           DropdownButtonFormField<int>(
             initialValue: _selEmployee,
@@ -486,23 +456,13 @@ class _ManageCategoriesSheetState extends State<_ManageCategoriesSheet> {
     }
   }
 
-  Future<void> _deleteCategory(int id) async {
-    try {
-      await ApiService().delete('/api/performance/categories/$id/');
-      widget.onUpdate();
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e))));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
           left: 24, right: 24, top: 24, bottom: MediaQuery.of(context).viewInsets.bottom + 24),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const Text('Manage Categories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text('Manage Categories', style: AppTextStyles.pageTitle),
         const SizedBox(height: 16),
         if (widget.categories.isNotEmpty) ...[
           const Text('Existing Categories', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
@@ -512,8 +472,6 @@ class _ManageCategoriesSheetState extends State<_ManageCategoriesSheet> {
             runSpacing: 8,
             children: widget.categories.map((c) => Chip(
               label: Text(c['name'] ?? ''),
-              deleteIcon: const Icon(Icons.close, size: 16),
-              onDeleted: () => _deleteCategory(c['id']),
             )).toList(),
           ),
           const SizedBox(height: 24),

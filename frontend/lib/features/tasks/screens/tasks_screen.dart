@@ -93,32 +93,6 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     }
   }
 
-  Future<void> _deleteTask(int id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Task'),
-        content: const Text('Are you sure you want to delete this task?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.pop(ctx, true), 
-            child: const Text('Delete')
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
-
-    try {
-      await ApiService().delete('${AppConstants.taskBase}/tasks/$id/');
-      _loadTasks();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task deleted successfully'), backgroundColor: AppColors.success));
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
-    }
-  }
 
   void _showTaskDetail(BuildContext ctx, Map task) {
     final priority = task['priority'] ?? 'low';
@@ -163,14 +137,6 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                 child: Text(task['title'] ?? '',
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               ),
-              if (ref.read(currentUserProvider)?.canManage == true)
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
-                  onPressed: () {
-                    Navigator.pop(sheetCtx);
-                    _deleteTask(task['id']);
-                  },
-                ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -206,7 +172,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                   value: task['project']['name'] ?? 'Unknown'),
               const SizedBox(height: 12),
             ],
-            if (task['rating'] != null) ...[
+            if (task['rating'] != null && ref.read(currentUserProvider)?.canManage == true) ...[
               _DetailRow(icon: Iconsax.star1, label: 'Rating',
                   value: '${task['rating']}/10'),
               const SizedBox(height: 12),
@@ -272,7 +238,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
           const Text('Update Status',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              style: AppTextStyles.pageTitle),
           const SizedBox(height: 16),
           ..._statuses.map((s) {
             final isActive = s == current;
@@ -492,9 +458,9 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
             const SizedBox(width: 12),
             const Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Create Task', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text('Create Task', style: AppTextStyles.pageTitle),
                 Text('Assign a task to an employee under a project',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    style: AppTextStyles.caption),
               ]),
             ),
           ]),
@@ -674,7 +640,7 @@ class _TaskList extends StatelessWidget {
                       const Icon(Icons.person_outline, size: 12, color: AppColors.textSecondary),
                       const SizedBox(width: 4),
                       Text(assignedName,
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          style: AppTextStyles.caption),
                     ]),
                     const SizedBox(height: 4),
                     Row(children: [

@@ -150,7 +150,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Events for $dateStr',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    style: AppTextStyles.pageTitle),
                 const SizedBox(height: 12),
                 if (dayEvents.isEmpty)
                   const Text('No events scheduled.', style: TextStyle(color: AppColors.textSecondary))
@@ -238,7 +238,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 child: Text(
               '${_monthNames[_viewedMonth.month]} ${_viewedMonth.year} BS',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: AppTextStyles.pageTitle,
             )),
             IconButton(
                 icon: const Icon(Icons.chevron_right), onPressed: _nextMonth),

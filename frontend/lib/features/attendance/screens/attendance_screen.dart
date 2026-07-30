@@ -487,7 +487,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 const SizedBox(width: 8),
                 const Text('Request Attendance Correction',
                     style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        AppTextStyles.sectionTitle),
                 const Spacer(),
                 IconButton(
                     icon: const Icon(Icons.close),
@@ -1038,7 +1038,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                             content: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text('This will capture your current GPS location and send it to your Admin for approval.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                const Text('This will capture your current GPS location and send it to your Admin for approval.', style: AppTextStyles.caption),
                                 const SizedBox(height: 16),
                                 TextField(
                                   controller: ctrl,
@@ -1089,7 +1089,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               child: Text(
                   'Note: Office employees must be within 50 m of the office to check in/out. Employees with remote work permission approved by an admin can check in from anywhere.',
                   style:
-                      TextStyle(color: AppColors.textSecondary, fontSize: 12))),
+                      AppTextStyles.caption)),
 
           // ── My Correction Requests ─────────────────────────────────────────
           if (_myCorrectionRequests.isNotEmpty) ...[
@@ -1384,7 +1384,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(req['employee_name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                Text('Requested on: ${_formatRemoteDate(req['created_at']?.toString())}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                Text('Requested on: ${_formatRemoteDate(req['created_at']?.toString())}', style: AppTextStyles.caption),
                               ],
                             ),
                             const SizedBox(height: 8),
@@ -1427,7 +1427,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   const Divider(),
                   const SizedBox(height: 16),
                 ],
-                const Text('All Employees', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('All Employees', style: AppTextStyles.sectionTitle),
                 const SizedBox(height: 12),
                 if (_remoteEmployees.isEmpty)
                   const Center(child: Text('No employees found.', style: TextStyle(color: AppColors.textSecondary)))
@@ -1721,7 +1721,7 @@ class _CorrectionRequestTile extends StatelessWidget {
           ]),
           const SizedBox(height: 6),
           Text('Reason: ${req['reason'] ?? '-'}',
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              style: AppTextStyles.caption),
           if (req['admin_note'] != null && (req['admin_note'] as String).isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),

@@ -156,17 +156,17 @@ class AppShell extends ConsumerWidget {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(Icons.brightness_medium, color: AppColors.primary, size: 20),
                         SizedBox(width: 16),
                         Text('Theme', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
                       ],
                     ),
-                    const ThemeToggleBtn(),
+                    ThemeToggleBtn(),
                   ],
                 ),
               ),
@@ -390,14 +390,9 @@ class AppShell extends ConsumerWidget {
           // Divider between sidebar and main content
           Container(width: 1, color: context.border),
           Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1100),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: child,
-                ),
-              ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+              child: child,
             ),
           ),
         ],

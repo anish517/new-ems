@@ -232,7 +232,7 @@ class _SubmitComplaintSheetState extends State<_SubmitComplaintSheet> {
             child: Column(mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               const Text('Submit Complaint',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  style: AppTextStyles.pageTitle),
               const SizedBox(height: 20),
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Title'),
@@ -365,7 +365,7 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
             children: [
               Expanded(
                 child: Text(widget.complaint['title'] ?? 'Complaint',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    style: AppTextStyles.pageTitle),
               ),
               if (widget.isAdmin)
                 IconButton(
@@ -385,11 +385,11 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
                 style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
           const Divider(height: 32),
           const Text('Replies',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              style: AppTextStyles.sectionTitle),
           const SizedBox(height: 12),
           if (replies.isEmpty)
             const Text('No replies yet.',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary))
+                style: AppTextStyles.caption)
           else
             Flexible(
               child: ListView.separated(
