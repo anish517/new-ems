@@ -794,6 +794,9 @@ class AdminCorrectionRequestActionAPIView(APIView):
                     employee=employee,
                     date=req_obj.requested_date,
                 )
+                # Clear existing CheckInOut entries since this correction overrides the day
+                attendance.check_ins_outs.all().delete()
+                
                 # Create CheckInOut entry
                 CheckInOut.objects.create(
                     attendance=attendance,
