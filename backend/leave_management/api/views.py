@@ -182,10 +182,11 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
                 return None
             if isinstance(date_val, str):
                 y, m, d = map(int, date_val.split('-'))
-                date_val = dt.date(y, m, d)
+                return nepali_datetime.date(y, m, d)
             if isinstance(date_val, dt.date):
-                ndt = nepali_datetime.date.from_datetime_date(date_val)
-                return ndt
+                # DRF might parse a Nepali date string "2083-04-15" into a Gregorian dt.date(2083, 4, 15).
+                # We extract the components directly instead of converting it from Gregorian.
+                return nepali_datetime.date(date_val.year, date_val.month, date_val.day)
             return date_val
         
         from_date = to_nepali(serializer.validated_data.get('from_date'))

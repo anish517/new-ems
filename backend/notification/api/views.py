@@ -49,5 +49,7 @@ class RegisterDeviceTokenView(APIView):
 
 class NotificationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = NotificationSerializer
-    queryset = Notification.objects.all()
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return self.request.user.notifications.all()
