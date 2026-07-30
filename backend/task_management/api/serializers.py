@@ -11,7 +11,7 @@ class TaskSerializer(serializers.ModelSerializer):
         model = Task
         fields = ['id', 'project', 'assigned_to', 'title',
                   'description', 'status', 'priority',
-                  'planned_start_date', 'planned_end_date']
+                  'planned_start_date', 'planned_end_date', 'rating']
 
     def create(self, validated_data):
         import nepali_datetime
