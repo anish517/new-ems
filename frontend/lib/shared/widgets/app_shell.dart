@@ -16,6 +16,7 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    ref.watch(notificationsProvider);
     final unreadCount = ref.watch(unreadCountProvider);
     final location = GoRouterState.of(context).matchedLocation;
     final isAdmin = user?.canManage ?? false;

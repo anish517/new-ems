@@ -114,6 +114,7 @@ class Task(SoftDeleteModel):
     planned_end_date = NepaliDateField()
     actual_start_date = NepaliDateField(null=True)
     actual_end_date = NepaliDateField(null=True)
+    rating = models.IntegerField(null=True, blank=True)
 
     def __str__(self) -> str:
         return self.title
