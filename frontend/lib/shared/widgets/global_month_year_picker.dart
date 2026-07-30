@@ -50,21 +50,27 @@ class GlobalMonthYearPicker extends ConsumerWidget {
             children: [
               Expanded(
                 flex: 3,
-                child: DropdownButton<int>(
+                child: DropdownButton<int?>(
                   isExpanded: true,
                   value: dateState.month,
                   dropdownColor: context.surface,
                   underline: const SizedBox(),
                   icon: Icon(Icons.arrow_drop_down, color: context.textSecondary),
                   style: TextStyle(color: context.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
-                  items: nepaliMonths.entries.map((e) {
-                    return DropdownMenuItem<int>(
-                      value: e.key,
-                      child: Text(e.value, overflow: TextOverflow.ellipsis),
-                    );
-                  }).toList(),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Whole Year'),
+                    ),
+                    ...nepaliMonths.entries.map((e) {
+                      return DropdownMenuItem<int?>(
+                        value: e.key,
+                        child: Text(e.value, overflow: TextOverflow.ellipsis),
+                      );
+                    }),
+                  ],
                   onChanged: (val) {
-                    if (val != null) ref.read(nepaliDateProvider.notifier).setMonth(val);
+                    ref.read(nepaliDateProvider.notifier).setMonth(val);
                   },
                 ),
               ),

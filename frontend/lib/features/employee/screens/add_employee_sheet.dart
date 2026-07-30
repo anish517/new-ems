@@ -472,7 +472,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
               ],
               if (_existingDocuments.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                const Text('Existing Documents:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                const Text('Existing Documents:', style: AppTextStyles.caption),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,

@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:nepali_utils/nepali_utils.dart';
 import '../../../core/services/api_service.dart';
@@ -797,7 +796,9 @@ class _ReportsTabState extends State<_ReportsTab> {
                         if (_startDateController.text.isNotEmpty) {
                           initial = NepaliDateTime.parse(_startDateController.text);
                         }
-                      } catch (e) {}
+                      } catch (e) {
+                        // ignore error
+                      }
 
                       final NepaliDateTime? start = await showDialog<NepaliDateTime>(
                         context: context,
@@ -831,14 +832,18 @@ class _ReportsTabState extends State<_ReportsTab> {
                         if (_endDateController.text.isNotEmpty) {
                           initial = NepaliDateTime.parse(_endDateController.text);
                         }
-                      } catch (e) {}
+                      } catch (e) {
+                        // ignore error
+                      }
                       
                       NepaliDateTime? minDate;
                       try {
                         if (_startDateController.text.isNotEmpty) {
                           minDate = NepaliDateTime.parse(_startDateController.text);
                         }
-                      } catch (e) {}
+                      } catch (e) {
+                        // ignore error
+                      }
 
                       final NepaliDateTime? end = await showDialog<NepaliDateTime>(
                         context: context,
@@ -864,7 +869,7 @@ class _ReportsTabState extends State<_ReportsTab> {
                 SizedBox(
                   width: 250,
                   child: DropdownButtonFormField<String?>(
-                    value: _selectedEmployee,
+                    initialValue: _selectedEmployee,
                     dropdownColor: context.surface,
                     style: TextStyle(color: context.textPrimary),
                     decoration: const InputDecoration(labelText: 'Employee', filled: true),

@@ -200,7 +200,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Company Salary Distribution', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text('Company Salary Distribution', style: AppTextStyles.pageTitle),
                   const SizedBox(height: 16),
                   Container(
                     height: 250,
@@ -212,7 +212,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                     child: _buildAllEmployeesSalaryChart(),
                   ),
                   const SizedBox(height: 24),
-                  const Text('Base Salaries', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text('Base Salaries', style: AppTextStyles.pageTitle),
                   const SizedBox(height: 16),
                   ListView.separated(
                     shrinkWrap: true,
@@ -381,48 +381,10 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                 final tx = _allTransactions[i];
                 return _TransactionTile(tx,
                     empName: _empName(tx['employee'] ?? 0),
-                    isAdmin: true,
-                    onDelete: () => _deleteTransaction(tx['id']));
+                    isAdmin: true);
               },
             ),
     );
-  }
-
-  Future<void> _deleteTransaction(int id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Transaction'),
-        content: const Text(
-            'Are you sure you want to delete this salary transaction?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Delete')),
-        ],
-      ),
-    );
-    if (confirm != true) return;
-
-    try {
-      await ApiService().delete('${AppConstants.salaryBase}/transactions/$id/');
-      _loadData();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Transaction deleted successfully'),
-            backgroundColor: AppColors.success));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(ApiService.getErrorMessage(e)),
-            backgroundColor: AppColors.error));
-      }
-    }
   }
 
   Widget _buildEmployeeView() {
@@ -649,7 +611,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Salary Analytics',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              style: AppTextStyles.pageTitle),
           const SizedBox(height: 16),
           // Employee dropdown
           DropdownButtonFormField<int>(
@@ -791,7 +753,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
             
             // Pie Chart for Total Breakdown
             if (pieDataReady) ...[
-              const Text('All-Time Aggregate Breakdown', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text('All-Time Aggregate Breakdown', style: AppTextStyles.sectionTitle),
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(24),
@@ -847,13 +809,12 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
             ],
 
             // Transactions summary table
-            const Text('Transaction History', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text('Transaction History', style: AppTextStyles.sectionTitle),
             const SizedBox(height: 12),
             ...graphTransactions.map((tx) => _TransactionTile(
               tx as Map<String, dynamic>,
               empName: _empName(_graphEmployeeId!),
               isAdmin: true,
-              onDelete: () => _deleteTransaction(tx['id']),
             )),
           ],
         ],
@@ -1109,7 +1070,7 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text('Issue Salary',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              style: AppTextStyles.pageTitle),
           const SizedBox(height: 16),
           if (widget.salaries.isEmpty)
             Container(
@@ -1491,9 +1452,8 @@ class _TransactionTile extends StatelessWidget {
   final Map tx;
   final String? empName;
   final bool isAdmin;
-  final VoidCallback? onDelete;
   const _TransactionTile(this.tx,
-      {this.empName, this.isAdmin = false, this.onDelete});
+      {this.empName, this.isAdmin = false});
   @override
   Widget build(BuildContext context) => Card(
         margin: const EdgeInsets.only(bottom: 8),
@@ -1527,16 +1487,6 @@ class _TransactionTile extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                           color: AppColors.success,
                           fontSize: 15)),
-                  if (isAdmin)
-                    InkWell(
-                      onTap: onDelete,
-                      child: const Padding(
-                        padding: EdgeInsets.only(top: 4.0),
-                        child: Text('Delete',
-                            style: TextStyle(
-                                color: AppColors.error, fontSize: 12)),
-                      ),
-                    )
                 ],
               ),
             ]),

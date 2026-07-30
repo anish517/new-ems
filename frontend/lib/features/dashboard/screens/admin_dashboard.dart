@@ -98,7 +98,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             _pendingRemoteRequests = (remoteData as List).toList();
           });
         }
-      } catch (e) {}
+      } catch (e) {
+        // ignore error
+      }
 
       // Load attendance data for on-time count and weekly chart
       try {
@@ -598,7 +600,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               ],
               if (_pendingRemoteRequests.isNotEmpty) ...[
                 const Text('Pending Remote Work Requests',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    style: AppTextStyles.pageTitle),
                 const SizedBox(height: 16),
                 ListView.separated(
                   shrinkWrap: true,
@@ -624,7 +626,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                               Text(
                                 'Requested on: ${req['created_at'] != null ? _fmtDate(DateTime.parse(req['created_at']).toNepaliDateTime()) : 'N/A'}',
-                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                style: AppTextStyles.caption,
                               ),
                             ],
                           ),
@@ -668,7 +670,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 const SizedBox(height: 32),
               ],
               const Text('Management Modules',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  style: AppTextStyles.pageTitle),
               const SizedBox(height: 16),
               LayoutBuilder(builder: (context, constraints) {
                 int count = 3;

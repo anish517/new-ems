@@ -371,7 +371,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
           child: Column(mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('Edit Profile',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style: AppTextStyles.pageTitle),
             const SizedBox(height: 20),
             Row(children: [
               Expanded(child: TextFormField(
@@ -461,7 +461,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
           child: Column(mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('Change Password',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style: AppTextStyles.pageTitle),
             const SizedBox(height: 20),
             TextFormField(
               obscureText: _obscureOld,
