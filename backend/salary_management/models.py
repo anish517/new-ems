@@ -101,14 +101,17 @@ class Salary(SoftDeleteModel):
         # (e.g. someone checks in on a holiday)
         unpaid_absences = max(0, days_in_month - paid_days)
 
-        # Deduct the unpaid absences from the full base salary
+        # Start with the full 30-day base salary, and deduct any unpaid absences
         base_salary = Salary.objects.get(employee=employee).basic_salary
-        basic_salary_payout = base_salary - (unpaid_absences * per_day_rate)
+        base_payout = base_salary - (unpaid_absences * per_day_rate)
         
-        # Remote salary is strictly based on remote days worked
-        remote_salary_payout = remote_attendance * remote_per_day
+        # Remote Swap Adjustment:
+        # Since 'paid_days' includes remote_attendance, the base_payout currently pays them 
+        # the standard Base Rate for their remote days. We must swap out the Base Rate for 
+        # the Remote Rate for exactly the number of days they worked remotely.
+        remote_swap_adjustment = remote_attendance * (remote_per_day - per_day_rate)
 
-        gross_salary = basic_salary_payout + remote_salary_payout
+        gross_salary = base_payout + remote_swap_adjustment
         return round(gross_salary)
 
     @classmethod
