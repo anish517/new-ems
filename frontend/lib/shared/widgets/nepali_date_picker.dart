@@ -87,7 +87,7 @@ class _NepaliDatePickerDialogState extends State<NepaliDatePickerDialog> {
                       style: TextStyle(color: context.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
                       underline: const SizedBox.shrink(),
                       icon: const Icon(Icons.arrow_drop_down, size: 24),
-                      items: List.generate(41, (index) => 2060 + index).map((y) {
+                      items: List.generate(100, (index) => 2000 + index).map((y) {
                         return DropdownMenuItem(value: y, child: Text(y.toString()));
                       }).toList(),
                       onChanged: (v) => setState(() => _year = v!),
@@ -128,10 +128,9 @@ class _NepaliDatePickerDialogState extends State<NepaliDatePickerDialog> {
               const SizedBox(height: 8),
               
               // Calendar Grid
-              SizedBox(
-                height: 240,
-                child: GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 7,
                     mainAxisSpacing: 4,
@@ -171,7 +170,6 @@ class _NepaliDatePickerDialogState extends State<NepaliDatePickerDialog> {
                     );
                   },
                 ),
-              ),
               const SizedBox(height: 16),
               
               // Selected Date Text

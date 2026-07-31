@@ -20,18 +20,10 @@ def count_saturdays(year: int, month: int) -> int:
         int: The total number of Saturdays in the specified month.
 
     """
-
-    first_day = datetime.date(year, month, 1)
-
-    if month == 12:
-        next_month = datetime.date(year + 1, 1, 1)
-    else:
-        next_month = datetime.date(year, month + 1, 1)
-
-    days_in_month = (next_month - first_day).days
+    days_in_month = total_days_in_month(year, month)
 
     saturdays = sum(1 for day in range(1, days_in_month + 1)
-                    if datetime.date(year, month, day).weekday() == 5)
+                    if nepali_datetime.date(year, month, day).weekday() == 6)
 
     return saturdays
 
