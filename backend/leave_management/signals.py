@@ -7,16 +7,51 @@ from notification.models import Notification
 
 @receiver(post_save, sender=LeaveRequest)
 def increment_leave_balance(sender, instance, created, **kwargs):
-    if not created:
-        if instance.is_reviewed and instance.is_approved:
-            if instance.type:
-                try:
-                    leave_balance = LeaveBalance.objects.get(
-                        employee=instance.employee, leave_type=instance.type)
-                    leave_balance.leaves_taken += instance.no_days
-                    leave_balance.save()
-                except LeaveBalance.DoesNotExist:
-                    pass
+    """
+    Fires every time a LeaveRequest is saved (not created).
+    When a leave is approved, add no_days to the matching LeaveBalance
+    (Paid or Unpaid) for that employee.
+    When a leave is de-approved (reversed), subtract it back.
+    """
+    if created:
+        return  # Only care about updates
+
+    # We need the previous state to detect transitions.
+    # Strategy: recompute from scratch — sum all approved leaves.
+    employee = instance.employee
+    if not employee:
+        return
+
+    # Determine which leave type name matches
+    leave_type_name = 'Paid Leave' if instance.is_paid else 'Unpaid Leave'
+
+    try:
+        lb = LeaveBalance.objects.get(
+            employee=employee,
+            leave_type__name=leave_type_name
+        )
+    except LeaveBalance.DoesNotExist:
+        return  # No balance record — skip silently
+    except LeaveBalance.MultipleObjectsReturned:
+        lb = LeaveBalance.objects.filter(
+            employee=employee,
+            leave_type__name=leave_type_name
+        ).first()
+
+    # Recompute total from all approved leaves of this type for this employee
+    approved_requests = LeaveRequest.objects.filter(
+        employee=employee,
+        is_approved=True,
+        is_reviewed=True,
+        is_paid=instance.is_paid,
+    ).exclude(pk=instance.pk)  # exclude self, will add below if approved
+
+    total_taken = sum(lr.no_days for lr in approved_requests)
+    if instance.is_approved and instance.is_reviewed:
+        total_taken += instance.no_days
+
+    lb.leaves_taken = total_taken
+    lb.save(update_fields=['leaves_taken'])
 
 
 @receiver(post_save, sender=LeaveType)
@@ -27,20 +62,23 @@ def update_leave_balance(sender, instance, created, **kwargs):
     else:
         Updates employees' leave balance when LeaveType is updated
     """
+    if not instance.organization:
+        return  # Guard: cannot create balances without an org
     employees = instance.organization.employees
     if created:
         for employee in employees:
-            LeaveBalance.objects.create(
+            LeaveBalance.objects.get_or_create(
                 organization=instance.organization,
                 employee=employee,
                 leave_type=instance,
-                quota=instance.quota,
-                leaves_taken=0
+                defaults={'quota': instance.quota, 'leaves_taken': 0}
             )
     else:
         for employee in employees:
-            leave_balance, created = LeaveBalance.objects.get_or_create(
-                employee=employee, leave_type=instance)
+            leave_balance, _ = LeaveBalance.objects.get_or_create(
+                employee=employee, leave_type=instance,
+                defaults={'organization': instance.organization, 'quota': instance.quota, 'leaves_taken': 0}
+            )
             leave_balance.quota = instance.quota
             leave_balance.save()
 
@@ -50,13 +88,11 @@ def delete_leave_balance(sender, instance, using, **kwargs):
     """
     Deletes all leave balance instances related to the LeaveType instance
     """
+    if not instance.organization:
+        return
     employees = instance.organization.employees
     for employee in employees:
-        leave_balance, created = LeaveBalance.objects.get_or_create(
-            employee=employee,
-            leave_type=instance
-        )
-        leave_balance.delete()
+        LeaveBalance.objects.filter(employee=employee, leave_type=instance).delete()
 
 
 @receiver(post_save, sender=LeaveRequest)

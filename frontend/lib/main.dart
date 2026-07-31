@@ -29,14 +29,22 @@ class EmsApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeProvider);
 
-    return MaterialApp.router(
-      title: 'EMS — Employee Managements',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: themeMode,
-      scrollBehavior: AppScrollBehavior(),
-      routerConfig: router,
+    return MediaQuery(
+      // Clamp the OS text scale so Windows 125%/150% DPI settings don't
+      // produce tiny or oversized text. We allow a gentle max of 1.2× for
+      // accessibility while keeping the design looking professional.
+      data: MediaQueryData.fromView(View.of(context)).copyWith(
+        textScaler: TextScaler.noScaling,
+      ),
+      child: MaterialApp.router(
+        title: 'EMS — Employee Management',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: themeMode,
+        scrollBehavior: AppScrollBehavior(),
+        routerConfig: router,
+      ),
     );
   }
 }

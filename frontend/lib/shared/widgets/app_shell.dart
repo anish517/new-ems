@@ -79,7 +79,55 @@ class AppShell extends ConsumerWidget {
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: GlobalMonthYearPicker(),
             ),
-            const SizedBox(height: 8),
+            // Notification bell for desktop (no AppBar on desktop layout)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: InkWell(
+                onTap: () => context.go('/notifications'),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: unreadCount > 0
+                        ? AppColors.primary.withValues(alpha: 0.08)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Badge(
+                        isLabelVisible: unreadCount > 0,
+                        label: Text(
+                          unreadCount > 99 ? '99+' : '$unreadCount',
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                        child: Icon(
+                          Iconsax.notification,
+                          color: unreadCount > 0
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        unreadCount > 0
+                            ? '$unreadCount Notifications'
+                            : 'Notifications',
+                        style: TextStyle(
+                          color: unreadCount > 0
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                          fontWeight: unreadCount > 0
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             Expanded(
               child: ListView.builder(
                 itemCount: navItems.length,

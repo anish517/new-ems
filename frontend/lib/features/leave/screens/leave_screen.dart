@@ -41,13 +41,14 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
   List _requests = [];
   Map<String, dynamic>? _balance;
   List _pending = [];
+  List _adminBalances = []; // NEW: for admin employee balances tab
   bool _isLoading = true;
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 2, vsync: this);
+    // Tab length changes based on role, handle it in build
     _loadLeaves();
   }
 
@@ -73,7 +74,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
 
       setState(() {
         _requests = all;
-        // For admins: derive pending list from the same response — no second request needed
+        // For admins: derive pending list from the same response
         if (isAdmin) {
           _pending = (all as List)
               .where(
@@ -82,16 +83,22 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
         }
       });
 
-      if (!isAdmin) {
-        // Employee: fetch leave balance
-        if (user?.employeeId != null) {
-          try {
-            final balRes = await ApiService().get(
-              '${AppConstants.leaveBase}/leave-balance/${user!.employeeId}/',
-            );
-            if (mounted) setState(() => _balance = balRes.data);
-          } catch (_) {}
-        }
+      if (isAdmin) {
+        // Admin: fetch all employee balances
+        try {
+          final res = await ApiService().get('${AppConstants.leaveBase}/leave-summary/');
+          if (mounted) setState(() => _adminBalances = res.data is List ? res.data : []);
+        } catch (_) {}
+      }
+
+      // EVERYONE (admin or employee): fetch personal leave balance
+      if (user?.employeeId != null) {
+        try {
+          final balRes = await ApiService().get(
+            '${AppConstants.leaveBase}/leave-balance/${user!.employeeId}/',
+          );
+          if (mounted) setState(() => _balance = balRes.data);
+        } catch (_) {}
       }
     } catch (_) {}
     if (mounted) setState(() => _isLoading = false);
@@ -123,18 +130,42 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
     final user = ref.watch(currentUserProvider);
     final isAdmin = user?.canManage ?? false;
 
+    // Initialize or re-initialize TabController if role length changes
+    final tabLength = isAdmin ? 3 : 2;
+    // We check if _tabs is initialized and has the right length.
+    // If not, we re-create it. (A bit hacky but works for this scenario)
+    if (!mounted) return const SizedBox.shrink();
+    try {
+      if (_tabs.length != tabLength) {
+        _tabs.dispose();
+        _tabs = TabController(length: tabLength, vsync: this);
+      }
+    } catch (_) {
+      // Catch late initialization error
+      _tabs = TabController(length: tabLength, vsync: this);
+    }
+
     return Scaffold(
       appBar: AppBar(
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadLeaves)
         ],
         title: const Text('Leave Management'),
-        bottom: TabBar(controller: _tabs, tabs: [
-          Tab(text: isAdmin ? 'All Leaves' : 'My Leaves'),
-          Tab(text: isAdmin ? 'Pending Approvals' : 'Balance'),
-        ]),
+        bottom: TabBar(
+            controller: _tabs,
+            isScrollable: isAdmin,
+            tabs: isAdmin
+                ? const [
+                    Tab(text: 'All Leaves'),
+                    Tab(text: 'Pending Approvals'),
+                    Tab(text: 'Employee Balances'),
+                  ]
+                : const [
+                    Tab(text: 'My Leaves'),
+                    Tab(text: 'Balance'),
+                  ]),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: isAdmin ? null : FloatingActionButton.extended(
         onPressed: () => _showApplyLeaveDialog(context),
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Apply Leave', style: TextStyle(color: Colors.white)),
@@ -209,6 +240,22 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                             ),
                     )
                   : _LeaveBalanceTab(balance: _balance),
+
+              // Tab 3 (Admin only): Employee Balances
+              if (isAdmin)
+                RefreshIndicator(
+                  onRefresh: _loadLeaves,
+                  child: _adminBalances.isEmpty
+                      ? const Center(child: Text('No employees found'))
+                      : ResponsiveGridList(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _adminBalances.length,
+                          itemBuilder: (_, i) => _AdminEmployeeBalanceCard(
+                            data: _adminBalances[i],
+                            onRefresh: _loadLeaves,
+                          ),
+                        ),
+                ),
             ]),
     );
   }
@@ -220,7 +267,10 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
         backgroundColor: ctx.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-        builder: (_) => _ApplyLeaveSheet(onSuccess: _loadLeaves),
+        builder: (_) => _ApplyLeaveSheet(
+          onSuccess: _loadLeaves,
+          balance: _balance,
+        ),
       );
 }
 
@@ -509,7 +559,8 @@ class _LeaveTypeTile extends StatelessWidget {
 // ─── Apply Leave Sheet ───────────────────────────────────────────────────────
 class _ApplyLeaveSheet extends StatefulWidget {
   final VoidCallback onSuccess;
-  const _ApplyLeaveSheet({required this.onSuccess});
+  final Map<String, dynamic>? balance;
+  const _ApplyLeaveSheet({required this.onSuccess, required this.balance});
 
   @override
   State<_ApplyLeaveSheet> createState() => _ApplyLeaveSheetState();
@@ -558,6 +609,37 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
       ));
       return;
     }
+
+    // --- Quota Validation ---
+    if (widget.balance != null) {
+      final leaveBalances = (widget.balance!['leave_balances'] as List?) ?? [];
+      final targetTypeName = _isPaid ? 'Paid Leave' : 'Unpaid Leave';
+      
+      dynamic targetBalance;
+      for (final lb in leaveBalances) {
+        if (lb['leave_type']?['name'] == targetTypeName) {
+          targetBalance = lb;
+          break;
+        }
+      }
+
+      if (targetBalance != null) {
+        final quota = (targetBalance['quota'] as num? ?? 0).toInt();
+        final taken = (targetBalance['leaves_taken'] as num? ?? 0).toDouble(); // taken can be .5
+        final remaining = (quota - taken).clamp(0, quota);
+        final requestedDays = _isHalfDay ? 0.5 : (NepaliDateTime.parse(_tillDate).difference(NepaliDateTime.parse(_fromDate)).inDays + 1);
+
+        if (requestedDays > remaining) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Insufficient quota for $targetTypeName. You only have $remaining days left.'),
+            backgroundColor: AppColors.error,
+          ));
+          return;
+        }
+      }
+    }
+    // ------------------------
+
     setState(() => _isLoading = true);
     try {
       await ApiService().post(
@@ -851,6 +933,145 @@ class _DetailRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─── Admin Employee Balance Card ──────────────────────────────────────────────
+class _AdminEmployeeBalanceCard extends StatelessWidget {
+  final Map data;
+  final VoidCallback onRefresh;
+  const _AdminEmployeeBalanceCard({required this.data, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    final balances = (data['balances'] as List?) ?? [];
+    
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.person, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    data['employee_name'] ?? 'Unknown',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(),
+            ...balances.map((b) {
+              final quota = (b['quota'] as num?)?.toInt() ?? 0;
+              final taken = (b['leaves_taken'] as num?)?.toDouble() ?? 0;
+              final remaining = (quota - taken).clamp(0, quota);
+              final typeName = b['leave_type']?['name'] ?? 'Unknown Type';
+              final isPaid = typeName == 'Paid Leave';
+              
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(typeName, style: TextStyle(
+                      color: isPaid ? AppColors.success : AppColors.warning,
+                      fontWeight: FontWeight.w500,
+                    )),
+                    Row(
+                      children: [
+                        Text('$remaining / $quota left', style: const TextStyle(fontSize: 12)),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 16),
+                          onPressed: () => _showEditQuotaDialog(context, b),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          color: AppColors.primary,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditQuotaDialog(BuildContext context, Map balanceData) {
+    final typeName = balanceData['leave_type']?['name'] ?? 'Leave';
+    final ctrl = TextEditingController(text: balanceData['quota']?.toString() ?? '0');
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: Text('Edit Quota: $typeName'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('For ${data['employee_name']}'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: ctrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'New Quota (days)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading ? null : () async {
+                final val = int.tryParse(ctrl.text.trim());
+                if (val == null || val < 0) return;
+                
+                setState(() => isLoading = true);
+                try {
+                  await ApiService().patch(
+                    '${AppConstants.leaveBase}/leave-balance/update/${balanceData['id']}/',
+                    data: {'quota': val},
+                  );
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Quota updated successfully'),
+                      backgroundColor: AppColors.success,
+                    ));
+                    onRefresh();
+                  }
+                } catch (e) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('Error: ${ApiService.getErrorMessage(e)}'),
+                      backgroundColor: AppColors.error,
+                    ));
+                  }
+                } finally {
+                  if (ctx.mounted) setState(() => isLoading = false);
+                }
+              },
+              child: isLoading
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Save'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

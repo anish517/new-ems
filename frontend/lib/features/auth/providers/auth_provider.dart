@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/models/user_model.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/firebase_notification_service.dart';
+import '../../notifications/providers/notification_provider.dart';
 
 // Auth state
 class AuthState {
@@ -23,8 +24,9 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService _authService;
+  final Ref _ref;
 
-  AuthNotifier(this._authService) : super(const AuthState()) {
+  AuthNotifier(this._authService, this._ref) : super(const AuthState()) {
     _checkAuth();
   }
 
@@ -48,6 +50,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final user = await _authService.login(email, password);
       state = AuthState(user: user);
+      // Reset notification badge and re-fetch for the newly logged-in user
+      _ref.read(unreadCountProvider.notifier).state = 0;
+      _ref.invalidate(notificationsProvider);
       FirebaseNotificationService().registerDeviceToken();
       return true;
     } catch (e) {
@@ -61,6 +66,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await _authService.logout();
+    // Reset badge and clear cached notifications before state change
+    _ref.read(unreadCountProvider.notifier).state = 0;
+    _ref.invalidate(notificationsProvider);
     state = const AuthState();
   }
 
@@ -76,7 +84,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 final authServiceProvider = Provider((_) => AuthService());
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
-  (ref) => AuthNotifier(ref.read(authServiceProvider)),
+  (ref) => AuthNotifier(ref.read(authServiceProvider), ref),
 );
 
 final currentUserProvider = Provider<UserProfile?>(
