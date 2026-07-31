@@ -79,7 +79,7 @@ A full-stack **Employee Management System** built for Nepali companies. It featu
 | Language | Python 3.11+ |
 | Framework | Django 5.0, Django REST Framework 3.15 |
 | Auth | `djangorestframework-simplejwt` (JWT) |
-| Database | SQLite (dev) · MySQL / PostgreSQL (production) |
+| Database | SQLite (current) — MySQL / PostgreSQL supported for scaling |
 | Push Notifications | `firebase-admin` (FCM) |
 | Scheduler | `APScheduler` (background cron jobs for early notifications) |
 | Rich Text | `django-ckeditor-5`, `django-tinymce` |
@@ -338,22 +338,25 @@ Net Salary        = Gross Salary + Incentive + Bonus − TDS − SSF − EPF
 - MySQL 8.0 or PostgreSQL 14+
 - Nginx + Gunicorn
 
-#### 2. Configure Production Database
+#### 2. Database
 
-In `backend/base/settings.py`, uncomment and configure the MySQL/PostgreSQL section:
+The project currently uses **SQLite** for both development and production. The database file is located at `backend/db.sqlite3`.
 
-```python
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT'),
-    }
-}
-```
+> **Optional — Migrate to MySQL/PostgreSQL for scaling:**
+> In `backend/base/settings.py`, comment out the SQLite block and uncomment the MySQL block:
+> ```python
+> DATABASES = {
+>     'default': {
+>         'ENGINE': 'django.db.backends.mysql',  # or postgresql
+>         'NAME': config('DB_NAME'),
+>         'USER': config('DB_USER'),
+>         'PASSWORD': config('DB_PASSWORD'),
+>         'HOST': config('DB_HOST'),
+>         'PORT': config('DB_PORT'),
+>     }
+> }
+> ```
+> Then add the appropriate DB credentials to your `.env` file.
 
 #### 3. Production `.env` Changes
 
