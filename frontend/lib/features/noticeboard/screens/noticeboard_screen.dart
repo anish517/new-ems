@@ -1,3 +1,4 @@
+import 'package:ems_app/shared/widgets/responsive_grid_list.dart';
 import 'package:flutter/material.dart';
 import '../../../shared/widgets/nepali_date_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +16,8 @@ String _fmtDate(String? raw, {String? fallback}) {
   final s = raw ?? fallback!;
   try {
     if (s.contains('T')) {
-      return NepaliDateFormat('dd MMM yyyy').format(DateTime.parse(s).toNepaliDateTime());
+      return NepaliDateFormat('dd MMM yyyy')
+          .format(DateTime.parse(s).toNepaliDateTime());
     }
     return NepaliDateFormat('dd MMM yyyy').format(NepaliDateTime.parse(s));
   } catch (_) {
@@ -49,16 +51,14 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
       final res = await ApiService().get(AppConstants.noticesEndpoint);
       if (!mounted) return;
       setState(() {
-        _notices = res.data is List
-            ? res.data
-            : (res.data['results'] ?? res.data);
+        _notices =
+            res.data is List ? res.data : (res.data['results'] ?? res.data);
         _loading = false;
       });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +68,6 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Notice Board')),
       floatingActionButton: isAdmin
-
           ? FloatingActionButton.extended(
               onPressed: () => _showCreateNotice(context),
               backgroundColor: AppColors.primary,
@@ -83,16 +82,15 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
               onRefresh: _loadNotices,
               child: _notices.isEmpty
                   ? const Center(child: Text('No notices yet'))
-                  : ListView.separated(
-                      physics: const AlwaysScrollableScrollPhysics(),
+                  : ResponsiveGridList(
                       padding: const EdgeInsets.all(16),
                       itemCount: _notices.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (ctx, i) {
                         final n = _notices[i];
                         final desc = n['description'] ?? n['content'] ?? '';
                         // Strip simple HTML tags for preview
-                        final cleanDesc = desc.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+                        final cleanDesc =
+                            desc.replaceAll(RegExp(r'<[^>]*>'), '').trim();
                         return InkWell(
                           onTap: () => _showNoticeDetail(ctx, n, isAdmin),
                           borderRadius: BorderRadius.circular(12),
@@ -112,20 +110,27 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 12),
-                                    Expanded(child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                    Expanded(
+                                        child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(n['title'] ?? '',
                                             style: const TextStyle(
                                                 fontWeight: FontWeight.w600,
                                                 fontSize: 15)),
-                                         Text(_fmtDate(n['date']?.toString(), fallback: n['created_at']?.toString()),
+                                        Text(
+                                            _fmtDate(n['date']?.toString(),
+                                                fallback: n['created_at']
+                                                    ?.toString()),
                                             style: const TextStyle(
                                                 fontSize: 12,
-                                                color: AppColors.textSecondary)),
+                                                color:
+                                                    AppColors.textSecondary)),
                                       ],
                                     )),
-                                    const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                                    const Icon(Icons.chevron_right,
+                                        color: AppColors.textSecondary),
                                   ]),
                                   if (cleanDesc.isNotEmpty) ...[
                                     const SizedBox(height: 8),
@@ -163,10 +168,12 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
         builder: (_, controller) => SingleChildScrollView(
           controller: controller,
           padding: const EdgeInsets.all(24),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
                   color: AppColors.textSecondary.withValues(alpha: 0.4),
@@ -187,22 +194,31 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
               children: [
                 Expanded(
                   child: Text(n['title'] ?? '',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                      style: const TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
             const SizedBox(height: 6),
-            Text(_fmtDate(n['date']?.toString(), fallback: n['created_at']?.toString()),
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text(
+                _fmtDate(n['date']?.toString(),
+                    fallback: n['created_at']?.toString()),
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 20),
             const Divider(),
             const SizedBox(height: 16),
             if (cleanDesc.isNotEmpty)
               Text(cleanDesc,
-                  style: const TextStyle(fontSize: 15, height: 1.7, color: AppColors.textSecondary))
+                  style: const TextStyle(
+                      fontSize: 15,
+                      height: 1.7,
+                      color: AppColors.textSecondary))
             else
               const Text('No content available.',
-                  style: TextStyle(color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
+                  style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontStyle: FontStyle.italic)),
           ]),
         ),
       ),
@@ -296,49 +312,48 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const Text('Post Notice',
-                  style: AppTextStyles.pageTitle),
-              const SizedBox(height: 20),
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Notice Title'),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-                onSaved: (v) => _title = v!,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _dateCtrl,
-                readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: 'Notice Date',
-                  suffixIcon: Icon(Icons.calendar_today),
-                ),
-                onTap: _pickDate,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                maxLines: 5,
-                decoration: const InputDecoration(
-                    labelText: 'Content', alignLabelWithHint: true),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-                onSaved: (v) => _description = v!,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _submit,
-                child: _isLoading
-                    ? const SizedBox(height: 20, width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Post Notice'),
-              ),
-            ]),
+            child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('Post Notice', style: AppTextStyles.pageTitle),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    decoration:
+                        const InputDecoration(labelText: 'Notice Title'),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                    onSaved: (v) => _title = v!,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _dateCtrl,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Notice Date',
+                      suffixIcon: Icon(Icons.calendar_today),
+                    ),
+                    onTap: _pickDate,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                        labelText: 'Content', alignLabelWithHint: true),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                    onSaved: (v) => _description = v!,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _submit,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Post Notice'),
+                  ),
+                ]),
           ),
         ),
       );
 }
-
-
-
-
-

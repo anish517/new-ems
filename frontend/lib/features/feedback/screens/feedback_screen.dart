@@ -1,3 +1,4 @@
+import 'package:ems_app/shared/widgets/responsive_grid_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
@@ -28,9 +29,8 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
       final res = await ApiService().get('${AppConstants.feedbackBase}/');
       if (!mounted) return;
       setState(() {
-        _complaints = res.data is List
-            ? res.data
-            : (res.data['results'] ?? res.data);
+        _complaints =
+            res.data is List ? res.data : (res.data['results'] ?? res.data);
         _loading = false;
       });
     } catch (_) {
@@ -44,12 +44,15 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
     final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Feedback & Complaints'), actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _loadComplaints)]), 
+      appBar: AppBar(title: const Text('Feedback & Complaints'), actions: [
+        IconButton(icon: const Icon(Icons.refresh), onPressed: _loadComplaints)
+      ]),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showSubmitDialog(context),
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('New Complaint', style: TextStyle(color: Colors.white)),
+        label:
+            const Text('New Complaint', style: TextStyle(color: Colors.white)),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -57,11 +60,9 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
               onRefresh: _loadComplaints,
               child: _complaints.isEmpty
                   ? const Center(child: Text('No complaints filed yet'))
-                  : ListView.separated(
-                      physics: const AlwaysScrollableScrollPhysics(),
+                  : ResponsiveGridList(
                       padding: const EdgeInsets.all(16),
                       itemCount: _complaints.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (_, i) {
                         final c = _complaints[i];
                         final status = c['status'] ?? 'pending';
@@ -80,14 +81,20 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                                 children: [
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(c['title'] ?? '',
-                                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 15)),
                                         if (c['owner_name'] != null) ...[
                                           const SizedBox(height: 4),
                                           Text('By: ${c['owner_name']}',
-                                              style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500)),
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppColors.primary,
+                                                  fontWeight: FontWeight.w500)),
                                         ],
                                         if (c['description'] != null) ...[
                                           const SizedBox(height: 6),
@@ -96,7 +103,8 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                                               overflow: TextOverflow.ellipsis,
                                               style: const TextStyle(
                                                   fontSize: 12,
-                                                  color: AppColors.textSecondary)),
+                                                  color:
+                                                      AppColors.textSecondary)),
                                         ],
                                       ],
                                     ),
@@ -109,11 +117,15 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 3),
                                         decoration: BoxDecoration(
-                                          color: statusColor.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(6),
+                                          color: statusColor.withValues(
+                                              alpha: 0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
                                         ),
                                         child: Text(
-                                          status.replaceAll('_', ' ').toUpperCase(),
+                                          status
+                                              .replaceAll('_', ' ')
+                                              .toUpperCase(),
                                           style: TextStyle(
                                               color: statusColor,
                                               fontSize: 10,
@@ -125,12 +137,17 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
-                                          border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.3)),
-                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(
+                                              color: AppColors.textSecondary
+                                                  .withValues(alpha: 0.3)),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
                                         ),
                                         child: Text(
                                           c['visibility'] ?? 'anonymous',
-                                          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                                          style: const TextStyle(
+                                              fontSize: 10,
+                                              color: AppColors.textSecondary),
                                         ),
                                       ),
                                     ],
@@ -151,12 +168,10 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
       isScrollControlled: true,
       constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => _ComplaintDetailsSheet(
-        complaint: c, 
-        isAdmin: isAdmin,
-        onReplySuccess: _loadComplaints
-      ),
+          complaint: c, isAdmin: isAdmin, onReplySuccess: _loadComplaints),
     );
   }
 
@@ -229,43 +244,52 @@ class _SubmitComplaintSheetState extends State<_SubmitComplaintSheet> {
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const Text('Submit Complaint',
-                  style: AppTextStyles.pageTitle),
-              const SizedBox(height: 20),
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Title'),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-                onSaved: (v) => _title = v!,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                maxLines: 4,
-                decoration: const InputDecoration(
-                    labelText: 'Description', alignLabelWithHint: true),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-                onSaved: (v) => _description = v!,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _visibility,
-                decoration: const InputDecoration(labelText: 'Visibility to Administration'),
-                items: const [
-                  DropdownMenuItem(value: 'identified', child: Text('Show my Name (Identified)')),
-                  DropdownMenuItem(value: 'anonymous', child: Text('Hide my Name (Anonymous)')),
-                ],
-                onChanged: (v) => setState(() => _visibility = v!),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _submit,
-                child: _isLoading
-                    ? const SizedBox(height: 20, width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Submit'),
-              ),
-            ]),
+            child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('Submit Complaint',
+                      style: AppTextStyles.pageTitle),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    decoration: const InputDecoration(labelText: 'Title'),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                    onSaved: (v) => _title = v!,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                        labelText: 'Description', alignLabelWithHint: true),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                    onSaved: (v) => _description = v!,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: _visibility,
+                    decoration: const InputDecoration(
+                        labelText: 'Visibility to Administration'),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'identified',
+                          child: Text('Show my Name (Identified)')),
+                      DropdownMenuItem(
+                          value: 'anonymous',
+                          child: Text('Hide my Name (Anonymous)')),
+                    ],
+                    onChanged: (v) => setState(() => _visibility = v!),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _submit,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Submit'),
+                  ),
+                ]),
           ),
         ),
       );
@@ -276,7 +300,10 @@ class _ComplaintDetailsSheet extends StatefulWidget {
   final Map complaint;
   final bool isAdmin;
   final VoidCallback onReplySuccess;
-  const _ComplaintDetailsSheet({required this.complaint, required this.isAdmin, required this.onReplySuccess});
+  const _ComplaintDetailsSheet(
+      {required this.complaint,
+      required this.isAdmin,
+      required this.onReplySuccess});
 
   @override
   State<_ComplaintDetailsSheet> createState() => _ComplaintDetailsSheetState();
@@ -293,26 +320,34 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
         title: const Text('Delete Complaint'),
         content: const Text('Are you sure you want to delete this complaint?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.pop(ctx, true), 
-            child: const Text('Delete')
-          ),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete')),
         ],
       ),
     );
     if (confirm != true) return;
 
     try {
-      await ApiService().delete('${AppConstants.feedbackBase}/${widget.complaint['id']}/');
+      await ApiService()
+          .delete('${AppConstants.feedbackBase}/${widget.complaint['id']}/');
       widget.onReplySuccess();
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Complaint deleted successfully'), backgroundColor: AppColors.success));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Complaint deleted successfully'),
+            backgroundColor: AppColors.success));
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiService.getErrorMessage(e)), backgroundColor: AppColors.error));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(ApiService.getErrorMessage(e)),
+            backgroundColor: AppColors.error));
+      }
     }
   }
 
@@ -350,7 +385,7 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
   @override
   Widget build(BuildContext context) {
     final replies = widget.complaint['replies'] as List? ?? [];
-    
+
     return Padding(
       padding: EdgeInsets.only(
           left: 24,
@@ -369,7 +404,8 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
               ),
               if (widget.isAdmin)
                 IconButton(
-                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                  icon:
+                      const Icon(Icons.delete_outline, color: AppColors.error),
                   onPressed: _deleteComplaint,
                 ),
             ],
@@ -377,19 +413,21 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
           if (widget.complaint['owner_name'] != null) ...[
             const SizedBox(height: 4),
             Text('Submitted by: ${widget.complaint['owner_name']}',
-                style: const TextStyle(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w500)),
+                style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500)),
           ],
           const SizedBox(height: 8),
           if (widget.complaint['description'] != null)
             Text(widget.complaint['description'],
-                style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                style: const TextStyle(
+                    fontSize: 14, color: AppColors.textSecondary)),
           const Divider(height: 32),
-          const Text('Replies',
-              style: AppTextStyles.sectionTitle),
+          const Text('Replies', style: AppTextStyles.sectionTitle),
           const SizedBox(height: 12),
           if (replies.isEmpty)
-            const Text('No replies yet.',
-                style: AppTextStyles.caption)
+            const Text('No replies yet.', style: AppTextStyles.caption)
           else
             Flexible(
               child: ListView.separated(
@@ -408,9 +446,11 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(reply['employee_name'] ?? 'Unknown',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 12)),
                         const SizedBox(height: 4),
-                        Text(reply['content'] ?? '', style: const TextStyle(fontSize: 14)),
+                        Text(reply['content'] ?? '',
+                            style: const TextStyle(fontSize: 14)),
                       ],
                     ),
                   );
@@ -425,7 +465,8 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
                   controller: _replyController,
                   decoration: const InputDecoration(
                     hintText: 'Write a reply...',
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                 ),
               ),
@@ -433,7 +474,10 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
               IconButton(
                 onPressed: _isReplying ? null : _submitReply,
                 icon: _isReplying
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.send, color: AppColors.primary),
               ),
             ],
@@ -443,7 +487,3 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
     );
   }
 }
-
-
-
-

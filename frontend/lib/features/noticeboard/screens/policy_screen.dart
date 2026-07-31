@@ -207,19 +207,25 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
                     ],
                   ]),
                 )
-              : RefreshIndicator(
-                  onRefresh: _loadPolicies,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: _groupByCategory(_policies)
-                        .entries
-                        .map((entry) => _PolicyCategory(
-                              category: entry.key,
-                              policies: entry.value,
-                              isAdmin: isAdmin,
-                              onEdit: (p) => _showPolicyForm(existing: p),
-                            ))
-                        .toList(),
+              : Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 900),
+                    child: RefreshIndicator(
+                      onRefresh: _loadPolicies,
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: _groupByCategory(_policies)
+                            .entries
+                            .map((entry) => _PolicyCategory(
+                                  category: entry.key,
+                                  policies: entry.value,
+                                  isAdmin: isAdmin,
+                                  onEdit: (p) => _showPolicyForm(existing: p),
+                                ))
+                            .toList(),
+                      ),
+                    ),
                   ),
                 ),
     );
@@ -286,36 +292,92 @@ class _PolicyCardState extends State<_PolicyCard> {
   Widget build(BuildContext context) {
     final content = widget.policy['content'] as String? ?? '';
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: _expanded ? 2 : 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+            color: _expanded
+                ? AppColors.primary.withValues(alpha: 0.3)
+                : Colors.grey.withValues(alpha: 0.2)),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         onTap: () => setState(() => _expanded = !_expanded),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              const Icon(Iconsax.document_text, size: 18, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Expanded(child: Text(widget.policy['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600))),
-              if (widget.isAdmin) ...[
-                IconButton(
-                  icon: const Icon(Iconsax.edit, size: 16, color: AppColors.primary),
-                  onPressed: widget.onEdit,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Iconsax.document_text,
+                      size: 22, color: AppColors.primary),
                 ),
-                const SizedBox(width: 4),
-              ],
-              Icon(_expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                  size: 18, color: AppColors.textSecondary),
-            ]),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.policy['title'] ?? '',
+                          style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary)),
+                      if (widget.policy['created_at'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            widget.policy['created_at'].toString().split('T')[0],
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (widget.isAdmin) ...[
+                  IconButton(
+                    icon: const Icon(Iconsax.edit,
+                        size: 18, color: AppColors.primary),
+                    onPressed: widget.onEdit,
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                Icon(
+                    _expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    size: 20,
+                    color: AppColors.textSecondary),
+              ]),
+            ),
             if (_expanded) ...[
-              const SizedBox(height: 10),
               const Divider(height: 1),
-              const SizedBox(height: 10),
-              Text(content, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.05),
+                  borderRadius:
+                      const BorderRadius.vertical(bottom: Radius.circular(16)),
+                ),
+                padding: const EdgeInsets.all(20),
+                child: SelectableText(
+                  content,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                    height: 1.6,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
             ],
-          ]),
+          ],
         ),
       ),
     );

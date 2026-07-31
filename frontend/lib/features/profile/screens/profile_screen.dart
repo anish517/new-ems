@@ -82,9 +82,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(children: [
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(children: [
           // Avatar
           GestureDetector(
             onTap: _isUploading ? null : _pickAndUploadImage,
@@ -226,6 +230,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ),
         ]),
+          ),
+        ),
       ),
     );
   }

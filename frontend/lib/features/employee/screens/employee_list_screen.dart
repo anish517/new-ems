@@ -175,8 +175,12 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> with Si
   Widget _buildList(List list, bool isArchived) {
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView.separated(
-          physics: const AlwaysScrollableScrollPhysics(),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16),
           itemCount: list.length,
           separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -259,6 +263,8 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen> with Si
               ),
             ));
           }),
+        ),
+      ),
     );
   }
 }
