@@ -338,9 +338,99 @@ Net Salary        = Gross Salary + Incentive + Bonus − TDS − SSF − EPF
 - Nginx + Gunicorn
 - *(Optional)* MySQL 8.0 or PostgreSQL 14+ if migrating away from SQLite
 
-#### 2. Database
+#### 2. Clone the Repository
 
-The project currently uses **SQLite** for both development and production. The database file is located at `backend/db.sqlite3`.
+```bash
+# SSH into your server, then:
+git clone https://github.com/anish517/new-ems.git /srv/ems-full-stack
+# or clone from GitLab:
+# git clone https://gitlab.omwaytech.com/suresh/employee-management-system.git /srv/ems-full-stack
+
+cd /srv/ems-full-stack/backend
+```
+
+#### 3. Create Virtual Environment & Install Dependencies
+
+```bash
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+#### 4. Create the `.env` File
+
+There is no `.env.example` — create the file manually:
+
+```bash
+nano .env
+```
+
+Paste the following, filling in your real values:
+
+```ini
+# ─── Security ──────────────────────────────────────────────────────────────
+SECRET_KEY=REPLACE_WITH_A_STRONG_KEY
+DEBUG=False
+
+# ─── Static / Media ────────────────────────────────────────────────────────
+STATIC_ROOT=staticfiles
+MEDIA_ROOT=media
+
+# ─── Email (Gmail SMTP) ────────────────────────────────────────────────────
+EMAIL_HOST_USER=yourapp@gmail.com
+EMAIL_HOST_PASSWORD=your_16char_gmail_app_password
+
+# ─── Frontend URL (used in password-reset emails) ──────────────────────────
+FRONTEND_URL=https://app.yourdomain.com/
+```
+
+To generate a strong `SECRET_KEY`, run:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(60))"
+```
+
+Copy the output and paste it as the value of `SECRET_KEY` in `.env`.
+
+#### 5. Edit `settings.py` for Production
+
+Two settings are **hardcoded** in `backend/base/settings.py` and must be changed manually before deploying:
+
+```bash
+nano base/settings.py
+```
+
+**Change `ALLOWED_HOSTS`** (line ~11) to your domain:
+```python
+# Before:
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '*']
+
+# After:
+ALLOWED_HOSTS = ['yourdomain.com', 'www.yourdomain.com', '127.0.0.1']
+```
+
+**Change `CORS_ALLOW_ALL_ORIGINS`** (line ~118) to lock it down:
+```python
+# Before:
+CORS_ALLOW_ALL_ORIGINS = True
+
+# After:
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    'https://app.yourdomain.com',
+]
+```
+
+#### 6. Database
+
+The project uses **SQLite** (`backend/db.sqlite3`). Ensure the `www-data` user has write access to the backend directory:
+
+```bash
+# Allow the web server user to write to the database file
+sudo chown -R www-data:www-data /srv/ems-full-stack/backend
+sudo chmod 755 /srv/ems-full-stack/backend
+sudo chmod 664 /srv/ems-full-stack/backend/db.sqlite3
+```
 
 > **Optional — Migrate to MySQL/PostgreSQL for scaling:**
 > In `backend/base/settings.py`, comment out the SQLite block and uncomment the MySQL block:
@@ -356,51 +446,100 @@ The project currently uses **SQLite** for both development and production. The d
 >     }
 > }
 > ```
-> Then add the appropriate DB credentials to your `.env` file.
+> Then add the DB credentials to your `.env` file.
 
-#### 3. Production `.env` Changes
-
-```ini
-DEBUG=False
-SECRET_KEY=<generate a 50+ character random key>
-ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
-CORS_ALLOW_ALL_ORIGINS=False         # Set to False and whitelist your frontend
-```
-
-> In `settings.py` change `CORS_ALLOW_ALL_ORIGINS = False` and add:
-> ```python
-> CORS_ALLOWED_ORIGINS = ['https://yourdomain.com']
-> ```
-
-#### 4. Install & Run with Gunicorn
+#### 7. Upload Firebase Service Account
 
 ```bash
-# Install gunicorn (already in requirements.txt)
-pip install gunicorn
+# Run this from your LOCAL machine:
+scp /path/to/firebase-service-account.json user@your-server:/srv/ems-full-stack/backend/firebase-service-account.json
 
-# Collect static files
-python manage.py collectstatic --noinput
-
-# Run migrations
-python manage.py migrate
-
-# Start Gunicorn
-gunicorn base.wsgi:application --bind 0.0.0.0:8000 --workers 3
+# Then on the server, secure the file:
+sudo chown www-data:www-data /srv/ems-full-stack/backend/firebase-service-account.json
+sudo chmod 600 /srv/ems-full-stack/backend/firebase-service-account.json
 ```
 
-#### 5. Nginx Configuration
+See the [Firebase Setup](#firebase-setup) section for how to generate this file.
+
+#### 8. Run Migrations & Collect Static Files
+
+```bash
+source /srv/ems-full-stack/backend/venv/bin/activate
+cd /srv/ems-full-stack/backend
+
+python manage.py migrate
+python manage.py collectstatic --noinput
+
+# Create the first admin user
+python manage.py createsuperuser
+```
+
+#### 9. Run with Gunicorn
+
+Test that Gunicorn starts correctly:
+
+```bash
+gunicorn base.wsgi:application --bind 127.0.0.1:8000 --workers 3
+```
+
+Press `Ctrl+C` to stop, then set up Systemd to run it permanently.
+
+#### 10. Systemd Service (Auto-start on reboot)
+
+```bash
+sudo nano /etc/systemd/system/ems-backend.service
+```
+
+Paste:
+
+```ini
+[Unit]
+Description=EMS Django Backend
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/ems-full-stack/backend
+ExecStart=/srv/ems-full-stack/backend/venv/bin/gunicorn base.wsgi:application --bind 127.0.0.1:8000 --workers 3
+Restart=always
+RestartSec=5
+Environment="PATH=/srv/ems-full-stack/backend/venv/bin"
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable ems-backend
+sudo systemctl start ems-backend
+
+# Verify it's running:
+sudo systemctl status ems-backend
+```
+
+#### 11. Nginx Configuration
+
+```bash
+sudo nano /etc/nginx/sites-available/ems-backend
+```
+
+Paste:
 
 ```nginx
 server {
     listen 80;
-    server_name yourdomain.com;
+    server_name yourdomain.com www.yourdomain.com;
+
+    client_max_body_size 20M;
 
     location /static/ {
-        alias /path/to/backend/staticfiles/;
+        alias /srv/ems-full-stack/backend/staticfiles/;
     }
 
     location /media/ {
-        alias /path/to/backend/media/;
+        alias /srv/ems-full-stack/backend/media/;
     }
 
     location / {
@@ -408,32 +547,24 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
-#### 6. Systemd Service (Auto-restart)
-
-```ini
-# /etc/systemd/system/ems-backend.service
-[Unit]
-Description=EMS Django Backend
-After=network.target
-
-[Service]
-User=www-data
-WorkingDirectory=/path/to/ems-full-stack/backend
-ExecStart=/path/to/venv/bin/gunicorn base.wsgi:application --bind 127.0.0.1:8000 --workers 3
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
 ```bash
-sudo systemctl enable ems-backend
-sudo systemctl start ems-backend
+sudo ln -s /etc/nginx/sites-available/ems-backend /etc/nginx/sites-enabled/
+sudo nginx -t          # test config
+sudo systemctl reload nginx
 ```
+
+> **HTTPS:** Use Certbot to get a free SSL certificate:
+> ```bash
+> sudo apt install certbot python3-certbot-nginx
+> sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+> ```
+
+
 
 ---
 
