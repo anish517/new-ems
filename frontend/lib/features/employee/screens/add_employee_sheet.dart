@@ -5,6 +5,8 @@ import '../../../core/constants/app_constants.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
+import 'package:nepali_utils/nepali_utils.dart';
+import '../../../shared/widgets/nepali_date_picker.dart';
 
 class AddEmployeeSheet extends StatefulWidget {
   final VoidCallback onSuccess;
@@ -20,7 +22,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
 
   String _fname = '', _lname = '', _email = '', _password = '';
   String _phone = '', _gender = 'male', _employeeType = 'full_time', _maritalStatus = 'single';
-  DateTime _dob = DateTime.now();
+  NepaliDateTime _dob = NepaliDateTime.now();
   final _dobCtrl = TextEditingController();
   bool _isLoading = false;
   bool _isLoadingDetails = false;
@@ -52,7 +54,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
       _employeeType = widget.employee!['employee_type'] ?? 'full_time';
       if (widget.employee!['date_of_birth'] != null) {
         try {
-          _dob = DateTime.parse(widget.employee!['date_of_birth']);
+          _dob = NepaliDateTime.parse(widget.employee!['date_of_birth']);
         } catch (_) {}
       }
       _fatherName = widget.employee!['father_name'] ?? '';
@@ -108,11 +110,12 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await showDialog<NepaliDateTime>(
       context: context,
-      initialDate: _dob,
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
+      builder: (ctx) => NepaliDatePickerDialog(
+        title: 'Select Date of Birth',
+        initial: _dob,
+      ),
     );
     if (picked != null) {
       setState(() {

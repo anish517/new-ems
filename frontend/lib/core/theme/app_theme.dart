@@ -43,13 +43,13 @@ class AppColors {
 
 class AppTextStyles {
   static const TextStyle pageTitle = TextStyle(
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: FontWeight.w700,
     height: 1.4,
   );
 
   static const TextStyle sectionTitle = TextStyle(
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: FontWeight.w600,
     height: 1.5,
   );
@@ -63,7 +63,7 @@ class AppTextStyles {
   static const TextStyle bodyText = TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.normal,
-    height: 1.5,
+    height: 1.6,
   );
 
   static const TextStyle caption = TextStyle(
@@ -91,15 +91,16 @@ class AppTheme {
     ),
     scaffoldBackgroundColor: AppColors.bgDark,
     textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: AppColors.bgDark,
       elevation: 0,
       centerTitle: true,
-      iconTheme: IconThemeData(color: Colors.white),
-      titleTextStyle: TextStyle(
-        color: Colors.white,
+      iconTheme: const IconThemeData(color: Colors.white),
+      titleTextStyle: GoogleFonts.inter(
         fontSize: 18,
         fontWeight: FontWeight.w600,
+        letterSpacing: -0.3,
+        color: Colors.white,
       ),
     ),
     cardTheme: CardThemeData(
@@ -181,15 +182,16 @@ class AppTheme {
     ),
     scaffoldBackgroundColor: AppColors.bgLight,
     textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: AppColors.surfaceLight,
       elevation: 0,
       centerTitle: true,
-      iconTheme: IconThemeData(color: AppColors.textPrimary),
-      titleTextStyle: TextStyle(
-        color: AppColors.textPrimary,
+      iconTheme: const IconThemeData(color: AppColors.textPrimary),
+      titleTextStyle: GoogleFonts.inter(
         fontSize: 18,
         fontWeight: FontWeight.w600,
+        letterSpacing: -0.3,
+        color: AppColors.textPrimary,
       ),
     ),
     cardTheme: CardThemeData(

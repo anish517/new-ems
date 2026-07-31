@@ -87,23 +87,66 @@ class LeaveTypeRetrieveAPIView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class LeaveQuotaRetrieveAPIView(APIView):
+    """Returns leave balances for any employee. Accessible by admin and the employee themselves."""
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, employee_id):
         try:
             employee = Employee.objects.get(id=employee_id)
         except Employee.DoesNotExist:
-            return Response({"error": "Employee does not exits"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Employee does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
-        leave_balances = LeaveBalance.objects.filter(employee=employee)
+        leave_balances = LeaveBalance.objects.filter(employee=employee).select_related('leave_type')
         sorted_leave_balances = sorted(
-            leave_balances, key=lambda lb: lb.leave_type.name)
+            leave_balances, key=lambda lb: lb.leave_type.name if lb.leave_type else '')
 
         serializer = EmployeeLeaveBalanceSerializer(
-            {
-                "employee": employee,
-                "leave_balances": sorted_leave_balances
-            }
+            {"employee": employee, "leave_balances": sorted_leave_balances}
         )
         return Response(data=serializer.data, status=status.HTTP_200_OK)
+
+
+class LeaveBalanceUpdateAPIView(APIView):
+    """Admin: update quota for a specific LeaveBalance record."""
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        try:
+            lb = LeaveBalance.objects.get(pk=pk)
+        except LeaveBalance.DoesNotExist:
+            return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        quota = request.data.get('quota')
+        if quota is None:
+            return Response({'error': 'quota is required'}, status=status.HTTP_400_BAD_REQUEST)
+        lb.quota = int(quota)
+        lb.save(update_fields=['quota'])
+        return Response(LeaveBalanceSerializer(lb).data, status=status.HTTP_200_OK)
+
+
+class AllEmployeeLeaveSummaryView(APIView):
+    """Admin: returns a summary of all employees' leave balances."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        org = None
+        if user.organization.exists():
+            org = user.organization.first()
+        elif hasattr(user, 'employee'):
+            org = getattr(user.employee, 'organization', None)
+        if not org:
+            return Response([], status=status.HTTP_200_OK)
+
+        employees = org.employees.select_related('user')
+        result = []
+        for emp in employees:
+            balances = LeaveBalance.objects.filter(employee=emp).select_related('leave_type')
+            result.append({
+                'employee_id': emp.id,
+                'employee_name': emp.user.full_name if emp.user else str(emp),
+                'balances': LeaveBalanceSerializer(balances, many=True).data,
+            })
+        return Response(result, status=status.HTTP_200_OK)
 
 
 class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
