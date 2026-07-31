@@ -627,7 +627,13 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
         final quota = (targetBalance['quota'] as num? ?? 0).toInt();
         final taken = (targetBalance['leaves_taken'] as num? ?? 0).toDouble(); // taken can be .5
         final remaining = (quota - taken).clamp(0, quota);
-        final requestedDays = _isHalfDay ? 0.5 : (NepaliDateTime.parse(_tillDate).difference(NepaliDateTime.parse(_fromDate)).inDays + 1);
+        final fromNd = NepaliDateTime.parse(_fromDate);
+        final tillNd = NepaliDateTime.parse(_tillDate);
+        final adFrom = fromNd.toDateTime();
+        final adTill = tillNd.toDateTime();
+        final utcFrom = DateTime.utc(adFrom.year, adFrom.month, adFrom.day);
+        final utcTill = DateTime.utc(adTill.year, adTill.month, adTill.day);
+        final requestedDays = _isHalfDay ? 0.5 : (utcTill.difference(utcFrom).inDays + 1.0);
 
         if (requestedDays > remaining) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(

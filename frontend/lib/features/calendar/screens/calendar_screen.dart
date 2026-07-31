@@ -15,7 +15,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _viewedMonth; // day is always 1; year/month drive the view
   late final NepaliDateTime _today;
   List _events = [];
-  List _holidays = [];
   bool _loading = false;
   String? _error;
   int? _selectedDay;
@@ -44,22 +43,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _loadEvents();
   }
 
-  /// Days in the viewed BS month, derived from the library's AD conversion
-  /// rather than a hand-maintained table — stays correct for any year the
-  /// package supports, no manual updates needed.
-  int get _daysInViewedMonth {
-    final thisMonthStartAd = _viewedMonth.toDateTime();
-    final nextMonth = _viewedMonth.month == 12
-        ? NepaliDateTime(_viewedMonth.year + 1, 1, 1)
-        : NepaliDateTime(_viewedMonth.year, _viewedMonth.month + 1, 1);
-    return nextMonth.toDateTime().difference(thisMonthStartAd).inDays;
-  }
+  /// Days in the viewed BS month, directly using the library's property
+  int get _daysInViewedMonth => _viewedMonth.totalDays;
 
   /// 0 = Sunday ... 6 = Saturday, matching the day-header row below.
-  /// NOTE: assumes NepaliDateTime.weekday follows DateTime's convention
-  /// (Monday=1...Sunday=7) — worth a quick print/debug check after adding
-  /// the dependency, since this is the one piece I couldn't verify from docs.
-  int get _startOffset => _viewedMonth.weekday % 7;
+  /// NepaliDateTime.weekday is 1 for Sunday, 2 for Monday, ..., 7 for Saturday.
+  /// So we just subtract 1 to make Sunday = 0.
+  int get _startOffset => _viewedMonth.weekday - 1;
 
   Future<void> _loadEvents() async {
     setState(() {
@@ -70,25 +60,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final params = '?year=${_viewedMonth.year}&month=${_viewedMonth.month}';
       final eventsRes =
           await ApiService().get('${AppConstants.calendarBase}/events/$params');
-      final holidaysRes =
-          await ApiService().get('${AppConstants.calendarBase}/dates/month_dates/$params');
       if (!mounted) return;
       setState(() {
         _events = eventsRes.data is List
             ? eventsRes.data
             : (eventsRes.data['events'] ?? []);
-        // DateViewSet returns {'dates': [...], 'first_day': ..., ...}
-        final holidayData = holidaysRes.data;
-        if (holidayData is Map && holidayData['dates'] != null) {
-          _holidays = (holidayData['dates'] as List)
-              .where((d) => (d as String).isNotEmpty)
-              .map((d) => {'date': d})
-              .toList();
-        } else if (holidayData is List) {
-          _holidays = holidayData;
-        } else {
-          _holidays = [];
-        }
       });
     } catch (_) {
       if (mounted) setState(() => _error = 'Could not load calendar data.');
@@ -227,7 +203,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadEvents),
         ],
       ),
-      body: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 600), child: Column(children: [
+      body: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 600), child: SingleChildScrollView(child: Column(children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           color: context.surface,
@@ -277,9 +253,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ]),
           ),
         _loading
-            ? const Expanded(child: Center(child: CircularProgressIndicator()))
-            : Expanded(
-                child: GridView.builder(
+            ? const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
+            : GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(8),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 7,
@@ -295,8 +272,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         _viewedMonth.month == _today.month &&
                         day == _today.day;
                     final hasEvent = _events.any((e) => _matchesBsDay(e, day));
-                    final isHoliday =
-                        _holidays.any((h) => _matchesBsDay(h, day));
+                    final isHoliday = _events.any((e) => _matchesBsDay(e, day) && e['is_holiday'] == true);
                     final isSelected = day == _selectedDay;
 
                     return InkWell(
@@ -309,7 +285,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               ? AppColors.accent.withValues(alpha: 0.2)
                               : isToday
                                   ? AppColors.primary
-                                  : isHoliday
+                                  : (isSaturday || isHoliday)
                                       ? AppColors.error.withValues(alpha: 0.1)
                                       : null,
                           borderRadius: BorderRadius.circular(8),
@@ -352,7 +328,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     );
                   },
                 ),
-              ),
         if (_events.isNotEmpty) ...[
           const Divider(height: 1),
           Container(
@@ -400,7 +375,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ]),
           ),
         ],
-      ]))),
+      ])))),
     );
   }
 }

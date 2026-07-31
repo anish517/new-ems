@@ -61,7 +61,7 @@ class DateViewSet(viewsets.ViewSet):
         last_day = next_month - datetime.timedelta(days=1)
         days_in_month = last_day.day
         
-        saturdays = sum(1 for i in range(1, days_in_month + 1) if nepali_datetime.date(year, month, i).weekday() == 5)
+        saturdays = sum(1 for i in range(1, days_in_month + 1) if nepali_datetime.date(year, month, i).weekday() == 6)
         return saturdays
 
 
@@ -125,7 +125,7 @@ class EventViewSet(viewsets.ViewSet):
         import nepali_datetime
         days_in_month = self.total_days_in_month(year, month)
         saturdays = sum(1 for day in range(1, days_in_month + 1)
-                        if nepali_datetime.date(year, month, day).weekday() == 5)
+                        if nepali_datetime.date(year, month, day).weekday() == 6)
         return saturdays
 
     def create(self, request):
