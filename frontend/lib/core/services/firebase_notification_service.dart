@@ -9,15 +9,20 @@ import 'api_service.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   // App is in background/terminated, FCM handles the system notification tray.
+  // NOTE: only the small icon (from AndroidManifest's default_notification_icon)
+  // is shown in this path — the large/color icon cannot be applied here unless
+  // you switch to data-only messages and build the notification yourself.
 }
 
 class FirebaseNotificationService {
-  static final FirebaseNotificationService _instance = FirebaseNotificationService._internal();
+  static final FirebaseNotificationService _instance =
+      FirebaseNotificationService._internal();
   factory FirebaseNotificationService() => _instance;
   FirebaseNotificationService._internal();
 
   late final FirebaseMessaging _fcm;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
   bool _isInitialized = false;
 
@@ -35,7 +40,8 @@ class FirebaseNotificationService {
     } catch (_) {}
     _fcm = FirebaseMessaging.instance;
     if (!kIsWeb) {
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      FirebaseMessaging.onBackgroundMessage(
+          _firebaseMessagingBackgroundHandler);
     }
 
     // Request permissions (iOS/Android 13+)
@@ -52,7 +58,8 @@ class FirebaseNotificationService {
     if (!kIsWeb) {
       // Setup Local Notifications for FOREGROUND messages
       const AndroidInitializationSettings androidInitSettings =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
+          AndroidInitializationSettings(
+              'ic_stat_notify'); // small white status-bar icon (required)
       const InitializationSettings initSettings =
           InitializationSettings(android: androidInitSettings);
 
@@ -85,14 +92,19 @@ class FirebaseNotificationService {
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
       'ems_main_channel',
       'EMS Notifications',
+      icon: 'ic_stat_notify', // small icon — status bar, white, required
+      largeIcon: DrawableResourceAndroidBitmap(
+          'ic_notification_large'), // full-color brand logo
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
     );
-    const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    const NotificationDetails platformDetails =
+        NotificationDetails(android: androidDetails);
 
     await _localNotifications.show(
       message.hashCode,
@@ -124,15 +136,11 @@ class FirebaseNotificationService {
       if (fcmToken != null) {
         debugPrint("FCM Token: $fcmToken");
         final api = ApiService();
-        await api.post('/api/notifications/device-token/', data: {'token': fcmToken});
+        await api.post('/api/notifications/device-token/',
+            data: {'token': fcmToken});
       }
     } catch (e) {
       debugPrint("Failed to register FCM token: $e");
     }
   }
-
 }
-
-
-
-
