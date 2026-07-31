@@ -106,6 +106,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final dayEvents = _events.where((e) => _matchesBsDay(e, day)).toList();
     final titleCtrl = TextEditingController();
     bool isImportant = false;
+    bool isHoliday = false;
 
     showModalBottomSheet(
       context: context,
@@ -135,8 +136,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         contentPadding: EdgeInsets.zero,
                         leading: const Icon(Icons.event, color: AppColors.primary),
                         title: Text(e['title'] ?? e['name'] ?? ''),
-                        subtitle: (e['is_important'] == true) 
-                            ? const Text('Important', style: TextStyle(color: AppColors.error, fontSize: 12)) 
+                        subtitle: ((e['is_important'] == true) || (e['is_holiday'] == true)) 
+                            ? Row(
+                                children: [
+                                  if (e['is_important'] == true)
+                                    const Text('Important ', style: TextStyle(color: AppColors.error, fontSize: 12)),
+                                  if (e['is_holiday'] == true)
+                                    const Text('• Holiday', style: TextStyle(color: AppColors.error, fontSize: 12)),
+                                ],
+                              )
                             : null,
                       )),
                 const Divider(),
@@ -153,18 +161,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
                 ),
+                CheckboxListTile(
+                  title: const Text('Is Holiday (Counted in salary issuance)'),
+                  value: isHoliday,
+                  onChanged: (val) => setModalState(() => isHoliday = val ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
                 const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () async {
-                      if (titleCtrl.text.trim().isEmpty) return;
+                      if (titleCtrl.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter an event title'), backgroundColor: AppColors.error)
+                        );
+                        return;
+                      }
                       try {
                         await ApiService().post('${AppConstants.calendarBase}/events/', data: {
                           'title': titleCtrl.text.trim(),
                           'start': dateStr,
                           'end': dateStr,
                           'is_important': isImportant,
+                          'is_holiday': isHoliday,
                         });
                         if (!ctx.mounted) return;
                         Navigator.pop(ctx);

@@ -54,10 +54,6 @@ class Salary(SoftDeleteModel):
         organization = employee.organization
 
         days_in_month = total_days_in_month(year, month)
-        basic_salary_per_day = Salary.objects.get(
-            employee=employee).basic_salary / days_in_month
-        remote_salary_per_day = Salary.objects.get(
-            employee=employee).remote_salary / days_in_month
 
         attendances = Attendance.get_attendance_of_selected_month(
             employee=employee, year=year, month=month)
@@ -79,12 +75,40 @@ class Salary(SoftDeleteModel):
             holidays = count_saturdays(year=year, month=month) + count_holidays(
                 organization, year=year, month=month)
 
-        remote_salary = remote_attendance * remote_salary_per_day
-        basic_salary = site_attendance * basic_salary_per_day
+        # 30-Day Basis Calculation
+        per_day_rate = Salary.objects.get(employee=employee).basic_salary / 30.0
+        remote_per_day = Salary.objects.get(employee=employee).remote_salary / 30.0
 
-        paid_holidays = paid_leaves + holidays
-        gross_salary = remote_salary + basic_salary + \
-            (paid_holidays * basic_salary_per_day)
+        # Total paid days (they get credit for attendance, paid leaves, and holidays)
+        paid_days = site_attendance + remote_attendance + paid_leaves + holidays
+        
+        # Unpaid Half Leave Loophole Fix:
+        # If someone takes an unpaid half leave, but clocks in for the other half, 
+        # site_attendance gives them 1.0 full point. We must subtract 0.5 points.
+        unpaid_half_leaves = LeaveRequest.objects.filter(
+            employee=employee, is_half_day=True, is_paid=False, is_approved=True
+        )
+        unpaid_half_leave_dates = [
+            lr.from_date for lr in unpaid_half_leaves 
+            if lr.from_date.year == year and lr.from_date.month == month
+        ]
+        for attendance in days_present:
+            if attendance.date in unpaid_half_leave_dates:
+                paid_days -= 0.5
+        
+        # Calculate unpaid absences by comparing actual days in month to their paid days
+        # We use max(0) to ensure we don't accidentally overpay if there's double-counting 
+        # (e.g. someone checks in on a holiday)
+        unpaid_absences = max(0, days_in_month - paid_days)
+
+        # Deduct the unpaid absences from the full base salary
+        base_salary = Salary.objects.get(employee=employee).basic_salary
+        basic_salary_payout = base_salary - (unpaid_absences * per_day_rate)
+        
+        # Remote salary is strictly based on remote days worked
+        remote_salary_payout = remote_attendance * remote_per_day
+
+        gross_salary = basic_salary_payout + remote_salary_payout
         return round(gross_salary)
 
     @classmethod
