@@ -9,8 +9,19 @@ urlpatterns = [
          views.EmployeeLeaveCountDetailAPIView.as_view()),
 
     path('leave-type/<int:id>/', views.LeaveTypeRetrieveAPIView.as_view()),
+
+    # Employee / Admin: get leave balance for a specific employee
     path('leave-balance/<employee_id>/',
          views.LeaveQuotaRetrieveAPIView.as_view()),
+
+    # Admin: update quota for a specific LeaveBalance record
+    path('leave-balance/update/<int:pk>/',
+         views.LeaveBalanceUpdateAPIView.as_view()),
+
+    # Legacy detail endpoint
     path('leave-balance/detail/<int:pk>/',
          views.LeaveBalanceDetailAPIView.as_view()),
+
+    # Admin: summary of ALL employees' balances
+    path('leave-summary/', views.AllEmployeeLeaveSummaryView.as_view()),
 ]
