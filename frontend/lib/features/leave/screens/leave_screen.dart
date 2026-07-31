@@ -1,3 +1,4 @@
+import 'package:ems_app/shared/widgets/responsive_grid_list.dart';
 import 'package:flutter/material.dart';
 import '../../../shared/widgets/nepali_date_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +16,8 @@ String _fmtDate(String? raw, {String? fallback}) {
   final s = raw ?? fallback!;
   try {
     if (s.contains('T')) {
-      return NepaliDateFormat('dd MMM yyyy').format(DateTime.parse(s).toNepaliDateTime());
+      return NepaliDateFormat('dd MMM yyyy')
+          .format(DateTime.parse(s).toNepaliDateTime());
     }
     return NepaliDateFormat('dd MMM yyyy').format(NepaliDateTime.parse(s));
   } catch (_) {
@@ -74,8 +76,8 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
         // For admins: derive pending list from the same response — no second request needed
         if (isAdmin) {
           _pending = (all as List)
-              .where((r) =>
-                  r['is_approved'] != true && r['is_reviewed'] != true)
+              .where(
+                  (r) => r['is_approved'] != true && r['is_reviewed'] != true)
               .toList();
         }
       });
@@ -115,7 +117,6 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     ref.listen(nepaliDateProvider, (_, __) => _loadLeaves());
@@ -123,7 +124,10 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
     final isAdmin = user?.canManage ?? false;
 
     return Scaffold(
-      appBar: AppBar(actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _loadLeaves)], 
+      appBar: AppBar(
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadLeaves)
+        ],
         title: const Text('Leave Management'),
         bottom: TabBar(controller: _tabs, tabs: [
           Tab(text: isAdmin ? 'All Leaves' : 'My Leaves'),
@@ -174,13 +178,11 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                         child: filtered.isEmpty
                             ? const Center(
                                 child: Text('No leave requests found'))
-                            : ListView.separated(
+                            : ResponsiveGridList(
                                 padding: const EdgeInsets.all(16),
                                 itemCount: filtered.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(height: 8),
-                                itemBuilder: (_, i) => _LeaveCard(filtered[i],
-                                    isAdmin: isAdmin),
+                                itemBuilder: (_, i) =>
+                                    _LeaveCard(filtered[i], isAdmin: isAdmin),
                               ),
                       ),
                     ],
@@ -194,11 +196,9 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                       onRefresh: _loadLeaves,
                       child: _pending.isEmpty
                           ? const Center(child: Text('No pending requests'))
-                          : ListView.separated(
+                          : ResponsiveGridList(
                               padding: const EdgeInsets.all(16),
                               itemCount: _pending.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 8),
                               itemBuilder: (_, i) => _AdminLeaveCard(
                                 leave: _pending[i],
                                 onApprove: () =>
@@ -291,19 +291,19 @@ class _LeaveCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _statusColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(_status,
-                          style: TextStyle(
-                              color: _statusColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
-                    ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _statusColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(_status,
+                      style: TextStyle(
+                          color: _statusColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
+                ),
               ],
             ),
           ),
@@ -316,9 +316,7 @@ class _AdminLeaveCard extends StatelessWidget {
   final Map leave;
   final VoidCallback onApprove, onReject;
   const _AdminLeaveCard(
-      {required this.leave,
-      required this.onApprove,
-      required this.onReject});
+      {required this.leave, required this.onApprove, required this.onReject});
 
   @override
   Widget build(BuildContext context) => Card(
@@ -423,7 +421,7 @@ class _LeaveBalanceTab extends StatelessWidget {
     int totalQuota = 0;
     for (final lb in leaveBalances) {
       totalTaken += (lb['leaves_taken'] as num? ?? 0).toInt();
-      totalQuota += (lb['leave_type']?['quota'] as num? ?? 0).toInt();
+      totalQuota += (lb['quota'] as num? ?? 0).toInt();
     }
     final remaining = (totalQuota - totalTaken).clamp(0, totalQuota);
 
@@ -473,9 +471,9 @@ class _LeaveTypeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Backend fields: leaves_taken (int), leave_type.quota (int), leave_type.name (str)
+    // Backend fields: leaves_taken (float), quota (int), leave_type.name (str)
     final used = (lb['leaves_taken'] as num? ?? 0).toInt();
-    final total = (lb['leave_type']?['quota'] as num? ?? 1).toInt();
+    final total = (lb['quota'] as num? ?? 1).toInt();
     final remaining = (total - used).clamp(0, total);
     final pct = total > 0 ? (used / total).clamp(0.0, 1.0).toDouble() : 0.0;
 
@@ -856,4 +854,3 @@ class _DetailRow extends StatelessWidget {
     );
   }
 }
-
