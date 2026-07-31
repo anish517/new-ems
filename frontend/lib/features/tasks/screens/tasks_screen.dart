@@ -1,3 +1,4 @@
+import 'package:ems_app/shared/widgets/responsive_grid_list.dart';
 import 'package:flutter/material.dart';
 import '../../../shared/widgets/nepali_date_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,7 +17,8 @@ String _fmtDate(String? raw, {String? fallback}) {
   final s = raw ?? fallback!;
   try {
     if (s.contains('T')) {
-      return NepaliDateFormat('dd MMM yyyy').format(DateTime.parse(s).toNepaliDateTime());
+      return NepaliDateFormat('dd MMM yyyy')
+          .format(DateTime.parse(s).toNepaliDateTime());
     }
     return NepaliDateFormat('dd MMM yyyy').format(NepaliDateTime.parse(s));
   } catch (_) {
@@ -62,7 +64,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
       final res = await ApiService().get('${AppConstants.taskBase}/tasks/');
       if (!mounted) return;
       setState(() {
-        _tasks = res.data is List ? res.data : (res.data['results'] ?? res.data);
+        _tasks =
+            res.data is List ? res.data : (res.data['results'] ?? res.data);
         _loading = false;
       });
     } catch (_) {
@@ -93,7 +96,6 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     }
   }
 
-
   void _showTaskDetail(BuildContext ctx, Map task) {
     final priority = task['priority'] ?? 'low';
     final priorityColor = priority == 'high'
@@ -121,10 +123,12 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
         builder: (_, controller) => SingleChildScrollView(
           controller: controller,
           padding: const EdgeInsets.all(24),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
                   color: AppColors.textSecondary.withValues(alpha: 0.4),
@@ -135,16 +139,21 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
             Row(children: [
               Expanded(
                 child: Text(task['title'] ?? '',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold)),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: priorityColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(priority.toUpperCase(),
-                    style: TextStyle(color: priorityColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                    style: TextStyle(
+                        color: priorityColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold)),
               ),
             ]),
             const SizedBox(height: 16),
@@ -156,33 +165,50 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
               ),
               child: Text(
                 (task['status'] ?? 'to-do').replaceAll('-', ' ').toUpperCase(),
-                style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600),
               ),
             ),
             const SizedBox(height: 20),
             const Divider(),
             const SizedBox(height: 12),
             if (task['assigned_to'] != null && task['assigned_to'] is Map) ...[
-              _DetailRow(icon: Icons.person_outline, label: 'Assigned To',
+              _DetailRow(
+                  icon: Icons.person_outline,
+                  label: 'Assigned To',
                   value: task['assigned_to']['name'] ?? 'Unknown'),
               const SizedBox(height: 12),
             ],
             if (task['project'] != null && task['project'] is Map) ...[
-              _DetailRow(icon: Iconsax.folder, label: 'Project',
+              _DetailRow(
+                  icon: Iconsax.folder,
+                  label: 'Project',
                   value: task['project']['name'] ?? 'Unknown'),
               const SizedBox(height: 12),
             ],
-            if (task['rating'] != null && ref.read(currentUserProvider)?.canManage == true) ...[
-              _DetailRow(icon: Iconsax.star1, label: 'Rating',
+            if (task['rating'] != null &&
+                ref.read(currentUserProvider)?.canManage == true) ...[
+              _DetailRow(
+                  icon: Iconsax.star1,
+                  label: 'Rating',
                   value: '${task['rating']}/10'),
               const SizedBox(height: 12),
             ],
-            _DetailRow(icon: Iconsax.calendar, label: 'Start Date',
-                value: _fmtDate(task['planned_start_date']?.toString(), fallback: task['created_at']?.toString())),
+            _DetailRow(
+                icon: Iconsax.calendar,
+                label: 'Start Date',
+                value: _fmtDate(task['planned_start_date']?.toString(),
+                    fallback: task['created_at']?.toString())),
             const SizedBox(height: 12),
-            _DetailRow(icon: Iconsax.calendar_tick, label: 'Due Date',
-                value: _fmtDate(task['planned_end_date']?.toString(), fallback: task['created_at']?.toString())),
-            if (task['description'] != null && (task['description'] as String).isNotEmpty) ...[
+            _DetailRow(
+                icon: Iconsax.calendar_tick,
+                label: 'Due Date',
+                value: _fmtDate(task['planned_end_date']?.toString(),
+                    fallback: task['created_at']?.toString())),
+            if (task['description'] != null &&
+                (task['description'] as String).isNotEmpty) ...[
               const SizedBox(height: 20),
               const Text('Description',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
@@ -193,10 +219,14 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                 decoration: BoxDecoration(
                   color: context.surface.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.2)),
+                  border: Border.all(
+                      color: AppColors.textSecondary.withValues(alpha: 0.2)),
                 ),
                 child: Text(task['description'],
-                    style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.textSecondary)),
+                    style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.5,
+                        color: AppColors.textSecondary)),
               ),
             ],
             const SizedBox(height: 24),
@@ -213,7 +243,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                   backgroundColor: statusColor,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ),
@@ -234,37 +265,39 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (sheetCtx) => Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min,
+        child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          const Text('Update Status',
-              style: AppTextStyles.pageTitle),
-          const SizedBox(height: 16),
-          ..._statuses.map((s) {
-            final isActive = s == current;
-            final color = s == 'done'
-                ? AppColors.success
-                : s == 'in-progress'
-                    ? AppColors.warning
-                    : AppColors.primary;
-            return ListTile(
-              leading: Icon(
-                  isActive ? Icons.radio_button_checked : Icons.radio_button_off,
-                  color: color),
-              title: Text(s.replaceAll('-', ' ').toUpperCase(),
-                  style: TextStyle(
-                      color: color,
-                      fontWeight:
-                          isActive ? FontWeight.bold : FontWeight.normal)),
-              onTap: isActive
-                  ? null
-                  : () {
-                      Navigator.pop(sheetCtx);
-                      _updateStatus(taskId, s);
-                    },
-            );
-          }),
-        ]),
+              const Text('Update Status', style: AppTextStyles.pageTitle),
+              const SizedBox(height: 16),
+              ..._statuses.map((s) {
+                final isActive = s == current;
+                final color = s == 'done'
+                    ? AppColors.success
+                    : s == 'in-progress'
+                        ? AppColors.warning
+                        : AppColors.primary;
+                return ListTile(
+                  leading: Icon(
+                      isActive
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                      color: color),
+                  title: Text(s.replaceAll('-', ' ').toUpperCase(),
+                      style: TextStyle(
+                          color: color,
+                          fontWeight:
+                              isActive ? FontWeight.bold : FontWeight.normal)),
+                  onTap: isActive
+                      ? null
+                      : () {
+                          Navigator.pop(sheetCtx);
+                          _updateStatus(taskId, s);
+                        },
+                );
+              }),
+            ]),
       ),
     );
   }
@@ -280,7 +313,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        appBar: AppBar(actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _loadTasks)], 
+        appBar: AppBar(
+          actions: [
+            IconButton(icon: const Icon(Icons.refresh), onPressed: _loadTasks)
+          ],
           title: const Text('Tasks'),
           bottom: TabBar(controller: _tabs, tabs: const [
             Tab(text: 'To Do'),
@@ -293,9 +329,12 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
             : RefreshIndicator(
                 onRefresh: _loadTasks,
                 child: TabBarView(controller: _tabs, children: [
-                  _TaskList(_filtered('to-do'), AppColors.primary, _showTaskDetail),
-                  _TaskList(_filtered('in-progress'), AppColors.warning, _showTaskDetail),
-                  _TaskList(_filtered('done'), AppColors.success, _showTaskDetail),
+                  _TaskList(
+                      _filtered('to-do'), AppColors.primary, _showTaskDetail),
+                  _TaskList(_filtered('in-progress'), AppColors.warning,
+                      _showTaskDetail),
+                  _TaskList(
+                      _filtered('done'), AppColors.success, _showTaskDetail),
                 ]),
               ),
         floatingActionButton: isAdmin
@@ -304,7 +343,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                 backgroundColor: AppColors.primary,
                 icon: const Icon(Icons.add, color: Colors.white),
                 label: const Text('Assign Task',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w600)),
               )
             : null,
       ),
@@ -317,9 +357,11 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
       isScrollControlled: true,
       constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (sheetCtx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
         child: _CreateTaskSheet(onCreated: _loadTasks),
       ),
     );
@@ -329,16 +371,20 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
 class _DetailRow extends StatelessWidget {
   final IconData icon;
   final String label, value;
-  const _DetailRow({required this.icon, required this.label, required this.value});
+  const _DetailRow(
+      {required this.icon, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) => Row(children: [
-    Icon(icon, size: 16, color: AppColors.textSecondary),
-    const SizedBox(width: 10),
-    Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-    const Spacer(),
-    Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-  ]);
+        Icon(icon, size: 16, color: AppColors.textSecondary),
+        const SizedBox(width: 10),
+        Text(label,
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        const Spacer(),
+        Text(value,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+      ]);
 }
 
 class _CreateTaskSheet extends StatefulWidget {
@@ -372,7 +418,8 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
     );
     if (nepaliPicked != null) {
       setState(() {
-        final dateStr = '${nepaliPicked.year}-${nepaliPicked.month.toString().padLeft(2, '0')}-${nepaliPicked.day.toString().padLeft(2, '0')}';
+        final dateStr =
+            '${nepaliPicked.year}-${nepaliPicked.month.toString().padLeft(2, '0')}-${nepaliPicked.day.toString().padLeft(2, '0')}';
         if (isFrom) {
           _fromDate = dateStr;
           _fromCtrl.text = dateStr;
@@ -396,8 +443,10 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
       final eRes = await ApiService().get('/api/organization/employees/');
       if (!mounted) return;
       setState(() {
-        _projects = pRes.data is List ? pRes.data : (pRes.data['results'] ?? []);
-        _employees = eRes.data is List ? eRes.data : (eRes.data['results'] ?? []);
+        _projects =
+            pRes.data is List ? pRes.data : (pRes.data['results'] ?? []);
+        _employees =
+            eRes.data is List ? eRes.data : (eRes.data['results'] ?? []);
         _loading = false;
       });
     } catch (_) {
@@ -406,9 +455,12 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
   }
 
   Future<void> _save() async {
-    if (_titleCtrl.text.isEmpty || _selProject == null || _selEmployee == null) {
+    if (_titleCtrl.text.isEmpty ||
+        _selProject == null ||
+        _selEmployee == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please fill all fields and select a project and employee.'),
+        content:
+            Text('Please fill all fields and select a project and employee.'),
         backgroundColor: AppColors.error,
       ));
       return;
@@ -430,7 +482,8 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
       Navigator.pop(context);
       widget.onCreated();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${ApiService.getErrorMessage(e)}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${ApiService.getErrorMessage(e)}')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -438,7 +491,10 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()));
+    if (_loading) {
+      return const SizedBox(
+          height: 200, child: Center(child: CircularProgressIndicator()));
+    }
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -453,15 +509,18 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                 color: AppColors.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Iconsax.task_square, color: AppColors.primary, size: 22),
+              child: const Icon(Iconsax.task_square,
+                  color: AppColors.primary, size: 22),
             ),
             const SizedBox(width: 12),
             const Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Create Task', style: AppTextStyles.pageTitle),
-                Text('Assign a task to an employee under a project',
-                    style: AppTextStyles.caption),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Create Task', style: AppTextStyles.pageTitle),
+                    Text('Assign a task to an employee under a project',
+                        style: AppTextStyles.caption),
+                  ]),
             ),
           ]),
           const SizedBox(height: 16),
@@ -478,7 +537,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Select a Project first, then assign it to an employee. '  
+                  'Select a Project first, then assign it to an employee. '
                   'Priority determines visibility order in the task list.',
                   style: TextStyle(fontSize: 12, color: AppColors.info),
                 ),
@@ -486,23 +545,35 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
             ]),
           ),
           const SizedBox(height: 16),
-          TextField(controller: _titleCtrl, decoration: const InputDecoration(labelText: 'Task Title')),
+          TextField(
+              controller: _titleCtrl,
+              decoration: const InputDecoration(labelText: 'Task Title')),
           const SizedBox(height: 12),
-          TextField(controller: _descCtrl, maxLines: 3,
-              decoration: const InputDecoration(labelText: 'Description (optional)', alignLabelWithHint: true)),
+          TextField(
+              controller: _descCtrl,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                  labelText: 'Description (optional)',
+                  alignLabelWithHint: true)),
           const SizedBox(height: 12),
           Row(children: [
-            Expanded(child: TextField(
+            Expanded(
+                child: TextField(
               controller: _fromCtrl,
               readOnly: true,
-              decoration: const InputDecoration(labelText: 'Start Date', suffixIcon: Icon(Icons.calendar_today, size: 18)),
+              decoration: const InputDecoration(
+                  labelText: 'Start Date',
+                  suffixIcon: Icon(Icons.calendar_today, size: 18)),
               onTap: () => _pickDate(true),
             )),
             const SizedBox(width: 12),
-            Expanded(child: TextField(
+            Expanded(
+                child: TextField(
               controller: _tillCtrl,
               readOnly: true,
-              decoration: const InputDecoration(labelText: 'Due Date', suffixIcon: Icon(Icons.calendar_today, size: 18)),
+              decoration: const InputDecoration(
+                  labelText: 'Due Date',
+                  suffixIcon: Icon(Icons.calendar_today, size: 18)),
               onTap: () => _pickDate(false),
             )),
           ]),
@@ -514,9 +585,12 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
               prefixIcon: Icon(Iconsax.briefcase, size: 18),
               helperText: 'Which project does this task belong to?',
             ),
-            items: _projects.map((p) => DropdownMenuItem<int>(
-              value: p['id'], child: Text(p['title'] ?? p['name'] ?? ''),
-            )).toList(),
+            items: _projects
+                .map((p) => DropdownMenuItem<int>(
+                      value: p['id'],
+                      child: Text(p['title'] ?? p['name'] ?? ''),
+                    ))
+                .toList(),
             onChanged: (v) => setState(() => _selProject = v),
           ),
           const SizedBox(height: 12),
@@ -530,7 +604,10 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
             items: _employees.map((e) {
               final user = e['user'] ?? {};
               return DropdownMenuItem<int>(
-                value: e['id'], child: Text('${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim()),
+                value: e['id'],
+                child: Text(
+                    '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'
+                        .trim()),
               );
             }).toList(),
             onChanged: (v) => setState(() => _selEmployee = v),
@@ -547,10 +624,14 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
           ),
           const SizedBox(height: 16),
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Task Rating/Score: ${_rating.toInt()}/10', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text('Task Rating/Score: ${_rating.toInt()}/10',
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.textSecondary)),
             Slider(
               value: _rating,
-              min: 1, max: 10, divisions: 9,
+              min: 1,
+              max: 10,
+              divisions: 9,
               activeColor: AppColors.primary,
               label: _rating.toInt().toString(),
               onChanged: (v) => setState(() => _rating = v),
@@ -563,11 +644,15 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
             icon: _saving
-                ? const SizedBox(width: 18, height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
                 : const Icon(Iconsax.tick_circle, size: 18),
             label: Text(_saving ? 'Saving...' : 'Assign Task',
                 style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -591,14 +676,14 @@ class _TaskList extends StatelessWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           child: SizedBox(
             height: MediaQuery.of(context).size.height * 0.7,
-            child: const Center(child: Text('No tasks', style: TextStyle(color: AppColors.textSecondary))),
+            child: const Center(
+                child: Text('No tasks',
+                    style: TextStyle(color: AppColors.textSecondary))),
           ),
         )
-      : ListView.separated(
-          physics: const AlwaysScrollableScrollPhysics(),
+      : ResponsiveGridList(
           padding: const EdgeInsets.all(16),
           itemCount: tasks.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
           itemBuilder: (ctx, i) {
             final t = tasks[i];
             final priority = t['priority'] ?? 'low';
@@ -620,45 +705,53 @@ class _TaskList extends StatelessWidget {
               child: Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      Expanded(child: Text(t['title'] ?? '',
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15))),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: priorityColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(priority.toUpperCase(),
-                            style: TextStyle(color: priorityColor,
-                                fontSize: 10, fontWeight: FontWeight.bold)),
-                      ),
-                    ]),
-                    const SizedBox(height: 6),
-                    Row(children: [
-                      const Icon(Icons.person_outline, size: 12, color: AppColors.textSecondary),
-                      const SizedBox(width: 4),
-                      Text(assignedName,
-                          style: AppTextStyles.caption),
-                    ]),
-                    const SizedBox(height: 4),
-                    Row(children: [
-                      const Icon(Iconsax.calendar, size: 12, color: AppColors.textSecondary),
-                      const SizedBox(width: 4),
-                      Expanded(child: Text(
-                          '${_fmtDate(t['planned_start_date']?.toString(), fallback: t['created_at']?.toString())} → ${_fmtDate(t['planned_end_date']?.toString(), fallback: t['created_at']?.toString())}',
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary))),
-                      const Icon(Icons.chevron_right, size: 16, color: AppColors.textSecondary),
-                    ]),
-                  ]),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Expanded(
+                              child: Text(t['title'] ?? '',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15))),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: priorityColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(priority.toUpperCase(),
+                                style: TextStyle(
+                                    color: priorityColor,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                        ]),
+                        const SizedBox(height: 6),
+                        Row(children: [
+                          const Icon(Icons.person_outline,
+                              size: 12, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(assignedName, style: AppTextStyles.caption),
+                        ]),
+                        const SizedBox(height: 4),
+                        Row(children: [
+                          const Icon(Iconsax.calendar,
+                              size: 12, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Expanded(
+                              child: Text(
+                                  '${_fmtDate(t['planned_start_date']?.toString(), fallback: t['created_at']?.toString())} → ${_fmtDate(t['planned_end_date']?.toString(), fallback: t['created_at']?.toString())}',
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary))),
+                          const Icon(Icons.chevron_right,
+                              size: 16, color: AppColors.textSecondary),
+                        ]),
+                      ]),
                 ),
               ),
             );
           });
 }
-
-
-
-
-

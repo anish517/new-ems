@@ -50,6 +50,25 @@ class ChangePasswordView(generics.GenericAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+def _get_display_name(user):
+    """
+    Returns the best available display name for a user, without relying
+    on Django's default AbstractUser.get_full_name(), which our custom
+    Account model does not implement.
+    """
+    full_name = getattr(user, 'full_name', None)
+    if full_name:
+        return full_name
+
+    first = getattr(user, 'first_name', '') or ''
+    last = getattr(user, 'last_name', '') or ''
+    combined = f'{first} {last}'.strip()
+    if combined:
+        return combined
+
+    return user.email
+
+
 class ForgotPasswordView(APIView):
     """Sends a password reset email with a secure token link."""
     permission_classes = [AllowAny]
@@ -72,7 +91,7 @@ class ForgotPasswordView(APIView):
             send_mail(
                 subject='EMS — Password Reset Request',
                 message=(
-                    f'Hi {user.get_full_name() or user.email},\n\n'
+                    f'Hi {_get_display_name(user)},\n\n'
                     f'Click the link below to reset your password:\n{reset_link}\n\n'
                     f'This link expires in 24 hours. If you did not request a reset, ignore this email.'
                 ),
