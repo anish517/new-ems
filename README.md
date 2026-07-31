@@ -44,9 +44,9 @@ A full-stack **Employee Management System** built for Nepali companies. It featu
           │                        │
    ┌──────▼──────┐        ┌────────▼────────┐
    │  SQLite     │        │  Firebase Admin  │
-   │  (dev)      │        │  (FCM Push       │
-   │  MySQL/PG   │        │   Notifications) │
-   │  (prod)     │        └─────────────────┘
+   │  (current)  │        │  (FCM Push       │
+   │             │        │   Notifications) │
+   │             │        └─────────────────┘
    └─────────────┘
 ```
 
@@ -248,12 +248,12 @@ Create a `.env` file in the `backend/` directory. All keys are loaded via `pytho
 SECRET_KEY=your-very-long-random-secret-key-here
 DEBUG=False                         # Set to False in production
 
-# ─── Database (Production — MySQL) ─────────────────────
-DB_NAME=ems_db
-DB_USER=ems_user
-DB_PASSWORD=strong_password
-DB_HOST=localhost
-DB_PORT=3306
+# ─── Database (Only needed if migrating from SQLite to MySQL/PostgreSQL) ───
+# DB_NAME=ems_db
+# DB_USER=ems_user
+# DB_PASSWORD=strong_password
+# DB_HOST=localhost
+# DB_PORT=3306
 
 # ─── Static / Media Files ──────────────────────────────
 STATIC_ROOT=staticfiles
@@ -335,8 +335,8 @@ Net Salary        = Gross Salary + Incentive + Bonus − TDS − SSF − EPF
 #### 1. Server Requirements
 - Ubuntu 22.04 LTS (recommended)
 - Python 3.11+
-- MySQL 8.0 or PostgreSQL 14+
 - Nginx + Gunicorn
+- *(Optional)* MySQL 8.0 or PostgreSQL 14+ if migrating away from SQLite
 
 #### 2. Database
 
