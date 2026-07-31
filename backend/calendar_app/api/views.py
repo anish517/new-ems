@@ -136,6 +136,10 @@ class EventViewSet(viewsets.ViewSet):
         is_important = request.data.get('is_important', False)
         if str(is_important).lower() == 'true': is_important = True
         elif str(is_important).lower() == 'false': is_important = False
+
+        is_holiday = request.data.get('is_holiday', False)
+        if str(is_holiday).lower() == 'true': is_holiday = True
+        elif str(is_holiday).lower() == 'false': is_holiday = False
         
         try:
             y, m, d = map(int, start_str.split('-'))
@@ -151,6 +155,7 @@ class EventViewSet(viewsets.ViewSet):
             start=start_date,
             end=end_date,
             is_important=is_important,
+            is_holiday=is_holiday,
             organization=org
         )
         serializer = EventSerializer(event)
