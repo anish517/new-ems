@@ -63,7 +63,7 @@ class RetrieveTotalWorkingHourAPIView(APIView):
                 curr = s_nepali
                 while curr <= e_nepali:
                     py_date = curr.to_datetime_date()
-                    if py_date.isoweekday() != 7:
+                    if py_date.isoweekday() != 6: # 6 = Saturday
                         working_days += 1
                     try:
                         curr = curr + nepali_datetime.timedelta(days=1)
@@ -83,7 +83,7 @@ class RetrieveTotalWorkingHourAPIView(APIView):
             monthly_attendance = [a for a in all_attendance if getattr(a.date, 'year', None) == y and getattr(a.date, 'month', None) == m]
             total_no_of_days_present = Attendance.get_no_of_present_days(employee=employee, year=y, month=m)
             
-            # Count Sundays in the selected Nepali month
+            # Count Saturdays in the selected Nepali month
             from calendar_app.utilities import total_days_in_month as nepali_total_days
             days_in_month = nepali_total_days(year=y, month=m)
             working_days = 0
@@ -91,7 +91,7 @@ class RetrieveTotalWorkingHourAPIView(APIView):
                 try:
                     nep_date = nepali_datetime.date(y, m, day)
                     py_date = nep_date.to_datetime_date()
-                    if py_date.isoweekday() != 7:  # 7 = Sunday
+                    if py_date.isoweekday() != 6:  # 6 = Saturday
                         working_days += 1
                 except Exception:
                     pass
