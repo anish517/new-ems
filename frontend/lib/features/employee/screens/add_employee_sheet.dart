@@ -172,6 +172,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
         // Ensure official and personal emails are also updated to match
         data['official_email'] = _email;
         data['personal_email'] = _personalEmail.isNotEmpty ? _personalEmail : _email;
+        data['employee_type'] = _employeeType; // Fix: include on edit too
         await ApiService().patch('${AppConstants.organizationBase}/employees/$employeeId/', data: data);
       }
 

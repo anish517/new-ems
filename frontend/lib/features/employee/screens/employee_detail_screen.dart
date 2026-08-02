@@ -723,6 +723,14 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                             : 'N/A'),
                     _infoChip(Iconsax.calendar, 'Date of Birth',
                         emp['date_of_birth'] ?? 'N/A'),
+                    _infoChip(Iconsax.heart, 'Marital Status', (() {
+                      final m = (emp['marital_status'] ?? 'N/A')
+                          .toString()
+                          .replaceAll('_', ' ');
+                      return m.isNotEmpty
+                          ? m.substring(0, 1).toUpperCase() + m.substring(1)
+                          : m;
+                    })()),
                     _infoChip(Iconsax.briefcase, 'Employee Type', (() {
                       final t = (emp['employee_type'] ?? 'N/A')
                           .toString()
