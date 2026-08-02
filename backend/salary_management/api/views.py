@@ -34,6 +34,19 @@ class IsSalaryAdmin(permissions.BasePermission):
             return True
         return False
 
+class IsSalaryAdminOrHR(permissions.BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        if getattr(user, 'is_hr', False):
+            return True
+        if user.organization.exists():
+            return True
+        return False
+
 def _get_org(user):
     try:
         return user.employee.post.department.organization
@@ -551,7 +564,7 @@ th{{background:#f1f5f9;color:#64748b;font-weight:600;font-size:12px;text-transfo
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class GenerateSalaryReportAPIView(generics.GenericAPIView):
-    permission_classes = [IsSalaryAdmin]
+    permission_classes = [IsSalaryAdminOrHR]
 
     def get(self, request):
         year_str = request.GET.get('year')
