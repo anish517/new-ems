@@ -12,7 +12,8 @@ import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'package:nepali_utils/nepali_utils.dart';
 import '../../../core/providers/date_provider.dart';
-
+import 'employee_attendance_logs_screen.dart';
+import '../../../shared/widgets/responsive_grid_list.dart';
 // ─── Date helper ─────────────────────────────────────────────────────────────
 String _formatDate(String? raw, {String? fallback}) {
   NepaliDateTime? parseDate(String? s) {
@@ -59,8 +60,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   String? _lastAction;
   Map<String, dynamic>? _stats;
   List _dailyHistory = [];
-  List _orgLogs = [];
-  bool _orgLogsLoading = false;
+  List _employees = [];
+  bool _employeesLoading = false;
+  String _employeeSearch = '';
   late TabController _adminTabs;
 
   // Remote work permission state
@@ -272,7 +274,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     ]);
     final isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
     if (isAdmin) {
-      _loadOrgLogs();
+      _loadEmployees();
       _loadRemoteList();
       _loadPendingCorrections();
     }
@@ -316,19 +318,21 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     } catch (_) {}
   }
 
-  Future<void> _loadOrgLogs() async {
-    setState(() => _orgLogsLoading = true);
+  Future<void> _loadEmployees() async {
+    setState(() => _employeesLoading = true);
     try {
-      final res =
-          await ApiService().get('${AppConstants.attendanceBase}/list/');
+      final res = await ApiService()
+          .get('${AppConstants.organizationBase}/employees/');
       if (mounted) {
         setState(() {
-          _orgLogs = res.data is List ? res.data : (res.data['results'] ?? []);
-          _orgLogsLoading = false;
+          _employees = res.data is List
+              ? res.data
+              : (res.data['results'] ?? []);
+          _employeesLoading = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _orgLogsLoading = false);
+      if (mounted) setState(() => _employeesLoading = false);
     }
   }
 
@@ -836,7 +840,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           controller: _adminTabs,
           children: [
             _buildCheckInUI(),
-            _buildOrgLogs(),
+            _buildEmployeeGrid(),
             _buildRemoteAccessTab(),
             _buildAdminCorrectionTab(),
           ],
@@ -1309,33 +1313,88 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     );
   }
 
-  Widget _buildOrgLogs() => _orgLogsLoading
-      ? const Center(child: CircularProgressIndicator())
-      : RefreshIndicator(
-          onRefresh: _loadOrgLogs,
-          child: _orgLogs.isEmpty
+  Widget _buildEmployeeGrid() {
+    if (_employeesLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final filtered = _employees.where((e) {
+      final name = ('${e['user']?['first_name'] ?? ''} ${e['user']?['last_name'] ?? ''}')
+          .toLowerCase();
+      return name.contains(_employeeSearch.toLowerCase());
+    }).toList();
+
+    return Column(
+      children: [
+        // ── Search bar ──────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: TextField(
+            onChanged: (v) => setState(() => _employeeSearch = v),
+            decoration: InputDecoration(
+              hintText: 'Search employees…',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+            ),
+          ),
+        ),
+        // ── Grid ────────────────────────────────────────────────────────
+        Expanded(
+          child: filtered.isEmpty
               ? const Center(
-                  child: Text('No attendance logs found.',
+                  child: Text('No employees found.',
                       style: TextStyle(color: AppColors.textSecondary)))
-              : Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 900),
-                    child: ListView.separated(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(16),
-                  itemCount: _orgLogs.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) =>
-                      _AttendanceLogTile(
-                          log: _orgLogs[i], 
-                          showName: true, 
-                          onTap: () => _showLogDetails(_orgLogs[i]),
-                      ),
-                ),
+              : RefreshIndicator(
+                  onRefresh: _loadEmployees,
+                  child: ResponsiveGridList(
+                    minItemWidth: 250,
+                    spacing: 12,
+                    runSpacing: 12,
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final emp = filtered[i];
+                      final user = emp['user'] as Map? ?? {};
+                      final firstName = user['first_name'] ?? '';
+                      final lastName = user['last_name'] ?? '';
+                      final fullName =
+                          '$firstName $lastName'.trim().isEmpty
+                              ? 'Employee'
+                              : '$firstName $lastName'.trim();
+                      final avatar = user['profile_picture'] as String?;
+                      final empType = (emp['employee_type'] as String? ?? '')
+                          .replaceAll('_', ' ');
+                      final empId = emp['id'] as int;
+
+                      return _EmployeeAttendanceCard(
+                        name: fullName,
+                        employeeType: empType,
+                        avatarUrl: avatar,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EmployeeAttendanceLogsScreen(
+                              employeeId: empId,
+                              employeeName: fullName,
+                              avatarUrl: avatar,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
-        );
+        ),
+      ],
+    );
+  }
 
   Widget _buildRemoteAccessTab() => _remoteLoading
       ? const Center(child: CircularProgressIndicator())
@@ -1514,18 +1573,99 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 }
 
 
+// ─── Employee Grid Card ───────────────────────────────────────────────────────
+class _EmployeeAttendanceCard extends StatelessWidget {
+  final String name;
+  final String employeeType;
+  final String? avatarUrl;
+  final VoidCallback onTap;
+
+  const _EmployeeAttendanceCard({
+    required this.name,
+    required this.employeeType,
+    this.avatarUrl,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = name.trim().split(' ').map((w) => w.isNotEmpty ? w[0] : '').take(2).join().toUpperCase();
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Avatar
+              CircleAvatar(
+                radius: 32,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
+                child: avatarUrl == null
+                    ? Text(initials,
+                        style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20))
+                    : null,
+              ),
+              const SizedBox(height: 10),
+              // Name
+              Text(name,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 13)),
+              const SizedBox(height: 8),
+              // Type badge
+              if (employeeType.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    employeeType,
+                    style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+              const SizedBox(height: 4),
+              // View logs hint
+              const Text('Tap to view logs',
+                  style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                      fontStyle: FontStyle.italic)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AttendanceLogTile extends StatelessWidget {
   final Map log;
-  final bool showName;
   final VoidCallback? onTap;
-  const _AttendanceLogTile({required this.log, this.showName = false, this.onTap});
+  const _AttendanceLogTile({required this.log, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final checkedIn = log['check_in_time'] != null;
     final checkedOut = log['check_out_time'] != null;
     final isRemote = log['is_remote'] == true;
-    final hours = log['total_hours'] ?? 0;
+    final double hours = ((log['total_hours'] ?? 0) as num).toDouble();
 
     String formatTime(String? t) {
       if (t == null || t.isEmpty) return '-';
@@ -1560,16 +1700,10 @@ class _AttendanceLogTile extends StatelessWidget {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                if (showName)
-                  Text(log['employee_name'] ?? 'Unknown',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 14)),
                 Text(_formatDate(log['date']?.toString()),
-                    style: TextStyle(
-                      fontWeight:
-                          showName ? FontWeight.normal : FontWeight.w600,
-                      fontSize: showName ? 12 : 14,
-                      color: showName ? AppColors.textSecondary : null,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     )),
                 const SizedBox(height: 2),
                 Wrap(children: [
@@ -1591,7 +1725,7 @@ class _AttendanceLogTile extends StatelessWidget {
                 ]),
               ])),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('${hours}h',
+            Text('${hours.toStringAsFixed(2)}h',
                 style: const TextStyle(
                     fontWeight: FontWeight.bold, fontSize: 15)),
             if (isRemote)
