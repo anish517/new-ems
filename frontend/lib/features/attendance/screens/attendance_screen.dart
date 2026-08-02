@@ -172,6 +172,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       if (isAM && hour == 12) hour = 0;
 
       final checkedInAt = DateTime(now.year, now.month, now.day, hour, minute, second);
+      
+      // Enforce the requirement that auto check-out only happens at 5:00 PM or later
+      if (now.hour < 17) return false;
+      
       return now.difference(checkedInAt) >= const Duration(hours: 6);
     } catch (_) {
       // Very important: fail closed (false) to prevent accidental checkouts!
