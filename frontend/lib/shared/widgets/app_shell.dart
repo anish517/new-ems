@@ -26,6 +26,7 @@ class AppShell extends ConsumerWidget {
       _NavItem('/attendance', Iconsax.clock, 'Attendance'),
       _NavItem('/leave', Iconsax.calendar_remove, 'Leave'),
       _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
+      _NavItem('/projects', Iconsax.folder_open, 'Projects'),
       _NavItem('/noticeboard', Iconsax.message_text, 'Notices'),
       _NavItem('/policy', Iconsax.document_text, 'Policy'),
       _NavItem('/profile', Iconsax.user, 'Profile'),
@@ -38,6 +39,7 @@ class AppShell extends ConsumerWidget {
       _NavItem('/leave', Iconsax.calendar_remove, 'Leaves'),
       _NavItem('/salary', Iconsax.money_send, 'Accounts'),
       _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
+      _NavItem('/projects', Iconsax.folder_open, 'Projects'),
       _NavItem('/performance', Iconsax.star1, 'Performance'),
       _NavItem('/noticeboard', Iconsax.message_text, 'Notices'),
       _NavItem('/policy', Iconsax.document_text, 'Policy'),
@@ -258,6 +260,7 @@ class AppShell extends ConsumerWidget {
           _NavItem('/attendance', Iconsax.clock, 'Attendance'),
           _NavItem('/leave', Iconsax.calendar_remove, 'Leave'),
           _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
+          _NavItem('/projects', Iconsax.folder_open, 'Projects'),
           _NavItem('/profile', Iconsax.user, 'Profile'),
         ];
         final bottomIndex = bottomItems.indexWhere((i) {

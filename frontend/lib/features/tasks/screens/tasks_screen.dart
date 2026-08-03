@@ -1,3 +1,5 @@
+import 'package:url_launcher/url_launcher.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:ems_app/shared/widgets/responsive_grid_list.dart';
 import 'package:flutter/material.dart';
 import '../../../shared/widgets/nepali_date_picker.dart';
@@ -229,6 +231,18 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                         color: AppColors.textSecondary)),
               ),
             ],
+            if (task['description_pdf'] != null &&
+                task['description_pdf'].toString().isNotEmpty) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () {
+                  final url = Uri.tryParse(task['description_pdf']);
+                  if (url != null) launchUrl(url);
+                },
+                icon: const Icon(Iconsax.document_download, size: 18),
+                label: const Text('View Attached Document'),
+              ),
+            ],
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -401,9 +415,28 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
   List _employees = [];
   int? _selProject, _selEmployee;
   String _priority = 'medium';
+  String _taskType = 'daily';
+  PlatformFile? _attachment;
   double _rating = 5;
   bool _loading = true;
   bool _saving = false;
+
+  List _getProjectEmployees() {
+    if (_selProject == null) return _employees;
+    final proj =
+        _projects.firstWhere((p) => p['id'] == _selProject, orElse: () => null);
+    if (proj == null || proj['assignments'] == null) return _employees;
+    final assignedIds =
+        (proj['assignments'] as List).map((a) => a['employee_id']).toSet();
+    return _employees.where((e) => assignedIds.contains(e['id'])).toList();
+  }
+
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(allowMultiple: false);
+    if (result != null && result.files.isNotEmpty && mounted) {
+      setState(() => _attachment = result.files.first);
+    }
+  }
 
   Future<void> _pickDate(bool isFrom) async {
     final nepaliPicked = await showDialog<NepaliDateTime>(
@@ -464,17 +497,28 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
     }
     setState(() => _saving = true);
     try {
-      await ApiService().post('/api/task-management/tasks/', data: {
+      final data = {
         'title': _titleCtrl.text,
         'description': _descCtrl.text,
-        'project': _selProject,
-        'assigned_to': _selEmployee,
+        'project': _selProject.toString(),
+        'assigned_to': _selEmployee.toString(),
         'priority': _priority,
+        'task_type': _taskType,
         'status': 'to-do',
-        'rating': _rating.toInt(),
-        if (_fromDate.isNotEmpty) 'planned_start_date': _fromDate,
-        if (_tillDate.isNotEmpty) 'planned_end_date': _tillDate,
-      });
+        'rating': _rating.toInt().toString(),
+      };
+      if (_fromDate.isNotEmpty) data['planned_start_date'] = _fromDate;
+      if (_tillDate.isNotEmpty) data['planned_end_date'] = _tillDate;
+
+      if (_attachment != null) {
+        await ApiService().postMultipart(
+          '/api/task-management/tasks/',
+          fields: data,
+          files: {'description_pdf': _attachment!},
+        );
+      } else {
+        await ApiService().post('/api/task-management/tasks/', data: data);
+      }
       if (!mounted) return;
       Navigator.pop(context);
       widget.onCreated();
@@ -494,168 +538,208 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
     }
     return Padding(
       padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Iconsax.task_square,
-                  color: AppColors.primary, size: 22),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Create Task', style: AppTextStyles.pageTitle),
-                    Text('Assign a task to an employee under a project',
-                        style: AppTextStyles.caption),
-                  ]),
-            ),
-          ]),
-          const SizedBox(height: 16),
-          // Hint card
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.info.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.info.withValues(alpha: 0.25)),
-            ),
-            child: const Row(children: [
-              Icon(Icons.info_outline, color: AppColors.info, size: 16),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Select a Project first, then assign it to an employee. '
-                  'Priority determines visibility order in the task list.',
-                  style: TextStyle(fontSize: 12, color: AppColors.info),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
+                child: const Icon(Iconsax.task_square,
+                    color: AppColors.primary, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Create Task', style: AppTextStyles.pageTitle),
+                      Text('Assign a task to an employee under a project',
+                          style: AppTextStyles.caption),
+                    ]),
               ),
             ]),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-              controller: _titleCtrl,
-              decoration: const InputDecoration(labelText: 'Task Title')),
-          const SizedBox(height: 12),
-          TextField(
-              controller: _descCtrl,
-              maxLines: 3,
+            const SizedBox(height: 16),
+            // Hint card
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.info.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border:
+                    Border.all(color: AppColors.info.withValues(alpha: 0.25)),
+              ),
+              child: const Row(children: [
+                Icon(Icons.info_outline, color: AppColors.info, size: 16),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Select a Project first, then assign it to an employee. '
+                    'Priority determines visibility order in the task list.',
+                    style: TextStyle(fontSize: 12, color: AppColors.info),
+                  ),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+                controller: _titleCtrl,
+                decoration: const InputDecoration(labelText: 'Task Title')),
+            const SizedBox(height: 12),
+            TextField(
+                controller: _descCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                    labelText: 'Description (optional)',
+                    alignLabelWithHint: true)),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _pickFile,
+              icon: const Icon(Iconsax.document_upload, size: 16),
+              label: Text(
+                  _attachment == null ? 'Attach Document' : _attachment!.name),
+            ),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                  child: TextField(
+                controller: _fromCtrl,
+                readOnly: true,
+                decoration: const InputDecoration(
+                    labelText: 'Start Date',
+                    suffixIcon: Icon(Icons.calendar_today, size: 18)),
+                onTap: () => _pickDate(true),
+              )),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: TextField(
+                controller: _tillCtrl,
+                readOnly: true,
+                decoration: const InputDecoration(
+                    labelText: 'Due Date',
+                    suffixIcon: Icon(Icons.calendar_today, size: 18)),
+                onTap: () => _pickDate(false),
+              )),
+            ]),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              initialValue: _selProject,
+              hint: const Text('Select Project'),
               decoration: const InputDecoration(
-                  labelText: 'Description (optional)',
-                  alignLabelWithHint: true)),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(
-                child: TextField(
-              controller: _fromCtrl,
-              readOnly: true,
+                prefixIcon: Icon(Iconsax.briefcase, size: 18),
+                helperText: 'Which project does this task belong to?',
+              ),
+              items: _projects
+                  .map((p) => DropdownMenuItem<int>(
+                        value: p['id'],
+                        child: Text(p['title'] ?? p['name'] ?? ''),
+                      ))
+                  .toList(),
+              onChanged: (v) => setState(() {
+                _selProject = v;
+                _selEmployee = null;
+                final proj = _projects.firstWhere((p) => p['id'] == v,
+                    orElse: () => null);
+                if (proj != null) {
+                  final pt = proj['project_type'];
+                  if (pt == 'hourly') {
+                    _taskType = 'hourly';
+                  } else {
+                    _taskType = 'daily';
+                  }
+                }
+
+                final employees = _getProjectEmployees();
+                if (employees.length == 1) {
+                  _selEmployee = employees.first['id'];
+                }
+              }),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              initialValue: _selEmployee,
+              hint: const Text('Assign To'),
               decoration: const InputDecoration(
-                  labelText: 'Start Date',
-                  suffixIcon: Icon(Icons.calendar_today, size: 18)),
-              onTap: () => _pickDate(true),
-            )),
-            const SizedBox(width: 12),
-            Expanded(
-                child: TextField(
-              controller: _tillCtrl,
-              readOnly: true,
-              decoration: const InputDecoration(
-                  labelText: 'Due Date',
-                  suffixIcon: Icon(Icons.calendar_today, size: 18)),
-              onTap: () => _pickDate(false),
-            )),
-          ]),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<int>(
-            initialValue: _selProject,
-            hint: const Text('Select Project'),
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Iconsax.briefcase, size: 18),
-              helperText: 'Which project does this task belong to?',
+                prefixIcon: Icon(Iconsax.user, size: 18),
+                helperText: 'Who should complete this task?',
+              ),
+              items: _getProjectEmployees().map((e) {
+                final user = e['user'] ?? {};
+                return DropdownMenuItem<int>(
+                  value: e['id'],
+                  child: Text(
+                      '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'
+                          .trim()),
+                );
+              }).toList(),
+              onChanged: (v) => setState(() => _selEmployee = v),
             ),
-            items: _projects
-                .map((p) => DropdownMenuItem<int>(
-                      value: p['id'],
-                      child: Text(p['title'] ?? p['name'] ?? ''),
-                    ))
-                .toList(),
-            onChanged: (v) => setState(() => _selProject = v),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<int>(
-            initialValue: _selEmployee,
-            hint: const Text('Assign To'),
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Iconsax.user, size: 18),
-              helperText: 'Who should complete this task?',
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _priority,
+              items: const [
+                DropdownMenuItem(value: 'low', child: Text('Low Priority')),
+                DropdownMenuItem(
+                    value: 'medium', child: Text('Medium Priority')),
+                DropdownMenuItem(value: 'high', child: Text('High Priority')),
+              ],
+              onChanged: (v) => setState(() => _priority = v!),
             ),
-            items: _employees.map((e) {
-              final user = e['user'] ?? {};
-              return DropdownMenuItem<int>(
-                value: e['id'],
-                child: Text(
-                    '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'
-                        .trim()),
-              );
-            }).toList(),
-            onChanged: (v) => setState(() => _selEmployee = v),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _priority,
-            items: const [
-              DropdownMenuItem(value: 'low', child: Text('Low Priority')),
-              DropdownMenuItem(value: 'medium', child: Text('Medium Priority')),
-              DropdownMenuItem(value: 'high', child: Text('High Priority')),
-            ],
-            onChanged: (v) => setState(() => _priority = v!),
-          ),
-          const SizedBox(height: 16),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Task Rating/Score: ${_rating.toInt()}/10',
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.textSecondary)),
-            Slider(
-              value: _rating,
-              min: 1,
-              max: 10,
-              divisions: 9,
-              activeColor: AppColors.primary,
-              label: _rating.toInt().toString(),
-              onChanged: (v) => setState(() => _rating = v),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _taskType,
+              decoration: const InputDecoration(labelText: 'Task Type *'),
+              items: const [
+                DropdownMenuItem(value: 'daily', child: Text('Daily Task')),
+                DropdownMenuItem(value: 'hourly', child: Text('Hourly Task')),
+              ],
+              onChanged: (v) => setState(() => _taskType = v!),
             ),
-          ]),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: _saving ? null : _save,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 48),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+            const SizedBox(height: 16),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Task Rating/Score: ${_rating.toInt()}/10',
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary)),
+              Slider(
+                value: _rating,
+                min: 1,
+                max: 10,
+                divisions: 9,
+                activeColor: AppColors.primary,
+                label: _rating.toInt().toString(),
+                onChanged: (v) => setState(() => _rating = v),
+              ),
+            ]),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _saving ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : const Icon(Iconsax.tick_circle, size: 18),
+              label: Text(_saving ? 'Saving...' : 'Assign Task',
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
             ),
-            icon: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : const Icon(Iconsax.tick_circle, size: 18),
-            label: Text(_saving ? 'Saving...' : 'Assign Task',
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(height: 8),
-        ],
+            const SizedBox(height: 8),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }

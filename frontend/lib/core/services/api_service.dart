@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../constants/app_constants.dart';
 
@@ -97,6 +98,33 @@ class ApiService {
   }
 
   Future<Response> uploadFile(String path, FormData formData) {
+    return _dio.post(path, data: formData);
+  }
+
+  /// Upload fields + optional file paths as multipart/form-data.
+  Future<Response> postMultipart(
+    String path, {
+    required Map<String, String> fields,
+    Map<String, PlatformFile>? files,
+  }) async {
+    final formData = FormData.fromMap(fields);
+    
+    if (files != null) {
+      for (final entry in files.entries) {
+        final file = entry.value;
+        if (file.bytes != null) {
+          formData.files.add(MapEntry(
+            entry.key,
+            MultipartFile.fromBytes(file.bytes!, filename: file.name),
+          ));
+        } else if (file.path != null) {
+          formData.files.add(MapEntry(
+            entry.key,
+            await MultipartFile.fromFile(file.path!, filename: file.name),
+          ));
+        }
+      }
+    }
     return _dio.post(path, data: formData);
   }
 

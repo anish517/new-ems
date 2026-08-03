@@ -8,6 +8,7 @@ import '../features/attendance/screens/attendance_screen.dart';
 import '../features/leave/screens/leave_screen.dart';
 import '../features/accounts/screens/accounts_screen.dart';
 import '../features/tasks/screens/tasks_screen.dart';
+import '../features/tasks/screens/projects_screen.dart';
 import '../features/noticeboard/screens/noticeboard_screen.dart';
 import '../features/noticeboard/screens/policy_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
@@ -54,6 +55,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/leave', builder: (_, __) => const LeaveScreen()),
           GoRoute(path: '/salary', builder: (_, __) => const AccountsScreen()),
           GoRoute(path: '/tasks', builder: (_, __) => const TasksScreen()),
+          GoRoute(path: '/projects', builder: (_, __) => const ProjectsScreen()),
           GoRoute(
               path: '/noticeboard',
               builder: (_, __) => const NoticeboardScreen()),
