@@ -14,6 +14,7 @@ import 'package:nepali_utils/nepali_utils.dart';
 import '../../../core/providers/date_provider.dart';
 import 'employee_attendance_logs_screen.dart';
 import '../../../shared/widgets/responsive_grid_list.dart';
+
 // ─── Date helper ─────────────────────────────────────────────────────────────
 String _formatDate(String? raw, {String? fallback}) {
   NepaliDateTime? parseDate(String? s) {
@@ -78,7 +79,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
   Timer? _autoActionTimer;
   bool _autoInFlight = false;
-  bool _hasPromptedAutoAttendance = true; // start true so we don't auto-prompt before data loads
+  bool _hasPromptedAutoAttendance =
+      true; // start true so we don't auto-prompt before data loads
 
   // Live location for map
   Position? _currentPosition;
@@ -150,15 +152,20 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     if (_checkInTime == null) return false;
     try {
       final now = DateTime.now();
-      
+
       // Handle both "10:30" and "10:30 AM" / "02:30 PM" formats safely
       String timeStr = _checkInTime!.trim().toUpperCase();
       bool isPM = timeStr.contains('PM');
       bool isAM = timeStr.contains('AM');
-      
-      timeStr = timeStr.replaceAll(' AM', '').replaceAll(' PM', '').replaceAll('AM', '').replaceAll('PM', '').trim();
+
+      timeStr = timeStr
+          .replaceAll(' AM', '')
+          .replaceAll(' PM', '')
+          .replaceAll('AM', '')
+          .replaceAll('PM', '')
+          .trim();
       final parts = timeStr.split(':');
-      
+
       int hour = int.parse(parts[0]);
       int minute = parts.length > 1 ? int.parse(parts[1]) : 0;
       int second = 0;
@@ -167,15 +174,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         final secStr = parts[2].split('.')[0];
         second = int.parse(secStr);
       }
-      
+
       if (isPM && hour < 12) hour += 12;
       if (isAM && hour == 12) hour = 0;
 
-      final checkedInAt = DateTime(now.year, now.month, now.day, hour, minute, second);
-      
+      final checkedInAt =
+          DateTime(now.year, now.month, now.day, hour, minute, second);
+
       // Enforce the requirement that auto check-out only happens at 5:00 PM or later
       if (now.hour < 17) return false;
-      
+
       return now.difference(checkedInAt) >= const Duration(hours: 6);
     } catch (_) {
       // Very important: fail closed (false) to prevent accidental checkouts!
@@ -254,7 +262,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       setState(() {
         _isCheckedIn = false;
         _checkInTime = null;
-        _lastAction = 'Auto checked out at ${res.data['check_out_time'] ?? res.data['check_in_time']}';
+        _lastAction =
+            'Auto checked out at ${res.data['check_out_time'] ?? res.data['check_in_time']}';
       });
       _showSnack('✅ Auto checked-out — see you next time!', AppColors.success);
       await _loadStats();
@@ -287,8 +296,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
   Future<void> _loadTodayStatus() async {
     try {
-      final res =
-          await ApiService().get('${AppConstants.attendanceBase}/today-status/');
+      final res = await ApiService()
+          .get('${AppConstants.attendanceBase}/today-status/');
       if (mounted) {
         setState(() {
           _isCheckedIn = res.data['is_checked_in'] == true;
@@ -313,9 +322,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     try {
       final user = ref.read(currentUserProvider);
       if (user?.employeeId == null) return;
-      final res = await ApiService().get('${AppConstants.attendanceBase}/list/');
+      final res =
+          await ApiService().get('${AppConstants.attendanceBase}/list/');
       if (!mounted) return;
-      final all = res.data is List ? res.data as List : (res.data['results'] ?? []);
+      final all =
+          res.data is List ? res.data as List : (res.data['results'] ?? []);
       final myLogs =
           all.where((a) => a['employee_id'] == user?.employeeId).toList();
       setState(() => _dailyHistory = myLogs);
@@ -325,13 +336,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   Future<void> _loadEmployees() async {
     setState(() => _employeesLoading = true);
     try {
-      final res = await ApiService()
-          .get('${AppConstants.organizationBase}/employees/');
+      final res =
+          await ApiService().get('${AppConstants.organizationBase}/employees/');
       if (mounted) {
         setState(() {
-          _employees = res.data is List
-              ? res.data
-              : (res.data['results'] ?? []);
+          _employees =
+              res.data is List ? res.data : (res.data['results'] ?? []);
           _employeesLoading = false;
         });
       }
@@ -356,10 +366,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     try {
       final res = await ApiService()
           .get('${AppConstants.attendanceBase}/remote-work-permission/list/');
-      
+
       final reqRes = await ApiService()
           .get('${AppConstants.attendanceBase}/remote-requests/');
-          
+
       if (mounted) {
         setState(() {
           _remoteEmployees = res.data is List ? res.data : [];
@@ -383,7 +393,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           'reason': reason,
         },
       );
-      _showSnack('✅ Remote work request submitted successfully!', AppColors.success);
+      _showSnack(
+          '✅ Remote work request submitted successfully!', AppColors.success);
       _loadRemoteList();
     } catch (e) {
       _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
@@ -444,8 +455,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         '${AppConstants.attendanceBase}/correction-requests/',
         data: {
           'requested_date': date,
-          if (checkIn != null && checkIn.isNotEmpty) 'requested_check_in': checkIn,
-          if (checkOut != null && checkOut.isNotEmpty) 'requested_check_out': checkOut,
+          if (checkIn != null && checkIn.isNotEmpty)
+            'requested_check_in': checkIn,
+          if (checkOut != null && checkOut.isNotEmpty)
+            'requested_check_out': checkOut,
           'reason': reason,
         },
       );
@@ -494,8 +507,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 const Icon(Iconsax.calendar_edit, color: AppColors.primary),
                 const SizedBox(width: 8),
                 const Text('Request Attendance Correction',
-                    style:
-                        AppTextStyles.sectionTitle),
+                    style: AppTextStyles.sectionTitle),
                 const Spacer(),
                 IconButton(
                     icon: const Icon(Icons.close),
@@ -505,8 +517,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             const SizedBox(height: 4),
             const Text(
                 'Submit a request if you missed attendance due to a technical issue.',
-                style: TextStyle(
-                    color: AppColors.textSecondary, fontSize: 12)),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
             const SizedBox(height: 16),
             TextField(
               controller: dateCtrl,
@@ -681,7 +692,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       final formData = FormData.fromMap({
         'latitude': pos.latitude.toString(),
         'longitude': pos.longitude.toString(),
-        'photo': MultipartFile.fromBytes(await image.readAsBytes(), filename: 'checkin.jpg'),
+        'photo': MultipartFile.fromBytes(await image.readAsBytes(),
+            filename: 'checkin.jpg'),
       });
 
       final res = await ApiService().uploadFile(AppConstants.checkIn, formData);
@@ -701,9 +713,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           msg.toLowerCase().contains('without checking out')) {
         _showSnack('⚠️ You are already checked in. Please check out first.',
             AppColors.warning);
-      } else if (msg
-          .toLowerCase()
-          .contains('not within the office radius')) {
+      } else if (msg.toLowerCase().contains('not within the office radius')) {
         _showSnack(
             '⚠️ You need to be at the office to check in. Ask your admin to grant remote work permission.',
             AppColors.warning);
@@ -726,8 +736,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Cancel')),
           ElevatedButton(
-              style:
-                  ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Check Out')),
         ],
@@ -752,10 +761,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       final formData = FormData.fromMap({
         'latitude': pos.latitude.toString(),
         'longitude': pos.longitude.toString(),
-        'photo': MultipartFile.fromBytes(await image.readAsBytes(), filename: 'checkout.jpg'),
+        'photo': MultipartFile.fromBytes(await image.readAsBytes(),
+            filename: 'checkout.jpg'),
       });
 
-      final res = await ApiService().uploadFile(AppConstants.checkOut, formData);
+      final res =
+          await ApiService().uploadFile(AppConstants.checkOut, formData);
       if (!mounted) return;
       setState(() {
         _isCheckedIn = false;
@@ -768,9 +779,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     } catch (e) {
       if (!mounted) return;
       final msg = ApiService.getErrorMessage(e);
-      if (msg
-          .toLowerCase()
-          .contains('not within the office radius')) {
+      if (msg.toLowerCase().contains('not within the office radius')) {
         _showSnack(
             '⚠️ You need to be at the office to check out. Ask your admin to grant remote work permission.',
             AppColors.warning);
@@ -781,8 +790,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
-
 
   void _showSnack(String msg, Color color) {
     if (!mounted) return;
@@ -802,7 +809,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         'latitude': pos.latitude,
         'longitude': pos.longitude,
       });
-      _showSnack('✅ Office Location configured successfully!', AppColors.success);
+      _showSnack(
+          '✅ Office Location configured successfully!', AppColors.success);
     } catch (e) {
       _showSnack(
           '❌ Failed to set office location: ${ApiService.getErrorMessage(e)}',
@@ -855,9 +863,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Attendance'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadAll),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadAll,
@@ -884,12 +889,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       '${_stats!['total_working_hour']}h', AppColors.primary)),
               const SizedBox(width: 12),
               Expanded(
-                  child: _StatBox('Days Present',
-                      '${_stats!['total_no_of_days_present']}', AppColors.success)),
+                  child: _StatBox(
+                      'Days Present',
+                      '${_stats!['total_no_of_days_present']}',
+                      AppColors.success)),
               const SizedBox(width: 12),
               Expanded(
-                  child: _StatBox('Remaining',
-                      '${_stats!['remaining_working_hour']}h', AppColors.warning)),
+                  child: _StatBox(
+                      'Remaining',
+                      '${_stats!['remaining_working_hour']}h',
+                      AppColors.warning)),
             ]),
             const SizedBox(height: 24),
           ],
@@ -994,64 +1003,71 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       : AppColors.textSecondary,
                 ),
                 const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _hasRemotePermission!
-                          ? 'Remote work location approved ✓'
-                          : 'No remote work location approved yet',
-                      style: const TextStyle(fontSize: 13),
-                    ),
+                Expanded(
+                  child: Text(
+                    _hasRemotePermission!
+                        ? 'Remote work location approved ✓'
+                        : 'No remote work location approved yet',
+                    style: const TextStyle(fontSize: 13),
                   ),
-                  if (!_hasRemotePermission!)
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      onPressed: () {
-                        final ctrl = TextEditingController();
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Request Remote Work', style: TextStyle(fontSize: 16)),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text('This will capture your current GPS location and send it to your Admin for approval.', style: AppTextStyles.caption),
-                                const SizedBox(height: 16),
-                                TextField(
-                                  controller: ctrl,
-                                  decoration: const InputDecoration(labelText: 'Reason for remote work'),
-                                  maxLines: 3,
-                                ),
-                              ],
-                            ),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  _requestRemoteWork(ctrl.text);
-                                },
-                                child: const Text('Submit Request'),
+                ),
+                if (!_hasRemotePermission!)
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () {
+                      final ctrl = TextEditingController();
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Request Remote Work',
+                              style: TextStyle(fontSize: 16)),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                  'This will capture your current GPS location and send it to your Admin for approval.',
+                                  style: AppTextStyles.caption),
+                              const SizedBox(height: 16),
+                              TextField(
+                                controller: ctrl,
+                                decoration: const InputDecoration(
+                                    labelText: 'Reason for remote work'),
+                                maxLines: 3,
                               ),
                             ],
                           ),
-                        );
-                      },
-                      child: const Text('Request', style: TextStyle(fontSize: 12)),
-                    ),
-                ]),
-              ),
-            ],
+                          actions: [
+                            TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('Cancel')),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _requestRemoteWork(ctrl.text);
+                              },
+                              child: const Text('Submit Request'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child:
+                        const Text('Request', style: TextStyle(fontSize: 12)),
+                  ),
+              ]),
+            ),
+          ],
 
           const SizedBox(height: 24),
           const Align(
               alignment: Alignment.centerLeft,
               child: Text('Attendance History',
-                  style:
-                      TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
           const SizedBox(height: 12),
 
           if (_dailyHistory.isEmpty)
@@ -1061,15 +1077,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   style: TextStyle(color: AppColors.textSecondary)),
             )
           else
-            ...(_dailyHistory).map((log) => _AttendanceLogTile(log: log, onTap: () => _showLogDetails(log))),
+            ...(_dailyHistory).map((log) => _AttendanceLogTile(
+                log: log, onTap: () => _showLogDetails(log))),
 
           const SizedBox(height: 16),
           const Align(
               alignment: Alignment.centerLeft,
               child: Text(
                   'Note: Office employees must be within 50 m of the office to check in/out. Employees with remote work permission approved by an admin can check in from anywhere.',
-                  style:
-                      AppTextStyles.caption)),
+                  style: AppTextStyles.caption)),
 
           // ── My Correction Requests ─────────────────────────────────────────
           if (_myCorrectionRequests.isNotEmpty) ...[
@@ -1093,7 +1109,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             const Align(
                 alignment: Alignment.centerLeft,
                 child: Text('Live Location Overview',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
             const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
@@ -1163,6 +1180,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       if (t == null || t.isEmpty) return '-';
       return t.split('.')[0];
     }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1173,7 +1191,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             const SizedBox(height: 4),
             Text(
               'In: ${formatTime(log['check_in_time']?.toString())} | Out: ${formatTime(log['check_out_time']?.toString())}',
-              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -1183,14 +1202,18 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (log['history'] != null && (log['history'] as List).isNotEmpty) ...[
-                  const Text("Session History", style: TextStyle(fontWeight: FontWeight.bold)),
+                if (log['history'] != null &&
+                    (log['history'] as List).isNotEmpty) ...[
+                  const Text("Session History",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   ...List.generate((log['history'] as List).length, (i) {
                     final h = log['history'][i];
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 6),
-                      child: Text('Session ${i + 1} - In: ${formatTime(h['in']?.toString())} | Out: ${formatTime(h['out']?.toString())}', style: const TextStyle(fontSize: 14)),
+                      child: Text(
+                          'Session ${i + 1} - In: ${formatTime(h['in']?.toString())} | Out: ${formatTime(h['out']?.toString())}',
+                          style: const TextStyle(fontSize: 14)),
                     );
                   }),
                   const SizedBox(height: 24),
@@ -1209,7 +1232,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                               ? Image.network(log['check_in_photo'],
                                   height: 150, fit: BoxFit.cover)
                               : const Text("No photo",
-                                  style: TextStyle(color: AppColors.textSecondary)),
+                                  style: TextStyle(
+                                      color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -1223,7 +1247,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                               ? Image.network(log['check_out_photo'],
                                   height: 150, fit: BoxFit.cover)
                               : const Text("No photo",
-                                  style: TextStyle(color: AppColors.textSecondary)),
+                                  style: TextStyle(
+                                      color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -1271,8 +1296,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                           position: LatLng(inLat, inLng),
                           icon: BitmapDescriptor.defaultMarkerWithHue(
                               BitmapDescriptor.hueGreen),
-                          infoWindow: const InfoWindow(
-                              title: '✅ Check-In Location'),
+                          infoWindow:
+                              const InfoWindow(title: '✅ Check-In Location'),
                         ));
                       }
                       if (outLat != null && outLng != null) {
@@ -1281,8 +1306,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                           position: LatLng(outLat, outLng),
                           icon: BitmapDescriptor.defaultMarkerWithHue(
                               BitmapDescriptor.hueRed),
-                          infoWindow: const InfoWindow(
-                              title: '🚪 Check-Out Location'),
+                          infoWindow:
+                              const InfoWindow(title: '🚪 Check-Out Location'),
                         ));
                         // Correctly average the two pin coordinates for the camera center
                         final centerLat = ((inLat ?? outLat) + outLat) / 2;
@@ -1323,8 +1348,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     }
 
     final filtered = _employees.where((e) {
-      final name = ('${e['user']?['first_name'] ?? ''} ${e['user']?['last_name'] ?? ''}')
-          .toLowerCase();
+      final name =
+          ('${e['user']?['first_name'] ?? ''} ${e['user']?['last_name'] ?? ''}')
+              .toLowerCase();
       return name.contains(_employeeSearch.toLowerCase());
     }).toList();
 
@@ -1339,8 +1365,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               hintText: 'Search employees…',
               prefixIcon: const Icon(Icons.search, size: 20),
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 10),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -1368,10 +1394,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       final user = emp['user'] as Map? ?? {};
                       final firstName = user['first_name'] ?? '';
                       final lastName = user['last_name'] ?? '';
-                      final fullName =
-                          '$firstName $lastName'.trim().isEmpty
-                              ? 'Employee'
-                              : '$firstName $lastName'.trim();
+                      final fullName = '$firstName $lastName'.trim().isEmpty
+                          ? 'Employee'
+                          : '$firstName $lastName'.trim();
                       final avatar = user['profile_picture'] as String?;
                       final empType = (emp['employee_type'] as String? ?? '')
                           .replaceAll('_', ' ');
@@ -1410,128 +1435,159 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               constraints: const BoxConstraints(maxWidth: 900),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_pendingRemoteRequests.isNotEmpty) ...[
-                  const Text('Pending Requests', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                  const SizedBox(height: 12),
-                  ..._pendingRemoteRequests.map((req) {
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_pendingRemoteRequests.isNotEmpty) ...[
+                      const Text('Pending Requests',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary)),
+                      const SizedBox(height: 12),
+                      ..._pendingRemoteRequests.map((req) {
+                        return Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(req['employee_name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                Text('Requested on: ${_formatRemoteDate(req['created_at']?.toString())}', style: AppTextStyles.caption),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text('Reason: ${req['reason']}', style: const TextStyle(fontSize: 14)),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                const Spacer(),
-                                GestureDetector(
-                                  onTap: () => _actionRemoteRequest(req['id'], 'rejected'),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: Colors.redAccent),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Text('Reject', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-                                  ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(req['employee_name'] ?? 'Unknown',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16)),
+                                    Text(
+                                        'Requested on: ${_formatRemoteDate(req['created_at']?.toString())}',
+                                        style: AppTextStyles.caption),
+                                  ],
                                 ),
-                                const SizedBox(width: 12),
-                                GestureDetector(
-                                  onTap: () => _actionRemoteRequest(req['id'], 'approved'),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green,
-                                      borderRadius: BorderRadius.circular(8),
+                                const SizedBox(height: 8),
+                                Text('Reason: ${req['reason']}',
+                                    style: const TextStyle(fontSize: 14)),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    const Spacer(),
+                                    GestureDetector(
+                                      onTap: () => _actionRemoteRequest(
+                                          req['id'], 'rejected'),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                              color: Colors.redAccent),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: const Text('Reject',
+                                            style: TextStyle(
+                                                color: Colors.redAccent,
+                                                fontWeight: FontWeight.bold)),
+                                      ),
                                     ),
-                                    child: const Text('Approve', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                  ),
+                                    const SizedBox(width: 12),
+                                    GestureDetector(
+                                      onTap: () => _actionRemoteRequest(
+                                          req['id'], 'approved'),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: const Text('Approve',
+                                            style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold)),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 24),
-                  const Divider(),
-                  const SizedBox(height: 16),
-                ],
-                const Text('All Employees', style: AppTextStyles.sectionTitle),
-                const SizedBox(height: 12),
-                if (_remoteEmployees.isEmpty)
-                  const Center(child: Text('No employees found.', style: TextStyle(color: AppColors.textSecondary)))
-                else
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _remoteEmployees.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (_, i) {
-                      final e = _remoteEmployees[i];
-                      final hasPermission = e['has_remote_permission'] == true;
-                      final employeeId = e['employee_id'] as int;
-                      return Card(
-                        child: ListTile(
-                          leading: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: (hasPermission
-                                      ? AppColors.success
-                                      : AppColors.textSecondary)
-                                  .withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              hasPermission
-                                  ? Iconsax.location_tick
-                                  : Iconsax.location_cross,
-                              color: hasPermission
-                                  ? AppColors.success
-                                  : AppColors.textSecondary,
                             ),
                           ),
-                          title: Text(e['employee_name'] ?? 'Unknown'),
-                          subtitle: Text(hasPermission
-                              ? 'Remote location approved'
-                              : 'No remote location set'),
-                          trailing: hasPermission
-                              ? IconButton(
-                                  icon: const Icon(Icons.remove_circle_outline,
-                                      color: AppColors.error),
-                                  tooltip: 'Revoke remote access',
-                                  onPressed: () =>
-                                      _removeRemoteLocation(employeeId),
-                                )
-                              : IconButton(
-                                  icon: const Icon(
-                                      Icons.add_location_alt_outlined,
-                                      color: AppColors.primary),
-                                  tooltip: 'Set remote location (from here)',
-                                  onPressed: () => _setRemoteLocation(employeeId),
+                        );
+                      }),
+                      const SizedBox(height: 24),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                    ],
+                    const Text('All Employees',
+                        style: AppTextStyles.sectionTitle),
+                    const SizedBox(height: 12),
+                    if (_remoteEmployees.isEmpty)
+                      const Center(
+                          child: Text('No employees found.',
+                              style: TextStyle(color: AppColors.textSecondary)))
+                    else
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _remoteEmployees.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (_, i) {
+                          final e = _remoteEmployees[i];
+                          final hasPermission =
+                              e['has_remote_permission'] == true;
+                          final employeeId = e['employee_id'] as int;
+                          return Card(
+                            child: ListTile(
+                              leading: Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: (hasPermission
+                                          ? AppColors.success
+                                          : AppColors.textSecondary)
+                                      .withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
                                 ),
-                        ),
-                      );
-                    },
-                  ),
-              ],
-            ),
-          ),
+                                child: Icon(
+                                  hasPermission
+                                      ? Iconsax.location_tick
+                                      : Iconsax.location_cross,
+                                  color: hasPermission
+                                      ? AppColors.success
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                              title: Text(e['employee_name'] ?? 'Unknown'),
+                              subtitle: Text(hasPermission
+                                  ? 'Remote location approved'
+                                  : 'No remote location set'),
+                              trailing: hasPermission
+                                  ? IconButton(
+                                      icon: const Icon(
+                                          Icons.remove_circle_outline,
+                                          color: AppColors.error),
+                                      tooltip: 'Revoke remote access',
+                                      onPressed: () =>
+                                          _removeRemoteLocation(employeeId),
+                                    )
+                                  : IconButton(
+                                      icon: const Icon(
+                                          Icons.add_location_alt_outlined,
+                                          color: AppColors.primary),
+                                      tooltip:
+                                          'Set remote location (from here)',
+                                      onPressed: () =>
+                                          _setRemoteLocation(employeeId),
+                                    ),
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         );
@@ -1546,7 +1602,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Iconsax.calendar_tick, size: 56, color: AppColors.textSecondary),
+            Icon(Iconsax.calendar_tick,
+                size: 56, color: AppColors.textSecondary),
             SizedBox(height: 12),
             Text('No pending correction requests',
                 style: TextStyle(color: AppColors.textSecondary)),
@@ -1576,7 +1633,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   }
 }
 
-
 // ─── Employee Grid Card ───────────────────────────────────────────────────────
 class _EmployeeAttendanceCard extends StatelessWidget {
   final String name;
@@ -1593,7 +1649,13 @@ class _EmployeeAttendanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initials = name.trim().split(' ').map((w) => w.isNotEmpty ? w[0] : '').take(2).join().toUpperCase();
+    final initials = name
+        .trim()
+        .split(' ')
+        .map((w) => w.isNotEmpty ? w[0] : '')
+        .take(2)
+        .join()
+        .toUpperCase();
 
     return Card(
       elevation: 2,
@@ -1610,7 +1672,8 @@ class _EmployeeAttendanceCard extends StatelessWidget {
               CircleAvatar(
                 radius: 32,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
+                backgroundImage:
+                    avatarUrl != null ? NetworkImage(avatarUrl!) : null,
                 child: avatarUrl == null
                     ? Text(initials,
                         style: const TextStyle(
@@ -1631,7 +1694,8 @@ class _EmployeeAttendanceCard extends StatelessWidget {
               // Type badge
               if (employeeType.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -1684,68 +1748,70 @@ class _AttendanceLogTile extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: checkedIn
-                  ? AppColors.success.withValues(alpha: 0.15)
-                  : AppColors.error.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              checkedIn ? Iconsax.tick_circle : Iconsax.close_circle,
-              color: checkedIn ? AppColors.success : AppColors.error,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(_formatDate(log['date']?.toString()),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    )),
-                const SizedBox(height: 2),
-                Wrap(children: [
-                  if (checkedIn)
-                    Text('In: ${formatTime(log['check_in_time']?.toString())}',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.success)),
-                  if (checkedIn && checkedOut)
-                    const Text('  →  ',
-                        style: TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary)),
-                  if (checkedOut)
-                    Text('Out: ${formatTime(log['check_out_time']?.toString())}',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.error)),
-                  if (!checkedIn)
-                    const Text('Not checked in',
-                        style: TextStyle(fontSize: 12, color: AppColors.error)),
-                ]),
-              ])),
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('${hours.toStringAsFixed(2)}h',
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 15)),
-            if (isRemote)
-              Container(
-                margin: const EdgeInsets.only(top: 4),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text('Remote',
-                    style:
-                        TextStyle(fontSize: 10, color: AppColors.accent)),
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: checkedIn
+                    ? AppColors.success.withValues(alpha: 0.15)
+                    : AppColors.error.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
               ),
-          ]),
+              child: Icon(
+                checkedIn ? Iconsax.tick_circle : Iconsax.close_circle,
+                color: checkedIn ? AppColors.success : AppColors.error,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(_formatDate(log['date']?.toString()),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      )),
+                  const SizedBox(height: 2),
+                  Wrap(children: [
+                    if (checkedIn)
+                      Text(
+                          'In: ${formatTime(log['check_in_time']?.toString())}',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.success)),
+                    if (checkedIn && checkedOut)
+                      const Text('  →  ',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary)),
+                    if (checkedOut)
+                      Text(
+                          'Out: ${formatTime(log['check_out_time']?.toString())}',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.error)),
+                    if (!checkedIn)
+                      const Text('Not checked in',
+                          style:
+                              TextStyle(fontSize: 12, color: AppColors.error)),
+                  ]),
+                ])),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text('${hours.toStringAsFixed(2)}h',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 15)),
+              if (isRemote)
+                Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text('Remote',
+                      style: TextStyle(fontSize: 10, color: AppColors.accent)),
+                ),
+            ]),
           ]),
         ),
       ),
@@ -1770,13 +1836,12 @@ class _StatBox extends StatelessWidget {
               style: TextStyle(
                   fontSize: 18, fontWeight: FontWeight.bold, color: color)),
           Text(label,
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 11, color: AppColors.textSecondary),
               textAlign: TextAlign.center),
         ]),
       );
 }
-
 
 class _CorrectionRequestTile extends StatelessWidget {
   final Map req;
@@ -1812,18 +1877,20 @@ class _CorrectionRequestTile extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                if (isAdmin)
-                  Text(req['employee_name'] ?? 'Unknown',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text('Date: ${req['requested_date'] ?? '-'}',
-                    style: const TextStyle(fontSize: 13)),
-                if (req['requested_check_in'] != null)
-                  Text(
-                      'In: ${req['requested_check_in']}  Out: ${req['requested_check_out'] ?? '-'}',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary)),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isAdmin)
+                      Text(req['employee_name'] ?? 'Unknown',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Date: ${req['requested_date'] ?? '-'}',
+                        style: const TextStyle(fontSize: 13)),
+                    if (req['requested_check_in'] != null)
+                      Text(
+                          'In: ${req['requested_check_in']}  Out: ${req['requested_check_out'] ?? '-'}',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary)),
+                  ]),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1841,17 +1908,18 @@ class _CorrectionRequestTile extends StatelessWidget {
             ),
           ]),
           const SizedBox(height: 6),
-          Text('Reason: ${req['reason'] ?? '-'}',
-              style: AppTextStyles.caption),
-          if (req['admin_note'] != null && (req['admin_note'] as String).isNotEmpty)
+          Text('Reason: ${req['reason'] ?? '-'}', style: AppTextStyles.caption),
+          if (req['admin_note'] != null &&
+              (req['admin_note'] as String).isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text('Admin note: ${req['admin_note']}',
                   style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary,
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
                       fontStyle: FontStyle.italic)),
             ),
-          if (isAdmin && status == 'pending' && onAction != null) ...[ 
+          if (isAdmin && status == 'pending' && onAction != null) ...[
             const SizedBox(height: 10),
             Row(children: [
               Expanded(
@@ -1901,8 +1969,3 @@ class _CorrectionRequestTile extends StatelessWidget {
     );
   }
 }
-
-
-
-
-

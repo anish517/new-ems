@@ -35,8 +35,6 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
     if (mounted) setState(() => _isLoading = false);
   }
 
-
-
   void _showSnack(String msg, Color color) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -47,7 +45,8 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
 
   void _showPolicyForm({Map? existing}) {
     final titleCtrl = TextEditingController(text: existing?['title'] ?? '');
-    final categoryCtrl = TextEditingController(text: existing?['category'] ?? '');
+    final categoryCtrl =
+        TextEditingController(text: existing?['category'] ?? '');
     final contentCtrl = TextEditingController(text: existing?['content'] ?? '');
     final isEdit = existing != null;
 
@@ -66,12 +65,15 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(children: [
-                Icon(isEdit ? Iconsax.edit : Iconsax.add_circle, color: AppColors.primary),
+                Icon(isEdit ? Iconsax.edit : Iconsax.add_circle,
+                    color: AppColors.primary),
                 const SizedBox(width: 8),
                 Text(isEdit ? 'Edit Policy' : 'Add Policy',
                     style: AppTextStyles.sectionTitle),
                 const Spacer(),
-                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+                IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx)),
               ]),
               const SizedBox(height: 12),
               TextField(
@@ -112,9 +114,10 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
                   icon: Icon(isEdit ? Iconsax.tick_circle : Iconsax.send_1),
                   label: Text(isEdit ? 'Save Changes' : 'Add Policy'),
                   onPressed: () async {
-                    if (titleCtrl.text.trim().isEmpty || contentCtrl.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                          const SnackBar(content: Text('Title and Content are required.')));
+                    if (titleCtrl.text.trim().isEmpty ||
+                        contentCtrl.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                          content: Text('Title and Content are required.')));
                       return;
                     }
                     Navigator.pop(ctx);
@@ -138,10 +141,12 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
                           },
                         );
                       }
-                      _showSnack(isEdit ? 'Policy updated!' : 'Policy added!', AppColors.success);
+                      _showSnack(isEdit ? 'Policy updated!' : 'Policy added!',
+                          AppColors.success);
                       _loadPolicies();
                     } catch (e) {
-                      _showSnack(ApiService.getErrorMessage(e), AppColors.error);
+                      _showSnack(
+                          ApiService.getErrorMessage(e), AppColors.error);
                     }
                   },
                 ),
@@ -156,7 +161,9 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
   Map<String, List> _groupByCategory(List policies) {
     final Map<String, List> grouped = {};
     for (final p in policies) {
-      final cat = (p['category'] as String?)?.trim().isNotEmpty == true ? p['category'] as String : 'General';
+      final cat = (p['category'] as String?)?.trim().isNotEmpty == true
+          ? p['category'] as String
+          : 'General';
       grouped.putIfAbsent(cat, () => []).add(p);
     }
     return grouped;
@@ -172,10 +179,8 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
         backgroundColor: context.surface,
         elevation: 0,
         title: Text('Company Policy',
-            style: TextStyle(fontWeight: FontWeight.bold, color: context.textPrimary)),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadPolicies),
-        ],
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: context.textPrimary)),
       ),
       floatingActionButton: isAdmin
           ? FloatingActionButton.extended(
@@ -191,7 +196,8 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
           : _policies.isEmpty
               ? Center(
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Iconsax.document_text, size: 56, color: AppColors.textSecondary),
+                    const Icon(Iconsax.document_text,
+                        size: 56, color: AppColors.textSecondary),
                     const SizedBox(height: 12),
                     const Text('No policies published yet.',
                         style: TextStyle(color: AppColors.textSecondary)),
@@ -199,7 +205,8 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white),
                         icon: const Icon(Icons.add),
                         label: const Text('Add First Policy'),
                         onPressed: _showPolicyForm,
@@ -237,7 +244,11 @@ class _PolicyCategory extends StatefulWidget {
   final List policies;
   final bool isAdmin;
   final void Function(Map) onEdit;
-  const _PolicyCategory({required this.category, required this.policies, required this.isAdmin, required this.onEdit});
+  const _PolicyCategory(
+      {required this.category,
+      required this.policies,
+      required this.isAdmin,
+      required this.onEdit});
   @override
   State<_PolicyCategory> createState() => _PolicyCategoryState();
 }
@@ -245,43 +256,55 @@ class _PolicyCategory extends StatefulWidget {
 class _PolicyCategoryState extends State<_PolicyCategory> {
   bool _expanded = true;
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    InkWell(
-      onTap: () => setState(() => _expanded = !_expanded),
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(widget.category,
-                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13)),
+  Widget build(BuildContext context) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(widget.category,
+                    style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13)),
+              ),
+              const SizedBox(width: 8),
+              Text('${widget.policies.length} policies',
+                  style: AppTextStyles.caption),
+              const Spacer(),
+              Icon(
+                  _expanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: AppColors.textSecondary),
+            ]),
           ),
-          const SizedBox(width: 8),
-          Text('${widget.policies.length} policies', style: AppTextStyles.caption),
-          const Spacer(),
-          Icon(_expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: AppColors.textSecondary),
-        ]),
-      ),
-    ),
-    if (_expanded)
-      ...widget.policies.map((p) => _PolicyCard(
-        policy: p, isAdmin: widget.isAdmin,
-        onEdit: () => widget.onEdit(p),
-      )),
-    const SizedBox(height: 8),
-  ]);
+        ),
+        if (_expanded)
+          ...widget.policies.map((p) => _PolicyCard(
+                policy: p,
+                isAdmin: widget.isAdmin,
+                onEdit: () => widget.onEdit(p),
+              )),
+        const SizedBox(height: 8),
+      ]);
 }
 
 class _PolicyCard extends StatefulWidget {
   final Map policy;
   final bool isAdmin;
   final VoidCallback onEdit;
-  const _PolicyCard({required this.policy, required this.isAdmin, required this.onEdit});
+  const _PolicyCard(
+      {required this.policy, required this.isAdmin, required this.onEdit});
   @override
   State<_PolicyCard> createState() => _PolicyCardState();
 }
@@ -333,7 +356,9 @@ class _PolicyCardState extends State<_PolicyCard> {
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
-                            widget.policy['created_at'].toString().split('T')[0],
+                            widget.policy['created_at']
+                                .toString()
+                                .split('T')[0],
                             style: const TextStyle(
                                 fontSize: 12, color: AppColors.textSecondary),
                           ),

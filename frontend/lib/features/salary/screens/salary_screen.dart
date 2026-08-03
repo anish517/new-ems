@@ -140,9 +140,6 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Salary Management'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
-        ],
         bottom: isAdmin
             ? TabBar(
                 controller: _adminTabs,
@@ -200,7 +197,8 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Company Salary Distribution', style: AppTextStyles.pageTitle),
+                  const Text('Company Salary Distribution',
+                      style: AppTextStyles.pageTitle),
                   const SizedBox(height: 16),
                   Container(
                     height: 250,
@@ -226,10 +224,12 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                         child: ListTile(
                           leading: const CircleAvatar(
                             backgroundColor: AppColors.primaryDark,
-                            child: Icon(Iconsax.money_recive, color: Colors.white, size: 18),
+                            child: Icon(Iconsax.money_recive,
+                                color: Colors.white, size: 18),
                           ),
                           title: Text(_empName(empId),
-                              style: const TextStyle(fontWeight: FontWeight.bold)),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(
                               'Basic: ${_fmt(s['basic_salary'])}  |  Remote: ${_fmt(s['remote_salary'])}'),
                           trailing: Row(
@@ -246,7 +246,8 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                                 icon: const Icon(Icons.edit_outlined,
                                     color: AppColors.textSecondary, size: 20),
                                 tooltip: 'Edit Base Salary',
-                                onPressed: () => _showEditBaseSalarySheet(ctx, s),
+                                onPressed: () =>
+                                    _showEditBaseSalarySheet(ctx, s),
                               ),
                             ],
                           ),
@@ -262,7 +263,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
 
   Widget _buildAllEmployeesSalaryChart() {
     if (_allSalaries.isEmpty) return const SizedBox.shrink();
-    
+
     // Build bar groups
     final barGroups = <BarChartGroupData>[];
     double maxY = 0;
@@ -271,7 +272,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
       final s = _allSalaries[i];
       final basic = (s['basic_salary'] ?? 0).toDouble();
       if (basic > maxY) maxY = basic;
-      
+
       barGroups.add(
         BarChartGroupData(
           x: i,
@@ -280,13 +281,14 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               toY: basic,
               color: AppColors.primary,
               width: 16,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(4)),
             ),
           ],
         ),
       );
     }
-    
+
     // Add padding to maxY
     maxY = maxY + (maxY * 0.1);
     if (maxY == 0) maxY = 100;
@@ -300,10 +302,13 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              interval: _allSalaries.length <= 8 ? 1.0 : (_allSalaries.length / 8).ceilToDouble(),
+              interval: _allSalaries.length <= 8
+                  ? 1.0
+                  : (_allSalaries.length / 8).ceilToDouble(),
               getTitlesWidget: (value, meta) {
                 final i = value.toInt();
-                if (i < 0 || i >= _allSalaries.length) return const SizedBox.shrink();
+                if (i < 0 || i >= _allSalaries.length)
+                  return const SizedBox.shrink();
                 final empId = _allSalaries[i]['employee'] as int? ?? 0;
                 final name = _empName(empId);
                 final shortName = name.split(' ').first;
@@ -311,7 +316,8 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
                     shortName,
-                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                        fontSize: 10, color: AppColors.textSecondary),
                     overflow: TextOverflow.ellipsis,
                   ),
                 );
@@ -335,11 +341,13 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              final empId = _allSalaries[group.x.toInt()]['employee'] as int? ?? 0;
+              final empId =
+                  _allSalaries[group.x.toInt()]['employee'] as int? ?? 0;
               final name = _empName(empId);
               return BarTooltipItem(
                 '$name\nNPR ${rod.toY.toInt()}',
-                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold),
               );
             },
           ),
@@ -380,8 +388,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               itemBuilder: (ctx, i) {
                 final tx = _allTransactions[i];
                 return _TransactionTile(tx,
-                    empName: _empName(tx['employee'] ?? 0),
-                    isAdmin: true);
+                    empName: _empName(tx['employee'] ?? 0), isAdmin: true);
               },
             ),
     );
@@ -404,8 +411,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-                gradient: LinearGradient(
-                    colors: [context.surface, context.bg]),
+                gradient: LinearGradient(colors: [context.surface, context.bg]),
                 borderRadius: BorderRadius.circular(20)),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -517,8 +523,12 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                             await ApiService().patch(
                                 '${AppConstants.salaryBase}/salary/${salaryRecord['id']}/',
                                 data: {
-                                  'basic_salary': basicCtrl.text.isEmpty ? '0' : basicCtrl.text,
-                                  'remote_salary': remoteCtrl.text.isEmpty ? '0' : remoteCtrl.text,
+                                  'basic_salary': basicCtrl.text.isEmpty
+                                      ? '0'
+                                      : basicCtrl.text,
+                                  'remote_salary': remoteCtrl.text.isEmpty
+                                      ? '0'
+                                      : remoteCtrl.text,
                                 });
                             if (context.mounted) {
                               Navigator.pop(context);
@@ -563,12 +573,14 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
 
   // ── Analytics / Graph Tab ────────────────────────────────────────────────
   Widget _buildAnalyticsTab() {
-    final salariesWithEmployees = _allSalaries.where((s) => s['employee'] != null).toList();
+    final salariesWithEmployees =
+        _allSalaries.where((s) => s['employee'] != null).toList();
     final graphTransactions = _graphEmployeeId != null
         ? (_allTransactions
             .where((tx) => tx['employee'] == _graphEmployeeId)
             .toList()
-          ..sort((a, b) => ((a as Map)['date'] ?? '').compareTo((b as Map)['date'] ?? '')))
+          ..sort((a, b) =>
+              ((a as Map)['date'] ?? '').compareTo((b as Map)['date'] ?? '')))
         : <dynamic>[];
 
     // Build chart data
@@ -589,12 +601,12 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
       final tds = (tx['transaction_tds'] ?? 0).toDouble();
       final ssf = (tx['transaction_ssf'] ?? 0).toDouble();
       final epf = (tx['transaction_epf'] ?? 0).toDouble();
-      
+
       final dateStr = tx['date'] as String? ?? '';
       months[i] = dateStr;
       netSpots.add(FlSpot(i.toDouble(), net));
       expenseSpots.add(FlSpot(i.toDouble(), exp));
-      
+
       sumNet += net;
       sumTds += tds;
       sumSsf += ssf;
@@ -610,8 +622,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Salary Analytics',
-              style: AppTextStyles.pageTitle),
+          const Text('Salary Analytics', style: AppTextStyles.pageTitle),
           const SizedBox(height: 16),
           // Employee dropdown
           DropdownButtonFormField<int>(
@@ -628,7 +639,8 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
             decoration: InputDecoration(
               filled: true,
               fillColor: context.surface,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             ),
           ),
           const SizedBox(height: 24),
@@ -645,7 +657,8 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                 children: [
                   Icon(Iconsax.chart_2, size: 48, color: AppColors.primary),
                   SizedBox(height: 16),
-                  Text('Select an employee above to view their salary trend graph',
+                  Text(
+                      'Select an employee above to view their salary trend graph',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.textSecondary)),
                 ],
@@ -659,18 +672,29 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                 color: context.surface,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Text('No salary transactions found for this employee.',
+              child: const Text(
+                  'No salary transactions found for this employee.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textSecondary)),
             )
           else ...[
             // Chart legend
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Container(width: 14, height: 14, decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(3))),
+              Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(3))),
               const SizedBox(width: 6),
               const Text('Net Salary', style: TextStyle(fontSize: 12)),
               const SizedBox(width: 24),
-              Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(3))),
+              Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                      color: Colors.orange,
+                      borderRadius: BorderRadius.circular(3))),
               const SizedBox(width: 6),
               const Text('Total Expense', style: TextStyle(fontSize: 12)),
             ]),
@@ -681,12 +705,19 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               decoration: BoxDecoration(
                 color: context.surface,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4))
+                ],
               ),
               child: LineChart(
                 LineChartData(
                   minX: 0,
-                  maxX: (netSpots.length - 1).toDouble().clamp(0, double.infinity),
+                  maxX: (netSpots.length - 1)
+                      .toDouble()
+                      .clamp(0, double.infinity),
                   gridData: FlGridData(
                     show: true,
                     drawHorizontalLine: true,
@@ -704,7 +735,8 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                         reservedSize: 56,
                         getTitlesWidget: (v, meta) => Text(
                           'NPR ${(v / 1000).toStringAsFixed(0)}k',
-                          style: const TextStyle(fontSize: 9, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                              fontSize: 9, color: AppColors.textSecondary),
                         ),
                       ),
                     ),
@@ -712,18 +744,23 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 28,
-                        interval: netSpots.length <= 6 ? 1.0 : (netSpots.length / 6).ceilToDouble(),
+                        interval: netSpots.length <= 6
+                            ? 1.0
+                            : (netSpots.length / 6).ceilToDouble(),
                         getTitlesWidget: (v, meta) {
                           final idx = v.toInt();
                           return Text(
                             months[idx] ?? '',
-                            style: const TextStyle(fontSize: 9, color: AppColors.textSecondary),
+                            style: const TextStyle(
+                                fontSize: 9, color: AppColors.textSecondary),
                           );
                         },
                       ),
                     ),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
                   ),
                   lineBarsData: [
                     LineChartBarData(
@@ -750,17 +787,23 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Pie Chart for Total Breakdown
             if (pieDataReady) ...[
-              const Text('All-Time Aggregate Breakdown', style: AppTextStyles.sectionTitle),
+              const Text('All-Time Aggregate Breakdown',
+                  style: AppTextStyles.sectionTitle),
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: context.surface,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4))
+                  ],
                 ),
                 child: Row(
                   children: [
@@ -773,11 +816,61 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                             sectionsSpace: 2,
                             centerSpaceRadius: 40,
                             sections: [
-                              if (sumNet > 0) PieChartSectionData(color: AppColors.primary, value: sumNet, title: '${((sumNet / sumTotalExpense) * 100).toStringAsFixed(1)}%', radius: 50, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
-                              if (sumTds > 0) PieChartSectionData(color: Colors.redAccent, value: sumTds, title: '${((sumTds / sumTotalExpense) * 100).toStringAsFixed(1)}%', radius: 50, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
-                              if (sumSsf > 0) PieChartSectionData(color: Colors.green, value: sumSsf, title: '${((sumSsf / sumTotalExpense) * 100).toStringAsFixed(1)}%', radius: 50, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
-                              if (sumEpf > 0) PieChartSectionData(color: Colors.purpleAccent, value: sumEpf, title: '${((sumEpf / sumTotalExpense) * 100).toStringAsFixed(1)}%', radius: 50, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
-                              if (sumOther > 0) PieChartSectionData(color: Colors.orangeAccent, value: sumOther, title: '${((sumOther / sumTotalExpense) * 100).toStringAsFixed(1)}%', radius: 50, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                              if (sumNet > 0)
+                                PieChartSectionData(
+                                    color: AppColors.primary,
+                                    value: sumNet,
+                                    title:
+                                        '${((sumNet / sumTotalExpense) * 100).toStringAsFixed(1)}%',
+                                    radius: 50,
+                                    titleStyle: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white)),
+                              if (sumTds > 0)
+                                PieChartSectionData(
+                                    color: Colors.redAccent,
+                                    value: sumTds,
+                                    title:
+                                        '${((sumTds / sumTotalExpense) * 100).toStringAsFixed(1)}%',
+                                    radius: 50,
+                                    titleStyle: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white)),
+                              if (sumSsf > 0)
+                                PieChartSectionData(
+                                    color: Colors.green,
+                                    value: sumSsf,
+                                    title:
+                                        '${((sumSsf / sumTotalExpense) * 100).toStringAsFixed(1)}%',
+                                    radius: 50,
+                                    titleStyle: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white)),
+                              if (sumEpf > 0)
+                                PieChartSectionData(
+                                    color: Colors.purpleAccent,
+                                    value: sumEpf,
+                                    title:
+                                        '${((sumEpf / sumTotalExpense) * 100).toStringAsFixed(1)}%',
+                                    radius: 50,
+                                    titleStyle: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white)),
+                              if (sumOther > 0)
+                                PieChartSectionData(
+                                    color: Colors.orangeAccent,
+                                    value: sumOther,
+                                    title:
+                                        '${((sumOther / sumTotalExpense) * 100).toStringAsFixed(1)}%',
+                                    radius: 50,
+                                    titleStyle: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white)),
                             ],
                           ),
                         ),
@@ -788,16 +881,29 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _PieLegendIndicator(color: AppColors.primary, text: 'Net Salary', amount: sumNet),
+                          _PieLegendIndicator(
+                              color: AppColors.primary,
+                              text: 'Net Salary',
+                              amount: sumNet),
                           const SizedBox(height: 8),
-                          _PieLegendIndicator(color: Colors.redAccent, text: 'TDS (Tax)', amount: sumTds),
+                          _PieLegendIndicator(
+                              color: Colors.redAccent,
+                              text: 'TDS (Tax)',
+                              amount: sumTds),
                           const SizedBox(height: 8),
-                          _PieLegendIndicator(color: Colors.green, text: 'SSF', amount: sumSsf),
+                          _PieLegendIndicator(
+                              color: Colors.green, text: 'SSF', amount: sumSsf),
                           const SizedBox(height: 8),
-                          _PieLegendIndicator(color: Colors.purpleAccent, text: 'EPF', amount: sumEpf),
+                          _PieLegendIndicator(
+                              color: Colors.purpleAccent,
+                              text: 'EPF',
+                              amount: sumEpf),
                           if (sumOther > 0) ...[
                             const SizedBox(height: 8),
-                            _PieLegendIndicator(color: Colors.orangeAccent, text: 'Other (CIT, Ins.)', amount: sumOther),
+                            _PieLegendIndicator(
+                                color: Colors.orangeAccent,
+                                text: 'Other (CIT, Ins.)',
+                                amount: sumOther),
                           ],
                         ],
                       ),
@@ -809,13 +915,14 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
             ],
 
             // Transactions summary table
-            const Text('Transaction History', style: AppTextStyles.sectionTitle),
+            const Text('Transaction History',
+                style: AppTextStyles.sectionTitle),
             const SizedBox(height: 12),
             ...graphTransactions.map((tx) => _TransactionTile(
-              tx as Map<String, dynamic>,
-              empName: _empName(_graphEmployeeId!),
-              isAdmin: true,
-            )),
+                  tx as Map<String, dynamic>,
+                  empName: _empName(_graphEmployeeId!),
+                  isAdmin: true,
+                )),
           ],
         ],
       ),
@@ -848,13 +955,16 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
   }();
   Map<String, dynamic>? _netSalaryInfo;
   final TextEditingController _netSalaryController = TextEditingController();
-  final TextEditingController _incentiveController = TextEditingController(text: '0');
-  final TextEditingController _bonusController = TextEditingController(text: '0');
+  final TextEditingController _incentiveController =
+      TextEditingController(text: '0');
+  final TextEditingController _bonusController =
+      TextEditingController(text: '0');
   final TextEditingController _holidaysController = TextEditingController();
   final TextEditingController _ssfController = TextEditingController();
   final TextEditingController _epfController = TextEditingController();
   final TextEditingController _tdsController = TextEditingController();
-  String _emailPreference = 'official'; // 'official', 'personal', 'both', 'none'
+  String _emailPreference =
+      'official'; // 'official', 'personal', 'both', 'none'
   bool _loading = true;
   bool _saving = false;
 
@@ -894,21 +1004,30 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
     if (_selSalaryId == null) return;
     if (clear) setState(() => _netSalaryInfo = null);
     try {
-      String url = '/api/salary-management/net-salary/$_selSalaryId/?date=$_date';
-      if (_holidaysController.text.trim().isNotEmpty) url += '&holidays=${_holidaysController.text.trim()}';
-      if (_ssfController.text.trim().isNotEmpty) url += '&ssf=${_ssfController.text.trim()}';
-      if (_epfController.text.trim().isNotEmpty) url += '&epf=${_epfController.text.trim()}';
-      if (_tdsController.text.trim().isNotEmpty) url += '&tds=${_tdsController.text.trim()}';
-      if (_incentiveController.text.trim().isNotEmpty) url += '&incentive=${_incentiveController.text.trim()}';
-      if (_bonusController.text.trim().isNotEmpty) url += '&bonus=${_bonusController.text.trim()}';
+      String url =
+          '/api/salary-management/net-salary/$_selSalaryId/?date=$_date';
+      if (_holidaysController.text.trim().isNotEmpty)
+        url += '&holidays=${_holidaysController.text.trim()}';
+      if (_ssfController.text.trim().isNotEmpty)
+        url += '&ssf=${_ssfController.text.trim()}';
+      if (_epfController.text.trim().isNotEmpty)
+        url += '&epf=${_epfController.text.trim()}';
+      if (_tdsController.text.trim().isNotEmpty)
+        url += '&tds=${_tdsController.text.trim()}';
+      if (_incentiveController.text.trim().isNotEmpty)
+        url += '&incentive=${_incentiveController.text.trim()}';
+      if (_bonusController.text.trim().isNotEmpty)
+        url += '&bonus=${_bonusController.text.trim()}';
       final res = await ApiService().get(url);
       if (mounted) {
         setState(() {
           _netSalaryInfo = res.data;
           // Only update the net salary controller if the user isn't actively typing in it
           // Actually, net salary is updated from the server response
-          _netSalaryController.text = (_netSalaryInfo!['net_salary'] ?? '').toString();
-          _holidaysController.text = (_netSalaryInfo!['holidays'] ?? '').toString();
+          _netSalaryController.text =
+              (_netSalaryInfo!['net_salary'] ?? '').toString();
+          _holidaysController.text =
+              (_netSalaryInfo!['holidays'] ?? '').toString();
           _tdsController.text = (_netSalaryInfo!['tds'] ?? '').toString();
           _ssfController.text = (_netSalaryInfo!['ssf'] ?? '').toString();
           _epfController.text = (_netSalaryInfo!['epf'] ?? '').toString();
@@ -959,7 +1078,9 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
     }
   }
 
-  Widget _buildEditableRow(IconData icon, String label, TextEditingController controller, {Function(String)? onChanged}) {
+  Widget _buildEditableRow(
+      IconData icon, String label, TextEditingController controller,
+      {Function(String)? onChanged}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
       child: Row(
@@ -981,7 +1102,8 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
               style: TextStyle(color: context.textPrimary, fontSize: 14),
               decoration: const InputDecoration(
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 border: OutlineInputBorder(),
               ),
               onChanged: onChanged ?? (_) => _loadNetSalary(clear: false),
@@ -1069,8 +1191,7 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Issue Salary',
-              style: AppTextStyles.pageTitle),
+          const Text('Issue Salary', style: AppTextStyles.pageTitle),
           const SizedBox(height: 16),
           if (widget.salaries.isEmpty)
             Container(
@@ -1166,7 +1287,10 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest
+                          .withValues(alpha: 0.5),
                       border: Border.all(color: context.border),
                       borderRadius: BorderRadius.circular(12)),
                   child: Column(children: [
@@ -1179,12 +1303,28 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                     _InfoRow(Iconsax.clock, 'Half Leaves',
                         '${_netSalaryInfo!['half_leaves'] ?? 0}'),
                     Divider(color: context.border),
-                    _buildEditableRow(Iconsax.calendar, 'Holidays', _holidaysController),
-                    _buildEditableRow(Iconsax.award, 'Incentive (TDS auto-calculated)', _incentiveController, onChanged: (_) { _tdsController.clear(); _loadNetSalary(clear: false); }),
-                    _buildEditableRow(Iconsax.gift, 'Bonus (TDS auto-calculated)', _bonusController, onChanged: (_) { _tdsController.clear(); _loadNetSalary(clear: false); }),
-                    _buildEditableRow(Iconsax.minus, 'Tax (TDS)', _tdsController),
-                    _buildEditableRow(Iconsax.minus, 'SSF Deduction', _ssfController),
-                    _buildEditableRow(Iconsax.minus, 'EPF Deduction', _epfController),
+                    _buildEditableRow(
+                        Iconsax.calendar, 'Holidays', _holidaysController),
+                    _buildEditableRow(
+                        Iconsax.award,
+                        'Incentive (TDS auto-calculated)',
+                        _incentiveController, onChanged: (_) {
+                      _tdsController.clear();
+                      _loadNetSalary(clear: false);
+                    }),
+                    _buildEditableRow(
+                        Iconsax.gift,
+                        'Bonus (TDS auto-calculated)',
+                        _bonusController, onChanged: (_) {
+                      _tdsController.clear();
+                      _loadNetSalary(clear: false);
+                    }),
+                    _buildEditableRow(
+                        Iconsax.minus, 'Tax (TDS)', _tdsController),
+                    _buildEditableRow(
+                        Iconsax.minus, 'SSF Deduction', _ssfController),
+                    _buildEditableRow(
+                        Iconsax.minus, 'EPF Deduction', _epfController),
                     Divider(color: context.border),
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -1217,7 +1357,8 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                                   color: context.textPrimary),
                               decoration: InputDecoration(
                                 prefixText: 'NPR ',
-                                prefixStyle: TextStyle(color: context.textSecondary),
+                                prefixStyle:
+                                    TextStyle(color: context.textSecondary),
                                 isDense: true,
                                 contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 8),
@@ -1239,8 +1380,10 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                   prefixIcon: Icon(Iconsax.sms),
                 ),
                 items: const [
-                  DropdownMenuItem(value: 'official', child: Text('Official Email')),
-                  DropdownMenuItem(value: 'personal', child: Text('Personal Email')),
+                  DropdownMenuItem(
+                      value: 'official', child: Text('Official Email')),
+                  DropdownMenuItem(
+                      value: 'personal', child: Text('Personal Email')),
                   DropdownMenuItem(value: 'both', child: Text('Both Emails')),
                   DropdownMenuItem(value: 'none', child: Text('Do Not Send')),
                 ],
@@ -1442,8 +1585,12 @@ class _InfoRow extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
               child: Text(label,
-                  style: TextStyle(fontWeight: FontWeight.normal, color: context.textPrimary))),
-          Text(value, style: TextStyle(fontWeight: FontWeight.w600, color: context.textPrimary)),
+                  style: TextStyle(
+                      fontWeight: FontWeight.normal,
+                      color: context.textPrimary))),
+          Text(value,
+              style: TextStyle(
+                  fontWeight: FontWeight.w600, color: context.textPrimary)),
         ]),
       );
 }
@@ -1452,8 +1599,7 @@ class _TransactionTile extends StatelessWidget {
   final Map tx;
   final String? empName;
   final bool isAdmin;
-  const _TransactionTile(this.tx,
-      {this.empName, this.isAdmin = false});
+  const _TransactionTile(this.tx, {this.empName, this.isAdmin = false});
   @override
   Widget build(BuildContext context) => Card(
         margin: const EdgeInsets.only(bottom: 8),
@@ -1465,7 +1611,8 @@ class _TransactionTile extends StatelessWidget {
               const CircleAvatar(
                   backgroundColor: AppColors.success,
                   radius: 18,
-                  child: Icon(Iconsax.money_recive, color: Colors.white, size: 16)),
+                  child: Icon(Iconsax.money_recive,
+                      color: Colors.white, size: 16)),
               const SizedBox(width: 12),
               Expanded(
                   child: Column(
@@ -1603,6 +1750,3 @@ class _PieLegendIndicator extends StatelessWidget {
     );
   }
 }
-
-
-

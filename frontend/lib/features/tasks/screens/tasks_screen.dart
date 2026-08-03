@@ -314,9 +314,6 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          actions: [
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _loadTasks)
-          ],
           title: const Text('Tasks'),
           bottom: TabBar(controller: _tabs, tabs: const [
             Tab(text: 'To Do'),

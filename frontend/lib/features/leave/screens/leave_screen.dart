@@ -86,8 +86,10 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
       if (isAdmin) {
         // Admin: fetch all employee balances
         try {
-          final res = await ApiService().get('${AppConstants.leaveBase}/leave-summary/');
-          if (mounted) setState(() => _adminBalances = res.data is List ? res.data : []);
+          final res = await ApiService()
+              .get('${AppConstants.leaveBase}/leave-summary/');
+          if (mounted)
+            setState(() => _adminBalances = res.data is List ? res.data : []);
         } catch (_) {}
       }
 
@@ -147,9 +149,6 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
 
     return Scaffold(
       appBar: AppBar(
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadLeaves)
-        ],
         title: const Text('Leave Management'),
         bottom: TabBar(
             controller: _tabs,
@@ -165,12 +164,15 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                     Tab(text: 'Balance'),
                   ]),
       ),
-      floatingActionButton: isAdmin ? null : FloatingActionButton.extended(
-        onPressed: () => _showApplyLeaveDialog(context),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Apply Leave', style: TextStyle(color: Colors.white)),
-        backgroundColor: AppColors.primary,
-      ),
+      floatingActionButton: isAdmin
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => _showApplyLeaveDialog(context),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text('Apply Leave',
+                  style: TextStyle(color: Colors.white)),
+              backgroundColor: AppColors.primary,
+            ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : TabBarView(controller: _tabs, children: [
@@ -614,7 +616,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
     if (widget.balance != null) {
       final leaveBalances = (widget.balance!['leave_balances'] as List?) ?? [];
       final targetTypeName = _isPaid ? 'Paid Leave' : 'Unpaid Leave';
-      
+
       dynamic targetBalance;
       for (final lb in leaveBalances) {
         if (lb['leave_type']?['name'] == targetTypeName) {
@@ -625,7 +627,8 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
 
       if (targetBalance != null) {
         final quota = (targetBalance['quota'] as num? ?? 0).toInt();
-        final taken = (targetBalance['leaves_taken'] as num? ?? 0).toDouble(); // taken can be .5
+        final taken = (targetBalance['leaves_taken'] as num? ?? 0)
+            .toDouble(); // taken can be .5
         final remaining = (quota - taken).clamp(0, quota);
         final fromNd = NepaliDateTime.parse(_fromDate);
         final tillNd = NepaliDateTime.parse(_tillDate);
@@ -633,11 +636,13 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
         final adTill = tillNd.toDateTime();
         final utcFrom = DateTime.utc(adFrom.year, adFrom.month, adFrom.day);
         final utcTill = DateTime.utc(adTill.year, adTill.month, adTill.day);
-        final requestedDays = _isHalfDay ? 0.5 : (utcTill.difference(utcFrom).inDays + 1.0);
+        final requestedDays =
+            _isHalfDay ? 0.5 : (utcTill.difference(utcFrom).inDays + 1.0);
 
         if (requestedDays > remaining) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Insufficient quota for $targetTypeName. You only have $remaining days left.'),
+            content: Text(
+                'Insufficient quota for $targetTypeName. You only have $remaining days left.'),
             backgroundColor: AppColors.error,
           ));
           return;
@@ -947,12 +952,13 @@ class _DetailRow extends StatelessWidget {
 class _AdminEmployeeBalanceCard extends StatelessWidget {
   final Map data;
   final VoidCallback onRefresh;
-  const _AdminEmployeeBalanceCard({required this.data, required this.onRefresh});
+  const _AdminEmployeeBalanceCard(
+      {required this.data, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
     final balances = (data['balances'] as List?) ?? [];
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -966,7 +972,8 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     data['employee_name'] ?? 'Unknown',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
               ],
@@ -978,19 +985,21 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
               final remaining = (quota - taken).clamp(0, quota);
               final typeName = b['leave_type']?['name'] ?? 'Unknown Type';
               final isPaid = typeName == 'Paid Leave';
-              
+
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(typeName, style: TextStyle(
-                      color: isPaid ? AppColors.success : AppColors.warning,
-                      fontWeight: FontWeight.w500,
-                    )),
+                    Text(typeName,
+                        style: TextStyle(
+                          color: isPaid ? AppColors.success : AppColors.warning,
+                          fontWeight: FontWeight.w500,
+                        )),
                     Row(
                       children: [
-                        Text('$remaining / $quota left', style: const TextStyle(fontSize: 12)),
+                        Text('$remaining / $quota left',
+                            style: const TextStyle(fontSize: 12)),
                         const SizedBox(width: 8),
                         IconButton(
                           icon: const Icon(Icons.edit, size: 16),
@@ -1013,7 +1022,8 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
 
   void _showEditQuotaDialog(BuildContext context, Map balanceData) {
     final typeName = balanceData['leave_type']?['name'] ?? 'Leave';
-    final ctrl = TextEditingController(text: balanceData['quota']?.toString() ?? '0');
+    final ctrl =
+        TextEditingController(text: balanceData['quota']?.toString() ?? '0');
     bool isLoading = false;
 
     showDialog(
@@ -1042,37 +1052,44 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: isLoading ? null : () async {
-                final val = int.tryParse(ctrl.text.trim());
-                if (val == null || val < 0) return;
-                
-                setState(() => isLoading = true);
-                try {
-                  await ApiService().patch(
-                    '${AppConstants.leaveBase}/leave-balance/update/${balanceData['id']}/',
-                    data: {'quota': val},
-                  );
-                  if (ctx.mounted) {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Quota updated successfully'),
-                      backgroundColor: AppColors.success,
-                    ));
-                    onRefresh();
-                  }
-                } catch (e) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Error: ${ApiService.getErrorMessage(e)}'),
-                      backgroundColor: AppColors.error,
-                    ));
-                  }
-                } finally {
-                  if (ctx.mounted) setState(() => isLoading = false);
-                }
-              },
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      final val = int.tryParse(ctrl.text.trim());
+                      if (val == null || val < 0) return;
+
+                      setState(() => isLoading = true);
+                      try {
+                        await ApiService().patch(
+                          '${AppConstants.leaveBase}/leave-balance/update/${balanceData['id']}/',
+                          data: {'quota': val},
+                        );
+                        if (ctx.mounted) {
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(const SnackBar(
+                            content: Text('Quota updated successfully'),
+                            backgroundColor: AppColors.success,
+                          ));
+                          onRefresh();
+                        }
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content:
+                                Text('Error: ${ApiService.getErrorMessage(e)}'),
+                            backgroundColor: AppColors.error,
+                          ));
+                        }
+                      } finally {
+                        if (ctx.mounted) setState(() => isLoading = false);
+                      }
+                    },
               child: isLoading
-                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text('Save'),
             ),
           ],
