@@ -88,8 +88,9 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
         try {
           final res = await ApiService()
               .get('${AppConstants.leaveBase}/leave-summary/');
-          if (mounted)
+          if (mounted) {
             setState(() => _adminBalances = res.data is List ? res.data : []);
+          }
         } catch (_) {}
       }
 

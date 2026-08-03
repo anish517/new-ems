@@ -161,10 +161,10 @@ class _ProjectCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(24),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -174,7 +174,9 @@ class _ProjectCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       project["title"] ?? "Untitled",
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      style: AppTextStyles.cardTitle.copyWith(
+                        color: context.textPrimary,
+                      ),
                     ),
                   ),
                   Container(
@@ -203,7 +205,7 @@ class _ProjectCard extends StatelessWidget {
                   value: completion / 100,
                   minHeight: 6,
                   backgroundColor: context.border,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
                 ),
               ),
               const SizedBox(height: 6),
@@ -236,13 +238,27 @@ class _ProjectCard extends StatelessWidget {
                           labelStr += " • ${d}d • NPR $e";
                         }
 
-                        return Chip(
-                          label: Text(labelStr, style: const TextStyle(fontSize: 11)),
-                          padding: EdgeInsets.zero,
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          backgroundColor: isSenior
-                              ? AppColors.primary.withValues(alpha: 0.1)
-                              : context.card,
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isSenior
+                                ? AppColors.primary.withValues(alpha: 0.1)
+                                : context.card,
+                            border: Border.all(
+                              color: isSenior
+                                  ? AppColors.primary.withValues(alpha: 0.2)
+                                  : context.border,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            labelStr,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isSenior ? AppColors.primary : context.textPrimary,
+                            ),
+                          ),
                         );
                       }).toList(),
                     ),
@@ -401,7 +417,7 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
 
                 // Project Type
                 DropdownButtonFormField<String>(
-                  value: _projectType,
+                  initialValue: _projectType,
                   decoration: const InputDecoration(labelText: "Project Type *"),
                   items: const [
                     DropdownMenuItem(value: "monthly", child: Text("Monthly")),

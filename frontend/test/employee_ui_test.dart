@@ -18,7 +18,7 @@ void main() {
               children: [
                 DropdownButtonFormField<String>(
                   key: const Key('employee_type_dropdown'),
-                  value: employeeType,
+                  initialValue: employeeType,
                   items: const [
                     DropdownMenuItem(value: 'full_time', child: Text('Full Time')),
                     DropdownMenuItem(value: 'part_time', child: Text('Part Time')),
@@ -28,7 +28,7 @@ void main() {
                 ),
                 DropdownButtonFormField<String>(
                   key: const Key('marital_status_dropdown'),
-                  value: maritalStatus,
+                  initialValue: maritalStatus,
                   items: const [
                     DropdownMenuItem(value: 'single', child: Text('Single')),
                     DropdownMenuItem(value: 'married', child: Text('Married')),

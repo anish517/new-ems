@@ -110,33 +110,81 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Status badges row
-          Wrap(
-            spacing: 8,
-            children: [
-              _Badge(
-                label: taskStatus.replaceAll("-", " ").toUpperCase(),
-                color: _statusColor(taskStatus),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.1),
+                  AppColors.accent.withValues(alpha: 0.05),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              _Badge(label: taskType.toUpperCase(), color: AppColors.primary),
-              _Badge(
-                label: priority.toUpperCase(),
-                color: priority == "high"
-                    ? AppColors.error
-                    : priority == "medium"
-                        ? Colors.orange
-                        : Colors.grey,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Assigned to
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Iconsax.user, size: 20),
-            title: const Text("Assigned to"),
-            subtitle: Text(assignedName),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _Badge(
+                      label: taskStatus.replaceAll("-", " ").toUpperCase(),
+                      color: _statusColor(taskStatus),
+                    ),
+                    _Badge(label: taskType.toUpperCase(), color: AppColors.primary),
+                    _Badge(
+                      label: priority.toUpperCase(),
+                      color: priority == "high"
+                          ? AppColors.error
+                          : priority == "medium"
+                              ? Colors.orange
+                              : Colors.grey,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: context.card,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Iconsax.user, size: 20, color: AppColors.primary),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Assigned To",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            assignedName,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
 
           // Description
@@ -183,7 +231,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 await ApiService().delete("${AppConstants.taskBase.replaceAll("/tasks", "")}/progress/${r["id"]}/");
                 _loadReports();
               } catch (e) {
-                if (mounted) {
+                if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(ApiService.getErrorMessage(e)),
                     backgroundColor: AppColors.error,
@@ -227,7 +275,7 @@ class _ProgressReportCard extends StatelessWidget {
                     ((report["submitted_by_name"] ?? "?") as String).isNotEmpty
                         ? (report["submitted_by_name"] as String)[0].toUpperCase()
                         : "?",
-                    style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold),
+                    style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -295,14 +343,14 @@ class _ProgressReportCard extends StatelessWidget {
                   final url = Uri.parse(report["attachment_url"] as String);
                   if (await canLaunchUrl(url)) launchUrl(url);
                 },
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(Iconsax.document_download, size: 16, color: Colors.blue),
-                    const SizedBox(width: 6),
+                    Icon(Iconsax.document_download, size: 16, color: Colors.blue),
+                    SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         "View Attachment",
-                        style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline, fontSize: 12),
+                        style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline, fontSize: 12),
                       ),
                     ),
                   ],

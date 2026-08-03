@@ -4,12 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   // Primary brand colors
-  static const Color primary      = Color(0xFF4F46E5); // Indigo
+  static const Color primary      = Color(0xFF6366F1); // Vibrant Indigo
   static const Color primaryLight = Color(0xFF818CF8);
-  static const Color primaryDark  = Color(0xFF3730A3);
+  static const Color primaryDark  = Color(0xFF4338CA);
 
   // Accent
-  static const Color accent       = Color(0xFF06B6D4); // Cyan
+  static const Color accent       = Color(0xFF0EA5E9); // Vibrant Cyan/Sky
 
   // Semantic colors
   static const Color success      = Color(0xFF10B981);
@@ -43,32 +43,38 @@ class AppColors {
 
 class AppTextStyles {
   static const TextStyle pageTitle = TextStyle(
-    fontSize: 24,
-    fontWeight: FontWeight.w700,
-    height: 1.4,
+    fontSize: 26,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -0.5,
+    height: 1.3,
   );
 
   static const TextStyle sectionTitle = TextStyle(
-    fontSize: 17,
-    fontWeight: FontWeight.w600,
-    height: 1.5,
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.3,
+    height: 1.4,
   );
 
   static const TextStyle cardTitle = TextStyle(
-    fontSize: 15,
-    fontWeight: FontWeight.w600,
-    height: 1.5,
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.2,
+    height: 1.4,
   );
 
   static const TextStyle bodyText = TextStyle(
     fontSize: 14,
-    fontWeight: FontWeight.normal,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.1,
     height: 1.6,
   );
 
   static const TextStyle caption = TextStyle(
     fontSize: 12,
+    fontWeight: FontWeight.w500,
     color: AppColors.textSecondary,
+    letterSpacing: 0.2,
     height: 1.4,
   );
 }
@@ -90,24 +96,25 @@ class AppTheme {
       surface: AppColors.surfaceDark,
     ),
     scaffoldBackgroundColor: AppColors.bgDark,
-    textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+    textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme),
     appBarTheme: AppBarTheme(
       backgroundColor: AppColors.bgDark,
       elevation: 0,
       centerTitle: true,
       iconTheme: const IconThemeData(color: Colors.white),
-      titleTextStyle: GoogleFonts.inter(
+      titleTextStyle: GoogleFonts.plusJakartaSans(
         fontSize: 18,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w700,
         letterSpacing: -0.3,
         color: Colors.white,
       ),
     ),
     cardTheme: CardThemeData(
       color: AppColors.cardDark,
-      elevation: 0,
+      elevation: 4,
+      shadowColor: Colors.black.withValues(alpha: 0.3),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         side: const BorderSide(color: AppColors.borderDark, width: 1.0),
       ),
     ),
@@ -181,24 +188,25 @@ class AppTheme {
       surface: AppColors.surfaceLight,
     ),
     scaffoldBackgroundColor: AppColors.bgLight,
-    textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme),
+    textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.light().textTheme),
     appBarTheme: AppBarTheme(
       backgroundColor: AppColors.surfaceLight,
       elevation: 0,
       centerTitle: true,
       iconTheme: const IconThemeData(color: AppColors.textPrimary),
-      titleTextStyle: GoogleFonts.inter(
+      titleTextStyle: GoogleFonts.plusJakartaSans(
         fontSize: 18,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w700,
         letterSpacing: -0.3,
         color: AppColors.textPrimary,
       ),
     ),
     cardTheme: CardThemeData(
       color: AppColors.surfaceLight,
-      elevation: 0,
+      elevation: 4,
+      shadowColor: Colors.black.withValues(alpha: 0.05),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         side: const BorderSide(color: AppColors.borderLight, width: 1.0),
       ),
     ),

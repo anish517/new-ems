@@ -693,7 +693,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _taskType,
+              initialValue: _taskType,
               decoration: const InputDecoration(labelText: 'Task Type *'),
               items: const [
                 DropdownMenuItem(value: 'daily', child: Text('Daily Task')),
@@ -780,59 +780,91 @@ class _TaskList extends StatelessWidget {
                 ? (assignedTo['name'] ?? 'Unassigned')
                 : 'Unassigned';
 
-            return InkWell(
-              onTap: () => onTap(ctx, Map.from(t)),
-              borderRadius: BorderRadius.circular(12),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          Expanded(
-                              child: Text(t['title'] ?? '',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15))),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: priorityColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(priority.toUpperCase(),
-                                style: TextStyle(
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: context.card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: context.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => onTap(ctx, Map.from(t)),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            left: BorderSide(color: priorityColor, width: 4),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(children: [
+                              Expanded(
+                                child: Text(
+                                  t['title'] ?? '',
+                                  style: AppTextStyles.cardTitle,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: priorityColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  priority.toUpperCase(),
+                                  style: TextStyle(
                                     color: priorityColor,
                                     fontSize: 10,
-                                    fontWeight: FontWeight.bold)),
-                          ),
-                        ]),
-                        const SizedBox(height: 6),
-                        Row(children: [
-                          const Icon(Icons.person_outline,
-                              size: 12, color: AppColors.textSecondary),
-                          const SizedBox(width: 4),
-                          Text(assignedName, style: AppTextStyles.caption),
-                        ]),
-                        const SizedBox(height: 4),
-                        Row(children: [
-                          const Icon(Iconsax.calendar,
-                              size: 12, color: AppColors.textSecondary),
-                          const SizedBox(width: 4),
-                          Expanded(
-                              child: Text(
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ]),
+                            const SizedBox(height: 12),
+                            Row(children: [
+                              const Icon(Iconsax.user,
+                                  size: 14, color: AppColors.textSecondary),
+                              const SizedBox(width: 6),
+                              Text(assignedName, style: AppTextStyles.caption),
+                            ]),
+                            const SizedBox(height: 8),
+                            Row(children: [
+                              const Icon(Iconsax.calendar,
+                                  size: 14, color: AppColors.textSecondary),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
                                   '${_fmtDate(t['planned_start_date']?.toString(), fallback: t['created_at']?.toString())} → ${_fmtDate(t['planned_end_date']?.toString(), fallback: t['created_at']?.toString())}',
                                   style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textSecondary))),
-                          const Icon(Icons.chevron_right,
-                              size: 16, color: AppColors.textSecondary),
-                        ]),
-                      ]),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textSecondary),
+                                ),
+                              ),
+                              Icon(Icons.chevron_right,
+                                  size: 16, color: context.border),
+                            ]),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            );
+              );
           });
 }

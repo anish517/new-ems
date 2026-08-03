@@ -107,37 +107,63 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Status + Progress
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _statusColor(projectStatus).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    projectStatus.toUpperCase(),
-                    style: TextStyle(
-                      color: _statusColor(projectStatus),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.1),
+                    AppColors.accent.withValues(alpha: 0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _statusColor(projectStatus).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Text(
+                          projectStatus.toUpperCase(),
+                          style: TextStyle(
+                            color: _statusColor(projectStatus),
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Text(
+                          (_project["project_type"] ?? "monthly").toString().toUpperCase(),
+                          style: const TextStyle(
+                            color: AppColors.primary, 
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    (_project["project_type"] ?? "monthly").toString().toUpperCase(),
-                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
-              ],
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -151,41 +177,45 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
                       value: completion / 100,
                       minHeight: 8,
                       backgroundColor: context.border,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Text("$completion%", style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(width: 16),
+                Text("$completion%", style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
             // Stats row
             Row(
               children: [
-                _StatChip(
-                  label: _project["project_type"] == "monthly"
-                      ? "Est. Months"
-                      : _project["project_type"] == "daily"
-                          ? "Est. Days"
-                          : "Est. Hours",
-                  value: _project["estimated_hours"] != null
-                      ? "${_project["estimated_hours"]}${_project["project_type"] == "monthly" ? "m" : _project["project_type"] == "daily" ? "d" : "h"}"
-                      : "—",
-                  icon: Iconsax.clock,
+                Expanded(
+                  child: _StatCard(
+                    label: _project["project_type"] == "monthly"
+                        ? "Est. Months"
+                        : _project["project_type"] == "daily"
+                            ? "Est. Days"
+                            : "Est. Hours",
+                    value: _project["estimated_hours"] != null
+                        ? "${_project["estimated_hours"]}${_project["project_type"] == "monthly" ? "m" : _project["project_type"] == "daily" ? "d" : "h"}"
+                        : "—",
+                    icon: Iconsax.clock,
+                  ),
                 ),
-                const SizedBox(width: 8),
-                _StatChip(
-                  label: "Budget",
-                  value: _project["total_budget"] != null
-                      ? "NPR ${_project["total_budget"]}"
-                      : "—",
-                  icon: Iconsax.money,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                    label: "Budget",
+                    value: _project["total_budget"] != null
+                        ? "NPR ${_project["total_budget"]}"
+                        : "—",
+                    icon: Iconsax.money,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
             // Description
             if (_project["description"] != null && (_project["description"] as String).isNotEmpty) ...[
@@ -272,15 +302,15 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
             const SizedBox(height: 8),
 
             if (_loading)
-              const Center(child: CircularProgressIndicator())
-            else if (_tasks.isEmpty)
+              const Center(child: CircularProgressIndicator()),
+            if (!_loading && _tasks.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(24),
                 child: Center(
                   child: Text("No tasks yet", style: TextStyle(color: context.textSecondary)),
                 ),
-              )
-            else
+              ),
+            if (!_loading && _tasks.isNotEmpty)
               ..._tasks.map((t) {
                 final tStatus = (t["status"] ?? "to-do") as String;
                 return Card(
@@ -319,33 +349,52 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
   }
 }
 
-class _StatChip extends StatelessWidget {
+class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final IconData icon;
 
-  const _StatChip({required this.label, required this.value, required this.icon});
+  const _StatCard({required this.label, required this.value, required this.icon});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: context.card,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: context.border),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.border, width: 1.5),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 14, color: context.textSecondary),
-          const SizedBox(width: 6),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Text(label, style: TextStyle(fontSize: 10, color: context.textSecondary)),
-              Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 16, color: AppColors.primary),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: context.textSecondary,
+                  ),
+                ),
+              ),
             ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
           ),
         ],
       ),
