@@ -3,6 +3,8 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:iconsax/iconsax.dart";
 import "package:url_launcher/url_launcher.dart";
 import "../../../core/theme/app_theme.dart";
+import "package:currency_converter/currency.dart";
+import "package:currency_converter/currency_converter.dart";
 import "../../../core/services/api_service.dart";
 import "../../../core/constants/app_constants.dart";
 import "../../auth/providers/auth_provider.dart";
@@ -20,12 +22,41 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
   late Map _project;
   List _tasks = [];
   bool _loading = true;
+  String? _convertedBudget;
 
   @override
   void initState() {
     super.initState();
     _project = widget.project;
     _loadTasks();
+    _convertBudget();
+  }
+
+  Future<void> _convertBudget() async {
+    if (_project["total_budget"] == null) return;
+    try {
+      Currency? myCurrency;
+      try {
+        myCurrency = await CurrencyConverter.getMyCurrency();
+      } catch (_) {}
+      myCurrency ??= Currency.usd;
+      
+      if (myCurrency != Currency.npr) {
+        final amount = double.tryParse(_project["total_budget"].toString());
+        if (amount != null && amount > 0) {
+          final converted = await CurrencyConverter.convert(
+            from: Currency.npr,
+            to: myCurrency,
+            amount: amount,
+          );
+          if (mounted && converted != null) {
+            setState(() {
+              _convertedBudget = "${converted.toStringAsFixed(2)} ${myCurrency!.name.toUpperCase()}";
+            });
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadTasks() async {
@@ -208,7 +239,7 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
                   child: _StatCard(
                     label: "Budget",
                     value: _project["total_budget"] != null
-                        ? "NPR ${_project["total_budget"]}"
+                        ? "NPR ${_project["total_budget"]}${_convertedBudget != null ? ' (~$_convertedBudget)' : ''}"
                         : "—",
                     icon: Iconsax.money,
                   ),
@@ -394,7 +425,9 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

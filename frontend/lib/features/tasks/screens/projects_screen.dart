@@ -9,6 +9,7 @@ import "../../../core/services/api_service.dart";
 import "../../../core/constants/app_constants.dart";
 import "../../auth/providers/auth_provider.dart";
 import "project_detail_screen.dart";
+import "currency_converter_screen.dart";
 
 class ProjectsScreen extends ConsumerStatefulWidget {
   const ProjectsScreen({super.key});
@@ -76,20 +77,37 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
             ],
           ),
         ),
-        floatingActionButton: isAdmin
-            ? FloatingActionButton.extended(
-                onPressed: () async {
-                  final created = await showDialog<bool>(
-                    context: context,
-                    builder: (_) => const _CreateProjectDialog(),
-                  );
-                  if (created == true) _loadProjects();
-                },
-                icon: const Icon(Icons.add),
-                label: const Text("New Project"),
-                backgroundColor: AppColors.primary,
-              )
-            : null,
+        floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: "currency_btn",
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const CurrencyConverterScreen()));
+            },
+            icon: const Icon(Iconsax.money),
+            label: const Text("Currency"),
+            backgroundColor: Colors.green,
+          ),
+          if (isAdmin) ...[
+            const SizedBox(height: 16),
+            FloatingActionButton.extended(
+              heroTag: "new_project_btn",
+              onPressed: () async {
+                final created = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => const _CreateProjectDialog(),
+                );
+                if (created == true) _loadProjects();
+              },
+              icon: const Icon(Icons.add),
+              label: const Text("New Project"),
+              backgroundColor: AppColors.primary,
+            ),
+          ],
+        ],
+      ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
