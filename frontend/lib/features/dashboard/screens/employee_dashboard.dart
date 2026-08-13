@@ -8,6 +8,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../../core/providers/date_provider.dart';
+import '../../../shared/widgets/responsive_grid_list.dart';
 
 class EmployeeDashboard extends ConsumerStatefulWidget {
   const EmployeeDashboard({super.key});
@@ -75,31 +76,38 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
             const Text('Quick Actions',
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.4,
-              children: [
-                _QuickCard('Check In/Out', Iconsax.clock, AppColors.primary,
-                    () => context.go('/attendance')),
-                _QuickCard('Apply Leave', Iconsax.calendar_remove,
-                    AppColors.warning, () => context.go('/leave')),
-                _QuickCard('My Tasks', Iconsax.task_square, AppColors.accent,
-                    () => context.go('/tasks')),
-                _QuickCard('Salary', Iconsax.money, AppColors.success,
-                    () => context.go('/salary')),
-                _QuickCard('Noticeboard', Iconsax.message_text, AppColors.info,
-                    () => context.go('/noticeboard')),
-                _QuickCard('Policy', Iconsax.document_text, AppColors.error,
-                    () => context.go('/policy')),
-                _QuickCard('Feedback', Iconsax.message_question,
-                    AppColors.remote, () => context.go('/feedback')),
-                _QuickCard('Performance', Iconsax.star1, AppColors.warning,
-                    () => context.go('/performance')),
-              ],
+            Builder(
+              builder: (ctx) {
+                final actions = [
+                  _QuickCard('Check In/Out', Iconsax.clock, AppColors.primary,
+                      () => context.go('/attendance')),
+                  _QuickCard('Apply Leave', Iconsax.calendar_remove,
+                      AppColors.warning, () => context.go('/leave')),
+                  _QuickCard('My Tasks', Iconsax.task_square, AppColors.accent,
+                      () => context.go('/tasks')),
+                  _QuickCard('Salary', Iconsax.money, AppColors.success,
+                      () => context.go('/salary')),
+                  _QuickCard('Noticeboard', Iconsax.message_text, AppColors.info,
+                      () => context.go('/noticeboard')),
+                  _QuickCard('Policy', Iconsax.document_text, AppColors.error,
+                      () => context.go('/policy')),
+                  _QuickCard('Feedback', Iconsax.message_question,
+                      AppColors.remote, () => context.go('/feedback')),
+                  _QuickCard('Performance', Iconsax.star1, AppColors.warning,
+                      () => context.go('/performance')),
+                ];
+                
+                return ResponsiveGridList(
+                  scrollable: false,
+                  padding: EdgeInsets.zero,
+                  minItemWidth: 150,
+                  itemCount: actions.length,
+                  itemBuilder: (context, index) => AspectRatio(
+                    aspectRatio: 1.4,
+                    child: actions[index],
+                  ),
+                );
+              },
             ),
           ]),
         ),

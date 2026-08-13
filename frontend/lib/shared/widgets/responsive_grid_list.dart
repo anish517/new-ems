@@ -8,6 +8,10 @@ class ResponsiveGridList extends StatelessWidget {
   final double runSpacing;
   final EdgeInsetsGeometry padding;
 
+  final bool scrollable;
+  final bool shrinkWrap;
+  final ScrollPhysics? physics;
+
   const ResponsiveGridList({
     super.key,
     required this.itemCount,
@@ -16,6 +20,9 @@ class ResponsiveGridList extends StatelessWidget {
     this.spacing = 16,
     this.runSpacing = 16,
     this.padding = const EdgeInsets.all(16),
+    this.scrollable = true,
+    this.shrinkWrap = false,
+    this.physics = const AlwaysScrollableScrollPhysics(),
   });
 
   @override
@@ -65,13 +72,19 @@ class ResponsiveGridList extends StatelessWidget {
           }
         }
 
+        final col = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: rows,
+        );
+
+        if (!scrollable) {
+          return Padding(padding: padding, child: col);
+        }
+
         return SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+          physics: physics,
           padding: padding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: rows,
-          ),
+          child: col,
         );
       },
     );

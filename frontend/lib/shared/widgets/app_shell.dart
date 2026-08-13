@@ -441,9 +441,33 @@ class AppShell extends ConsumerWidget {
           // Divider between sidebar and main content
           Container(width: 1, color: context.border),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-              child: child,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!isAdmin)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+                    decoration: BoxDecoration(
+                      color: context.surface,
+                      border: Border(bottom: BorderSide(color: context.border)),
+                    ),
+                    child: Text(
+                      currentIndex >= 0 ? navItems[currentIndex].label : 'EMS',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                    child: child,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
