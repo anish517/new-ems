@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax/iconsax.dart';
 import '../providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
@@ -19,13 +20,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   bool _obscurePassword = true;
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
 
   @override
   void initState() {
     super.initState();
     _animController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 800));
-    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnim = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutCubic,
+    );
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.05),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutCubic,
+    ));
     _animController.forward();
   }
 
@@ -40,15 +54,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     final success = await ref.read(authProvider.notifier).login(
-          _emailController.text.trim(),
-          _passwordController.text,
+          _emailController.text.trim().toLowerCase(),
+          _passwordController.text.trim(),
         );
     if (!success && mounted) {
       final error = ref.read(authProvider).error;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(error ?? 'Login failed'),
-            backgroundColor: AppColors.error),
+          content: Row(
+            children: [
+              const Icon(Iconsax.warning_2, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(error ?? 'Login failed. Please check your credentials.'),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(20),
+        ),
       );
     }
   }
@@ -56,226 +82,812 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final isDark = context.isDark;
 
     return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
+      backgroundColor: context.bg,
+      body: Stack(
+        children: [
+          // Background ambient gradient orbs
+          Positioned(
+            top: -120,
+            left: -100,
+            child: Container(
+              width: 360,
+              height: 360,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppColors.primary.withValues(alpha: isDark ? 0.18 : 0.12),
+                    Colors.transparent,
+                  ],
                 ),
-                child: IntrinsicHeight(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
-                      child: FadeTransition(
-                        opacity: _fadeAnim,
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                const SizedBox(height: 48),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -100,
+            right: -80,
+            child: Container(
+              width: 380,
+              height: 380,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppColors.accent.withValues(alpha: isDark ? 0.14 : 0.08),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
 
-                      // Logo / Brand
-                      Center(
-                        child: Image.asset(
-                          'assets/images/logo.png',
-                          height: 80,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [AppColors.primary, AppColors.accent],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Icon(Icons.business_center_rounded,
-                                color: Colors.white, size: 36),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 48),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth >= 960;
 
-                      // Email
-                      const Text('Email',
-                          style:
-                              TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        autocorrect: false,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.email_outlined),
-                        ),
-                        validator: (v) => (v == null || !v.contains('@'))
-                            ? 'Enter a valid email'
-                            : null,
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Password
-                      const Text('Password',
-                          style:
-                              TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            icon: Icon(_obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined),
-                            onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword),
-                          ),
-                        ),
-                        validator: (v) => (v == null || v.length < 6)
-                            ? 'Password too short'
-                            : null,
-                      ),
-                      const SizedBox(height: 32),
-
-                      // Login Button
-                      ElevatedButton(
-                        onPressed: authState.isLoading ? null : _login,
-                        child: authState.isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2))
-                            : const Text('Sign In'),
-                      ),
-
-                      const SizedBox(height: 12),
-                      Center(
-                        child: TextButton(
-                          onPressed: () => _showForgotPasswordSheet(context),
-                          child: const Text(
-                            'Forgot Password?',
-                            style: TextStyle(color: AppColors.primary, fontSize: 13),
-                          ),
-                        ),
-                      ),
-                              ],
-                            ),
-                          ),
-                        ),
+                return Center(
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                    child: FadeTransition(
+                      opacity: _fadeAnim,
+                      child: SlideTransition(
+                        position: _slideAnim,
+                        child: isWide
+                            ? _buildWideLayout(context, authState)
+                            : _buildCompactLayout(context, authState),
                       ),
                     ),
                   ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Desktop Widescreen Layout (Split Hero + Form Card)
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildWideLayout(BuildContext context, AuthState authState) {
+    final isDark = context.isDark;
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 1040),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: context.border, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+            blurRadius: 36,
+            offset: const Offset(0, 16),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Left Hero Showcase Panel
+            Expanded(
+              flex: 5,
+              child: Container(
+                padding: const EdgeInsets.all(48),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [const Color(0xFF1E1B4B), const Color(0xFF0F172A)]
+                        : [const Color(0xFFEEF2FF), const Color(0xFFF8FAFC)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border(
+                    right: BorderSide(color: context.border, width: 1.2),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Brand Header
+                    Row(
+                      children: [
+                        _buildLogoBadge(size: 46, iconSize: 24),
+                        const SizedBox(width: 14),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'OmWay EMS',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                                color: context.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              'Enterprise Workforce Suite',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: context.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 36),
+
+                    // Middle Value Proposition
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.success,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Version 2.0 Live',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Empowering Seamless\nWorkplace Operations.',
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
+                            height: 1.2,
+                            letterSpacing: -0.8,
+                            color: context.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          'Complete GPS geofenced attendance, Bikram Sambat payroll, intelligent task tracking, and leave management.',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            height: 1.6,
+                            color: context.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Feature Bullets
+                        _buildFeaturePill(
+                          icon: Iconsax.location,
+                          title: 'GPS Geofencing & Remote Check-In',
+                          subtitle: 'Real-time radius verification & photo proof',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildFeaturePill(
+                          icon: Iconsax.calendar_1,
+                          title: 'Nepali Calendar Integration',
+                          subtitle: 'Automated fiscal year, holiday & leave sync',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildFeaturePill(
+                          icon: Iconsax.card_pos,
+                          title: 'Automated Payroll & SSF / TDS',
+                          subtitle: '30-day basis salary calculations & payslips',
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 36),
+
+                    // Bottom Security Trust Badge
+                    Row(
+                      children: [
+                        const Icon(Iconsax.shield_tick,
+                            color: AppColors.success, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          '256-bit Encrypted · Role-Based Access Control',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: context.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            );
-          },
+            ),
+
+            // Right Form Panel
+            Expanded(
+              flex: 5,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 48),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: _buildFormContent(context, authState),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  void _showForgotPasswordSheet(BuildContext ctx) {
-    final emailCtrl = TextEditingController();
-    bool sending = false;
-    String? message;
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Mobile / Compact Layout
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildCompactLayout(BuildContext context, AuthState authState) {
+    final isDark = context.isDark;
 
-    showModalBottomSheet(
-      context: ctx,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: ctx.surface,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (sheetCtx) => SizedBox(
-        height: MediaQuery.of(ctx).size.height * 0.85,
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          resizeToAvoidBottomInset: true,
-          body: StatefulBuilder(
-            builder: (context, setSheetState) => SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: context.surface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: context.border, width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                blurRadius: 32,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Reset Password',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              const Text(
-                'Enter your admin email address and we will send you a password reset link.',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              // Header Brand Badge
+              Center(
+                child: _buildLogoBadge(size: 64, iconSize: 32),
               ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Email Address',
-                  prefixIcon: Icon(Icons.email_outlined),
+              const SizedBox(height: 18),
+
+              // Title
+              Text(
+                'Welcome Back',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  color: context.textPrimary,
                 ),
               ),
-              if (message != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+              const SizedBox(height: 6),
+              Text(
+                'Sign in to access your organization portal',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: context.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              _buildFormContent(context, authState),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Core Auth Form Fields
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildFormContent(BuildContext context, AuthState authState) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Email Label & Field
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Work Email',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            textCapitalization: TextCapitalization.none,
+            autocorrect: false,
+            enableSuggestions: false,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: context.textPrimary,
+            ),
+            decoration: InputDecoration(
+              hintText: 'name@company.com',
+              prefixIcon: const Icon(Iconsax.sms, size: 20),
+              prefixIconColor: WidgetStateColor.resolveWith((states) =>
+                  states.contains(WidgetState.focused)
+                      ? AppColors.primary
+                      : AppColors.textSecondary),
+            ),
+            validator: (v) => (v == null || !v.contains('@'))
+                ? 'Please enter a valid work email'
+                : null,
+          ),
+          const SizedBox(height: 20),
+
+          // Password Label & Field
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Password',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _showForgotPasswordSheet(context),
+                child: const Text(
+                  'Forgot Password?',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
                   ),
-                  child: Text(message!,
-                      style: const TextStyle(color: AppColors.success, fontSize: 13)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: context.textPrimary,
+            ),
+            decoration: InputDecoration(
+              hintText: '••••••••',
+              prefixIcon: const Icon(Iconsax.lock, size: 20),
+              prefixIconColor: WidgetStateColor.resolveWith((states) =>
+                  states.contains(WidgetState.focused)
+                      ? AppColors.primary
+                      : AppColors.textSecondary),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Iconsax.eye_slash : Iconsax.eye,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              ),
+            ),
+            validator: (v) => (v == null || v.length < 6)
+                ? 'Password must be at least 6 characters'
+                : null,
+          ),
+          const SizedBox(height: 28),
+
+          // Sign In CTA Button
+          Container(
+            height: 52,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryDark],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
                 ),
               ],
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: sending
-                    ? null
-                    : () async {
-                        setSheetState(() => sending = true);
-                        try {
-                          await ApiService().post(
-                            '/api/auth/forgot-password/',
-                            data: {'email': emailCtrl.text.trim()},
-                          );
-                          setSheetState(() {
-                            sending = false;
-                            message = 'If this email is registered, a reset link has been sent to your inbox.';
-                          });
-                        } catch (e) {
-                          setSheetState(() => sending = false);
-                          if (ctx.mounted) {
-                            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                              content: Text('Error: ${ApiService.getErrorMessage(e)}'),
-                              backgroundColor: AppColors.error,
-                            ));
-                          }
-                        }
-                      },
-                child: sending
-                    ? const SizedBox(height: 20, width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('Send Reset Link'),
+            ),
+            child: ElevatedButton(
+              onPressed: authState.isLoading ? null : _login,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: authState.isLoading
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Sign In to Dashboard',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(Iconsax.arrow_right_3, size: 18, color: Colors.white),
+                      ],
+                    ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Footer Security Note
+          Center(
+            child: Text(
+              'Protected by OmWay Enterprise Authentication',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: context.textSecondary.withValues(alpha: 0.8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Helper Widgets
+  // ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildLogoBadge({required double size, required double iconSize}) {
+    return Image.asset(
+      'assets/images/logo.png',
+      height: size,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+      errorBuilder: (context, error, stackTrace) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppColors.primary, AppColors.accent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(size * 0.28),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Icon(
+          Iconsax.building_4,
+          color: Colors.white,
+          size: iconSize,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeaturePill({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color: context.textSecondary,
+                ),
               ),
             ],
           ),
         ),
-        ),
-        ),
-      ),
+      ],
     );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Adaptive Forgot Password (Modal on Desktop / BottomSheet on Mobile)
+  // ─────────────────────────────────────────────────────────────────────────────
+  void _showForgotPasswordSheet(BuildContext ctx) {
+    final emailCtrl = TextEditingController(text: _emailController.text.trim());
+    bool sending = false;
+    String? message;
+
+    final isWide = MediaQuery.of(ctx).size.width >= 768;
+
+    Widget buildSheetContent(BuildContext context, StateSetter setSheetState) {
+      return Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Iconsax.key, color: AppColors.primary, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Reset Password',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Enter your registered email to receive a recovery link',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              style: TextStyle(fontSize: 14, color: context.textPrimary),
+              decoration: const InputDecoration(
+                labelText: 'Account Email',
+                hintText: 'name@company.com',
+                prefixIcon: Icon(Iconsax.sms, size: 20),
+              ),
+            ),
+            if (message != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Iconsax.tick_circle, color: AppColors.success, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        message!,
+                        style: const TextStyle(
+                          color: AppColors.success,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 24),
+            Container(
+              height: 48,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.primaryDark],
+                ),
+              ),
+              child: ElevatedButton(
+                onPressed: sending
+                    ? null
+                    : () async {
+                        final email = emailCtrl.text.trim();
+                        if (email.isEmpty || !email.contains('@')) {
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please enter a valid email address'),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
+                          return;
+                        }
+                        setSheetState(() => sending = true);
+                        try {
+                          await ApiService().post(
+                            '/api/auth/forgot-password/',
+                            data: {'email': email},
+                          );
+                          setSheetState(() {
+                            sending = false;
+                            message =
+                                'If this email is registered, a reset link has been sent to your inbox.';
+                          });
+                        } catch (e) {
+                          setSheetState(() => sending = false);
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(
+                                content:
+                                    Text('Error: ${ApiService.getErrorMessage(e)}'),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: sending
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Send Reset Link',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (isWide) {
+      showDialog(
+        context: ctx,
+        builder: (dialogCtx) => Dialog(
+          backgroundColor: ctx.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(color: ctx.border),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: StatefulBuilder(
+              builder: (context, setSheetState) =>
+                  buildSheetContent(context, setSheetState),
+            ),
+          ),
+        ),
+      );
+    } else {
+      showModalBottomSheet(
+        context: ctx,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: ctx.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        builder: (sheetCtx) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
+          ),
+          child: StatefulBuilder(
+            builder: (context, setSheetState) => SingleChildScrollView(
+              child: buildSheetContent(context, setSheetState),
+            ),
+          ),
+        ),
+      );
+    }
   }
 }

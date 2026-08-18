@@ -6,13 +6,15 @@ from django.contrib.auth import get_user_model
 
 
 class AccountManager(BaseUserManager):
+    def get_by_natural_key(self, email):
+        return self.get(email__iexact=email.strip().lower() if email else email)
+
     def create_user(self, first_name, last_name, email, password=None):
         if not email:
             raise ValueError('User must have an email address')
 
         user = self.model(
-            email=self.normalize_email(email),
-
+            email=self.normalize_email(email).strip().lower(),
             first_name=first_name,
             last_name=last_name
         )

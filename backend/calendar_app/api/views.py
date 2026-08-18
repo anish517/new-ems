@@ -128,7 +128,21 @@ class EventViewSet(viewsets.ViewSet):
                         if nepali_datetime.date(year, month, day).weekday() == 6)
         return saturdays
 
+    def _is_admin(self, user):
+        return (
+            user.is_superuser or 
+            user.organization.exists() or 
+            getattr(user, 'is_hr', False) or 
+            (hasattr(user, 'employee') and user.employee.post and getattr(user.employee.post, 'can_manage_calendar', False))
+        )
+
     def create(self, request):
+        if not self._is_admin(request.user):
+            return Response(
+                {'detail': 'You do not have permission to add calendar events or holidays. Only administrators can manage the calendar.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         import nepali_datetime
         title = request.data.get('title')
         start_str = request.data.get('start')
@@ -168,6 +182,19 @@ class EventViewSet(viewsets.ViewSet):
             return Response(status=status.HTTP_404_NOT_FOUND)
         serializer = EventSerializer(event)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def destroy(self, request, pk=None):
+        if not self._is_admin(request.user):
+            return Response(
+                {'detail': 'You do not have permission to delete calendar events.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        try:
+            event = Event.objects.get(pk=pk)
+            event.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Event.DoesNotExist:
+            return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class CategoryViewSet(viewsets.ModelViewSet):

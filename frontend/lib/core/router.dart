@@ -1,9 +1,9 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/auth/screens/login_screen.dart';
-import '../features/dashboard/screens/employee_dashboard.dart';
-import '../features/dashboard/screens/admin_dashboard.dart';
+import '../features/dashboard/screens/dashboard_screen.dart';
 import '../features/attendance/screens/attendance_screen.dart';
 import '../features/leave/screens/leave_screen.dart';
 import '../features/accounts/screens/accounts_screen.dart';
@@ -20,21 +20,36 @@ import '../features/calendar/screens/calendar_screen.dart';
 import '../features/performance/screens/performance_screen.dart';
 import '../shared/widgets/app_shell.dart';
 
+class RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  RouterNotifier(this._ref) {
+    _ref.listen<AuthState>(
+      authProvider,
+      (_, __) => notifyListeners(),
+    );
+  }
+
+  String? redirect(BuildContext context, GoRouterState state) {
+    final authState = _ref.read(authProvider);
+    final isLoggedIn = authState.isAuthenticated;
+    final isLoading = authState.isLoading;
+    final onLoginPage = state.matchedLocation == '/login';
+
+    if (isLoading) return null;
+    if (!isLoggedIn && !onLoginPage) return '/login';
+    if (isLoggedIn && onLoginPage) return '/';
+    return null;
+  }
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final notifier = RouterNotifier(ref);
 
   return GoRouter(
     initialLocation: '/',
-    redirect: (context, state) {
-      final isLoggedIn = authState.isAuthenticated;
-      final isLoading = authState.isLoading;
-      final onLoginPage = state.matchedLocation == '/login';
-
-      if (isLoading) return null;
-      if (!isLoggedIn && !onLoginPage) return '/login';
-      if (isLoggedIn && onLoginPage) return '/';
-      return null;
-    },
+    refreshListenable: notifier,
+    redirect: notifier.redirect,
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       ShellRoute(
@@ -42,12 +57,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/',
-            builder: (context, state) {
-              final user = ref.read(currentUserProvider);
-              return user?.canManage == true
-                  ? const AdminDashboard()
-                  : const EmployeeDashboard();
-            },
+            builder: (context, state) => const DashboardScreen(),
           ),
           GoRoute(
               path: '/attendance',
@@ -83,8 +93,3 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
-
-
-
-
-

@@ -6,7 +6,6 @@ import 'package:iconsax/iconsax.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/notifications/providers/notification_provider.dart';
 import '../../core/theme/app_theme.dart';
-import 'global_month_year_picker.dart';
 import 'common_widgets.dart';
 
 class AppShell extends ConsumerWidget {
@@ -27,8 +26,11 @@ class AppShell extends ConsumerWidget {
       _NavItem('/leave', Iconsax.calendar_remove, 'Leave'),
       _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
       _NavItem('/projects', Iconsax.folder_open, 'Projects'),
+      _NavItem('/salary', Iconsax.wallet_3, 'Payslips'),
       _NavItem('/noticeboard', Iconsax.message_text, 'Notices'),
       _NavItem('/policy', Iconsax.document_text, 'Policy'),
+      _NavItem('/calendar', Iconsax.calendar, 'Calendar'),
+      _NavItem('/feedback', Iconsax.message_question, 'Feedback'),
       _NavItem('/profile', Iconsax.user, 'Profile'),
     ];
 
@@ -37,7 +39,7 @@ class AppShell extends ConsumerWidget {
       _NavItem('/employees', Iconsax.people, 'Employees'),
       _NavItem('/attendance', Iconsax.clock, 'Attendance'),
       _NavItem('/leave', Iconsax.calendar_remove, 'Leaves'),
-      _NavItem('/salary', Iconsax.money_send, 'Accounts'),
+      _NavItem('/salary', Iconsax.wallet_3, 'Accounts'),
       _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
       _NavItem('/projects', Iconsax.folder_open, 'Projects'),
       _NavItem('/performance', Iconsax.star1, 'Performance'),
@@ -53,7 +55,7 @@ class AppShell extends ConsumerWidget {
       if (i.route == '/') return location == '/';
       return location.startsWith(i.route);
     });
-    final isMobile = MediaQuery.of(context).size.width < 700;
+    final isMobile = MediaQuery.of(context).size.width < 768;
 
     Widget sidebarContent = Container(
       color: context.surface,
@@ -61,37 +63,50 @@ class AppShell extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Logo Header
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
               child: Row(
                 children: [
                   Image.asset(
                     'assets/images/logo.png',
-                    height: 40,
+                    height: 38,
                     fit: BoxFit.contain,
                     filterQuality: FilterQuality.high,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Iconsax.box, color: AppColors.primary, size: 32),
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Iconsax.box, color: AppColors.primary, size: 24),
+                    ),
                   ),
-                  // Removed redundant 'OmWay' text since logo contains it
                 ],
               ),
             ),
+
+            // Fiscal Calendar Filter Picker
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 4),
               child: GlobalMonthYearPicker(),
             ),
-            // Notification bell for desktop (no AppBar on desktop layout)
+            const SizedBox(height: 6),
+
+            // Notification Navigation Item
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
               child: InkWell(
-                onTap: () => context.go('/notifications'),
+                onTap: () {
+                  if (isMobile) Navigator.pop(context);
+                  context.go('/notifications');
+                },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: unreadCount > 0
-                        ? AppColors.primary.withValues(alpha: 0.08)
+                    color: location == '/notifications'
+                        ? AppColors.primary.withValues(alpha: 0.12)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -99,30 +114,28 @@ class AppShell extends ConsumerWidget {
                     children: [
                       Badge(
                         isLabelVisible: unreadCount > 0,
+                        backgroundColor: AppColors.primary,
                         label: Text(
                           unreadCount > 99 ? '99+' : '$unreadCount',
-                          style: const TextStyle(fontSize: 10),
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
                         ),
                         child: Icon(
                           Iconsax.notification,
-                          color: unreadCount > 0
+                          color: location == '/notifications' || unreadCount > 0
                               ? AppColors.primary
                               : AppColors.textSecondary,
-                          size: 20,
+                          size: 19,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 14),
                       Text(
-                        unreadCount > 0
-                            ? '$unreadCount Notifications'
-                            : 'Notifications',
+                        'Notifications',
                         style: TextStyle(
-                          color: unreadCount > 0
+                          color: location == '/notifications'
                               ? AppColors.primary
                               : AppColors.textSecondary,
-                          fontWeight: unreadCount > 0
-                              ? FontWeight.w600
-                              : FontWeight.normal,
+                          fontSize: 13,
+                          fontWeight: location == '/notifications' ? FontWeight.w800 : FontWeight.w600,
                         ),
                       ),
                     ],
@@ -130,67 +143,66 @@ class AppShell extends ConsumerWidget {
                 ),
               ),
             ),
+
+            const SizedBox(height: 4),
+            Divider(color: context.border, indent: 14, endIndent: 14),
+            const SizedBox(height: 4),
+
+            // Main Nav Items List
             Expanded(
               child: ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 itemCount: navItems.length,
                 itemBuilder: (context, i) {
                   final item = navItems[i];
                   final isSelected = currentIndex == i;
                   return Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-                    child: InkWell(
-                      onTap: () {
-                        if (isMobile) Navigator.pop(context);
-                        context.go(item.route);
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.primary.withValues(alpha: 0.1)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        clipBehavior: Clip.hardEdge,
-                        child: Stack(
-                          children: [
-                            if (isSelected)
-                              Positioned(
-                                left: 0,
-                                top: 0,
-                                bottom: 0,
-                                child: Container(
-                                  width: 4,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    borderRadius: BorderRadius.circular(2),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          if (isMobile) Navigator.pop(context);
+                          context.go(item.route);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.primary.withValues(alpha: 0.12)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                item.icon,
+                                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                                size: 19,
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Text(
+                                  item.label,
+                                  style: TextStyle(
+                                    color: isSelected ? AppColors.primary : context.textPrimary,
+                                    fontSize: 13,
+                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                                   ),
                                 ),
                               ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                              child: Row(
-                                children: [
-                                  Icon(item.icon,
-                                      color: isSelected
-                                          ? AppColors.primary
-                                          : AppColors.textSecondary,
-                                      size: 20),
-                                  const SizedBox(width: 16),
-                                  Text(item.label,
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? AppColors.primary
-                                            : AppColors.textSecondary,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
-                                      )),
-                                ],
-                              ),
-                            ),
-                          ],
+                              if (isSelected)
+                                Container(
+                                  width: 5,
+                                  height: 5,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -198,51 +210,81 @@ class AppShell extends ConsumerWidget {
                 },
               ),
             ),
+
+            Divider(color: context.border, indent: 14, endIndent: 14),
+
+            // User Info & Theme Footer Card
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: context.card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: context.border),
                 ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.brightness_medium, color: AppColors.primary, size: 20),
-                        SizedBox(width: 16),
-                        Text('Theme', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
-                      ],
+                    CircleAvatar(
+                      radius: 17,
+                      backgroundColor: AppColors.primary,
+                      backgroundImage: user?.profilePicture != null
+                          ? NetworkImage(user!.profilePicture!)
+                          : null,
+                      child: user?.profilePicture == null
+                          ? Text(
+                              user?.firstName.isNotEmpty == true
+                                  ? user!.firstName[0].toUpperCase()
+                                  : 'U',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            )
+                          : null,
                     ),
-                    ThemeToggleBtn(),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            user?.fullName.isNotEmpty == true ? user!.fullName : 'My Account',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12.5,
+                              color: context.textPrimary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            isAdmin ? 'Administrator' : 'Team Member',
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              color: AppColors.textSecondary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const ThemeToggleBtn(),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Iconsax.logout, color: AppColors.error, size: 18),
+                      tooltip: 'Log out',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () async {
+                        await ref.read(authProvider.notifier).logout();
+                        if (context.mounted) {
+                          context.go('/login');
+                        }
+                      },
+                    ),
                   ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: InkWell(
-                onTap: () => ref.read(authProvider.notifier).logout(),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: AppColors.error.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Iconsax.logout, color: AppColors.error, size: 20),
-                      SizedBox(width: 16),
-                      Text('Log out',
-                          style: TextStyle(
-                              color: AppColors.error,
-                              fontWeight: FontWeight.w600)),
-                    ],
-                  ),
                 ),
               ),
             ),
@@ -251,231 +293,246 @@ class AppShell extends ConsumerWidget {
       ),
     );
 
-    // ── Mobile: employee gets BottomNavigationBar; admin keeps Drawer ────────
+    // ── Mobile View ──────────────────────────────────────────────────────────
     if (isMobile) {
-      if (!isAdmin) {
-        // Employee mobile — bottom navigation bar
-        final bottomItems = [
-          _NavItem('/', Iconsax.home_2, 'Home'),
-          _NavItem('/attendance', Iconsax.clock, 'Attendance'),
-          _NavItem('/leave', Iconsax.calendar_remove, 'Leave'),
-          _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
-          _NavItem('/projects', Iconsax.folder_open, 'Projects'),
-          _NavItem('/profile', Iconsax.user, 'Profile'),
-        ];
-        final bottomIndex = bottomItems.indexWhere((i) {
-          if (i.route == '/') return location == '/';
-          return location.startsWith(i.route);
-        });
+      final primaryMobileItems = isAdmin
+          ? [
+              _NavItem('/', Iconsax.home_2, 'Home'),
+              _NavItem('/employees', Iconsax.people, 'Staff'),
+              _NavItem('/attendance', Iconsax.clock, 'Attendance'),
+              _NavItem('/leave', Iconsax.calendar_remove, 'Leaves'),
+              _NavItem('/salary', Iconsax.wallet_3, 'Accounts'),
+              _NavItem('/more', Iconsax.element_plus, 'More'),
+            ]
+          : [
+              _NavItem('/', Iconsax.home_2, 'Home'),
+              _NavItem('/attendance', Iconsax.clock, 'Attendance'),
+              _NavItem('/leave', Iconsax.calendar_remove, 'Leave'),
+              _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
+              _NavItem('/more', Iconsax.element_plus, 'More'),
+            ];
 
-        return Scaffold(
-          backgroundColor: context.bg,
-          appBar: AppBar(
-            backgroundColor: context.surface,
-            elevation: 0,
-            automaticallyImplyLeading: false,
-            title: Text(
-              bottomIndex >= 0 ? bottomItems[bottomIndex].label : 'EMS',
-              style: TextStyle(fontWeight: FontWeight.bold, color: context.textPrimary),
-            ),
-            actions: [
-              const ThemeToggleBtn(),
-              Badge(
-                isLabelVisible: unreadCount > 0,
-                label: Text(unreadCount.toString()),
-                child: IconButton(
-                  icon: Icon(Iconsax.notification, color: context.textPrimary),
-                  onPressed: () => context.go('/notifications'),
-                ),
-              ),
-              GestureDetector(
-                onTap: () => context.go('/profile'),
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: AppColors.primary,
-                    backgroundImage: user?.profilePicture != null
-                        ? NetworkImage(user!.profilePicture!)
-                        : null,
-                    child: user?.profilePicture == null
-                        ? Text(
-                            user?.firstName.isNotEmpty == true
-                                ? user!.firstName[0].toUpperCase()
-                                : 'A',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14),
-                          )
-                        : null,
-                  ),
-                ),
+      final bottomIndex = primaryMobileItems.indexWhere((i) {
+        if (i.route == '/more') return false;
+        if (i.route == '/') return location == '/';
+        return location.startsWith(i.route);
+      });
+
+      return Scaffold(
+        backgroundColor: context.bg,
+        body: child,
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: context.surface,
+            border: Border(top: BorderSide(color: context.border, width: 1)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 10,
+                offset: const Offset(0, -2),
               ),
             ],
           ),
-          body: child,
-          bottomNavigationBar: Container(
-            decoration: BoxDecoration(
-              color: context.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              child: SizedBox(
-                height: 64,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: List.generate(bottomItems.length, (i) {
-                    final item = bottomItems[i];
-                    final selected = bottomIndex == i;
-                    return Expanded(
-                      child: InkWell(
-                        onTap: () => context.go(item.route),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              item.icon,
-                              size: 22,
-                              color: selected
-                                  ? AppColors.primary
-                                  : AppColors.textSecondary,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              item.label,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: selected
-                                    ? FontWeight.w700
-                                    : FontWeight.normal,
-                                color: selected
-                                    ? AppColors.primary
-                                    : AppColors.textSecondary,
+          child: SafeArea(
+            child: SizedBox(
+              height: 62,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(primaryMobileItems.length, (i) {
+                  final item = primaryMobileItems[i];
+                  final isMore = item.route == '/more';
+                  final selected = !isMore && bottomIndex == i;
+
+                  return Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        if (isMore) {
+                          _showMoreNavigationSheet(context, navItems, currentIndex, ref);
+                        } else {
+                          context.go(item.route);
+                        }
+                      },
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            item.icon,
+                            size: 20,
+                            color: selected
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
+                          ),
+                          const SizedBox(height: 3),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                item.label,
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: selected
+                                      ? FontWeight.w800
+                                      : FontWeight.w500,
+                                  color: selected
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary,
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    );
-                  }),
-                ),
+                    ),
+                  );
+                }),
               ),
             ),
           ),
-        );
-      }
-
-      // Admin mobile — keeps Drawer
-      return Scaffold(
-        backgroundColor: context.bg,
-        drawer: Drawer(
-          width: 260,
-          backgroundColor: context.surface,
-          child: sidebarContent,
         ),
-        appBar: AppBar(
-          backgroundColor: context.surface,
-          elevation: 0,
-          leading: Builder(
-              builder: (ctx) => IconButton(
-                    icon: Icon(Icons.menu, color: context.textPrimary),
-                    onPressed: () => Scaffold.of(ctx).openDrawer(),
-                  )),
-          title: Text('EMS',
-              style:
-                  TextStyle(fontWeight: FontWeight.bold, color: context.textPrimary)),
-          actions: [
-            const ThemeToggleBtn(),
-            Badge(
-              isLabelVisible: unreadCount > 0,
-              label: Text(unreadCount.toString()),
-              child: IconButton(
-                icon: Icon(Iconsax.notification, color: context.textPrimary),
-                onPressed: () => context.go('/notifications'),
-              ),
-            ),
-            GestureDetector(
-              onTap: () => context.go('/profile'),
-              child: Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.primary,
-                  backgroundImage: user?.profilePicture != null
-                      ? NetworkImage(user!.profilePicture!)
-                      : null,
-                  child: user?.profilePicture == null
-                      ? Text(
-                          user?.firstName.isNotEmpty == true
-                              ? user!.firstName[0].toUpperCase()
-                              : 'A',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14),
-                        )
-                      : null,
-                ),
-              ),
-            ),
-          ],
-        ),
-        body: child,
       );
     }
 
-    // ── Desktop/Tablet: permanent sidebar ─────────────────────────────────────
+    // ── Desktop / Tablet: permanent refined sidebar ──────────────────────────
     return Scaffold(
       backgroundColor: context.bg,
       body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(width: 250, child: sidebarContent), // Increased width slightly for better text fit
-          // Divider between sidebar and main content
+          SizedBox(width: 260, child: sidebarContent),
           Container(width: 1, color: context.border),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!isAdmin)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-                    decoration: BoxDecoration(
-                      color: context.surface,
-                      border: Border(bottom: BorderSide(color: context.border)),
-                    ),
-                    child: Text(
-                      currentIndex >= 0 ? navItems[currentIndex].label : 'EMS',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: context.textPrimary,
-                      ),
-                    ),
-                  ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-                    child: child,
-                  ),
-                ),
-              ],
-            ),
+            child: child,
           ),
         ],
       ),
     );
   }
-}
 
+  void _showMoreNavigationSheet(
+    BuildContext context,
+    List<_NavItem> navItems,
+    int currentIndex,
+    WidgetRef ref,
+  ) {
+    final unreadCount = ref.read(unreadCountProvider);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: context.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'All Modules & Navigation',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: ctx.textPrimary,
+                      ),
+                    ),
+                    const ThemeToggleBtn(),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const GlobalMonthYearPicker(),
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: Badge(
+                    isLabelVisible: unreadCount > 0,
+                    backgroundColor: AppColors.primary,
+                    label: Text(unreadCount.toString(),
+                        style: const TextStyle(fontSize: 10)),
+                    child: const Icon(Iconsax.notification,
+                        color: AppColors.primary),
+                  ),
+                  title: const Text('Notifications',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.go('/notifications');
+                  },
+                ),
+                Divider(color: ctx.border),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: navItems.length,
+                    itemBuilder: (ctx, i) {
+                      final item = navItems[i];
+                      final isSelected = currentIndex == i;
+
+                      return ListTile(
+                        leading: Icon(
+                          item.icon,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                        ),
+                        title: Text(
+                          item.label,
+                          style: TextStyle(
+                            fontWeight: isSelected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                            color: isSelected
+                                ? AppColors.primary
+                                : ctx.textPrimary,
+                          ),
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          context.go(item.route);
+                        },
+                      );
+                    },
+                  ),
+                ),
+                Divider(color: ctx.border),
+                ListTile(
+                  leading: const Icon(Iconsax.logout, color: AppColors.error),
+                  title: const Text('Log Out',
+                      style: TextStyle(
+                          color: AppColors.error, fontWeight: FontWeight.bold)),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await ref.read(authProvider.notifier).logout();
+                    if (context.mounted) {
+                      context.go('/login');
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
 class _NavItem {
   final String route;
@@ -483,8 +540,3 @@ class _NavItem {
   final String label;
   _NavItem(this.route, this.icon, this.label);
 }
-
-
-
-
-

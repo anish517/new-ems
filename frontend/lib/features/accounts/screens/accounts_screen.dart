@@ -21,15 +21,13 @@ class AccountsScreen extends ConsumerStatefulWidget {
   ConsumerState<AccountsScreen> createState() => _AccountsScreenState();
 }
 
-class _AccountsScreenState extends ConsumerState<AccountsScreen>
-    with SingleTickerProviderStateMixin {
+class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
-    // Read role before first frame so tab count is correct
     _isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
     _tabController = TabController(length: _isAdmin ? 4 : 1, vsync: this);
   }
@@ -42,47 +40,135 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDark;
+
+    if (!_isAdmin) {
+      return const SalaryScreen();
+    }
+
     return Scaffold(
       backgroundColor: context.bg,
-      appBar: AppBar(
-        backgroundColor: context.surface,
-        elevation: 0,
-        title: Text(
-          _isAdmin ? 'Accounts' : 'Payroll',
-          style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.bold),
-        ),
-        bottom: _isAdmin
-            ? TabBar(
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── Top Header Card ────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+              child: Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: context.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: context.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                      blurRadius: 18,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Iconsax.wallet_3, color: AppColors.primary, size: 24),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'Financial Accounts & Governance',
+                                    style: TextStyle(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.4,
+                                      color: context.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      'Admin Console',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Manage company payroll, statutory tax bands, geofence rules & audit logs',
+                                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: context.card,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: context.border),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        isScrollable: true,
+                        indicatorColor: AppColors.primary,
+                        labelColor: AppColors.primary,
+                        unselectedLabelColor: AppColors.textSecondary,
+                        labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        tabs: const [
+                          Tab(icon: Icon(Iconsax.money_send, size: 18), text: 'Payroll Operations'),
+                          Tab(icon: Icon(Iconsax.receipt, size: 18), text: 'Tax Bands & Brackets'),
+                          Tab(icon: Icon(Iconsax.setting_2, size: 18), text: 'Global & Geofence'),
+                          Tab(icon: Icon(Iconsax.chart, size: 18), text: 'Audit Reports & CSV'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Tab Views ──────────────────────────────────────────────────
+            Expanded(
+              child: TabBarView(
                 controller: _tabController,
-                isScrollable: true,
-                indicatorColor: AppColors.primary,
-                labelColor: AppColors.primary,
-                unselectedLabelColor: AppColors.textSecondary,
-                tabs: const [
-                  Tab(icon: Icon(Iconsax.money_send), text: 'Payroll'),
-                  Tab(icon: Icon(Iconsax.receipt), text: 'Tax Bands'),
-                  Tab(icon: Icon(Iconsax.setting_2), text: 'Global Settings'),
-                  Tab(icon: Icon(Iconsax.chart), text: 'Reports'),
+                children: const [
+                  SalaryScreen(),
+                  _TaxManagementTab(),
+                  _GlobalSettingsTab(),
+                  _ReportsTab(),
                 ],
-              )
-            : null,
+              ),
+            ),
+          ],
+        ),
       ),
-      body: _isAdmin
-          ? TabBarView(
-              controller: _tabController,
-              children: const [
-                // Tab 1: Payroll — embed existing SalaryScreen
-                SalaryScreen(),
-                // Tab 2: Tax Band Management
-                _TaxManagementTab(),
-                // Tab 3: Global Settings (Geolocation, Attendance)
-                _GlobalSettingsTab(),
-                // Tab 4: Reports
-                _ReportsTab(),
-              ],
-            )
-          // Employee: directly shows Payroll (no tab bar)
-          : const SalaryScreen(),
     );
   }
 }
@@ -97,8 +183,7 @@ class _TaxManagementTab extends ConsumerStatefulWidget {
   ConsumerState<_TaxManagementTab> createState() => _TaxManagementTabState();
 }
 
-class _TaxManagementTabState extends ConsumerState<_TaxManagementTab>
-    with SingleTickerProviderStateMixin {
+class _TaxManagementTabState extends ConsumerState<_TaxManagementTab> with SingleTickerProviderStateMixin {
   late TabController _inner;
   List<dynamic> _salaryBandsSingle = [];
   List<dynamic> _salaryBandsMarried = [];
@@ -122,34 +207,23 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab>
   Future<void> _loadBands() async {
     setState(() => _loading = true);
     try {
-      final salaryRes = await ApiService()
-          .get('${AppConstants.salaryBase}/tax-bands/salary/');
-      final incentiveRes = await ApiService()
-          .get('${AppConstants.salaryBase}/tax-bands/incentive/');
-      final bonusRes =
-          await ApiService().get('${AppConstants.salaryBase}/tax-bands/bonus/');
-      final allSalary = salaryRes.data is List
-          ? salaryRes.data
-          : (salaryRes.data['results'] ?? []);
-      final allIncentive = incentiveRes.data is List
-          ? incentiveRes.data
-          : (incentiveRes.data['results'] ?? []);
-      final allBonus = bonusRes.data is List
-          ? bonusRes.data
-          : (bonusRes.data['results'] ?? []);
+      final salaryRes = await ApiService().get('${AppConstants.salaryBase}/tax-bands/salary/');
+      final incentiveRes = await ApiService().get('${AppConstants.salaryBase}/tax-bands/incentive/');
+      final bonusRes = await ApiService().get('${AppConstants.salaryBase}/tax-bands/bonus/');
+
+      final allSalary = salaryRes.data is List ? salaryRes.data : (salaryRes.data['results'] ?? []);
+      final allIncentive = incentiveRes.data is List ? incentiveRes.data : (incentiveRes.data['results'] ?? []);
+      final allBonus = bonusRes.data is List ? bonusRes.data : (bonusRes.data['results'] ?? []);
+
       setState(() {
-        _salaryBandsSingle = allSalary
-            .where((b) => b['marital_status'] == 'single')
-            .toList();
-        _salaryBandsMarried = allSalary
-            .where((b) => b['marital_status'] == 'married')
-            .toList();
+        _salaryBandsSingle = allSalary.where((b) => b['marital_status'] == 'single').toList();
+        _salaryBandsMarried = allSalary.where((b) => b['marital_status'] == 'married').toList();
         _incentiveBands = allIncentive;
         _bonusBands = allBonus;
         _loading = false;
       });
     } catch (_) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -168,18 +242,40 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab>
       } else {
         url = '${AppConstants.salaryBase}/tax-bands/bonus/';
       }
-      // FIX: `data` is a named parameter on ApiService.post()
       await ApiService().post(url, data: result);
       _loadBands();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tax band added successfully'), backgroundColor: AppColors.success),
+        );
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${ApiService.getErrorMessage(e)}'), backgroundColor: AppColors.error),
+        );
       }
     }
   }
 
   Future<void> _deleteBand(String type, int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Tax Band'),
+        content: const Text('Are you sure you want to remove this statutory tax bracket?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
     String url;
     if (type == 'salary') {
       url = '${AppConstants.salaryBase}/tax-bands/salary/$id/';
@@ -191,57 +287,79 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab>
     try {
       await ApiService().delete(url);
       _loadBands();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tax band deleted'), backgroundColor: AppColors.success),
+        );
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${ApiService.getErrorMessage(e)}'), backgroundColor: AppColors.error),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        TabBar(
-          controller: _inner,
-          indicatorColor: AppColors.primary,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
-          tabs: const [
-            Tab(text: 'Salary Tax'),
-            Tab(text: 'Incentive Tax'),
-            Tab(text: 'Bonus Tax'),
-          ],
-        ),
-        Expanded(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : TabBarView(
-                  controller: _inner,
-                  children: [
-                    // Salary Tax Bands
-                    _buildSalaryBandsView(),
-                    // Incentive Tax Bands
-                    _buildBandList(
-                      bands: _incentiveBands,
-                      type: 'incentive',
-                      label: 'Incentive',
-                      amountKey1: 'min_amount',
-                      amountKey2: 'max_amount',
-                    ),
-                    // Bonus Tax Bands
-                    _buildBandList(
-                      bands: _bonusBands,
-                      type: 'bonus',
-                      label: 'Bonus',
-                      amountKey1: 'min_amount',
-                      amountKey2: 'max_amount',
-                    ),
-                  ],
-                ),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: context.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: context.border),
+            ),
+            child: TabBar(
+              controller: _inner,
+              indicatorColor: AppColors.primary,
+              labelColor: AppColors.primary,
+              unselectedLabelColor: AppColors.textSecondary,
+              labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              tabs: const [
+                Tab(text: 'Salary Tax Brackets'),
+                Tab(text: 'Incentive Tax Brackets'),
+                Tab(text: 'Bonus Tax Brackets'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : TabBarView(
+                    controller: _inner,
+                    children: [
+                      // Salary Tax Bands
+                      _buildSalaryBandsView(),
+                      // Incentive Tax Bands
+                      _buildBandList(
+                        bands: _incentiveBands,
+                        type: 'incentive',
+                        label: 'Incentive',
+                        amountKey1: 'min_amount',
+                        amountKey2: 'max_amount',
+                      ),
+                      // Bonus Tax Bands
+                      _buildBandList(
+                        bands: _bonusBands,
+                        type: 'bonus',
+                        label: 'Bonus',
+                        amountKey1: 'min_amount',
+                        amountKey2: 'max_amount',
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -251,31 +369,44 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab>
       child: Column(
         children: [
           Container(
-            color: context.surface,
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            decoration: BoxDecoration(
+              color: context.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.border),
+            ),
             child: const TabBar(
-              indicatorColor: Colors.green,
-              labelColor: Colors.green,
+              indicatorColor: Color(0xFF10B981),
+              labelColor: Color(0xFF10B981),
               unselectedLabelColor: AppColors.textSecondary,
-              tabs: [Tab(text: 'Single'), Tab(text: 'Married')],
+              labelStyle: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+              dividerColor: Colors.transparent,
+              tabs: [
+                Tab(text: 'Unmarried Individual Status'),
+                Tab(text: 'Married Couple Status'),
+              ],
             ),
           ),
+          const SizedBox(height: 12),
           Expanded(
             child: TabBarView(
               children: [
                 _buildBandList(
-                    bands: _salaryBandsSingle,
-                    type: 'salary',
-                    label: 'Salary (Single)',
-                    amountKey1: 'min_salary',
-                    amountKey2: 'max_salary',
-                    marital: 'single'),
+                  bands: _salaryBandsSingle,
+                  type: 'salary',
+                  label: 'Salary (Single)',
+                  amountKey1: 'min_salary',
+                  amountKey2: 'max_salary',
+                  marital: 'single',
+                ),
                 _buildBandList(
-                    bands: _salaryBandsMarried,
-                    type: 'salary',
-                    label: 'Salary (Married)',
-                    amountKey1: 'min_salary',
-                    amountKey2: 'max_salary',
-                    marital: 'married'),
+                  bands: _salaryBandsMarried,
+                  type: 'salary',
+                  label: 'Salary (Married)',
+                  amountKey1: 'min_salary',
+                  amountKey2: 'max_salary',
+                  marital: 'married',
+                ),
               ],
             ),
           ),
@@ -293,46 +424,100 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab>
     String marital = 'single',
   }) {
     return Scaffold(
-      backgroundColor: context.bg,
+      backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addBand(type, marital: marital),
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: Text('Add $label Band'),
+        elevation: 6,
+        icon: const Icon(Iconsax.add_circle, color: Colors.white, size: 20),
+        label: Text('Add $label Bracket', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
       ),
       body: bands.isEmpty
-          ? Center(
-              child: Text('No $label tax bands yet.',
-                  style: const TextStyle(color: AppColors.textSecondary)))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
+          ? Container(
+              padding: const EdgeInsets.all(40),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: context.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: context.border),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Iconsax.receipt_2, size: 48, color: AppColors.textSecondary),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No $label tax brackets defined.',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: context.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Configure statutory brackets to automatically calculate TDS on payroll.',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.only(bottom: 80),
               itemCount: bands.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (ctx, i) {
                 final b = bands[i];
                 final min = b[amountKey1] ?? 0;
                 final max = b[amountKey2];
                 final pct = b['tax_percentage'] ?? 0;
-                return Card(
-                  color: context.surface,
-                  margin: const EdgeInsets.only(bottom: 10),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                      child: Text('${pct.toStringAsFixed(1)}%',
+
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: context.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: context.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          '${pct.toStringAsFixed(1)}%',
                           style: const TextStyle(
-                              color: AppColors.primary, fontSize: 11)),
-                    ),
-                    title: Text(
-                      'NPR ${_fmt(min)} – ${max == null ? '∞' : 'NPR ${_fmt(max)}'}',
-                      style: TextStyle(color: context.textPrimary),
-                    ),
-                    subtitle: Text('Tax: $pct%',
-                        style: const TextStyle(color: AppColors.textSecondary)),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      onPressed: () => _deleteBand(type, b['id']),
-                    ),
+                            color: AppColors.primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'NPR ${_fmt(min)}  →  ${max == null ? 'Above (No Limit)' : 'NPR ${_fmt(max)}'}',
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                color: context.textPrimary,
+                              ),
+                            ),
+                            const Text(
+                              'Tax rate applies to earnings within this band',
+                              style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Iconsax.trash, color: AppColors.error, size: 18),
+                        tooltip: 'Delete bracket',
+                        onPressed: () => _deleteBand(type, b['id'] as int),
+                      ),
+                    ],
                   ),
                 );
               },
@@ -372,31 +557,73 @@ class _TaxBandDialogState extends State<_TaxBandDialog> {
   @override
   Widget build(BuildContext context) {
     final isSalary = widget.type == 'salary';
-    final label1 = isSalary ? 'Min Salary (NPR)' : 'Min Amount (NPR)';
-    final label2 =
-        isSalary ? 'Max Salary (NPR, blank=∞)' : 'Max Amount (NPR, blank=∞)';
+    final label1 = isSalary ? 'Min Annual Salary (NPR) *' : 'Min Amount (NPR) *';
+    final label2 = isSalary ? 'Max Annual Salary (NPR, leave blank for ∞)' : 'Max Amount (NPR, leave blank for ∞)';
+
     return AlertDialog(
-      backgroundColor: const Color(0xFF1E1E2E),
-      title: Text(
-          'Add ${widget.type[0].toUpperCase()}${widget.type.substring(1)} Tax Band',
-          style: TextStyle(color: context.textPrimary)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
+      backgroundColor: context.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: Row(
         children: [
-          _field(_min, label1),
-          const SizedBox(height: 12),
-          _field(_max, label2),
-          const SizedBox(height: 12),
-          _field(_pct, 'Tax Percentage (%)'),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Iconsax.receipt_2, color: AppColors.primary, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'Add ${widget.type[0].toUpperCase()}${widget.type.substring(1)} Tax Bracket',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
+          ),
         ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _min,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: label1,
+                prefixIcon: const Icon(Iconsax.money, size: 18),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _max,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: label2,
+                prefixIcon: const Icon(Iconsax.money_recive, size: 18),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _pct,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Statutory Tax Rate (%) *',
+                hintText: 'e.g. 1, 10, 20, 30, 36',
+                prefixIcon: Icon(Iconsax.percentage_circle, size: 18),
+              ),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(context),
-            child:
-                Text('Cancel', style: TextStyle(color: context.textSecondary))),
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
         ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
           onPressed: () {
             final minV = double.tryParse(_min.text) ?? 0;
             final maxV = double.tryParse(_max.text);
@@ -410,24 +637,9 @@ class _TaxBandDialogState extends State<_TaxBandDialog> {
             };
             Navigator.pop(context, data);
           },
-          child: const Text('Save'),
+          child: const Text('Save Bracket', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         ),
       ],
-    );
-  }
-
-  Widget _field(TextEditingController c, String label) {
-    return TextField(
-      controller: c,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      style: TextStyle(color: context.textPrimary),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: context.textSecondary),
-        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: context.border)),
-        focusedBorder: const OutlineInputBorder(
-            borderSide: BorderSide(color: AppColors.primary)),
-      ),
     );
   }
 }
@@ -468,8 +680,7 @@ class _GlobalSettingsTabState extends ConsumerState<_GlobalSettingsTab> {
   Future<void> _loadSettings() async {
     setState(() => _loading = true);
     try {
-      final res =
-          await ApiService().get('${AppConstants.organizationBase}/settings/');
+      final res = await ApiService().get('${AppConstants.organizationBase}/settings/');
       final d = res.data;
       setState(() {
         _lat.text = '${d['office_latitude'] ?? ''}';
@@ -480,7 +691,7 @@ class _GlobalSettingsTabState extends ConsumerState<_GlobalSettingsTab> {
         _loading = false;
       });
     } catch (_) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -494,153 +705,202 @@ class _GlobalSettingsTabState extends ConsumerState<_GlobalSettingsTab> {
         'enable_in_office_attendance': _inOffice,
         'enable_remote_attendance': _remote,
       };
-      // FIX: `data` is a named parameter on ApiService.patch()
       await ApiService().patch(
         '${AppConstants.organizationBase}/settings/',
         data: payload,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Settings saved successfully!')));
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
+                SizedBox(width: 10),
+                Text('Governance & Geofence settings saved!'),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error saving: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving: ${ApiService.getErrorMessage(e)}'), backgroundColor: AppColors.error),
+        );
       }
     } finally {
-      setState(() => _saving = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionHeader('Office Geolocation', Iconsax.location),
-          const SizedBox(height: 16),
-          _inputField(_lat, 'Office Latitude', 'e.g. 27.7172'),
-          const SizedBox(height: 12),
-          _inputField(_lng, 'Office Longitude', 'e.g. 85.3240'),
-          const SizedBox(height: 12),
-          _inputField(_radius, 'Allowed Radius (meters)', 'e.g. 100',
-              isInt: true),
-          const SizedBox(height: 28),
-          _sectionHeader('Attendance Rules', Iconsax.calendar_tick),
-          const SizedBox(height: 16),
-          _toggleCard(
-            title: 'Enable In-Office Attendance',
-            subtitle: 'Allow employees to check in from the office location',
-            value: _inOffice,
-            onChanged: (v) => setState(() => _inOffice = v),
-          ),
-          const SizedBox(height: 12),
-          _toggleCard(
-            title: 'Enable Remote Attendance',
-            subtitle: 'Allow employees to check in while working from home',
-            value: _remote,
-            onChanged: (v) => setState(() => _remote = v),
-          ),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _saving ? null : _save,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              icon: _saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Iconsax.save_2, color: Colors.white),
-              label: Text(_saving ? 'Saving...' : 'Save Settings',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold)),
+          // Geofence Card
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: context.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: context.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Iconsax.location, color: AppColors.primary, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Office Coordinates & Geofencing',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Divider(color: context.border),
+                const SizedBox(height: 14),
+
+                TextField(
+                  controller: _lat,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Office Latitude *',
+                    hintText: 'e.g. 27.7172',
+                    prefixIcon: Icon(Iconsax.map, size: 18),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: _lng,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Office Longitude *',
+                    hintText: 'e.g. 85.3240',
+                    prefixIcon: Icon(Iconsax.map_1, size: 18),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: _radius,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Allowed Check-In Radius (Meters) *',
+                    hintText: 'e.g. 100',
+                    prefixIcon: Icon(Iconsax.radar, size: 18),
+                  ),
+                ),
+              ],
             ),
           ),
+
+          const SizedBox(height: 20),
+
+          // Attendance Policy Card
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: context.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: context.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Iconsax.calendar_tick, color: Color(0xFF10B981), size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Attendance Enforcement Policies',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Divider(color: context.border),
+                const SizedBox(height: 8),
+
+                SwitchListTile(
+                  title: const Text('Enable In-Office Geofenced Attendance', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  subtitle: const Text('Enforces GPS radius check when clocking in at the office', style: TextStyle(fontSize: 12)),
+                  value: _inOffice,
+                  onChanged: (v) => setState(() => _inOffice = v),
+                  activeThumbColor: AppColors.primary,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const Divider(),
+                SwitchListTile(
+                  title: const Text('Enable Remote / WFH Attendance', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  subtitle: const Text('Allows approved staff to check in while working remotely', style: TextStyle(fontSize: 12)),
+                  value: _remote,
+                  onChanged: (v) => setState(() => _remote = v),
+                  activeThumbColor: AppColors.primary,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          Container(
+            height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
+            ),
+            child: ElevatedButton(
+              onPressed: _saving ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: _saving
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Iconsax.save_2, size: 16, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text('Save Governance Settings', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+            ),
+          ),
+
+          const SizedBox(height: 40),
         ],
-      ),
-    );
-  }
-
-  Widget _sectionHeader(String title, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, color: AppColors.primary, size: 20),
-        const SizedBox(width: 8),
-        Text(title,
-            style: TextStyle(color: context.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-
-  Widget _inputField(TextEditingController c, String label, String hint,
-      {bool isInt = false}) {
-    return TextField(
-      controller: c,
-      keyboardType: isInt
-          ? TextInputType.number
-          : const TextInputType.numberWithOptions(decimal: true, signed: true),
-      style: TextStyle(color: context.textPrimary),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        labelStyle: const TextStyle(color: AppColors.textSecondary),
-        hintStyle: const TextStyle(color: AppColors.textSecondary),
-        filled: true,
-        fillColor: context.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.primary),
-        ),
-      ),
-    );
-  }
-
-  Widget _toggleCard(
-      {required String title,
-      required String subtitle,
-      required bool value,
-      required ValueChanged<bool> onChanged}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: SwitchListTile(
-        title:
-            Text(title, style: TextStyle(color: context.textPrimary)),
-        subtitle: Text(subtitle,
-            style: const TextStyle(color: AppColors.textSecondary)),
-        value: value,
-        onChanged: onChanged,
-        activeThumbColor: AppColors.primary,
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Tab 4: Reports Placeholder
-// ─────────────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab 4: Reports
 // ─────────────────────────────────────────────────────────────────────────────
@@ -691,16 +951,15 @@ class _ReportsTabState extends State<_ReportsTab> {
         });
       }
       _fetchData();
-    } catch (e) {
-      debugPrint('Error loading employees: $e');
-    }
+    } catch (_) {}
   }
 
   Future<void> _fetchData() async {
     if (!mounted) return;
     setState(() => _loading = true);
     try {
-      String url = '/api/salary-management/transactions/organization/?start_date=${_startDateController.text.trim()}&end_date=${_endDateController.text.trim()}';
+      String url =
+          '/api/salary-management/transactions/organization/?start_date=${_startDateController.text.trim()}&end_date=${_endDateController.text.trim()}';
       if (_selectedEmployee != null && _selectedEmployee!.isNotEmpty && _selectedEmployee != 'null') {
         url += '&employee=$_selectedEmployee';
       }
@@ -718,7 +977,9 @@ class _ReportsTabState extends State<_ReportsTab> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load data: ${ApiService.getErrorMessage(e)}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load data: ${ApiService.getErrorMessage(e)}')),
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -728,7 +989,8 @@ class _ReportsTabState extends State<_ReportsTab> {
   Future<void> _downloadReport() async {
     setState(() => _downloading = true);
     try {
-      String url = '/api/salary-management/generate-report/?start_date=${_startDateController.text.trim()}&end_date=${_endDateController.text.trim()}';
+      String url =
+          '/api/salary-management/generate-report/?start_date=${_startDateController.text.trim()}&end_date=${_endDateController.text.trim()}';
       if (_selectedEmployee != null && _selectedEmployee!.isNotEmpty && _selectedEmployee != 'null') {
         url += '&employee=$_selectedEmployee';
       }
@@ -757,10 +1019,16 @@ class _ReportsTabState extends State<_ReportsTab> {
         }
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report generated successfully.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Report generated successfully.'), backgroundColor: AppColors.success),
+        );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to generate report: ${ApiService.getErrorMessage(e)}')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate report: ${ApiService.getErrorMessage(e)}')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _downloading = false);
     }
@@ -769,23 +1037,25 @@ class _ReportsTabState extends State<_ReportsTab> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Filters Section
+          // Filter Bar Card
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: context.surface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: context.border),
             ),
             child: Wrap(
-              spacing: 16,
-              runSpacing: 16,
+              spacing: 14,
+              runSpacing: 14,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 SizedBox(
-                  width: 200,
+                  width: 190,
                   child: TextField(
                     controller: _startDateController,
                     readOnly: true,
@@ -796,32 +1066,29 @@ class _ReportsTabState extends State<_ReportsTab> {
                         if (_startDateController.text.isNotEmpty) {
                           initial = NepaliDateTime.parse(_startDateController.text);
                         }
-                      } catch (e) {
-                        // ignore error
-                      }
+                      } catch (_) {}
 
-                      final NepaliDateTime? start = await showDialog<NepaliDateTime>(
+                      final start = await showDialog<NepaliDateTime>(
                         context: context,
                         builder: (ctx) => NepaliDatePickerDialog(
                           title: 'Select Start Date',
                           initial: initial ?? now,
                         ),
                       );
-                      if (start != null) {
+                      if (start != null && mounted) {
                         setState(() {
                           _startDateController.text = start.toString().substring(0, 10);
                         });
                       }
                     },
                     decoration: const InputDecoration(
-                      labelText: 'Start Date (YYYY-MM-DD)', 
-                      filled: true,
-                      suffixIcon: Icon(Icons.calendar_month),
+                      labelText: 'Start Date (B.S.)',
+                      prefixIcon: Icon(Iconsax.calendar_1, size: 18),
                     ),
                   ),
                 ),
                 SizedBox(
-                  width: 200,
+                  width: 190,
                   child: TextField(
                     controller: _endDateController,
                     readOnly: true,
@@ -832,55 +1099,45 @@ class _ReportsTabState extends State<_ReportsTab> {
                         if (_endDateController.text.isNotEmpty) {
                           initial = NepaliDateTime.parse(_endDateController.text);
                         }
-                      } catch (e) {
-                        // ignore error
-                      }
-                      
-                      NepaliDateTime? minDate;
-                      try {
-                        if (_startDateController.text.isNotEmpty) {
-                          minDate = NepaliDateTime.parse(_startDateController.text);
-                        }
-                      } catch (e) {
-                        // ignore error
-                      }
+                      } catch (_) {}
 
-                      final NepaliDateTime? end = await showDialog<NepaliDateTime>(
+                      final end = await showDialog<NepaliDateTime>(
                         context: context,
                         builder: (ctx) => NepaliDatePickerDialog(
                           title: 'Select End Date',
                           initial: initial ?? now,
-                          minDate: minDate,
                         ),
                       );
-                      if (end != null) {
+                      if (end != null && mounted) {
                         setState(() {
                           _endDateController.text = end.toString().substring(0, 10);
                         });
                       }
                     },
                     decoration: const InputDecoration(
-                      labelText: 'End Date (YYYY-MM-DD)', 
-                      filled: true,
-                      suffixIcon: Icon(Icons.calendar_month),
+                      labelText: 'End Date (B.S.)',
+                      prefixIcon: Icon(Iconsax.calendar_2, size: 18),
                     ),
                   ),
                 ),
                 SizedBox(
-                  width: 250,
+                  width: 220,
                   child: DropdownButtonFormField<String?>(
-                    initialValue: _selectedEmployee,
+                    // ignore: deprecated_member_use
+                    value: _selectedEmployee,
                     dropdownColor: context.surface,
-                    style: TextStyle(color: context.textPrimary),
-                    decoration: const InputDecoration(labelText: 'Employee', filled: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Staff Filter',
+                      prefixIcon: Icon(Iconsax.user, size: 18),
+                    ),
                     items: [
-                      DropdownMenuItem(value: null, child: Text('All Members', style: TextStyle(color: context.textPrimary))),
+                      const DropdownMenuItem(value: null, child: Text('All Team Members')),
                       ..._employees.map((e) {
                         final u = e['user'] ?? {};
                         final name = '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}'.trim();
                         return DropdownMenuItem(
-                          value: e['id'].toString(), 
-                          child: Text(name.isEmpty ? 'Emp #${e['id']}' : name, style: TextStyle(color: context.textPrimary))
+                          value: e['id'].toString(),
+                          child: Text(name.isEmpty ? 'Emp #${e['id']}' : name),
                         );
                       }),
                     ],
@@ -889,85 +1146,111 @@ class _ReportsTabState extends State<_ReportsTab> {
                 ),
                 ElevatedButton.icon(
                   onPressed: _loading ? null : _fetchData,
-                  icon: const Icon(Iconsax.filter),
-                  label: const Text('Filter'),
+                  icon: const Icon(Iconsax.filter, size: 16, color: Colors.white),
+                  label: const Text('Filter Audit Log', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
                 ElevatedButton.icon(
                   onPressed: _downloading ? null : _downloadReport,
-                  icon: _downloading 
+                  icon: _downloading
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Icon(Iconsax.document_download),
-                  label: Text(_downloading ? 'Exporting...' : 'Export CSV'),
+                      : const Icon(Iconsax.document_download, size: 16, color: Colors.white),
+                  label: Text(_downloading ? 'Exporting...' : 'Export CSV', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    backgroundColor: const Color(0xFF10B981),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          
-          // Data Table
+          const SizedBox(height: 16),
+
+          // Data Table Card
           Expanded(
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
                 color: context.surface,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: context.border),
               ),
-              child: _loading 
-                ? const Center(child: CircularProgressIndicator())
-                : _transactions.isEmpty
-                    ? Center(child: Text('No salary transactions found for the selected criteria.', style: TextStyle(color: context.textSecondary)))
-                    : SingleChildScrollView(
-                        scrollDirection: Axis.vertical,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: DataTable(
-                            headingTextStyle: TextStyle(fontWeight: FontWeight.bold, color: context.textPrimary),
-                            dataTextStyle: TextStyle(color: context.textSecondary),
-                            columns: const [
-                              DataColumn(label: Text('Date')),
-                              DataColumn(label: Text('Employee')),
-                              DataColumn(label: Text('Net Salary')),
-                              DataColumn(label: Text('Incentive')),
-                              DataColumn(label: Text('Bonus')),
-                              DataColumn(label: Text('Total TDS')),
-                              DataColumn(label: Text('SSF / EPF')),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                  : _transactions.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Iconsax.document_text, size: 48, color: AppColors.textSecondary),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No payroll transactions found for selected filters.',
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: context.textPrimary),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Adjust the date range or select all members to view disbursements.',
+                                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              ),
                             ],
-                            rows: _transactions.map((t) {
-                              return DataRow(cells: [
-                                DataCell(Text(t['date']?.toString() ?? '')),
-                                DataCell(Text(t['employee_name']?.toString() ?? '')),
-                                DataCell(Text('NPR ${t['net_salary'] ?? 0}')),
-                                DataCell(Text('${t['incentive'] ?? 0}')),
-                                DataCell(Text('${t['bonus'] ?? 0}')),
-                                DataCell(Text(t['transaction_tds'] != null ? (t['transaction_tds'] is num ? (t['transaction_tds'] as num).toStringAsFixed(2) : t['transaction_tds'].toString()) : '0')),
-                                DataCell(Text('${t['transaction_ssf'] ?? 0} / ${t['transaction_epf'] ?? 0}')),
-                              ]);
-                            }).toList(),
+                          ),
+                        )
+                      : ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.vertical,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: DataTable(
+                                headingRowColor: WidgetStateProperty.all(context.card),
+                                headingTextStyle: TextStyle(fontWeight: FontWeight.w900, color: context.textPrimary, fontSize: 13),
+                                dataTextStyle: TextStyle(color: context.textPrimary, fontSize: 13),
+                                horizontalMargin: 20,
+                                columnSpacing: 28,
+                                columns: const [
+                                  DataColumn(label: Text('Payment Date')),
+                                  DataColumn(label: Text('Employee Name')),
+                                  DataColumn(label: Text('Net Disbursed')),
+                                  DataColumn(label: Text('Incentive')),
+                                  DataColumn(label: Text('Bonus')),
+                                  DataColumn(label: Text('TDS (Tax)')),
+                                  DataColumn(label: Text('SSF / EPF')),
+                                ],
+                                rows: _transactions.map((t) {
+                                  return DataRow(
+                                    cells: [
+                                      DataCell(Text(t['date']?.toString() ?? '')),
+                                      DataCell(Text(t['employee_name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w700))),
+                                      DataCell(Text('NPR ${t['net_salary'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary))),
+                                      DataCell(Text('NPR ${t['incentive'] ?? 0}')),
+                                      DataCell(Text('NPR ${t['bonus'] ?? 0}')),
+                                      DataCell(Text(
+                                        t['transaction_tds'] != null
+                                            ? (t['transaction_tds'] is num
+                                                ? 'NPR ${(t['transaction_tds'] as num).toStringAsFixed(2)}'
+                                                : 'NPR ${t['transaction_tds']}')
+                                            : 'NPR 0',
+                                        style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w600),
+                                      )),
+                                      DataCell(Text('${t['transaction_ssf'] ?? 0} / ${t['transaction_epf'] ?? 0}')),
+                                    ],
+                                  );
+                                }).toList(),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
             ),
           ),
+          const SizedBox(height: 16),
         ],
       ),
     );
   }
 }
-
-
-
-
-
-
-
-

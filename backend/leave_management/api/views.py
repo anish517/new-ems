@@ -234,10 +234,53 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
         
         from_date = to_nepali(serializer.validated_data.get('from_date'))
         till_date = to_nepali(serializer.validated_data.get('till_date'))
-        
+        is_paid = serializer.validated_data.get('is_paid', True)
+        is_half_day = serializer.validated_data.get('is_half_day', False)
+
+        if not from_date or not till_date:
+            raise serializers.ValidationError({'detail': 'Both from date and till date are required.'})
+
+        if is_half_day:
+            requested_days = 0.5
+        else:
+            if from_date > till_date:
+                raise serializers.ValidationError({'detail': 'From date cannot be after Till date.'})
+            requested_days = (till_date - from_date).days + 1
+
+        # Strict Quota Validation (includes both approved leaves and pending unreviewed leaves)
+        leave_type_name = 'Paid Leave' if is_paid else 'Unpaid Leave'
+        lb = LeaveBalance.objects.filter(employee=employee, leave_type__name__iexact=leave_type_name).first()
+        if lb:
+            quota = lb.quota or 0
+            # Total approved taken
+            approved_leaves = LeaveRequest.objects.filter(
+                employee=employee, is_approved=True, is_reviewed=True, is_paid=is_paid
+            )
+            total_approved = sum(lr.no_days for lr in approved_leaves)
+
+            # Total pending requests already in the queue
+            pending_leaves = LeaveRequest.objects.filter(
+                employee=employee, is_approved=False, is_reviewed=False, is_paid=is_paid
+            )
+            total_pending = sum(lr.no_days for lr in pending_leaves)
+
+            available_quota = quota - (total_approved + total_pending)
+            if requested_days > available_quota:
+                available_display = max(0.0, available_quota)
+                raise serializers.ValidationError({
+                    'detail': f'Quota exceeded for {leave_type_name}. You requested {requested_days} day(s), but only have {available_display} day(s) available (Total Quota: {quota}d, Approved: {total_approved}d, Pending: {total_pending}d).'
+                })
+
+        leave_type_obj = None
+        if employee.organization:
+            leave_type_obj = LeaveType.objects.filter(organization=employee.organization, name__iexact=leave_type_name).first()
+        if not leave_type_obj:
+            leave_type_obj = LeaveType.objects.filter(name__iexact=leave_type_name).first()
+
         serializer.save(
             employee=employee,
             organization=employee.organization,
+            type=leave_type_obj,
             from_date=from_date,
             till_date=till_date,
             remarks=serializer.validated_data.get('remarks', ''),

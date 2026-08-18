@@ -7,13 +7,13 @@ from rest_framework.response import Response
 from rest_framework.generics import CreateAPIView, RetrieveAPIView, RetrieveUpdateDestroyAPIView, ListAPIView, ListCreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication
-
 from rest_framework.decorators import action
+
 from organization.api.serializers import (BankDetailSerializer, DocumentSerializer, EmployeeAnalysisReportSerializer, EmployeeSerializer,
                                           NationalIDDetailSerializer, OrganizationFileSerializer, AddressSerializer, QualificationSerializer,
-                                          DepartmentSerializer, OrganizationSettingsSerializer, EmployeeProfileChangeRequestSerializer)
+                                          DepartmentSerializer, PostSerializer, OrganizationSettingsSerializer, EmployeeProfileChangeRequestSerializer)
 from organization.models import (
-    Address, BankDetail, Department, Document, Employee, EmployeeAnalysisReport,
+    Address, BankDetail, Department, Post, Document, Employee, EmployeeAnalysisReport,
     OrganizationFile, NationalIdDetail, Qualification, OrganizationSettings,
     EmployeeProfileChangeRequest)
 
@@ -23,6 +23,13 @@ class DepartmentRetrieveUpdateDeleteAPIView(RetrieveUpdateDestroyAPIView):
     serializer_class = DepartmentSerializer
     permission_classes = [IsAuthenticated]
     queryset = Department.objects.all()
+
+
+class PostListCreateAPIView(ListCreateAPIView):
+    nepali_date_filter_field = False
+    serializer_class = PostSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Post.objects.all()
 
 
 class EmployeeViewSet(viewsets.ModelViewSet):

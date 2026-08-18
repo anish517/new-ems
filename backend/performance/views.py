@@ -20,20 +20,27 @@ class PerformanceCategoryViewSet(viewsets.ModelViewSet):
             org = user.organization.first()
             if not org and hasattr(user, 'employee'):
                 org = user.employee.organization
-            if not org and getattr(user, 'is_hr', False):
+            if not org and (getattr(user, 'is_hr', False) or user.is_superuser):
                 from organization.models import Organization
                 org = Organization.objects.first()
             if org:
                 return PerformanceCategory.objects.filter(organization=org)
-            return PerformanceCategory.objects.none()
+            return PerformanceCategory.objects.all()
         except Exception:
-            return PerformanceCategory.objects.none()
+            return PerformanceCategory.objects.all()
 
     def perform_create(self, serializer):
         user = self.request.user
         org = user.organization.first()
+        if not org and hasattr(user, 'employee'):
+            org = user.employee.organization
+        if not org:
+            from organization.models import Organization
+            org = Organization.objects.first()
         if org:
             serializer.save(organization=org)
+        else:
+            serializer.save()
 
 
 class PerformanceReviewListCreateView(generics.ListCreateAPIView):

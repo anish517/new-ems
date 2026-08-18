@@ -1,3 +1,4 @@
+import 'package:ems_app/core/services/api_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/models/user_model.dart';
 import '../../../core/services/auth_service.dart';
@@ -56,9 +57,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       FirebaseNotificationService().registerDeviceToken();
       return true;
     } catch (e) {
+      final msg = ApiService.getErrorMessage(e);
       state = state.copyWith(
         isLoading: false,
-        error: 'Invalid email or password. Please try again.',
+        error: (msg.toLowerCase().contains('no active account') ||
+                msg.toLowerCase().contains('credentials') ||
+                msg.toLowerCase().contains('unauthorized'))
+            ? 'Invalid email or password. Please try again.'
+            : msg,
       );
       return false;
     }

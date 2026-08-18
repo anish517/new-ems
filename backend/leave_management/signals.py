@@ -97,6 +97,10 @@ def delete_leave_balance(sender, instance, using, **kwargs):
 
 @receiver(post_save, sender=LeaveRequest)
 def send_leave_request_notification(sender, instance, created, **kwargs):
+    if not instance.employee or not instance.employee.user:
+        return
+
+    emp_name = instance.employee.user.full_name or "Employee"
     employee_notification_title = ''
     employee_notification_message = ''
     admin_notification_title = ''
@@ -106,35 +110,41 @@ def send_leave_request_notification(sender, instance, created, **kwargs):
         employee_notification_title = 'Leave request sent'
         employee_notification_message = 'Your leave request has been sent.'
         admin_notification_title = 'New leave request received'
-        admin_notification_message = f'{instance.employee.user.full_name} has requested for leave.'
-
-    elif instance.is_reviewed and instance.is_approved:
-        if instance.is_paid:
-            employee_notification_title = 'Leave request approved as paid leave.'
-            employee_notification_message = 'Your leave request has been approved as paid leave.'
-            admin_notification_title = employee_notification_title
-            admin_notification_message = f'Leave requested by {instance.employee.user.full_name} for {instance.no_days} days approved as paid leave.'
+        admin_notification_message = f'{emp_name} has requested for leave.'
+    elif instance.is_reviewed:
+        if instance.is_approved:
+            leave_mode = 'paid leave' if instance.is_paid else 'unpaid leave'
+            employee_notification_title = f'Leave request approved as {leave_mode}.'
+            employee_notification_message = f'Your leave request for {instance.no_days} days has been approved as {leave_mode}.'
+            admin_notification_title = f'Leave request approved as {leave_mode}.'
+            admin_notification_message = f'Leave requested by {emp_name} for {instance.no_days} days approved as {leave_mode}.'
         else:
-            employee_notification_title = 'Leave request approved as unpaid leave.'
-            employee_notification_message = 'Your leave request has been approved as unpaid leave.'
-            admin_notification_title = employee_notification_title
-            admin_notification_message = f'Leave requested by {instance.employee.user.full_name} for {instance.no_days} days approved as unpaid leave.'
+            employee_notification_title = 'Leave request declined'
+            employee_notification_message = 'Your leave request has been declined.'
+            admin_notification_title = 'Leave request declined'
+            admin_notification_message = f'Leave requested by {emp_name} for {instance.no_days} days was declined.'
     else:
-        employee_notification_title = 'Leave request declined'
-        employee_notification_message = 'Your leave request has been declined.'
+        # Not a new leave and not yet reviewed — do not generate notifications
+        return
 
-    employee_notification = Notification.objects.create(
-        user=instance.employee.user,
-        title=employee_notification_title,
-        message=employee_notification_message,
-        is_read=False,
-    )
-
-    admin_users = instance.organization.admin_users.all()
-    for user in admin_users:
-        admin_notification = Notification.objects.create(
-            user=user,
-            title=admin_notification_title,
-            message=admin_notification_message,
+    if employee_notification_title:
+        Notification.objects.create(
+            user=instance.employee.user,
+            title=employee_notification_title,
+            message=employee_notification_message,
+            notification_type='leave',
+            reference_id=instance.id,
             is_read=False,
         )
+
+    if admin_notification_title and instance.organization:
+        admin_users = instance.organization.admin_users.all()
+        for user in admin_users:
+            Notification.objects.create(
+                user=user,
+                title=admin_notification_title,
+                message=admin_notification_message,
+                notification_type='leave',
+                reference_id=instance.id,
+                is_read=False,
+            )

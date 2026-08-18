@@ -30,7 +30,7 @@ class ComplainSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'category', 'category_name', 'description',
                   'visibility', 'status', 'owner', 'owner_name',
                   'created_at', 'updated_at', 'replies']
-        read_only_fields = ['owner', 'status', 'created_at', 'updated_at']
+        read_only_fields = ['owner', 'created_at', 'updated_at']
 
     def get_category_name(self, obj):
         return obj.category.title if obj.category else None

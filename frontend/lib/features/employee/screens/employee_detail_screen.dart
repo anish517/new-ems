@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../shared/widgets/nepali_date_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +16,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'add_employee_sheet.dart';
 
 class EmployeeDetailScreen extends ConsumerStatefulWidget {
   final int id;
@@ -69,12 +72,30 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       );
 
       _loadAll();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Iconsax.tick_circle, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Text('Profile photo updated successfully!'),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(
               'Failed to update picture: ${ApiService.getErrorMessage(e)}'),
           backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ));
         setState(() => _loading = false);
       }
@@ -86,7 +107,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     final NepaliDateTime? start = await showDialog<NepaliDateTime>(
       context: context,
       builder: (ctx) => NepaliDatePickerDialog(
-        title: 'Select Start Date',
+        title: 'Select Start Date (B.S.)',
         initial: _startDate ?? now,
       ),
     );
@@ -96,7 +117,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     final NepaliDateTime? end = await showDialog<NepaliDateTime>(
       context: context,
       builder: (ctx) => NepaliDatePickerDialog(
-        title: 'Select End Date',
+        title: 'Select End Date (B.S.)',
         initial: _endDate ?? start,
         minDate: start,
       ),
@@ -139,7 +160,6 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       final response = await ApiService().get(url);
 
       final String csv = response.data.toString();
-      
       final bytes = utf8.encode(csv);
       final blob = html.Blob([bytes]);
       final blobUrl = html.Url.createObjectUrlFromBlob(blob);
@@ -147,11 +167,33 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         ..setAttribute("download", "employee_report_${widget.id}.csv")
         ..click();
       html.Url.revokeObjectUrl(blobUrl);
-      
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Iconsax.document_download, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Text('Employee performance & attendance report exported!'),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to download report: $e')));
+          SnackBar(
+            content: Text('Failed to download report: ${ApiService.getErrorMessage(e)}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
       }
     }
   }
@@ -292,7 +334,6 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 : t['assigned_to'];
             final isMyTask =
                 assignedId == widget.id || t['employee'] == widget.id;
-            // Only count active (non-done) tasks
             final isActive = t['status'] != 'done';
             return isMyTask && isActive;
           }).toList();
@@ -361,8 +402,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Failed to load employee details'),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed to load employee details: ${ApiService.getErrorMessage(e)}'),
           backgroundColor: AppColors.error));
     }
   }
@@ -375,8 +416,20 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(action == 'approved' ? '✅ Change approved!' : '❌ Change rejected.'),
-          backgroundColor: action == 'approved' ? AppColors.success : AppColors.error,
+          content: Row(
+            children: [
+              Icon(action == 'approved' ? Iconsax.tick_circle : Iconsax.close_circle,
+                  color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Text(action == 'approved'
+                  ? 'Change request approved & applied!'
+                  : 'Change request rejected.'),
+            ],
+          ),
+          backgroundColor:
+              action == 'approved' ? AppColors.success : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ));
         _loadAll();
       }
@@ -385,8 +438,47 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Error: ${ApiService.getErrorMessage(e)}'),
           backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ));
       }
+    }
+  }
+
+  void _openEditModal() {
+    final isDesktop = MediaQuery.of(context).size.width >= 768;
+    if (isDesktop) {
+      showDialog(
+        context: context,
+        builder: (ctx) => Dialog(
+          backgroundColor: ctx.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+            side: BorderSide(color: ctx.border),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 680),
+            child: AddEmployeeSheet(
+              onSuccess: _loadAll,
+              employee: _employee,
+            ),
+          ),
+        ),
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: context.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        builder: (_) => AddEmployeeSheet(
+          onSuccess: _loadAll,
+          employee: _employee,
+        ),
+      );
     }
   }
 
@@ -395,50 +487,135 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       context: context,
       backgroundColor: context.surface,
       isScrollControlled: true,
-      constraints: const BoxConstraints(maxWidth: 600),
+      constraints: const BoxConstraints(maxWidth: 640),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return DraggableScrollableSheet(
           expand: false,
-          initialChildSize: 0.6,
-          maxChildSize: 0.9,
+          initialChildSize: 0.65,
+          maxChildSize: 0.92,
           builder: (context, scrollController) {
             return Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Attendance Logs',
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Iconsax.calendar_1,
+                                color: AppColors.primary, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Full Attendance Logs',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: context.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Iconsax.close_circle, size: 20),
+                        color: AppColors.textSecondary,
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
                   if (_attendanceLogs.isEmpty)
-                    const Center(child: Text('No attendance logs found.'))
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Center(
+                        child: Text(
+                          'No attendance logs recorded for this period.',
+                          style: TextStyle(color: context.textSecondary),
+                        ),
+                      ),
+                    )
                   else
                     Expanded(
-                      child: ListView.builder(
+                      child: ListView.separated(
                         controller: scrollController,
                         itemCount: _attendanceLogs.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final log = _attendanceLogs[index];
                           final date = log['date'] ?? 'N/A';
-                          final checkIn = log['check_in_time'] ?? '--:--';
-                          final checkOut = log['check_out_time'] ?? '--:--';
-                          return Card(
-                            color: context.bg,
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              leading: const Icon(Iconsax.calendar_1,
-                                  color: AppColors.primary),
-                              title: Text('Date: $date'),
-                              subtitle: Text('In: $checkIn  |  Out: $checkOut'),
+                          final checkIn = log['check_in_time']?.toString().split('.')[0] ?? '--:--';
+                          final checkOut = log['check_out_time']?.toString().split('.')[0] ?? '--:--';
+                          final isRemote = log['is_remote'] == true;
+
+                          return Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: context.bg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: context.border),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: (isRemote ? AppColors.accent : AppColors.primary)
+                                        .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    isRemote ? Iconsax.home : Iconsax.building,
+                                    color: isRemote ? AppColors.accent : AppColors.primary,
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        date,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                          color: context.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'In: $checkIn  •  Out: $checkOut',
+                                        style: const TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  icon: const Icon(Iconsax.location, size: 16),
+                                  label: const Text('View Proof',
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                                  onPressed: () => _showLogDetails(log),
+                                ),
+                              ],
                             ),
                           );
                         },
                       ),
-                    )
+                    ),
                 ],
               ),
             );
@@ -451,412 +628,1919 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(nepaliDateProvider, (_, __) => _loadAll());
+    final isDark = context.isDark;
 
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: context.bg,
+        body: const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
     }
 
     if (_employee == null) {
-      return const Scaffold(body: Center(child: Text("Employee not found")));
+      return Scaffold(
+        backgroundColor: context.bg,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Iconsax.user_remove, size: 48, color: AppColors.textSecondary),
+              const SizedBox(height: 12),
+              const Text('Employee Record Not Found',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => context.pop(),
+                child: const Text('Go Back'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     final user = _employee!['user'] ?? {};
-    final name = "${user['first_name'] ?? ''} ${user['last_name'] ?? ''}";
-    final email = user['email'] ?? '';
-    final role = user['role'] ?? 'employee';
+    final fname = (user['first_name'] ?? '').toString();
+    final lname = (user['last_name'] ?? '').toString();
+    final fullName = '$fname $lname'.trim().isNotEmpty
+        ? '$fname $lname'.trim()
+        : (_employee!['official_email'] ?? 'Employee Profile');
+    final email = user['email'] ?? _employee!['official_email'] ?? '';
+    final designation = _employee!['designation_title'] ??
+        (_employee!['post'] is Map ? _employee!['post']['title'] : null) ??
+        'Staff Member';
+    final empType = _employee!['employee_type'] ?? 'full_time';
+    final isActive = _employee!['is_active'] == true;
 
     return Scaffold(
       backgroundColor: context.bg,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top breadcrumb and back button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final availableWidth = constraints.maxWidth - 48;
+
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minWidth: availableWidth > 0 ? availableWidth : 0,
+                  maxWidth: availableWidth > 0 ? availableWidth : double.infinity,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    IconButton(
-                      icon: const Icon(Iconsax.arrow_left),
-                      onPressed: () => context.pop(),
+              // ── Top Navigation & Filters Bar ──────────────────────────────
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isMobile = constraints.maxWidth < 700;
+
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: context.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: context.border, width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    Text('Organization > Employees > Detail',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleSmall
-                            ?.copyWith(color: AppColors.textSecondary)),
+                    child: Flex(
+                      direction: isMobile ? Axis.vertical : Axis.horizontal,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: isMobile
+                          ? CrossAxisAlignment.stretch
+                          : CrossAxisAlignment.center,
+                      children: [
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Iconsax.arrow_left, size: 20),
+                              onPressed: () => context.pop(),
+                              style: IconButton.styleFrom(
+                                backgroundColor: context.card,
+                                side: BorderSide(color: context.border),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Employee Details',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: context.textPrimary,
+                                  ),
+                                ),
+                                Text(
+                                  'Staff ID: ${_employee!['get_id'] ?? 'EMP_${widget.id}'}',
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        if (isMobile) const SizedBox(height: 14),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          alignment: isMobile ? WrapAlignment.start : WrapAlignment.end,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 9),
+                              decoration: BoxDecoration(
+                                color: context.card,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: context.border),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Iconsax.calendar_1,
+                                      size: 15, color: AppColors.primary),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _startDate != null && _endDate != null
+                                        ? '${_startDate!.year}-${_startDate!.month.toString().padLeft(2, '0')}-${_startDate!.day.toString().padLeft(2, '0')} to ${_endDate!.year}-${_endDate!.month.toString().padLeft(2, '0')}-${_endDate!.day.toString().padLeft(2, '0')}'
+                                        : 'Current Month (B.S.)',
+                                    style: TextStyle(
+                                      color: context.textPrimary,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            OutlinedButton.icon(
+                              icon: const Icon(Iconsax.calendar_search, size: 16),
+                              label: const Text('Filter Dates'),
+                              onPressed: _pickDateRange,
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              icon: const Icon(Iconsax.document_download,
+                                  size: 16, color: Colors.white),
+                              label: const Text('Export Report',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold)),
+                              onPressed: _downloadReport,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // ── Hero Profile Card ─────────────────────────────────────────
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: context.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: context.border, width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
                   ],
                 ),
-                Expanded(
-                  child: Wrap(
-                    alignment: WrapAlignment.end,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 12,
-                    runSpacing: 12,
+                child: Column(
+                  children: [
+                    // Top Accent Banner
+                    Container(
+                      height: 80,
+                      decoration: const BoxDecoration(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                        gradient: LinearGradient(
+                          colors: [AppColors.primary, AppColors.primaryDark],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                    ),
+                    // Profile Info & Avatar Row
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // Avatar floating over banner
+                          Transform.translate(
+                            offset: const Offset(0, -35),
+                            child: Stack(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: context.surface,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.15),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 44,
+                                    backgroundColor:
+                                        AppColors.primary.withValues(alpha: 0.15),
+                                    backgroundImage: user['profile_picture'] != null
+                                        ? NetworkImage(user['profile_picture'])
+                                        : null,
+                                    child: user['profile_picture'] == null
+                                        ? Text(
+                                            fname.isNotEmpty
+                                                ? fname[0].toUpperCase()
+                                                : 'E',
+                                            style: const TextStyle(
+                                              fontSize: 32,
+                                              fontWeight: FontWeight.w900,
+                                              color: AppColors.primary,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 4,
+                                  right: 4,
+                                  child: GestureDetector(
+                                    onTap: _updateProfilePicture,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: context.surface, width: 2.5),
+                                      ),
+                                      child: const Icon(Iconsax.camera,
+                                          size: 15, color: Colors.white),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 18),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: LayoutBuilder(
+                                builder: (context, c) {
+                                  final isTight = c.maxWidth < 500;
+
+                                  return Flex(
+                                    direction: isTight ? Axis.vertical : Axis.horizontal,
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: isTight
+                                        ? CrossAxisAlignment.start
+                                        : CrossAxisAlignment.center,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Wrap(
+                                            crossAxisAlignment: WrapCrossAlignment.center,
+                                            spacing: 8,
+                                            runSpacing: 4,
+                                            children: [
+                                              Text(
+                                                fullName,
+                                                style: TextStyle(
+                                                  fontSize: 22,
+                                                  fontWeight: FontWeight.w900,
+                                                  letterSpacing: -0.4,
+                                                  color: context.textPrimary,
+                                                ),
+                                              ),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 8, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: (isActive
+                                                          ? AppColors.success
+                                                          : AppColors.error)
+                                                      .withValues(alpha: 0.12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  isActive ? 'Active' : 'Inactive',
+                                                  style: TextStyle(
+                                                    color: isActive
+                                                        ? AppColors.success
+                                                        : AppColors.error,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '$designation · ${empType == 'full_time' ? 'Full-Time' : empType == 'part_time' ? 'Part-Time' : 'Intern'}',
+                                            style: const TextStyle(
+                                              fontSize: 13.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Wrap(
+                                            crossAxisAlignment: WrapCrossAlignment.center,
+                                            spacing: 12,
+                                            runSpacing: 4,
+                                            children: [
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Iconsax.sms,
+                                                      size: 14, color: AppColors.primary),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    email,
+                                                    style: const TextStyle(
+                                                      fontSize: 12.5,
+                                                      color: AppColors.textSecondary,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 6, vertical: 1.5),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.primary
+                                                      .withValues(alpha: 0.08),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  empType == 'full_time'
+                                                      ? 'Full Time'
+                                                      : empType == 'part_time'
+                                                          ? 'Part Time'
+                                                          : 'Intern',
+                                                  style: const TextStyle(
+                                                    fontSize: 10.5,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: AppColors.primary,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      if (isTight) const SizedBox(height: 12),
+                                      OutlinedButton.icon(
+                                        onPressed: _openEditModal,
+                                        icon: const Icon(Iconsax.edit_2, size: 16),
+                                        label: const Text('Edit Profile'),
+                                        style: OutlinedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 10),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ── KPI Metrics Grid ──────────────────────────────────────────
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  int crossAxisCount = 6;
+                  if (width < 600) {
+                    crossAxisCount = 2;
+                  } else if (width < 900) {
+                    crossAxisCount = 3;
+                  }
+
+                  return GridView.count(
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    childAspectRatio: width < 600 ? 1.35 : 1.25,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: context.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: context.border),
-                        ),
-                        child: Text(
-                          _startDate != null && _endDate != null
-                              ? '${_startDate!.year}-${_startDate!.month.toString().padLeft(2, '0')}-${_startDate!.day.toString().padLeft(2, '0')} to ${_endDate!.year}-${_endDate!.month.toString().padLeft(2, '0')}-${_endDate!.day.toString().padLeft(2, '0')}'
-                              : 'This Month',
-                          style: TextStyle(color: context.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold),
+                      _buildKpiCard(
+                        'Performance',
+                        _avgPerformance.toStringAsFixed(0),
+                        'Points',
+                        Iconsax.star1,
+                        AppColors.primary,
+                      ),
+                      GestureDetector(
+                        onTap: _showAttendanceLogs,
+                        child: _buildKpiCard(
+                          'Attendance',
+                          '${_attendanceStats?['total_no_of_days_present'] ?? 0}',
+                          'Days Present',
+                          Iconsax.calendar_1,
+                          AppColors.warning,
                         ),
                       ),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.calendar_month, size: 18),
-                        label: const Text('Filter'),
-                        onPressed: _pickDateRange,
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(0, 40),
-                          backgroundColor: context.surface,
-                          foregroundColor: context.textPrimary,
-                          elevation: 0,
-                          side: BorderSide(color: context.border),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 0),
-                        ),
+                      _buildKpiCard(
+                        'Working Hours',
+                        '${_attendanceStats?['total_working_hour'] ?? 0}',
+                        'Total Hours',
+                        Iconsax.clock,
+                        AppColors.accent,
                       ),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.download, size: 18),
-                        label: const Text('Report'),
-                        onPressed: _downloadReport,
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(0, 40),
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 0),
-                        ),
+                      _buildKpiCard(
+                        'Leaves',
+                        '$_approvedLeaves',
+                        'Days Approved',
+                        Iconsax.calendar_remove,
+                        AppColors.warning,
+                      ),
+                      _buildKpiCard(
+                        'Compensations',
+                        'Rs. ${_latestSalary.toStringAsFixed(0)}',
+                        'Net Paid',
+                        Iconsax.wallet_money,
+                        AppColors.success,
+                      ),
+                      _buildKpiCard(
+                        'Active Tasks',
+                        '$_taskCount',
+                        'In Progress',
+                        Iconsax.task_square,
+                        AppColors.error,
                       ),
                     ],
+                  );
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              // ── Calendar & Agenda Overview ────────────────────────────────
+              _buildAttendanceCalendarCard(context),
+
+              const SizedBox(height: 24),
+
+              // ── Pending Profile Change Requests (if any) ───────────────────
+              if (_pendingChangeRequests.isNotEmpty) ...[
+                _buildChangeRequestsSection(context),
+                const SizedBox(height: 24),
+              ],
+
+              // ── Personal & Organizational Info ────────────────────────────
+              _buildPersonalInfoSection(context),
+
+              const SizedBox(height: 24),
+
+              // ── Verification Documents ────────────────────────────────────
+              _buildDocumentsSection(context),
+
+              const SizedBox(height: 24),
+
+              // ── Recent Attendance Logs Table ──────────────────────────────
+              _buildAttendanceTable(context),
+            ],
+          ),
+        ),
+      );
+    },
+  ),
+),
+);
+  }
+
+  Widget _buildKpiCard(
+      String title, String value, String subtitle, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.border, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 16),
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
+                  color: context.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttendanceCalendarCard(BuildContext context) {
+    final now = NepaliDateTime.now();
+    final year = ApiService.globalNepaliYear ?? now.year;
+    final month = ApiService.globalNepaliMonth ?? now.month;
+    final presentDates =
+        _attendanceLogs.map((e) => e['date'].toString()).toSet();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.border, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Iconsax.calendar_tick,
+                        color: AppColors.primary, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Monthly Attendance Visualizer (B.S. $year/$month)',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _legendDot(AppColors.success, 'Present'),
+                  const SizedBox(width: 14),
+                  _legendDot(AppColors.primary, 'Today'),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 1.6,
+            ),
+            itemCount: 32,
+            itemBuilder: (context, index) {
+              final day = index + 1;
+              String dateStr =
+                  '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
+              bool isValid = true;
+              try {
+                NepaliDateTime.parse(dateStr);
+              } catch (_) {
+                isValid = false;
+              }
+
+              if (!isValid) return const SizedBox();
+
+              final isPresent = presentDates.contains(dateStr);
+              final isToday =
+                  (day == now.day && month == now.month && year == now.year);
+
+              return Container(
+                decoration: BoxDecoration(
+                  color: isPresent
+                      ? AppColors.success.withValues(alpha: 0.15)
+                      : context.bg,
+                  border: Border.all(
+                    color: isToday
+                        ? AppColors.primary
+                        : (isPresent
+                            ? AppColors.success.withValues(alpha: 0.5)
+                            : context.border),
+                    width: isToday ? 2 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  day.toString(),
+                  style: TextStyle(
+                    color: isPresent
+                        ? AppColors.success
+                        : (isToday ? AppColors.primary : context.textPrimary),
+                    fontWeight:
+                        isToday || isPresent ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 13,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Profile Header Card
-            Container(
-              padding: const EdgeInsets.all(24),
+  Widget _legendDot(Color color, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 9,
+          height: 9,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          text,
+          style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChangeRequestsSection(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(isMobile ? 14 : 20),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Iconsax.info_circle, color: AppColors.warning, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Pending Profile Update Requests (${_pendingChangeRequests.length})',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.warning,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ..._pendingChangeRequests.map((req) {
+            final field = req['field_name'] ?? '';
+            final val = req['new_value'] ?? '-';
+            final int reqId = (req['id'] is int)
+                ? (req['id'] as int)
+                : (int.tryParse('${req['id']}') ?? 0);
+
+            return Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: context.surface,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: context.border),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4))
+                    color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
                 ],
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Stack(
+                  Row(
                     children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundImage: user['profile_picture'] != null
-                            ? NetworkImage(user['profile_picture'])
-                            : null,
-                        child: user['profile_picture'] == null
-                            ? const Icon(Iconsax.user, size: 40)
-                            : null,
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: _updateProfilePicture,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Iconsax.camera,
-                                size: 16, color: Colors.white),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _fieldLabel(field),
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary,
                           ),
                         ),
-                      )
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Requested Update',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 10),
+                  Text(
+                    'Requested New Value: $val',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 10,
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Text(name,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 4),
-                        Text(role.toString().toUpperCase(),
-                            style: const TextStyle(color: AppColors.primary)),
-                        const SizedBox(height: 4),
-                        Text(email,
-                            style: const TextStyle(
-                                color: AppColors.textSecondary)),
+                        OutlinedButton.icon(
+                          icon: const Icon(Iconsax.close_circle, size: 16, color: AppColors.error),
+                          label: const Text(
+                            'Reject',
+                            style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.error),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.error, width: 1.2),
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: () => _actionChangeRequest(reqId, 'rejected'),
+                        ),
+                        ElevatedButton.icon(
+                          icon: const Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
+                          label: const Text(
+                            'Approve',
+                            style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success,
+                            elevation: 1,
+                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: () => _actionChangeRequest(reqId, 'approved'),
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
+            );
+          }),
+        ],
+      ),
+    );
+  }
 
-            // Grid of KPI Cards & Calendar
-            Row(
+  Widget _buildPersonalInfoSection(BuildContext context) {
+    final emp = _employee!;
+    final designation = emp['designation_title'] ??
+        (emp['post'] is Map ? emp['post']['title'] : null) ??
+        'Staff Member';
+    final permanent = _addresses.firstWhere(
+      (a) => a['type'] == 'permanent',
+      orElse: () => _addresses.isNotEmpty ? _addresses.first : null,
+    );
+    final bank = _bankDetails.isNotEmpty ? _bankDetails.first : null;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.border, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Iconsax.user_octagon,
+                    color: AppColors.primary, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Personal & Statutory Information',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: context.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 24,
+            runSpacing: 18,
+            children: [
+              _infoTile(Iconsax.call, 'Primary Phone', emp['phone_no'] ?? 'N/A'),
+              _infoTile(Iconsax.user, "Father's Name", emp['father_name'] ?? 'N/A'),
+              _infoTile(Iconsax.user, "Grandfather's Name",
+                  emp['grandfather_name'] ?? 'N/A'),
+              _infoTile(Iconsax.health, 'Blood Group', emp['blood_group'] ?? 'N/A'),
+              _infoTile(Iconsax.call_calling, 'Emergency Contact',
+                  emp['emergency_phone_number'] ??
+                      emp['alternative_contact_number'] ??
+                      'N/A'),
+              _infoTile(Iconsax.sms_tracking, 'Personal Email',
+                  emp['personal_email'] ?? 'N/A'),
+              _infoTile(Iconsax.man, 'Gender',
+                  (emp['gender'] ?? 'N/A').toString().toUpperCase()),
+              _infoTile(Iconsax.calendar_1, 'Date of Birth (B.S.)',
+                  emp['date_of_birth'] ?? 'N/A'),
+              _infoTile(
+                Iconsax.location,
+                'Permanent Address',
+                permanent != null
+                    ? '${permanent['street'] ?? ''}, ${permanent['district'] ?? ''}, ${permanent['state'] ?? ''}'
+                        .replaceAll(RegExp(r'^,\s*|,\s*$'), '')
+                        .trim()
+                    : 'N/A',
+              ),
+              _infoTile(Iconsax.award, 'Designation', designation),
+              _infoTile(Iconsax.bank, 'Bank Name',
+                  bank != null ? bank['bank_name'] ?? 'N/A' : 'N/A'),
+              _infoTile(Iconsax.user_tag, 'Account Holder Name',
+                  bank != null ? (bank['account_name'] ?? 'N/A') : 'N/A'),
+              _infoTile(Iconsax.card, 'Bank Account No.',
+                  bank != null ? bank['account_number'] ?? 'N/A' : 'N/A'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoTile(IconData icon, String label, String value) {
+    return SizedBox(
+      width: 250,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 3,
-                  child: GridView.count(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 1.5,
-                    children: [
-                      _buildKpiCard(
-                          'Performance Points',
-                          _avgPerformance.toStringAsFixed(0),
-                          Iconsax.chart_2,
-                          AppColors.primary),
-                      GestureDetector(
-                        onTap: _showAttendanceLogs,
-                        child: _buildKpiCard(
-                            'Attendance',
-                            '${_attendanceStats?['total_no_of_days_present'] ?? 0} days',
-                            Iconsax.calendar_1,
-                            AppColors.warning),
-                      ),
-                      _buildKpiCard(
-                          'Average working hour',
-                          '${_attendanceStats?['total_working_hour'] ?? 0} Hrs',
-                          Iconsax.clock,
-                          AppColors.warning),
-                      _buildKpiCard('Leaves', '$_approvedLeaves days',
-                          Iconsax.cloud_drizzle, AppColors.accent),
-                      _buildKpiCard(
-                          'Salary',
-                          'Rs. ${_latestSalary.toStringAsFixed(0)}',
-                          Iconsax.money,
-                          AppColors.success),
-                      _buildKpiCard('Tasks', 'Active: $_taskCount',
-                          Iconsax.task_square, AppColors.error),
-                    ],
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(width: 24),
-                // Mini Calendar Widget mock
-                Expanded(
-                  flex: 1,
-                  child: _buildCalendar(),
-                )
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: context.textPrimary,
+                  ),
+                ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
 
-            const SizedBox(height: 32),
+  Future<void> _uploadNewDocument() async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'],
+    );
+    if (result == null || result.files.isEmpty || !mounted) return;
 
-            // Personal Information Section
-            const Text('Personal Information',
-                style: AppTextStyles.pageTitle),
-            const SizedBox(height: 16),
-            Container(
+    final file = result.files.first;
+    final baseName = file.name.contains('.')
+        ? file.name.substring(0, file.name.lastIndexOf('.'))
+        : file.name;
+
+    final nameCtrl = TextEditingController(text: baseName);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Row(
+          children: [
+            Icon(Iconsax.document_upload, color: AppColors.primary, size: 20),
+            SizedBox(width: 10),
+            Text('Attach Verification Document',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Selected: ${file.name} (${(file.size / 1024).toStringAsFixed(1)} KB)',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Document Name / Label',
+                hintText: 'e.g. Citizenship Card, Resume, PAN Document',
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child:
+                Text('Cancel', style: TextStyle(color: context.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Upload Document',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        List<int> fileBytes;
+        if (file.bytes != null) {
+          fileBytes = file.bytes!;
+        } else if (file.path != null) {
+          fileBytes = await File(file.path!).readAsBytes();
+        } else {
+          return;
+        }
+
+        final docName = nameCtrl.text.trim().isNotEmpty
+            ? nameCtrl.text.trim()
+            : file.name;
+
+        final formData = FormData.fromMap({
+          'employee': widget.id,
+          'name': docName,
+          'file': MultipartFile.fromBytes(fileBytes, filename: file.name),
+        });
+
+        await ApiService().post(
+          '${AppConstants.organizationBase}/documents/',
+          data: formData,
+        );
+
+        _loadAll();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Document uploaded successfully!'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to upload document'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _renameDocument(Map<String, dynamic> doc) {
+    final ctrl = TextEditingController(text: doc['name'] ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Row(
+          children: [
+            Icon(Iconsax.edit_2, color: AppColors.primary, size: 20),
+            SizedBox(width: 10),
+            Text('Rename Document',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: 'Document Name',
+            hintText: 'e.g. Citizenship Card, Offer Letter, Academic Certificate',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child:
+                Text('Cancel', style: TextStyle(color: context.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newName = ctrl.text.trim();
+              if (newName.isNotEmpty) {
+                try {
+                  await ApiService().patch(
+                    '${AppConstants.organizationBase}/documents/${doc['id']}/',
+                    data: {'name': newName},
+                  );
+                  setState(() => doc['name'] = newName);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Document renamed successfully!'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Failed to rename document'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                  }
+                }
+              }
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Save Name',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteDocument(int docId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('Delete Document',
+            style: TextStyle(fontWeight: FontWeight.w800)),
+        content: const Text(
+            'Are you sure you want to permanently delete this verification document?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child:
+                Text('Cancel', style: TextStyle(color: context.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Delete',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await ApiService()
+            .delete('${AppConstants.organizationBase}/documents/$docId/');
+        setState(() {
+          _documents.removeWhere((d) => d['id'] == docId);
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Document deleted successfully!'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to delete document'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _previewDocument(Map<String, dynamic> doc) async {
+    final String url = doc['file'] ?? '';
+    final String name = doc['name'] ?? 'Document';
+    final bool isImage = url.toLowerCase().endsWith('.png') ||
+        url.toLowerCase().endsWith('.jpg') ||
+        url.toLowerCase().endsWith('.jpeg') ||
+        url.toLowerCase().endsWith('.webp');
+
+    if (isImage && url.isNotEmpty) {
+      showDialog(
+        context: context,
+        builder: (ctx) => Dialog(
+          backgroundColor: ctx.surface,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 550, maxHeight: 650),
+            child: Padding(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: context.surface,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4))
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          name,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: ctx.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Iconsax.document_download, size: 20),
+                            onPressed: () async {
+                              final uri = Uri.parse(url);
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri);
+                              }
+                            },
+                            tooltip: 'Open in new tab / Download',
+                            color: AppColors.primary,
+                          ),
+                          IconButton(
+                            icon: const Icon(Iconsax.close_circle, size: 20),
+                            onPressed: () => Navigator.pop(ctx),
+                            color: AppColors.textSecondary,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: InteractiveViewer(
+                        child: Image.network(
+                          url,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          },
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Center(child: Text('Failed to load image')),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              child: LayoutBuilder(builder: (ctx, c) {
-                final emp = _employee!;
-                final permanent = _addresses.firstWhere(
-                    (a) => a['type'] == 'permanent',
-                    orElse: () =>
-                        _addresses.isNotEmpty ? _addresses.first : null);
-                final bank =
-                    _bankDetails.isNotEmpty ? _bankDetails.first : null;
-                return Wrap(
-                  spacing: 24,
-                  runSpacing: 16,
-                  children: [
-                    _infoChip(
-                        Iconsax.mobile, 'Phone', emp['phone_no'] ?? 'N/A'),
-                    _infoChip(Iconsax.user, 'Father\'s Name',
-                        emp['father_name'] ?? 'N/A'),
-                    _infoChip(Iconsax.user, 'Grandfather\'s Name',
-                        emp['grandfather_name'] ?? 'N/A'),
-                    _infoChip(Iconsax.health, 'Blood Group',
-                        emp['blood_group'] ?? 'N/A'),
-                    _infoChip(Iconsax.call, 'Emergency Phone',
-                        emp['emergency_phone_number'] ?? emp['alternative_contact_number'] ?? 'N/A'),
-                    _infoChip(Iconsax.sms, 'Personal Email',
-                        emp['personal_email'] ?? 'N/A'),
-                    _infoChip(
-                        Iconsax.profile_circle,
-                        'Gender',
-                        (emp['gender'] as String? ?? 'N/A').isNotEmpty
-                            ? ((emp['gender'] as String)
-                                    .substring(0, 1)
-                                    .toUpperCase() +
-                                (emp['gender'] as String).substring(1))
-                            : 'N/A'),
-                    _infoChip(Iconsax.calendar, 'Date of Birth',
-                        emp['date_of_birth'] ?? 'N/A'),
-                    _infoChip(Iconsax.heart, 'Marital Status', (() {
-                      final m = (emp['marital_status'] ?? 'N/A')
-                          .toString()
-                          .replaceAll('_', ' ');
-                      return m.isNotEmpty
-                          ? m.substring(0, 1).toUpperCase() + m.substring(1)
-                          : m;
-                    })()),
-                    _infoChip(Iconsax.briefcase, 'Employee Type', (() {
-                      final t = (emp['employee_type'] ?? 'N/A')
-                          .toString()
-                          .replaceAll('_', ' ');
-                      return t.isNotEmpty
-                          ? t.substring(0, 1).toUpperCase() + t.substring(1)
-                          : t;
-                    })()),
-                    _infoChip(
-                        Iconsax.location,
-                        'Address',
-                        permanent != null
-                            ? '${permanent['street'] ?? ''}, ${permanent['district'] ?? ''}, ${permanent['state'] ?? ''}'
-                                .replaceAll(RegExp(r'^,\s*|,\s*$'), '')
-                                .trim()
-                            : 'N/A'),
-                    _infoChip(Iconsax.bank, 'Bank',
-                        bank != null ? bank['bank_name'] ?? 'N/A' : 'N/A'),
-                    _infoChip(Iconsax.card, 'Account Number',
-                        bank != null ? bank['account_number'] ?? 'N/A' : 'N/A'),
-                  ],
-                );
-              }),
             ),
+          ),
+        ),
+      );
+    } else if (url.isNotEmpty) {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    }
+  }
 
-            const SizedBox(height: 32),
-
-            // Pending Profile Change Requests
-            if (_pendingChangeRequests.isNotEmpty) ...[
-              Row(children: [
-                const Text('Pending Change Requests',
-                    style: AppTextStyles.pageTitle),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
+  Widget _buildDocumentsSection(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.border, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Iconsax.document_upload,
+                        color: AppColors.primary, size: 18),
                   ),
-                  child: Text(
-                    '${_pendingChangeRequests.length}',
-                    style: const TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold, fontSize: 12),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Verification Documents (${_documents.length})',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: context.textPrimary,
+                    ),
                   ),
+                ],
+              ),
+              OutlinedButton.icon(
+                onPressed: _uploadNewDocument,
+                icon: const Icon(Iconsax.document_upload, size: 16),
+                label: const Text('Add Document',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                style: OutlinedButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
-              ]),
-              const SizedBox(height: 12),
-              ...(_pendingChangeRequests.map((req) => Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: Padding(
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          if (_documents.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(
+                  'No documents uploaded for this employee.',
+                  style: TextStyle(color: context.textSecondary),
+                ),
+              ),
+            )
+          else
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: _documents.map((doc) {
+                final String name = doc['name'] ?? 'Document';
+                final String url = doc['file'] ?? '';
+                final bool isImage = url.toLowerCase().endsWith('.png') ||
+                    url.toLowerCase().endsWith('.jpg') ||
+                    url.toLowerCase().endsWith('.jpeg') ||
+                    url.toLowerCase().endsWith('.webp');
+
+                return Container(
+                  width: 220,
                   padding: const EdgeInsets.all(14),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          if ((req['employee_name'] ?? '').toString().isNotEmpty)
-                            Text(
-                              req['employee_name'] as String,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  decoration: BoxDecoration(
+                    color: context.card,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: context.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            isImage ? Iconsax.gallery : Iconsax.document_text,
+                            color: isImage
+                                ? AppColors.primary
+                                : AppColors.accent,
+                            size: 24,
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
                             ),
+                            child: Text(
+                              isImage ? 'IMG' : 'DOC',
+                              style: const TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: () => _renameDocument(doc),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Iconsax.edit_2,
+                                size: 13, color: AppColors.accent),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        url.split('/').last,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          IconButton(
+                            onPressed: () => _previewDocument(doc),
+                            icon: const Icon(Iconsax.eye, size: 16),
+                            tooltip: 'Preview Document',
+                            visualDensity: VisualDensity.compact,
+                            color: AppColors.primary,
+                          ),
+                          IconButton(
+                            onPressed: () => _renameDocument(doc),
+                            icon: const Icon(Iconsax.edit_2, size: 16),
+                            tooltip: 'Rename Document',
+                            visualDensity: VisualDensity.compact,
+                            color: AppColors.accent,
+                          ),
+                          IconButton(
+                            onPressed: () => _deleteDocument(doc['id']),
+                            icon: const Icon(Iconsax.trash, size: 16),
+                            tooltip: 'Delete Document',
+                            visualDensity: VisualDensity.compact,
+                            color: AppColors.error,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttendanceTable(BuildContext context) {
+    String formatTime(String? t) {
+      if (t == null || t.isEmpty) return '-';
+      return t.split('.')[0];
+    }
+
+    String formatDate(String? d) {
+      if (d == null || d.isEmpty) return '-';
+      try {
+        return NepaliDateFormat('dd MMMM yyyy').format(NepaliDateTime.parse(d));
+      } catch (_) {
+        return d;
+      }
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.border, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Iconsax.clock,
+                        color: AppColors.primary, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Recent Attendance Logs',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              if (_attendanceLogs.isNotEmpty)
+                TextButton.icon(
+                  onPressed: _showAttendanceLogs,
+                  icon: const Icon(Iconsax.eye, size: 16),
+                  label: const Text('View All Logs'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_attendanceLogs.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'No attendance logs recorded.',
+                  style: TextStyle(color: context.textSecondary),
+                ),
+              ),
+            )
+          else
+            ...List.generate(
+              _attendanceLogs.length > 5 ? 5 : _attendanceLogs.length,
+              (index) {
+                final log = _attendanceLogs[index];
+                final isRemote = log['is_remote'] == true;
+                final inTime = formatTime(log['check_in_time']?.toString());
+                final outTime = formatTime(log['check_out_time']?.toString());
+
+                return Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: context.card,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: context.border),
+                  ),
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: (isRemote
+                                      ? AppColors.accent
+                                      : AppColors.primary)
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              isRemote ? Iconsax.home : Iconsax.building,
+                              color: isRemote
+                                  ? AppColors.accent
+                                  : AppColors.primary,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                formatDate(log['date']?.toString()),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                'In: $inTime  •  Out: $outTime',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      OutlinedButton.icon(
+                        icon: const Icon(Iconsax.location, size: 14),
+                        label: const Text('View Proof',
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w700)),
+                        onPressed: () => _showLogDetails(log),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogDetails(Map log) {
+    String formatTime(String? t) {
+      if (t == null || t.isEmpty) return '-';
+      return t.split('.')[0];
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: ctx.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: ctx.border),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 540),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Attendance Log: ${log['date']}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: ctx.textPrimary,
+                            ),
+                          ),
                           const SizedBox(height: 2),
                           Text(
-                            '${_fieldLabel(req['field_name'] ?? '')} Change',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            'In: ${formatTime(log['check_in_time']?.toString())}  •  Out: ${formatTime(log['check_out_time']?.toString())}',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Requested: ${req['new_value'] ?? '-'}',
-                            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                          ),
-                        ]),
+                        ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text('PENDING',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.warning)),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Iconsax.close_circle, size: 20),
+                        color: AppColors.textSecondary,
                       ),
-                    ]),
-                    const SizedBox(height: 10),
-                    Row(children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.error,
-                            side: const BorderSide(color: AppColors.error),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                          icon: const Icon(Icons.close, size: 14),
-                          label: const Text('Reject'),
-                          onPressed: () => _actionChangeRequest(req['id'] as int, 'rejected'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.success,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                          icon: const Icon(Icons.check, size: 14),
-                          label: const Text('Approve'),
-                          onPressed: () => _actionChangeRequest(req['id'] as int, 'approved'),
-                        ),
-                      ),
-                    ]),
-                  ]),
-                ),
-              ))),
-              const SizedBox(height: 16),
-            ],
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Divider(color: ctx.border),
+                  const SizedBox(height: 12),
 
-            const Text('Documents',
-                style: AppTextStyles.pageTitle),
-            const SizedBox(height: 16),
-            _buildDocumentsSection(context),
+                  const Text(
+                    'Biometric / Selfie Check-In Photos',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Check-In Photo',
+                                style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.textSecondary)),
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: log['check_in_photo'] != null
+                                  ? Image.network(log['check_in_photo'],
+                                      height: 140,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover)
+                                  : Container(
+                                      height: 140,
+                                      color: ctx.bg,
+                                      child: const Center(
+                                          child: Text('No photo',
+                                              style: TextStyle(
+                                                  color: AppColors
+                                                      .textSecondary))),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Check-Out Photo',
+                                style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.textSecondary)),
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: log['check_out_photo'] != null
+                                  ? Image.network(log['check_out_photo'],
+                                      height: 140,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover)
+                                  : Container(
+                                      height: 140,
+                                      color: ctx.bg,
+                                      child: const Center(
+                                          child: Text('No photo',
+                                              style: TextStyle(
+                                                  color: AppColors
+                                                      .textSecondary))),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
 
-            const SizedBox(height: 32),
-            const Text('Recent Attendance Logs',
-                style: AppTextStyles.pageTitle),
-            const SizedBox(height: 16),
-            _buildAttendanceTable(context),
-          ],
+                  const SizedBox(height: 20),
+                  const Text(
+                    'GPS Geo-Location Verification',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 200,
+                    child: Builder(
+                      builder: (context) {
+                        double? lat = double.tryParse(
+                            log['check_in_lat']?.toString() ?? '');
+                        double? lng = double.tryParse(
+                            log['check_in_lng']?.toString() ?? '');
+                        if (lat != null && lng != null) {
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: GoogleMap(
+                              initialCameraPosition: CameraPosition(
+                                target: LatLng(lat, lng),
+                                zoom: 15,
+                              ),
+                              markers: {
+                                Marker(
+                                  markerId: const MarkerId('checkin'),
+                                  position: LatLng(lat, lng),
+                                  infoWindow: const InfoWindow(
+                                      title: 'Check-In Location'),
+                                ),
+                              },
+                              zoomControlsEnabled: false,
+                              myLocationButtonEnabled: false,
+                            ),
+                          );
+                        }
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: ctx.bg,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: ctx.border),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'No GPS coordinates recorded for this check-in.',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -870,422 +2554,4 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     };
     return labels[fieldName] ?? fieldName.replaceAll('_', ' ').toUpperCase();
   }
-
-  Widget _infoChip(IconData icon, String label, String value) {
-    return SizedBox(
-      width: 240,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: AppColors.primary, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 12)),
-                const SizedBox(height: 2),
-                Text(value,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 14)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildKpiCard(String title, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: context.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4))
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 14)),
-                const SizedBox(height: 8),
-                Text(value,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 18)),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAttendanceTable(BuildContext context) {
-    if (_attendanceLogs.isEmpty) {
-      return const Center(
-          child: Text("No attendance records found.",
-              style: TextStyle(color: AppColors.textSecondary)));
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
-        ],
-      ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: _attendanceLogs.length,
-        separatorBuilder: (_, __) =>
-            Divider(height: 1, color: context.border),
-        itemBuilder: (context, index) {
-          final log = _attendanceLogs[index];
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Icon(log['is_remote'] == true ? Iconsax.home : Iconsax.building,
-                    color: AppColors.primary),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(log['date'] ?? '',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 16)),
-                      const SizedBox(height: 4),
-                      Text(
-                          'In: ${log['check_in_time']?.toString().split('.')[0] ?? '-'} | Out: ${log['check_out_time']?.toString().split('.')[0] ?? '-'}',
-                          style: const TextStyle(
-                              color: AppColors.textSecondary, fontSize: 13)),
-                    ],
-                  ),
-                ),
-                TextButton.icon(
-                  icon: const Icon(Iconsax.map),
-                  label: const Text("View Map/Photos"),
-                  onPressed: () => _showLogDetails(log),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  void _showLogDetails(Map log) {
-    String formatTime(String? t) {
-      if (t == null || t.isEmpty) return '-';
-      return t.split('.')[0];
-    }
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Attendance Log: ${log['date']}'),
-            const SizedBox(height: 4),
-            Text(
-              'In: ${formatTime(log['check_in_time']?.toString())} | Out: ${formatTime(log['check_out_time']?.toString())}',
-              style:
-                  const TextStyle(fontSize: 14, color: AppColors.textSecondary),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 500,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("Photos",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        children: [
-                          const Text("Check-In"),
-                          const SizedBox(height: 4),
-                          log['check_in_photo'] != null
-                              ? Image.network(log['check_in_photo'],
-                                  height: 150, fit: BoxFit.cover)
-                              : const Text("No photo",
-                                  style: TextStyle(
-                                      color: AppColors.textSecondary)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          const Text("Check-Out"),
-                          const SizedBox(height: 4),
-                          log['check_out_photo'] != null
-                              ? Image.network(log['check_out_photo'],
-                                  height: 150, fit: BoxFit.cover)
-                              : const Text("No photo",
-                                  style: TextStyle(
-                                      color: AppColors.textSecondary)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                const Text("Map View",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 250,
-                  child: Builder(
-                    builder: (context) {
-                      double? lat = double.tryParse(
-                          log['check_in_lat']?.toString() ?? '');
-                      double? lng = double.tryParse(
-                          log['check_in_lng']?.toString() ?? '');
-                      if (lat != null && lng != null) {
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: GoogleMap(
-                            initialCameraPosition: CameraPosition(
-                              target: LatLng(lat, lng),
-                              zoom: 15,
-                            ),
-                            markers: {
-                              Marker(
-                                markerId: const MarkerId('checkin'),
-                                position: LatLng(lat, lng),
-                                infoWindow: const InfoWindow(
-                                    title: 'Check-In Location'),
-                              ),
-                            },
-                            zoomControlsEnabled: false,
-                            myLocationButtonEnabled: false,
-                          ),
-                        );
-                      }
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: context.border.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: context.border),
-                        ),
-                        child: const Center(
-                            child: Text(
-                                "No location data recorded for this check-in.")),
-                      );
-                    },
-                  ),
-                )
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text("Close"))
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCalendar() {
-    final now = NepaliDateTime.now();
-    final year = ApiService.globalNepaliYear ?? now.year;
-    final month = ApiService.globalNepaliMonth ?? now.month;
-    final presentDates =
-        _attendanceLogs.map((e) => e['date'].toString()).toSet();
-
-    return Container(
-      height: 400,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: context.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Attendance Calendar',
-                  style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 1.0,
-              ),
-              itemCount: 32, // simplified max days, typically enough for visual
-              itemBuilder: (context, index) {
-                final day = index + 1;
-                // Since exact days in month varies, we'll try to parse, if it fails it's out of month
-                String dateStr =
-                    '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
-                bool isValid = true;
-                try {
-                  NepaliDateTime.parse(dateStr);
-                } catch (_) {
-                  isValid = false;
-                }
-
-                if (!isValid) return const SizedBox();
-
-                final isPresent = presentDates.contains(dateStr);
-                final isToday =
-                    (day == now.day && month == now.month && year == now.year);
-
-                return Container(
-                  decoration: BoxDecoration(
-                    color: isPresent
-                        ? AppColors.success.withValues(alpha: 0.2)
-                        : context.bg,
-                    border: isToday
-                        ? Border.all(color: AppColors.primary, width: 2)
-                        : null,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    day.toString(),
-                    style: TextStyle(
-                      color:
-                          isPresent ? AppColors.success : context.textPrimary,
-                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                );
-              },
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDocumentsSection(BuildContext context) {
-    if (_documents.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: context.surface,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Center(
-          child: Text('No documents found.',
-              style: TextStyle(color: AppColors.textSecondary)),
-        ),
-      );
-    }
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      children: _documents.map((doc) {
-        final String name = doc['name'] ?? 'Document';
-        final String url = doc['file'] ?? '';
-        final bool isImage = url.toLowerCase().endsWith('.png') ||
-            url.toLowerCase().endsWith('.jpg') ||
-            url.toLowerCase().endsWith('.jpeg');
-        return InkWell(
-          onTap: () async {
-            if (isImage) {
-              showDialog(
-                context: context,
-                builder: (ctx) => Dialog(
-                  child: InteractiveViewer(
-                    child: Image.network(url),
-                  ),
-                ),
-              );
-            } else if (url.isNotEmpty) {
-              final uri = Uri.parse(url);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri);
-              }
-            }
-          },
-          child: Container(
-            width: 120,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: context.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: context.border),
-            ),
-            child: Column(
-              children: [
-                Icon(
-                  isImage ? Iconsax.image : Iconsax.document,
-                  size: 40,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  name,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-

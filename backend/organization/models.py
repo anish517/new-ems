@@ -293,6 +293,7 @@ class Qualification(models.Model):
 class BankDetail(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, null=True)
     bank_name = models.CharField(max_length=255, null=True, blank=True)
+    account_name = models.CharField(max_length=255, null=True, blank=True)
     account_number = models.CharField(max_length=255, blank=True)
 
     def __str__(self):

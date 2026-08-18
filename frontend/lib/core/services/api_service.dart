@@ -137,21 +137,50 @@ class ApiService {
           if (data.containsKey('detail')) return data['detail'].toString();
           if (data.containsKey('message')) return data['message'].toString();
           if (data.containsKey('non_field_errors')) {
-            return (data['non_field_errors'] as List).join(', ');
+            final nfe = data['non_field_errors'];
+            return nfe is List ? nfe.join(', ') : nfe.toString();
           }
-          // If it's a DRF field validation error, grab the first value
-          if (data.isNotEmpty) {
-            final firstValue = data.values.first;
-            if (firstValue is List && firstValue.isNotEmpty) {
-              return firstValue.first.toString();
+
+          final List<String> fieldErrors = [];
+          void extractErrors(String prefix, dynamic value) {
+            if (value is Map) {
+              value.forEach((k, v) {
+                final fieldName = prefix.isEmpty ? k.toString() : '$prefix $k';
+                extractErrors(fieldName, v);
+              });
+            } else if (value is List) {
+              final msgs = value.map((m) => m.toString()).join(' ');
+              final cleanFieldName = prefix
+                  .replaceAll('_', ' ')
+                  .split(' ')
+                  .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
+                  .join(' ');
+              fieldErrors.add('$cleanFieldName: $msgs');
+            } else if (value != null) {
+              final cleanFieldName = prefix
+                  .replaceAll('_', ' ')
+                  .split(' ')
+                  .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
+                  .join(' ');
+              fieldErrors.add('$cleanFieldName: $value');
             }
-            return firstValue.toString();
+          }
+
+          data.forEach((k, v) => extractErrors(k.toString(), v));
+          if (fieldErrors.isNotEmpty) {
+            return fieldErrors.join(' • ');
           }
         } else if (e.response!.data is String) {
-          return e.response!.data.toString();
+          final str = e.response!.data.toString();
+          if (str.isNotEmpty && !str.startsWith('<!DOCTYPE')) {
+            return str;
+          }
         }
       }
-      return 'Network Error: Please check your connection';
+      if (e.message != null && e.message!.isNotEmpty) {
+        return e.message!;
+      }
+      return 'Network error or server unavailable';
     }
     return e.toString();
   }

@@ -29,6 +29,30 @@ class DepartmentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class PostSerializer(serializers.ModelSerializer):
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all(), required=False, allow_null=True
+    )
+
+    class Meta:
+        model = Post
+        fields = '__all__'
+
+    def create(self, validated_data):
+        if not validated_data.get('department'):
+            dept = Department.objects.first()
+            if not dept:
+                from organization.models import Organization
+                org = Organization.objects.first()
+                dept = Department.objects.create(department_name='General', organization=org)
+            validated_data['department'] = dept
+        title = validated_data.get('title', '').strip()
+        existing = Post.objects.filter(title__iexact=title).first()
+        if existing:
+            return existing
+        return super().create(validated_data)
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization

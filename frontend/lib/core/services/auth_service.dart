@@ -10,8 +10,8 @@ class AuthService {
   /// Login with email + password, store JWT tokens
   Future<UserProfile> login(String email, String password) async {
     final response = await _api.post(AppConstants.tokenEndpoint, data: {
-      'email': email,
-      'password': password,
+      'email': email.trim().toLowerCase(),
+      'password': password.trim(),
     });
     final access  = response.data['access']  as String;
     final refresh = response.data['refresh'] as String;
