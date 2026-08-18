@@ -44,7 +44,7 @@ class GlobalMonthYearPicker extends ConsumerWidget {
                   const Icon(Iconsax.calendar_tick, color: AppColors.primary, size: 16),
                   const SizedBox(width: 6),
                   Text(
-                    'Fiscal B.S. Period',
+                    'Fiscal Period',
                     style: TextStyle(
                       color: context.textPrimary,
                       fontSize: 11.5,
@@ -144,7 +144,7 @@ class GlobalMonthYearPicker extends ConsumerWidget {
                       items: List.generate(30, (index) => 2075 + index).map((year) {
                         return DropdownMenuItem<int>(
                           value: year,
-                          child: Text('$year B.S.'),
+                          child: Text('$year'),
                         );
                       }).toList(),
                       onChanged: (val) {

@@ -125,293 +125,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
 
           SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isWide = constraints.maxWidth >= 960;
-
-                return Center(
-                  child: SingleChildScrollView(
-                    physics: const ClampingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-                    child: FadeTransition(
-                      opacity: _fadeAnim,
-                      child: SlideTransition(
-                        position: _slideAnim,
-                        child: isWide
-                            ? _buildWideLayout(context, authState)
-                            : _buildCompactLayout(context, authState),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Desktop Widescreen Layout (Split Hero + Form Card)
-  // ─────────────────────────────────────────────────────────────────────────────
-  Widget _buildWideLayout(BuildContext context, AuthState authState) {
-    final isDark = context.isDark;
-
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 1040),
-      decoration: BoxDecoration(
-        color: context.surface,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: context.border, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
-            blurRadius: 36,
-            offset: const Offset(0, 16),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Left Hero Showcase Panel
-            Expanded(
-              flex: 5,
-              child: Container(
-                padding: const EdgeInsets.all(48),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isDark
-                        ? [const Color(0xFF1E1B4B), const Color(0xFF0F172A)]
-                        : [const Color(0xFFEEF2FF), const Color(0xFFF8FAFC)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  border: Border(
-                    right: BorderSide(color: context.border, width: 1.2),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Brand Header
-                    Row(
-                      children: [
-                        _buildLogoBadge(size: 46, iconSize: 24),
-                        const SizedBox(width: 14),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'OmWay EMS',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
-                                color: context.textPrimary,
-                              ),
-                            ),
-                            Text(
-                              'Enterprise Workforce Suite',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: context.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 36),
-
-                    // Middle Value Proposition
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
+            child: Center(
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+                child: FadeTransition(
+                  opacity: _fadeAnim,
+                  child: SlideTransition(
+                    position: _slideAnim,
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 460),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 38),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.25),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.success,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Version 2.0 Live',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primary,
-                                ),
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(28),
+                            border: Border.all(color: context.border, width: 1.2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                                blurRadius: 36,
+                                offset: const Offset(0, 16),
                               ),
                             ],
                           ),
+                          child: _buildFormContent(context, authState),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Empowering Seamless\nWorkplace Operations.',
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w800,
-                            height: 1.2,
-                            letterSpacing: -0.8,
-                            color: context.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          'Complete GPS geofenced attendance, Bikram Sambat payroll, intelligent task tracking, and leave management.',
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            height: 1.6,
-                            color: context.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Feature Bullets
-                        _buildFeaturePill(
-                          icon: Iconsax.location,
-                          title: 'GPS Geofencing & Remote Check-In',
-                          subtitle: 'Real-time radius verification & photo proof',
-                        ),
-                        const SizedBox(height: 12),
-                        _buildFeaturePill(
-                          icon: Iconsax.calendar_1,
-                          title: 'Nepali Calendar Integration',
-                          subtitle: 'Automated fiscal year, holiday & leave sync',
-                        ),
-                        const SizedBox(height: 12),
-                        _buildFeaturePill(
-                          icon: Iconsax.card_pos,
-                          title: 'Automated Payroll & SSF / TDS',
-                          subtitle: '30-day basis salary calculations & payslips',
-                        ),
-                      ],
+                      ),
                     ),
-
-                    const SizedBox(height: 36),
-
-                    // Bottom Security Trust Badge
-                    Row(
-                      children: [
-                        const Icon(Iconsax.shield_tick,
-                            color: AppColors.success, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          '256-bit Encrypted · Role-Based Access Control',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: context.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Right Form Panel
-            Expanded(
-              flex: 5,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 48),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 400),
-                    child: _buildFormContent(context, authState),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Mobile / Compact Layout
-  // ─────────────────────────────────────────────────────────────────────────────
-  Widget _buildCompactLayout(BuildContext context, AuthState authState) {
-    final isDark = context.isDark;
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440),
-        child: Container(
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            color: context.surface,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: context.border, width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
-                blurRadius: 32,
-                offset: const Offset(0, 12),
-              ),
-            ],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header Brand Badge
-              Center(
-                child: _buildLogoBadge(size: 64, iconSize: 32),
-              ),
-              const SizedBox(height: 18),
-
-              // Title
-              Text(
-                'Welcome Back',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                  color: context.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Sign in to access your organization portal',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: context.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              _buildFormContent(context, authState),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -426,6 +174,72 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Centered Brand & Version Header
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _buildLogoBadge(size: 56, iconSize: 28),
+                const SizedBox(height: 12),
+                Text(
+                  'OmWay Technologies',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    color: context.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Enterprise Workforce Suite',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: context.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: AppColors.success,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Version 2.0 Live',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+
           // Email Label & Field
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -628,54 +442,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           size: iconSize,
         ),
       ),
-    );
-  }
-
-  Widget _buildFeaturePill({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.2),
-            ),
-          ),
-          child: Icon(icon, color: AppColors.primary, size: 18),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: context.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                  color: context.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 

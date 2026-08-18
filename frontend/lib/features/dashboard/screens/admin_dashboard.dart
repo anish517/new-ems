@@ -38,6 +38,17 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   String _fmtDate(NepaliDateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  String _formatNepaliHeaderDate(NepaliDateTime d) {
+    const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const months = [
+      '', 'Baishakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra',
+      'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
+    ];
+    final wName = weekdays[(d.weekday - 1).clamp(0, 6)];
+    final mName = months[d.month.clamp(1, 12)];
+    return '$wName, ${d.day.toString().padLeft(2, '0')} $mName, ${d.year}';
+  }
+
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Good Morning';
@@ -311,7 +322,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                   size: 14, color: AppColors.textSecondary),
                               const SizedBox(width: 6),
                               Text(
-                                '${NepaliDateFormat('EEEE, MMMM d, y').format(nowNepali)} (B.S.)',
+                                _formatNepaliHeaderDate(nowNepali),
                                 style: const TextStyle(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w500,

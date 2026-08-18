@@ -70,8 +70,17 @@ class AttendanceCorrectionRequestSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['employee', 'status', 'admin_note', 'reviewed_by', 'created_at', 'updated_at']
 
+    def validate(self, attrs):
+        cin = attrs.get('requested_check_in')
+        cout = attrs.get('requested_check_out')
+        if cin and cout and cout < cin and cout.hour < 12 and cin.hour >= 8:
+            import datetime as _dt
+            attrs['requested_check_out'] = _dt.time(cout.hour + 12, cout.minute, cout.second)
+        return attrs
+
     def get_reviewed_by_name(self, obj):
         if obj.reviewed_by:
             return obj.reviewed_by.full_name or obj.reviewed_by.email
         return None
+
 

@@ -515,22 +515,46 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   Expanded(
                     child: TextField(
                       controller: checkInCtrl,
+                      readOnly: true,
                       decoration: const InputDecoration(
-                        labelText: 'Check-In',
-                        hintText: 'HH:MM (09:30)',
+                        labelText: 'Check-In Time',
+                        hintText: 'e.g. 10:00 AM',
                         prefixIcon: Icon(Iconsax.login, size: 18),
+                        suffixIcon: Icon(Iconsax.clock, size: 16),
                       ),
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: ctx,
+                          initialTime: const TimeOfDay(hour: 10, minute: 0),
+                        );
+                        if (picked != null) {
+                          checkInCtrl.text =
+                              '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}:00';
+                        }
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextField(
                       controller: checkOutCtrl,
+                      readOnly: true,
                       decoration: const InputDecoration(
-                        labelText: 'Check-Out',
-                        hintText: 'HH:MM (17:30)',
+                        labelText: 'Check-Out Time',
+                        hintText: 'e.g. 05:30 PM (17:30)',
                         prefixIcon: Icon(Iconsax.logout, size: 18),
+                        suffixIcon: Icon(Iconsax.clock, size: 16),
                       ),
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: ctx,
+                          initialTime: const TimeOfDay(hour: 17, minute: 30),
+                        );
+                        if (picked != null) {
+                          checkOutCtrl.text =
+                              '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}:00';
+                        }
+                      },
                     ),
                   ),
                 ],
@@ -562,11 +586,25 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     );
                     return;
                   }
+                  String inVal = checkInCtrl.text.trim();
+                  String outVal = checkOutCtrl.text.trim();
+
+                  // Smart auto-normalization if user typed 12-hour format manually
+                  if (inVal.isNotEmpty && outVal.isNotEmpty) {
+                    try {
+                      final inParts = inVal.split(':').map(int.parse).toList();
+                      final outParts = outVal.split(':').map(int.parse).toList();
+                      if (outParts[0] < inParts[0] && outParts[0] < 12 && inParts[0] >= 8) {
+                        outVal = '${(outParts[0] + 12).toString().padLeft(2, '0')}:${outParts.length > 1 ? outParts[1].toString().padLeft(2, '0') : '00'}:00';
+                      }
+                    } catch (_) {}
+                  }
+
                   Navigator.pop(ctx);
                   _submitCorrectionRequest(
                     date: dateCtrl.text,
-                    checkIn: checkInCtrl.text,
-                    checkOut: checkOutCtrl.text,
+                    checkIn: inVal,
+                    checkOut: outVal,
                     reason: reasonCtrl.text,
                   );
                 },
@@ -972,37 +1010,62 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                               ),
                             ),
                             const SizedBox(width: 16),
-                            OutlinedButton.icon(
-                              onPressed: () => _showCorrectionRequestSheet(),
-                              icon: const Icon(Iconsax.calendar_edit, size: 16),
-                              label: const Text('Correction Request', style: TextStyle(fontWeight: FontWeight.w700)),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.primary,
-                                side: const BorderSide(color: AppColors.primary, width: 1.2),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => _showCorrectionRequestSheet(),
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.primary, width: 1.2),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Iconsax.calendar_edit, size: 16, color: AppColors.primary),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Correction Request',
+                                        style: TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),
                             if (isAdmin) ...[
-                              IconButton(
-                                icon: const Icon(Iconsax.location_add, size: 20),
-                                tooltip: 'Set Office Coordinates to Current GPS',
-                                onPressed: _isLoading ? null : _setOfficeLocation,
-                                style: IconButton.styleFrom(
-                                  backgroundColor: context.card,
-                                  side: BorderSide(color: context.border),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: context.card,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: context.border),
+                                ),
+                                child: IconButton(
+                                  icon: const Icon(Iconsax.location_add, size: 20),
+                                  tooltip: 'Set Office Coordinates to Current GPS',
+                                  onPressed: _isLoading ? null : _setOfficeLocation,
                                 ),
                               ),
                               const SizedBox(width: 8),
                             ],
-                            IconButton(
-                              icon: const Icon(Iconsax.refresh, size: 20),
-                              tooltip: 'Refresh Status',
-                              onPressed: _loadAll,
-                              style: IconButton.styleFrom(
-                                backgroundColor: context.card,
-                                side: BorderSide(color: context.border),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: context.card,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: context.border),
+                              ),
+                              child: IconButton(
+                                icon: const Icon(Iconsax.refresh, size: 20),
+                                tooltip: 'Refresh Status',
+                                onPressed: _loadAll,
                               ),
                             ),
                           ],
@@ -2441,33 +2504,78 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                OutlinedButton.icon(
-                  onPressed: _isProcessing ? null : () => _handleAction('rejected'),
-                  icon: const Icon(Iconsax.close_circle, size: 16),
-                  label: const Text('Reject', style: TextStyle(fontWeight: FontWeight.bold)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.error,
-                    side: const BorderSide(color: AppColors.error, width: 1.2),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _isProcessing ? null : () => _handleAction('rejected'),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFEF4444), width: 1.5),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Iconsax.close_circle, size: 18, color: Color(0xFFEF4444)),
+                          SizedBox(width: 8),
+                          Text(
+                            'Reject Request',
+                            style: TextStyle(
+                              color: Color(0xFFEF4444),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: _isProcessing ? null : () => _handleAction('approved'),
-                  icon: _isProcessing
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
-                  label: Text(
-                    _isProcessing ? 'Processing...' : 'Approve Correction',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _isProcessing ? null : () => _handleAction('approved'),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_isProcessing)
+                            const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                            )
+                          else
+                            const Icon(Iconsax.tick_circle, size: 18, color: Colors.white),
+                          const SizedBox(width: 8),
+                          Text(
+                            _isProcessing ? 'Processing...' : 'Approve & Update Attendance',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],

@@ -49,6 +49,17 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
     }
   }
 
+  String _formatNepaliHeaderDate(NepaliDateTime d) {
+    const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const months = [
+      '', 'Baishakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra',
+      'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
+    ];
+    final wName = weekdays[(d.weekday - 1).clamp(0, 6)];
+    final mName = months[d.month.clamp(1, 12)];
+    return '$wName, ${d.day.toString().padLeft(2, '0')} $mName, ${d.year}';
+  }
+
   String _getGreeting() {
     final h = DateTime.now().hour;
     if (h < 12) return 'Good Morning';
@@ -128,7 +139,7 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
                                   size: 14, color: AppColors.textSecondary),
                               const SizedBox(width: 6),
                               Text(
-                                '${NepaliDateFormat('EEEE, MMMM d, y').format(nowNepali)} (B.S.)',
+                                _formatNepaliHeaderDate(nowNepali),
                                 style: const TextStyle(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w500,

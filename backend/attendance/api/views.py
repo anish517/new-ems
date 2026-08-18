@@ -797,11 +797,19 @@ class AdminCorrectionRequestActionAPIView(APIView):
                 # Clear existing CheckInOut entries since this correction overrides the day
                 attendance.check_ins_outs.all().delete()
                 
+                cin = req_obj.requested_check_in
+                cout = req_obj.requested_check_out
+                if cin and cout and cout < cin and cout.hour < 12 and cin.hour >= 8:
+                    import datetime as _dt
+                    cout = _dt.time(cout.hour + 12, cout.minute, cout.second)
+                    req_obj.requested_check_out = cout
+                    req_obj.save(update_fields=['requested_check_out'])
+
                 # Create CheckInOut entry
                 CheckInOut.objects.create(
                     attendance=attendance,
-                    check_in=req_obj.requested_check_in,
-                    check_out=req_obj.requested_check_out,
+                    check_in=cin,
+                    check_out=cout,
                 )
 
         # Notify employee
