@@ -836,16 +836,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Flexible(
-                                            child: Text(
-                                              'Attendance & Geofencing',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w800,
-                                                letterSpacing: -0.4,
-                                                color: context.textPrimary,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
+                                          Text(
+                                            'Attendance & Geofencing',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: -0.4,
+                                              color: context.textPrimary,
                                             ),
                                           ),
                                           const SizedBox(width: 8),
@@ -2191,10 +2188,10 @@ class _StatBox extends StatelessWidget {
   }
 }
 
-class _CorrectionRequestTile extends StatelessWidget {
+class _CorrectionRequestTile extends StatefulWidget {
   final Map req;
   final bool isAdmin;
-  final void Function(String action, String adminNote)? onAction;
+  final Future<void> Function(String action, String adminNote)? onAction;
 
   const _CorrectionRequestTile({
     required this.req,
@@ -2202,8 +2199,28 @@ class _CorrectionRequestTile extends StatelessWidget {
     required this.onAction,
   });
 
+  @override
+  State<_CorrectionRequestTile> createState() => _CorrectionRequestTileState();
+}
+
+class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
+  late final TextEditingController _noteCtrl;
+  bool _isProcessing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _noteCtrl = TextEditingController(text: widget.req['admin_note']?.toString() ?? '');
+  }
+
+  @override
+  void dispose() {
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
   Color _statusColor(String? s) {
-    switch (s) {
+    switch (s?.toLowerCase()) {
       case 'approved':
         return AppColors.success;
       case 'rejected':
@@ -2213,36 +2230,88 @@ class _CorrectionRequestTile extends StatelessWidget {
     }
   }
 
+  Future<void> _handleAction(String action) async {
+    if (widget.onAction == null || _isProcessing) return;
+    setState(() => _isProcessing = true);
+    try {
+      await widget.onAction!(action, _noteCtrl.text.trim());
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final status = req['status'] as String? ?? 'pending';
-    final noteCtrl = TextEditingController();
+    final status = (widget.req['status'] as String? ?? 'pending').toLowerCase();
+    final isPending = status == 'pending';
+    final employeeName = widget.req['employee_name']?.toString() ?? 'Employee';
+    final requestedDate = widget.req['requested_date']?.toString() ?? '-';
+    final checkIn = widget.req['requested_check_in']?.toString();
+    final checkOut = widget.req['requested_check_out']?.toString();
+    final reason = widget.req['reason']?.toString() ?? '-';
+    final adminNote = widget.req['admin_note']?.toString();
+    final isDark = context.isDark;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: context.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: context.border),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isPending ? const Color(0xFFF59E0B).withValues(alpha: 0.35) : context.border,
+          width: isPending ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Header: Employee Name & Status Badge ─────────────────────────
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: _statusColor(status).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  isPending
+                      ? Iconsax.clock
+                      : (status == 'approved' ? Iconsax.tick_circle : Iconsax.close_circle),
+                  color: _statusColor(status),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (isAdmin)
-                      Text(req['employee_name'] ?? 'Unknown Staff', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: context.textPrimary)),
-                    Text('Date: ${req['requested_date'] ?? '-'}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    if (req['requested_check_in'] != null)
+                    if (widget.isAdmin)
                       Text(
-                        'Requested: In ${req['requested_check_in']} → Out ${req['requested_check_out'] ?? '-'}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        employeeName,
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15.5, color: context.textPrimary),
                       ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Iconsax.calendar_1, size: 14, color: AppColors.textSecondary),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Target Date: $requestedDate',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: context.textPrimary),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -2259,31 +2328,147 @@ class _CorrectionRequestTile extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text('Reason: "${req['reason'] ?? '-'}"', style: const TextStyle(fontSize: 12.5, fontStyle: FontStyle.italic)),
-          if (isAdmin && status == 'pending' && onAction != null) ...[
-            const SizedBox(height: 12),
-            TextField(
-              controller: noteCtrl,
-              decoration: const InputDecoration(
-                hintText: 'Admin approval notes (optional)',
-                isDense: true,
+
+          const SizedBox(height: 14),
+
+          // ── Requested Shift Times ─────────────────────────────────────────
+          if (checkIn != null || checkOut != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: context.card,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.border),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(Iconsax.login, size: 16, color: AppColors.success),
+                        const SizedBox(width: 8),
+                        Text(
+                          'In: ${checkIn ?? '-'}',
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: context.textPrimary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(width: 1, height: 16, color: context.border),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(Iconsax.logout, size: 16, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Out: ${checkOut ?? '-'}',
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: context.textPrimary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
+            const SizedBox(height: 12),
+          ],
+
+          // ── Reason Bubble ────────────────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: context.bg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.border.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Iconsax.note_text, size: 16, color: AppColors.textSecondary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    reason,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontStyle: FontStyle.italic,
+                      color: context.textPrimary.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Existing Admin Note (if reviewed) ────────────────────────────
+          if (!isPending && adminNote != null && adminNote.isNotEmpty) ...[
             const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(Iconsax.info_circle, size: 14, color: AppColors.textSecondary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Admin note: $adminNote',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          // ── Admin Action Panel (for Pending requests) ────────────────────
+          if (widget.isAdmin && isPending && widget.onAction != null) ...[
+            const SizedBox(height: 16),
+            Divider(color: context.border),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _noteCtrl,
+              enabled: !_isProcessing,
+              decoration: InputDecoration(
+                labelText: 'Approval / Rejection Remark (Optional)',
+                hintText: 'e.g. Approved due to network failure...',
+                isDense: true,
+                filled: true,
+                fillColor: context.card,
+                prefixIcon: const Icon(Iconsax.edit_2, size: 16),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                OutlinedButton(
-                  onPressed: () => onAction!('rejected', noteCtrl.text),
-                  style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.error)),
-                  child: const Text('Reject', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+                OutlinedButton.icon(
+                  onPressed: _isProcessing ? null : () => _handleAction('rejected'),
+                  icon: const Icon(Iconsax.close_circle, size: 16),
+                  label: const Text('Reject', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: const BorderSide(color: AppColors.error, width: 1.2),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () => onAction!('approved', noteCtrl.text),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-                  child: const Text('Approve', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: _isProcessing ? null : () => _handleAction('approved'),
+                  icon: _isProcessing
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
+                  label: Text(
+                    _isProcessing ? 'Processing...' : 'Approve Correction',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
               ],
             ),
