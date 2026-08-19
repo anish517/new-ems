@@ -716,18 +716,168 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     );
   }
 
-  Future<void> _setRemoteLocation(int employeeId) async {
-    try {
-      final pos = await _getLocation();
-      await ApiService().post(
-        '${AppConstants.attendanceBase}/remote-work-permission/set/$employeeId/',
-        data: {'latitude': pos.latitude, 'longitude': pos.longitude},
-      );
-      _showSnack('✅ Remote location set!', AppColors.success);
-      _loadRemoteList();
-    } catch (e) {
-      _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
-    }
+  Future<void> _showSetRemoteLocationDialog(
+    int employeeId,
+    String employeeName, {
+    double? initialLat,
+    double? initialLng,
+  }) async {
+    final latCtrl = TextEditingController(
+      text: (initialLat != null && initialLat != 0.0) ? initialLat.toString() : '',
+    );
+    final lngCtrl = TextEditingController(
+      text: (initialLng != null && initialLng != 0.0) ? initialLng.toString() : '',
+    );
+    final formKey = GlobalKey<FormState>();
+    bool fetchingGps = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Iconsax.location, color: AppColors.primary, size: 20),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Set Remote GPS Location',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Configure approved remote work coordinates for $employeeName. Remote attendance will be strictly verified within a 50m radius of these coordinates.',
+                      style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Fetch Current Device GPS Button
+                    OutlinedButton.icon(
+                      onPressed: fetchingGps
+                          ? null
+                          : () async {
+                              setDialogState(() => fetchingGps = true);
+                              try {
+                                final pos = await _getLocation();
+                                latCtrl.text = pos.latitude.toString();
+                                lngCtrl.text = pos.longitude.toString();
+                              } catch (e) {
+                                _showSnack('❌ ${e.toString().replaceAll('Exception: ', '')}', AppColors.error);
+                              } finally {
+                                setDialogState(() => fetchingGps = false);
+                              }
+                            },
+                      icon: fetchingGps
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                            )
+                          : const Icon(Iconsax.gps, size: 16),
+                      label: Text(fetchingGps ? 'Fetching GPS...' : 'Auto-Fill Current Device GPS'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Latitude Field
+                    TextFormField(
+                      controller: latCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                      decoration: InputDecoration(
+                        labelText: 'Latitude *',
+                        hintText: 'e.g. 27.717245',
+                        prefixIcon: const Icon(Iconsax.location, size: 18),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'Latitude is required';
+                        final num = double.tryParse(val.trim());
+                        if (num == null || num < -90 || num > 90) return 'Enter a valid latitude (-90 to 90)';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Longitude Field
+                    TextFormField(
+                      controller: lngCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                      decoration: InputDecoration(
+                        labelText: 'Longitude *',
+                        hintText: 'e.g. 85.324060',
+                        prefixIcon: const Icon(Iconsax.location, size: 18),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'Longitude is required';
+                        final num = double.tryParse(val.trim());
+                        if (num == null || num < -180 || num > 180) return 'Enter a valid longitude (-180 to 180)';
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  if (!formKey.currentState!.validate()) return;
+                  final lat = double.parse(latCtrl.text.trim());
+                  final lng = double.parse(lngCtrl.text.trim());
+                  Navigator.pop(ctx);
+
+                  try {
+                    await ApiService().post(
+                      '${AppConstants.attendanceBase}/remote-work-permission/set/$employeeId/',
+                      data: {'latitude': lat, 'longitude': lng},
+                    );
+                    _showSnack('✅ Remote GPS location saved for $employeeName!', AppColors.success);
+                    _loadRemoteList();
+                  } catch (e) {
+                    _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
+                  }
+                },
+                icon: const Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
+                label: const Text('Save Coordinates', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _removeRemoteLocation(int employeeId) async {
@@ -2140,21 +2290,57 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(e['employee_name'] ?? 'Staff Member', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: context.textPrimary)),
-                        const SizedBox(height: 2),
                         Text(
-                          hasPermission
-                              ? (rLat != null ? 'Approved GPS: ${rLat.toStringAsFixed(4)}, ${rLng?.toStringAsFixed(4)} (50m radius)' : 'Remote work approved')
-                              : 'Standard in-office geofence (50m radius)',
-                          style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                          e['employee_name'] ?? 'Staff Member',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: context.textPrimary),
                         ),
+                        const SizedBox(height: 4),
+                        if (hasPermission) ...[
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.success.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Iconsax.location_tick, size: 13, color: AppColors.success),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      (rLat != null && rLat != 0.0)
+                                          ? 'Lat: ${rLat.toStringAsFixed(6)}, Lng: ${rLng?.toStringAsFixed(6)} (50m radius)'
+                                          : 'Remote approved (Coordinates pending)',
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.success,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ] else ...[
+                          const Text(
+                            'Standard in-office geofence (50m radius)',
+                            style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                          ),
+                        ],
                       ],
                     ),
                   ),
-                  if (hasPermission && rLat != null && rLng != null) ...[
+                  if (hasPermission && rLat != null && rLng != null && rLat != 0.0) ...[
                     IconButton(
                       icon: const Icon(Iconsax.map, color: AppColors.primary, size: 20),
-                      tooltip: 'View approved location on map',
+                      tooltip: 'View location on Google Maps',
                       onPressed: () async {
                         final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$rLat,$rLng');
                         if (await canLaunchUrl(uri)) {
@@ -2163,17 +2349,32 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       },
                     ),
                   ],
-                  hasPermission
-                      ? IconButton(
-                          icon: const Icon(Iconsax.close_circle, color: AppColors.error, size: 20),
-                          tooltip: 'Revoke remote permission',
-                          onPressed: () => _removeRemoteLocation(employeeId),
-                        )
-                      : IconButton(
-                          icon: const Icon(Iconsax.location_add, color: AppColors.primary, size: 20),
-                          tooltip: 'Grant remote GPS location',
-                          onPressed: () => _setRemoteLocation(employeeId),
-                        ),
+                  if (hasPermission) ...[
+                    IconButton(
+                      icon: const Icon(Iconsax.edit, color: AppColors.primary, size: 19),
+                      tooltip: 'Edit remote coordinates',
+                      onPressed: () => _showSetRemoteLocationDialog(
+                        employeeId,
+                        e['employee_name'] ?? 'Staff Member',
+                        initialLat: rLat,
+                        initialLng: rLng,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Iconsax.close_circle, color: AppColors.error, size: 20),
+                      tooltip: 'Revoke remote permission',
+                      onPressed: () => _removeRemoteLocation(employeeId),
+                    ),
+                  ] else ...[
+                    IconButton(
+                      icon: const Icon(Iconsax.location_add, color: AppColors.primary, size: 20),
+                      tooltip: 'Grant & enter remote GPS coordinates',
+                      onPressed: () => _showSetRemoteLocationDialog(
+                        employeeId,
+                        e['employee_name'] ?? 'Staff Member',
+                      ),
+                    ),
+                  ],
                 ],
               ),
             );
