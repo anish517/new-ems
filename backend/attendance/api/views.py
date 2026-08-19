@@ -241,9 +241,12 @@ class CheckIn(APIView):
 
         photo = request.FILES.get('photo')
 
-        check_in = Attendance.check_in(
-            request.user.employee, lat=user_lat, lng=user_lng,
-            within_radius=within_organization_radius, photo=photo)
+        try:
+            check_in = Attendance.check_in(
+                request.user.employee, lat=user_lat, lng=user_lng,
+                within_radius=within_organization_radius, photo=photo)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_409_CONFLICT)
 
         return Response({
             "check_in_time": check_in.check_in,

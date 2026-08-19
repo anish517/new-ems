@@ -913,6 +913,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   }
 
   Future<void> _checkIn() async {
+    // Guard: prevent double-tap or re-entry while a request is in flight
+    if (_isLoading || _isCheckedIn) {
+      if (_isCheckedIn) {
+        _showSnack('⚠️ You are already checked in. Please check out first.', AppColors.warning);
+      }
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -964,8 +972,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       if (!mounted) return;
       final msg = ApiService.getErrorMessage(e);
       if (msg.toLowerCase().contains('cannot check in again') || msg.toLowerCase().contains('without checking out')) {
+        // Server says already checked in — sync the UI state to reflect reality
+        setState(() => _isCheckedIn = true);
         _showSnack('⚠️ You are already checked in. Please check out first.', AppColors.warning);
-      } else if (msg.toLowerCase().contains('not within the office radius')) {
+        await _loadTodayStatus();
+      } else if (msg.toLowerCase().contains('not within the office radius') || msg.toLowerCase().contains('50m radius')) {
         _showSnack(
           '⚠️ You must be within the office GPS geofence. Request remote permission from your admin if working remotely.',
           AppColors.warning,

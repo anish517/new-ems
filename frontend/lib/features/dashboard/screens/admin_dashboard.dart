@@ -1471,7 +1471,76 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 10),
+                            // GPS Coordinate Badge + View Map
+                            Builder(builder: (_) {
+                              final lat = req['latitude'];
+                              final lng = req['longitude'];
+                              return Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.08),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Iconsax.location, size: 14, color: AppColors.primary),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'GPS: ${lat ?? 'N/A'}, ${lng ?? 'N/A'}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (lat != null && lng != null) ...[
+                                    const SizedBox(width: 8),
+                                    InkWell(
+                                      onTap: () async {
+                                        final url = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+                                        if (await canLaunchUrlString(url)) {
+                                          await launchUrlString(url);
+                                        }
+                                      },
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(alpha: 0.08),
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Iconsax.map_1, size: 14, color: AppColors.primary),
+                                            SizedBox(width: 5),
+                                            Text(
+                                              'View Map',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.primary,
+                                                decoration: TextDecoration.underline,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            }),
+
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
