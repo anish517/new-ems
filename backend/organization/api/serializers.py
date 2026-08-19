@@ -109,6 +109,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     )
     department_name = serializers.SerializerMethodField()
     designation_title = serializers.SerializerMethodField()
+    address = serializers.SerializerMethodField()
 
     class Meta:
         model = Employee
@@ -131,7 +132,14 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "employee_type",
             "department_name",
             "designation_title",
+            "address",
         ]
+
+    def get_address(self, obj):
+        try:
+            return AddressSerializer(obj.address.all(), many=True).data
+        except Exception:
+            return []
 
     def get_department_name(self, obj):
         return obj.post.department.department_name if obj.post and obj.post.department else None
@@ -160,6 +168,11 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
 
 class AddressSerializer(serializers.ModelSerializer):
+    street = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    district = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    state = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    type = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
     class Meta:
         model = Address
         fields = "__all__"
@@ -232,7 +245,9 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
 
 
 class EmployeeProfileChangeRequestSerializer(serializers.ModelSerializer):
-    employee_name = serializers.CharField(source='employee.user.full_name', read_only=True)
+    employee_name = serializers.SerializerMethodField()
+    employee_code = serializers.SerializerMethodField()
+    employee_avatar = serializers.SerializerMethodField()
     field_label = serializers.CharField(source='get_field_name_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     reviewed_by_name = serializers.SerializerMethodField()
@@ -240,7 +255,7 @@ class EmployeeProfileChangeRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeeProfileChangeRequest
         fields = [
-            'id', 'employee', 'employee_name',
+            'id', 'employee', 'employee_name', 'employee_code', 'employee_avatar',
             'field_name', 'field_label',
             'old_value', 'new_value',
             'status', 'status_display',
@@ -249,7 +264,28 @@ class EmployeeProfileChangeRequestSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['employee', 'old_value', 'status', 'admin_note', 'reviewed_by', 'created_at', 'updated_at']
 
+    def get_employee_name(self, obj):
+        if obj.employee and obj.employee.user:
+            fn = f"{obj.employee.user.first_name} {obj.employee.user.last_name}".strip()
+            return fn if fn else (obj.employee.user.email or "Staff Member")
+        return "Staff Member"
+
+    def get_employee_code(self, obj):
+        if obj.employee:
+            return getattr(obj.employee, 'employee_id', '') or str(obj.employee.id)
+        return ""
+
+    def get_employee_avatar(self, obj):
+        if obj.employee and obj.employee.user and obj.employee.user.profile_picture:
+            try:
+                return obj.employee.user.profile_picture.url
+            except Exception:
+                return None
+        return None
+
     def get_reviewed_by_name(self, obj):
-     if obj.reviewed_by:
-        return obj.reviewed_by.full_name or obj.reviewed_by.email
-     return None
+        if obj.reviewed_by:
+            fn = f"{obj.reviewed_by.first_name} {obj.reviewed_by.last_name}".strip()
+            return fn if fn else obj.reviewed_by.email
+        return None
+

@@ -665,22 +665,21 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
             data: data);
       }
 
-      // Save Address
-      if (employeeId != null &&
-          (_street.isNotEmpty || _district.isNotEmpty || _state.isNotEmpty)) {
+      // Save Address (create or update even if cleared/empty)
+      if (employeeId != null) {
         try {
           final addrData = {
             'employee': employeeId,
             'type': 'permanent',
             'street': _street.trim(),
             'district': _district.trim(),
-            'state': _state,
+            'state': _state.trim(),
           };
           if (_addressId != null) {
             await ApiService().patch(
                 '${AppConstants.organizationBase}/addresses/$_addressId/',
                 data: addrData);
-          } else {
+          } else if (_street.trim().isNotEmpty || _district.trim().isNotEmpty || _state.trim().isNotEmpty) {
             await ApiService().post(
                 '${AppConstants.organizationBase}/addresses/',
                 data: [addrData]);
@@ -690,9 +689,8 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
         }
       }
 
-      // Save Bank Details (including Account Name & Number)
-      if (employeeId != null &&
-          (_bankName.isNotEmpty || _accountNumber.isNotEmpty || _accountName.isNotEmpty)) {
+      // Save Bank Details (create or update even if cleared/empty)
+      if (employeeId != null) {
         try {
           final bankData = {
             'employee': employeeId,
@@ -706,7 +704,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
             await ApiService().patch(
                 '${AppConstants.organizationBase}/bank-details/$_bankDetailId/',
                 data: bankData);
-          } else {
+          } else if (_bankName.trim().isNotEmpty || _accountNumber.trim().isNotEmpty || _accountName.trim().isNotEmpty) {
             await ApiService().post(
                 '${AppConstants.organizationBase}/bank-details/',
                 data: bankData);

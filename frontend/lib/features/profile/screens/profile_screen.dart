@@ -49,9 +49,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           // Fetch full employee detail
           final empId = myEmp['id'];
           final detailRes = await ApiService().get('${AppConstants.organizationBase}/employees/$empId/');
+          Map<String, dynamic> empData = detailRes.data is Map
+              ? Map<String, dynamic>.from(detailRes.data)
+              : Map<String, dynamic>.from(myEmp);
+
+          // Fetch address fallback if not already in detail
+          if (empData['address'] == null || (empData['address'] is List && (empData['address'] as List).isEmpty)) {
+            try {
+              final addrRes = await ApiService().get('${AppConstants.organizationBase}/addresses/?employee=$empId');
+              final addrs = addrRes.data is List ? addrRes.data : (addrRes.data['results'] ?? []);
+              if (addrs is List && addrs.isNotEmpty) {
+                empData['address'] = addrs;
+              }
+            } catch (_) {}
+          }
+
           if (mounted) {
             setState(() {
-              _employeeDetails = detailRes.data is Map ? Map<String, dynamic>.from(detailRes.data) : Map<String, dynamic>.from(myEmp);
+              _employeeDetails = empData;
             });
           }
         }
@@ -404,19 +419,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final emergencyPhone = emp?['emergency_phone_number'] ??
         emp?['alternative_contact_number'] ??
         'Not provided';
-    final fatherName = emp?['father_name'] ?? 'Not provided';
-    final bloodGroup = emp?['blood_group'] ?? 'Not specified';
-    final dob = emp?['date_of_birth'] ?? 'Not provided';
+    final fatherName = (emp?['father_name'] != null && emp!['father_name'].toString().isNotEmpty)
+        ? emp['father_name'].toString()
+        : 'Not provided';
+    final dob = (emp?['date_of_birth'] != null && emp!['date_of_birth'].toString().isNotEmpty)
+        ? emp['date_of_birth'].toString()
+        : 'Not provided';
     final empType = emp?['employee_type'] ?? 'full_time';
 
-    // Bank & Address extraction
+    // Address extraction
     final addresses = (emp?['address'] is List) ? (emp!['address'] as List) : [];
     final permanent = addresses.firstWhere(
       (a) => a['type'] == 'permanent',
       orElse: () => addresses.isNotEmpty ? addresses.first : null,
     );
-    final bankList = (emp?['bank_details'] is List) ? (emp!['bank_details'] as List) : [];
-    final bank = bankList.isNotEmpty ? bankList.first : null;
+    final permanentAddress = permanent != null
+        ? [
+            permanent['street']?.toString().trim(),
+            permanent['district']?.toString().trim(),
+            permanent['state']?.toString().trim(),
+          ]
+            .where((s) => s != null && s.isNotEmpty)
+            .join(', ')
+        : '';
+    final addressDisplay = permanentAddress.isNotEmpty ? permanentAddress : 'Not provided';
 
     return Scaffold(
       backgroundColor: context.bg,
@@ -804,73 +830,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         const SizedBox(height: 16),
                         LayoutBuilder(
                           builder: (context, c) {
-                            final cols = c.maxWidth < 600 ? 1 : 2;
-                            return GridView.count(
-                              crossAxisCount: cols,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              childAspectRatio: cols == 1 ? 4.5 : 3.4,
-                              children: [
-                                _buildInfoTile(Iconsax.user, "Father's Name", fatherName),
-                                _buildInfoTile(Iconsax.health, 'Blood Group', bloodGroup),
-                                _buildInfoTile(Iconsax.calendar_1, 'Date of Birth (B.S.)', dob),
-                                _buildInfoTile(
-                                  Iconsax.location,
-                                  'Permanent Address',
-                                  permanent != null
-                                      ? '${permanent['street'] ?? ''}, ${permanent['district'] ?? ''}, ${permanent['state'] ?? ''}'
-                                          .replaceAll(RegExp(r'^,\s*|,\s*$'), '')
-                                          .trim()
-                                      : 'Not configured',
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ── Bank Account for Payroll ─────────────────────────────────
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: context.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: context.border, width: 1),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.success.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Iconsax.bank, color: AppColors.success, size: 18),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              'Payroll & Banking Details',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                color: context.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        LayoutBuilder(
-                          builder: (context, c) {
                             final cols = c.maxWidth < 600 ? 1 : 3;
                             return GridView.count(
                               crossAxisCount: cols,
@@ -880,9 +839,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               physics: const NeverScrollableScrollPhysics(),
                               childAspectRatio: cols == 1 ? 4.5 : 2.5,
                               children: [
-                                _buildInfoTile(Iconsax.bank, 'Bank Name', bank?['bank_name'] ?? 'Not set'),
-                                _buildInfoTile(Iconsax.user_tag, 'Account Holder', bank?['account_name'] ?? user?.fullName ?? 'Not set'),
-                                _buildInfoTile(Iconsax.card, 'Account Number', bank?['account_number'] ?? 'Not set'),
+                                _buildInfoTile(Iconsax.user, "Father's Name", fatherName),
+                                _buildInfoTile(Iconsax.calendar_1, 'Date of Birth (B.S.)', dob),
+                                _buildInfoTile(
+                                  Iconsax.location,
+                                  'Permanent Address',
+                                  addressDisplay,
+                                ),
                               ],
                             );
                           },
@@ -894,18 +857,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 24),
 
                   // ── Account Actions (Logout) ─────────────────────────────────
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: context.surface,
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _confirmLogout,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: context.border, width: 1),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: AppColors.error.withValues(alpha: 0.25),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.all(10),
@@ -916,37 +884,59 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               child: const Icon(Iconsax.logout, color: AppColors.error, size: 20),
                             ),
                             const SizedBox(width: 14),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Sign Out of EMS',
-                                  style: TextStyle(
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: context.textPrimary,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Sign Out of EMS',
+                                    style: TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: context.textPrimary,
+                                    ),
                                   ),
-                                ),
-                                const Text(
-                                  'Safely terminate your current active session',
-                                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                ),
-                              ],
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'Safely terminate your current active session',
+                                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: AppColors.error,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.error.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Iconsax.logout, size: 16, color: Colors.white),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Log Out',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.error,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          icon: const Icon(Iconsax.logout, size: 16),
-                          label: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold)),
-                          onPressed: _confirmLogout,
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ],

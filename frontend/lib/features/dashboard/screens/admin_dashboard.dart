@@ -27,6 +27,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   List<String> _alwaysOnTimeEmployees = [];
   List<double> _weeklyAttendance = List.filled(7, 0.0);
   List<dynamic> _pendingRemoteRequests = [];
+  List<dynamic> _pendingProfileChangeRequests = [];
   bool _loading = true;
 
   @override
@@ -54,6 +55,64 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     if (hour < 12) return 'Good Morning';
     if (hour < 17) return 'Good Afternoon';
     return 'Good Evening';
+  }
+
+  String _fieldLabel(String fieldName) {
+    const labels = {
+      'phone_no': 'Phone Number',
+      'personal_email': 'Personal Email',
+      'emergency_phone_number': 'Emergency Contact',
+    };
+    return labels[fieldName] ?? fieldName.replaceAll('_', ' ').toUpperCase();
+  }
+
+  Future<void> _actionProfileChangeRequest(int id, String status) async {
+    try {
+      await ApiService().post(
+        '${AppConstants.organizationBase}/profile-change-requests/$id/action/',
+        data: {'status': status},
+      );
+      _loadStats();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  status == 'approved' ? Iconsax.tick_circle : Iconsax.close_circle,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text('Profile change request $status successfully'),
+              ],
+            ),
+            backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(20),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Iconsax.warning_2, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Error updating profile request: $e')),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(20),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _actionRemoteRequest(int id, String status) async {
@@ -134,6 +193,17 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         if (mounted) {
           setState(() {
             _pendingRemoteRequests = (remoteData as List).toList();
+          });
+        }
+      } catch (_) {}
+
+      // Load pending profile change requests
+      try {
+        final profileRes = await ApiService().get('${AppConstants.organizationBase}/profile-change-requests/?status=pending');
+        final profileData = profileRes.data is List ? profileRes.data : (profileRes.data['results'] ?? []);
+        if (mounted) {
+          setState(() {
+            _pendingProfileChangeRequests = (profileData as List).toList();
           });
         }
       } catch (_) {}
@@ -997,6 +1067,304 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   const SizedBox(height: 28),
                 ],
 
+                // ── Pending Profile Update Requests ───────────────────────────────
+                if (_pendingProfileChangeRequests.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Iconsax.user_edit, size: 18, color: Color(0xFFF59E0B)),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Pending Profile Update Requests (${_pendingProfileChangeRequests.length})',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.4,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _pendingProfileChangeRequests.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) {
+                      final req = _pendingProfileChangeRequests[i];
+                      final field = req['field_name'] ?? '';
+                      final val = req['new_value']?.toString() ?? '-';
+                      final oldVal = req['old_value']?.toString() ?? '';
+                      final employeeName = req['employee_name']?.toString() ?? 'Staff Member';
+                      final employeeCode = req['employee_code']?.toString() ?? '';
+                      final int reqId = (req['id'] is int)
+                          ? (req['id'] as int)
+                          : (int.tryParse('${req['id']}') ?? 0);
+                      final createdAt = req['created_at'] != null
+                          ? req['created_at'].toString().split('T').first
+                          : 'N/A';
+
+                      return Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: context.surface,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                                      child: const Icon(Iconsax.user_edit, size: 18, color: AppColors.primary),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Text(
+                                              employeeName,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 15.5,
+                                                color: context.textPrimary,
+                                              ),
+                                            ),
+                                            if (employeeCode.isNotEmpty) ...[
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: context.card,
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  border: Border.all(color: context.border),
+                                                ),
+                                                child: Text(
+                                                  employeeCode,
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: AppColors.textSecondary,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 4,
+                                          crossAxisAlignment: WrapCrossAlignment.center,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary.withValues(alpha: 0.1),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                _fieldLabel(field),
+                                                style: const TextStyle(
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: AppColors.primary,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              'Requested: $createdAt',
+                                              style: const TextStyle(
+                                                fontSize: 11.5,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'PENDING REVIEW',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFFF59E0B),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: context.card,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: context.border),
+                              ),
+                              child: Wrap(
+                                spacing: 16,
+                                runSpacing: 8,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  if (oldVal.isNotEmpty)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Text(
+                                          'Current: ',
+                                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                                        ),
+                                        Text(
+                                          oldVal,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: context.textPrimary.withValues(alpha: 0.7),
+                                            decoration: TextDecoration.lineThrough,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        'Requested New: ',
+                                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                                      ),
+                                      Text(
+                                        val,
+                                        style: const TextStyle(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF10B981),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () => _actionProfileChangeRequest(reqId, 'rejected'),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: const Color(0xFFEF4444), width: 1.5),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Iconsax.close_circle, size: 16, color: Color(0xFFEF4444)),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Reject',
+                                            style: TextStyle(
+                                              color: Color(0xFFEF4444),
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () => _actionProfileChangeRequest(reqId, 'approved'),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF10B981),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Approve Update',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                ],
+
                 // ── Pending Remote Work Requests ─────────────────────────────────
                 if (_pendingRemoteRequests.isNotEmpty) ...[
                   Row(
@@ -1107,38 +1475,72 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.error,
-                                    side: const BorderSide(
-                                        color: AppColors.error, width: 1.2),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 8),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12)),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () => _actionRemoteRequest(req['id'], 'rejected'),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: const Color(0xFFEF4444), width: 1.5),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Iconsax.close_circle, size: 16, color: Color(0xFFEF4444)),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Reject',
+                                            style: TextStyle(
+                                              color: Color(0xFFEF4444),
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                  icon: const Icon(Iconsax.close_circle, size: 16),
-                                  label: const Text('Reject',
-                                      style: TextStyle(fontWeight: FontWeight.w700)),
-                                  onPressed: () =>
-                                      _actionRemoteRequest(req['id'], 'rejected'),
                                 ),
                                 const SizedBox(width: 12),
-                                ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.success,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 18, vertical: 8),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12)),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () => _actionRemoteRequest(req['id'], 'approved'),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF10B981),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Approve WFH',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                  icon: const Icon(Iconsax.tick_circle, size: 16),
-                                  label: const Text('Approve',
-                                      style: TextStyle(fontWeight: FontWeight.w700)),
-                                  onPressed: () =>
-                                      _actionRemoteRequest(req['id'], 'approved'),
                                 ),
                               ],
                             ),

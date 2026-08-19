@@ -77,6 +77,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   List _pendingCorrectionRequests = [];
   bool _correctionLoading = false;
 
+  // Geofence & Governance Settings state
+  final _officeLatCtrl = TextEditingController();
+  final _officeLngCtrl = TextEditingController();
+  final _officeRadiusCtrl = TextEditingController(text: '100');
+  bool _enableInOffice = true;
+  bool _enableRemote = true;
+  bool _geofenceLoading = false;
+  bool _geofenceSaving = false;
+  bool _detectingOfficeLocation = false;
+
   int _selectedAdminTab = 0;
   Timer? _autoActionTimer;
   bool _autoInFlight = false;
@@ -85,7 +95,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   @override
   void initState() {
     super.initState();
-    _adminTabs = TabController(length: 4, vsync: this);
+    _adminTabs = TabController(length: 5, vsync: this);
     _adminTabs.addListener(() {
       if (_adminTabs.indexIsChanging || _adminTabs.index != _selectedAdminTab) {
         if (mounted) setState(() => _selectedAdminTab = _adminTabs.index);
@@ -103,6 +113,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     WidgetsBinding.instance.removeObserver(this);
     _autoActionTimer?.cancel();
     _adminTabs.dispose();
+    _officeLatCtrl.dispose();
+    _officeLngCtrl.dispose();
+    _officeRadiusCtrl.dispose();
     super.dispose();
   }
 
@@ -263,6 +276,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       _loadEmployees();
       _loadRemoteList();
       _loadPendingCorrections();
+      _loadGeofenceSettings();
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -395,6 +409,85 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       }
     } catch (_) {
       if (mounted) setState(() => _correctionLoading = false);
+    }
+  }
+
+  Future<void> _loadGeofenceSettings() async {
+    setState(() => _geofenceLoading = true);
+    try {
+      final res = await ApiService().get('${AppConstants.organizationBase}/settings/');
+      final d = res.data;
+      if (mounted && d != null) {
+        setState(() {
+          _officeLatCtrl.text = '${d['office_latitude'] ?? ''}';
+          _officeLngCtrl.text = '${d['office_longitude'] ?? ''}';
+          _officeRadiusCtrl.text = '${d['allowed_attendance_radius'] ?? 100}';
+          _enableInOffice = d['enable_in_office_attendance'] ?? true;
+          _enableRemote = d['enable_remote_attendance'] ?? true;
+          _geofenceLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _geofenceLoading = false);
+    }
+  }
+
+  Future<void> _detectOfficeLocation() async {
+    setState(() => _detectingOfficeLocation = true);
+    try {
+      final pos = await _getLocation();
+      setState(() {
+        _officeLatCtrl.text = pos.latitude.toStringAsFixed(7);
+        _officeLngCtrl.text = pos.longitude.toStringAsFixed(7);
+      });
+      _showSnack('📍 Current GPS coordinates detected! Click "Save Geofence & Rules" to apply.', AppColors.success);
+    } catch (e) {
+      _showSnack('Failed to get location: $e', AppColors.error);
+    } finally {
+      if (mounted) setState(() => _detectingOfficeLocation = false);
+    }
+  }
+
+  Future<void> _saveGeofenceSettings() async {
+    setState(() => _geofenceSaving = true);
+    try {
+      final payload = {
+        'office_latitude': double.tryParse(_officeLatCtrl.text.trim()),
+        'office_longitude': double.tryParse(_officeLngCtrl.text.trim()),
+        'allowed_attendance_radius': int.tryParse(_officeRadiusCtrl.text.trim()) ?? 100,
+        'enable_in_office_attendance': _enableInOffice,
+        'enable_remote_attendance': _enableRemote,
+      };
+      await ApiService().patch(
+        '${AppConstants.organizationBase}/settings/',
+        data: payload,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
+                SizedBox(width: 10),
+                Text('Office Geofence & Attendance Rules saved!'),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving: ${ApiService.getErrorMessage(e)}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _geofenceSaving = false);
     }
   }
 
@@ -871,8 +964,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
+                                      Wrap(
+                                        crossAxisAlignment: WrapCrossAlignment.center,
+                                        spacing: 8,
+                                        runSpacing: 4,
                                         children: [
                                           Text(
                                             'Attendance & Geofencing',
@@ -883,7 +978,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                               color: context.textPrimary,
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                             decoration: BoxDecoration(
@@ -914,40 +1008,73 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                               ],
                             ),
                             const SizedBox(height: 14),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
+                            Wrap(
+                              alignment: WrapAlignment.end,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 8,
                               children: [
-                                OutlinedButton.icon(
-                                  onPressed: () => _showCorrectionRequestSheet(),
-                                  icon: const Icon(Iconsax.calendar_edit, size: 16),
-                                  label: const Text('Correction Request', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.primary,
-                                    side: const BorderSide(color: AppColors.primary, width: 1.2),
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                if (isAdmin) ...[
-                                  IconButton(
-                                    icon: const Icon(Iconsax.location_add, size: 20),
-                                    tooltip: 'Set Office Coordinates to Current GPS',
-                                    onPressed: _isLoading ? null : _setOfficeLocation,
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: context.card,
-                                      side: BorderSide(color: context.border),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () => _showCorrectionRequestSheet(),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: AppColors.primary, width: 1.2),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Iconsax.calendar_edit, size: 15, color: AppColors.primary),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Correction Request',
+                                            style: TextStyle(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                ],
-                                IconButton(
-                                  icon: const Icon(Iconsax.refresh, size: 20),
-                                  tooltip: 'Refresh Status',
-                                  onPressed: _loadAll,
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: context.card,
-                                    side: BorderSide(color: context.border),
+                                ),
+                                if (isAdmin)
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: _isLoading ? null : _setOfficeLocation,
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: context.card,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: context.border),
+                                        ),
+                                        child: const Icon(Iconsax.location_add, size: 18),
+                                      ),
+                                    ),
+                                  ),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: _loadAll,
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: context.card,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: context.border),
+                                      ),
+                                      child: const Icon(Iconsax.refresh, size: 18),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1096,6 +1223,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                         Tab(text: 'Staff Logs (${_employees.length})'),
                         Tab(text: 'Remote Access (${_pendingRemoteRequests.length} Pending)'),
                         Tab(text: 'Corrections (${_pendingCorrectionRequests.length})'),
+                        const Tab(text: 'Geofence & Rules'),
                       ],
                     ),
                   ),
@@ -1103,7 +1231,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   if (_selectedAdminTab == 0) _buildCheckInUI(isMobile)
                   else if (_selectedAdminTab == 1) _buildEmployeeGrid()
                   else if (_selectedAdminTab == 2) _buildRemoteAccessTab()
-                  else if (_selectedAdminTab == 3) _buildAdminCorrectionTab(),
+                  else if (_selectedAdminTab == 3) _buildAdminCorrectionTab()
+                  else if (_selectedAdminTab == 4) _buildGeofenceSettingsTab(isMobile),
                 ] else
                   _buildCheckInUI(isMobile),
 
@@ -1204,7 +1333,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 const SizedBox(height: 4),
                 Text(
                   _isCheckedIn && _checkInTime != null
-                      ? 'Check-In recorded at $_checkInTime'
+                      ? 'Check-In recorded at ${_checkInTime!.split('.').first}'
                       : 'Ready to capture selfie verification and verify office geofence',
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
                   textAlign: TextAlign.center,
@@ -1835,16 +1964,72 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      OutlinedButton(
-                        onPressed: () => _actionRemoteRequest(req['id'], 'rejected'),
-                        style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.error)),
-                        child: const Text('Reject', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => _actionRemoteRequest(req['id'], 'rejected'),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFEF4444), width: 1.5),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Iconsax.close_circle, size: 16, color: Color(0xFFEF4444)),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Reject',
+                                  style: TextStyle(
+                                    color: Color(0xFFEF4444),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: () => _actionRemoteRequest(req['id'], 'approved'),
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-                        child: const Text('Approve', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 12),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => _actionRemoteRequest(req['id'], 'approved'),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Approve WFH',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1955,6 +2140,256 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildGeofenceSettingsTab(bool isMobile) {
+    if (_geofenceLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
+
+    final isDark = context.isDark;
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Office Coordinates & Geofencing Card
+          Container(
+            padding: EdgeInsets.all(isMobile ? 16 : 24),
+            decoration: BoxDecoration(
+              color: context.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: context.border, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Iconsax.location, color: AppColors.primary, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Office Coordinates & Geofencing',
+                              style: TextStyle(
+                                fontSize: isMobile ? 15 : 17,
+                                fontWeight: FontWeight.w800,
+                                color: context.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Define the physical GPS boundary for on-site staff clock-ins',
+                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    if (!isMobile)
+                      OutlinedButton.icon(
+                        onPressed: _detectingOfficeLocation ? null : _detectOfficeLocation,
+                        icon: _detectingOfficeLocation
+                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                            : const Icon(Iconsax.gps, size: 16, color: AppColors.primary),
+                        label: const Text('Detect Current GPS', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        ),
+                      ),
+                  ],
+                ),
+                if (isMobile) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _detectingOfficeLocation ? null : _detectOfficeLocation,
+                      icon: _detectingOfficeLocation
+                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                          : const Icon(Iconsax.gps, size: 16, color: AppColors.primary),
+                      label: const Text('Detect Current GPS Location', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                Divider(color: context.border, height: 1),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _officeLatCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Office Latitude *',
+                          hintText: 'e.g. 27.717245',
+                          prefixIcon: Icon(Iconsax.map, size: 18),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: TextField(
+                        controller: _officeLngCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Office Longitude *',
+                          hintText: 'e.g. 85.324056',
+                          prefixIcon: Icon(Iconsax.map_1, size: 18),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _officeRadiusCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Allowed Check-In Radius (Meters) *',
+                    hintText: 'e.g. 100',
+                    prefixIcon: Icon(Iconsax.radar, size: 18),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [50, 100, 200, 500].map((r) {
+                    final isSel = _officeRadiusCtrl.text == r.toString();
+                    return ActionChip(
+                      label: Text('${r}m', style: TextStyle(fontSize: 12, fontWeight: isSel ? FontWeight.w800 : FontWeight.w600, color: isSel ? Colors.white : context.textPrimary)),
+                      backgroundColor: isSel ? AppColors.primary : context.card,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: isSel ? AppColors.primary : context.border)),
+                      onPressed: () => setState(() => _officeRadiusCtrl.text = r.toString()),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Attendance Policy Rules Card
+          Container(
+            padding: EdgeInsets.all(isMobile ? 16 : 24),
+            decoration: BoxDecoration(
+              color: context.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: context.border, width: 1),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03), blurRadius: 16, offset: const Offset(0, 4))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(Iconsax.shield_tick, color: Color(0xFF10B981), size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Attendance Enforcement Policies', style: TextStyle(fontSize: isMobile ? 15 : 17, fontWeight: FontWeight.w800, color: context.textPrimary)),
+                        const SizedBox(height: 2),
+                        const Text('Master toggles governing how staff can clock in', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Divider(color: context.border, height: 1),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  title: const Text('Enable In-Office Geofenced Attendance', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  subtitle: const Text('Enforces GPS radius check when clocking in on-site at the office', style: TextStyle(fontSize: 12)),
+                  value: _enableInOffice,
+                  onChanged: (v) => setState(() => _enableInOffice = v),
+                  activeThumbColor: AppColors.primary,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const Divider(),
+                SwitchListTile(
+                  title: const Text('Enable Remote / WFH Attendance', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  subtitle: const Text('Master switch allowing staff with approved remote permissions to clock in', style: TextStyle(fontSize: 12)),
+                  value: _enableRemote,
+                  onChanged: (v) => setState(() => _enableRemote = v),
+                  activeThumbColor: AppColors.primary,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Save Button
+          Container(
+            width: double.infinity,
+            height: 50,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
+              boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
+            ),
+            child: ElevatedButton(
+              onPressed: _geofenceSaving ? null : _saveGeofenceSettings,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+              child: _geofenceSaving
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Iconsax.save_2, size: 18, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text('Save Geofence & Rules', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                      ],
+                    ),
+            ),
+          ),
+
+          const SizedBox(height: 40),
+        ],
+      ),
     );
   }
 }
@@ -2090,12 +2525,15 @@ class _AttendanceLogTile extends StatelessWidget {
                         style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: context.textPrimary),
                       ),
                       const SizedBox(height: 4),
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 4,
+                        runSpacing: 2,
                         children: [
                           if (checkedIn) ...[
                             Text('In: ${formatTime(log['check_in_time']?.toString())}', style: const TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w700)),
                           ],
-                          if (checkedIn && checkedOut) const Text('  →  ', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          if (checkedIn && checkedOut) const Text(' → ', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                           if (checkedOut) ...[
                             Text('Out: ${formatTime(log['check_out_time']?.toString())}', style: const TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w700)),
                           ],
@@ -2351,33 +2789,41 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                       ? Iconsax.clock
                       : (status == 'approved' ? Iconsax.tick_circle : Iconsax.close_circle),
                   color: _statusColor(status),
-                  size: 22,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (widget.isAdmin)
+                    if (widget.isAdmin) ...[
                       Text(
                         employeeName,
-                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15.5, color: context.textPrimary),
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: context.textPrimary),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    const SizedBox(height: 2),
+                      const SizedBox(height: 2),
+                    ],
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Iconsax.calendar_1, size: 14, color: AppColors.textSecondary),
                         const SizedBox(width: 5),
-                        Text(
-                          'Target Date: $requestedDate',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: context.textPrimary),
+                        Flexible(
+                          child: Text(
+                            'Target Date: $requestedDate',
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: context.textPrimary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -2386,7 +2832,7 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                 ),
                 child: Text(
                   status.toUpperCase(),
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _statusColor(status)),
+                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: _statusColor(status)),
                 ),
               ),
             ],
@@ -2397,40 +2843,42 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
           // ── Requested Shift Times ─────────────────────────────────────────
           if (checkIn != null || checkOut != null) ...[
             Container(
+              width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: context.card,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: context.border),
               ),
-              child: Row(
+              child: Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Expanded(
-                    child: Row(
+                  if (checkIn != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Iconsax.login, size: 16, color: AppColors.success),
                         const SizedBox(width: 8),
                         Text(
-                          'In: ${checkIn ?? '-'}',
+                          'In: $checkIn',
                           style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: context.textPrimary),
                         ),
                       ],
                     ),
-                  ),
-                  Container(width: 1, height: 16, color: context.border),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Row(
+                  if (checkOut != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Iconsax.logout, size: 16, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(
-                          'Out: ${checkOut ?? '-'}',
+                          'Out: $checkOut',
                           style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: context.textPrimary),
                         ),
                       ],
                     ),
-                  ),
                 ],
               ),
             ),
@@ -2501,8 +2949,11 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
               ),
             ),
             const SizedBox(height: 14),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Wrap(
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 10,
+              runSpacing: 10,
               children: [
                 Material(
                   color: Colors.transparent,
@@ -2534,7 +2985,6 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
                 Material(
                   color: Colors.transparent,
                   child: InkWell(

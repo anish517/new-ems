@@ -1410,19 +1410,34 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           const SizedBox(height: 16),
           ..._pendingChangeRequests.map((req) {
             final field = req['field_name'] ?? '';
-            final val = req['new_value'] ?? '-';
+            final val = req['new_value']?.toString() ?? '-';
+            final oldVal = req['old_value']?.toString() ?? '';
+            final employeeName = (req['employee_name']?.toString().isNotEmpty == true && req['employee_name'] != 'Staff Member')
+                ? req['employee_name'].toString()
+                : (_employee?['user']?['full_name']?.toString() ??
+                    _employee?['full_name']?.toString() ??
+                    'Staff Member');
+            final employeeCode = (req['employee_code']?.toString().isNotEmpty == true)
+                ? req['employee_code'].toString()
+                : (_employee?['employee_id']?.toString() ?? '');
             final int reqId = (req['id'] is int)
                 ? (req['id'] as int)
                 : (int.tryParse('${req['id']}') ?? 0);
+            final createdAt = req['created_at'] != null
+                ? req['created_at'].toString().split('T').first
+                : '';
 
             return Container(
               width: double.infinity,
               margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: context.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: context.border),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                  width: 1.5,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.03),
@@ -1434,83 +1449,242 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── Requester & Field Badge Row ────────────────────────────
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(
-                          _fieldLabel(field),
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
-                          ),
+                        child: const Icon(Iconsax.user_edit, color: AppColors.primary, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    employeeName,
+                                    style: TextStyle(
+                                      fontSize: 15.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: context.textPrimary,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (employeeCode.isNotEmpty) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: context.card,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: context.border),
+                                    ),
+                                    child: Text(
+                                      employeeCode,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    _fieldLabel(field),
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                                if (createdAt.isNotEmpty)
+                                  Text(
+                                    'Requested: $createdAt',
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Requested Update',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'PENDING REVIEW',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFFF59E0B),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Requested New Value: $val',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: context.textPrimary,
-                    ),
-                  ),
+
                   const SizedBox(height: 14),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
-                  SizedBox(
+
+                  // ── Value Diff Box ──────────────────────────────────────────
+                  Container(
                     width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: context.card,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: context.border),
+                    ),
                     child: Wrap(
-                      spacing: 12,
-                      runSpacing: 10,
-                      alignment: WrapAlignment.end,
+                      spacing: 16,
+                      runSpacing: 8,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        OutlinedButton.icon(
-                          icon: const Icon(Iconsax.close_circle, size: 16, color: AppColors.error),
-                          label: const Text(
-                            'Reject',
-                            style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.error),
+                        if (oldVal.isNotEmpty)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Current: ',
+                                style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                              ),
+                              Text(
+                                oldVal,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: context.textPrimary.withValues(alpha: 0.7),
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                            ],
                           ),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.error, width: 1.2),
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          onPressed: () => _actionChangeRequest(reqId, 'rejected'),
-                        ),
-                        ElevatedButton.icon(
-                          icon: const Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
-                          label: const Text(
-                            'Approve',
-                            style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.success,
-                            elevation: 1,
-                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          onPressed: () => _actionChangeRequest(reqId, 'approved'),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Requested: ',
+                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              val,
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF10B981),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                  ),
+
+                  const SizedBox(height: 14),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+
+                  // ── Actions ────────────────────────────────────────────────
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 10,
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => _actionChangeRequest(reqId, 'rejected'),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFEF4444), width: 1.2),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Iconsax.close_circle, size: 16, color: Color(0xFFEF4444)),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Reject',
+                                  style: TextStyle(
+                                    color: Color(0xFFEF4444),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => _actionChangeRequest(reqId, 'approved'),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Approve Update',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1531,6 +1705,16 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       orElse: () => _addresses.isNotEmpty ? _addresses.first : null,
     );
     final bank = _bankDetails.isNotEmpty ? _bankDetails.first : null;
+
+    final permanentAddress = permanent != null
+        ? [
+            permanent['street']?.toString().trim(),
+            permanent['district']?.toString().trim(),
+            permanent['state']?.toString().trim(),
+          ]
+            .where((s) => s != null && s.isNotEmpty)
+            .join(', ')
+        : '';
 
     return Container(
       width: double.infinity,
@@ -1588,11 +1772,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
               _infoTile(
                 Iconsax.location,
                 'Permanent Address',
-                permanent != null
-                    ? '${permanent['street'] ?? ''}, ${permanent['district'] ?? ''}, ${permanent['state'] ?? ''}'
-                        .replaceAll(RegExp(r'^,\s*|,\s*$'), '')
-                        .trim()
-                    : 'N/A',
+                permanentAddress.isNotEmpty ? permanentAddress : 'N/A',
               ),
               _infoTile(Iconsax.award, 'Designation', designation),
               _infoTile(Iconsax.bank, 'Bank Name',

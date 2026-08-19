@@ -202,8 +202,9 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
   }
 
   Future<void> _toggleStatus(Map complaint) async {
-    final currentStatus = complaint['status'] ?? 'pending';
-    final newStatus = currentStatus == 'pending' ? 'reviewed' : 'pending';
+    final currentStatus = (complaint['status'] ?? 'pending').toString().toLowerCase();
+    final isResolved = currentStatus == 'resolved' || currentStatus == 'reviewed';
+    final newStatus = isResolved ? 'pending' : 'resolved';
 
     try {
       await ApiService().patch(
@@ -216,14 +217,18 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
           SnackBar(
             content: Row(
               children: [
-                const Icon(Iconsax.tick_circle, color: Colors.white, size: 20),
+                Icon(
+                  newStatus == 'resolved' ? Iconsax.tick_circle : Iconsax.refresh_2,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 const SizedBox(width: 12),
-                Text(newStatus == 'reviewed'
-                    ? 'Marked as Reviewed / Resolved'
-                    : 'Marked as Pending'),
+                Text(newStatus == 'resolved'
+                    ? 'Feedback marked as Resolved'
+                    : 'Feedback reopened as Pending'),
               ],
             ),
-            backgroundColor: AppColors.success,
+            backgroundColor: newStatus == 'resolved' ? AppColors.success : AppColors.warning,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12)),
@@ -245,8 +250,9 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
   List<dynamic> _getFilteredList(String statusFilter) {
     return _complaints.where((c) {
       final status = (c['status'] ?? 'pending').toString().toLowerCase();
-      if (statusFilter == 'pending' && status != 'pending') return false;
-      if (statusFilter == 'reviewed' && status != 'reviewed') return false;
+      final isResolved = status == 'resolved' || status == 'reviewed';
+      if (statusFilter == 'pending' && isResolved) return false;
+      if (statusFilter == 'reviewed' && !isResolved) return false;
 
       if (_selectedCategoryId != null) {
         final catId = c['category'] is Map
@@ -359,12 +365,14 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
     final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
     final isDark = context.isDark;
 
-    final pendingCount = _complaints
-        .where((c) => (c['status'] ?? 'pending') == 'pending')
-        .length;
-    final resolvedCount = _complaints
-        .where((c) => (c['status'] ?? 'pending') == 'reviewed')
-        .length;
+    final pendingCount = _complaints.where((c) {
+      final s = (c['status'] ?? 'pending').toString().toLowerCase();
+      return s != 'resolved' && s != 'reviewed';
+    }).length;
+    final resolvedCount = _complaints.where((c) {
+      final s = (c['status'] ?? 'pending').toString().toLowerCase();
+      return s == 'resolved' || s == 'reviewed';
+    }).length;
     final anonymousCount = _complaints
         .where((c) => (c['visibility'] ?? 'anonymous') == 'anonymous')
         .length;
@@ -885,7 +893,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
         itemBuilder: (context, i) {
           final c = list[i];
           final status = (c['status'] ?? 'pending').toString().toLowerCase();
-          final isResolved = status == 'reviewed';
+          final isResolved = status == 'resolved' || status == 'reviewed';
           final isAnonymous = (c['visibility'] ?? 'anonymous') == 'anonymous';
           final title = c['title'] ?? 'Untitled Grievance';
           final desc = c['description'] ?? '';
@@ -1063,7 +1071,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                     Divider(color: context.border, height: 1),
                     const SizedBox(height: 12),
 
-                    // Bottom info: Submitter, date, reply count, and admin toggle
+                    // Bottom info: Submitter, date, reply count, and admin resolve actions
                     Wrap(
                       spacing: 10,
                       runSpacing: 8,
@@ -1147,55 +1155,72 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                             ),
                             if (isAdmin) ...[
                               const SizedBox(width: 8),
-                              PopupMenuButton<String>(
-                                icon: const Icon(Iconsax.more,
-                                    size: 18, color: AppColors.textSecondary),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16)),
-                                onSelected: (val) {
-                                  if (val == 'status') {
-                                    _toggleStatus(c);
-                                  } else if (val == 'delete') {
-                                    _deleteComplaint(c['id'], title);
-                                  }
-                                },
-                                itemBuilder: (context) => [
-                                  PopupMenuItem(
-                                    value: 'status',
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => _toggleStatus(c),
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: isResolved
+                                          ? AppColors.warning.withValues(alpha: 0.12)
+                                          : const Color(0xFF10B981),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: isResolved
+                                            ? AppColors.warning
+                                            : const Color(0xFF10B981),
+                                      ),
+                                      boxShadow: isResolved
+                                          ? null
+                                          : [
+                                              BoxShadow(
+                                                color: const Color(0xFF10B981)
+                                                    .withValues(alpha: 0.28),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                    ),
                                     child: Row(
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(
                                           isResolved
-                                              ? Iconsax.clock
+                                              ? Iconsax.refresh_2
                                               : Iconsax.tick_circle,
-                                          size: 16,
+                                          size: 13,
                                           color: isResolved
                                               ? AppColors.warning
-                                              : AppColors.success,
+                                              : Colors.white,
                                         ),
-                                        const SizedBox(width: 10),
-                                        Text(isResolved
-                                            ? 'Reopen as Pending'
-                                            : 'Mark as Resolved'),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          isResolved ? 'Reopen' : 'Resolve',
+                                          style: TextStyle(
+                                            color: isResolved
+                                                ? AppColors.warning
+                                                : Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 11.5,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
-                                  const PopupMenuDivider(),
-                                  const PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(
-                                      children: [
-                                        Icon(Iconsax.trash,
-                                            size: 16, color: AppColors.error),
-                                        SizedBox(width: 10),
-                                        Text('Delete Thread',
-                                            style: TextStyle(
-                                                color: AppColors.error,
-                                                fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              IconButton(
+                                icon: const Icon(Iconsax.trash,
+                                    size: 16, color: AppColors.error),
+                                tooltip: 'Delete Feedback',
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(),
+                                onPressed: () =>
+                                    _deleteComplaint(c['id'], title),
                               ),
                             ],
                           ],
@@ -1693,7 +1718,8 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
   Widget build(BuildContext context) {
     final c = widget.complaint;
     final isResolved =
-        (c['status'] ?? 'pending').toString().toLowerCase() == 'reviewed';
+        (c['status'] ?? 'pending').toString().toLowerCase() == 'reviewed' ||
+        (c['status'] ?? 'pending').toString().toLowerCase() == 'resolved';
     final isAnonymous = (c['visibility'] ?? 'anonymous') == 'anonymous';
     final title = c['title'] ?? 'Feedback Details';
     final desc = c['description'] ?? 'No description provided';
@@ -1914,6 +1940,59 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
                 ),
               ),
             ),
+
+            if (widget.isAdmin) ...[
+              const SizedBox(height: 14),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () {
+                    Navigator.pop(context);
+                    widget.onStatusToggle();
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: isResolved
+                          ? AppColors.warning.withValues(alpha: 0.1)
+                          : const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isResolved
+                            ? AppColors.warning
+                            : const Color(0xFF10B981),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isResolved ? Iconsax.refresh_2 : Iconsax.tick_circle,
+                          size: 18,
+                          color: isResolved ? AppColors.warning : const Color(0xFF10B981),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isResolved
+                              ? 'Reopen Grievance as Pending'
+                              : 'Mark Feedback as Resolved',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: isResolved
+                                ? AppColors.warning
+                                : const Color(0xFF10B981),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 20),
 

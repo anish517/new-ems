@@ -29,7 +29,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
   void initState() {
     super.initState();
     _isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
-    _tabController = TabController(length: _isAdmin ? 4 : 1, vsync: this);
+    _tabController = TabController(length: _isAdmin ? 3 : 1, vsync: this);
   }
 
   @override
@@ -53,32 +53,33 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
           children: [
             // ── Top Header Card ────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Container(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: context.surface,
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: context.border),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-                      blurRadius: 18,
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                      blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Iconsax.wallet_3, color: AppColors.primary, size: 24),
+                          child: const Icon(Iconsax.wallet_3, color: AppColors.primary, size: 22),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -90,35 +91,30 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
                                   Text(
                                     'Financial Accounts & Governance',
                                     style: TextStyle(
-                                      fontSize: 19,
+                                      fontSize: 18,
                                       fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.4,
                                       color: context.textPrimary,
+                                      letterSpacing: -0.3,
                                     ),
                                   ),
                                   const SizedBox(width: 8),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(8),
+                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: const Text(
                                       'Admin Console',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
-                                      ),
+                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 2),
                               const Text(
-                                'Manage company payroll, statutory tax bands, geofence rules & audit logs',
+                                'Manage company payroll, statutory tax bands & audit logs',
                                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
@@ -126,6 +122,8 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
                       ],
                     ),
                     const SizedBox(height: 16),
+
+                    // ── Navigation Tabs ────────────────────────────────────
                     Container(
                       decoration: BoxDecoration(
                         color: context.card,
@@ -144,7 +142,6 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
                         tabs: const [
                           Tab(icon: Icon(Iconsax.money_send, size: 18), text: 'Payroll Operations'),
                           Tab(icon: Icon(Iconsax.receipt, size: 18), text: 'Tax Bands & Brackets'),
-                          Tab(icon: Icon(Iconsax.setting_2, size: 18), text: 'Global & Geofence'),
                           Tab(icon: Icon(Iconsax.chart, size: 18), text: 'Audit Reports & CSV'),
                         ],
                       ),
@@ -161,7 +158,6 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
                 children: const [
                   SalaryScreen(),
                   _TaxManagementTab(),
-                  _GlobalSettingsTab(),
                   _ReportsTab(),
                 ],
               ),
@@ -645,264 +641,7 @@ class _TaxBandDialogState extends State<_TaxBandDialog> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tab 3: Global Settings
-// ─────────────────────────────────────────────────────────────────────────────
-class _GlobalSettingsTab extends ConsumerStatefulWidget {
-  const _GlobalSettingsTab();
-
-  @override
-  ConsumerState<_GlobalSettingsTab> createState() => _GlobalSettingsTabState();
-}
-
-class _GlobalSettingsTabState extends ConsumerState<_GlobalSettingsTab> {
-  final _lat = TextEditingController();
-  final _lng = TextEditingController();
-  final _radius = TextEditingController();
-  bool _inOffice = true;
-  bool _remote = true;
-  bool _loading = true;
-  bool _saving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSettings();
-  }
-
-  @override
-  void dispose() {
-    _lat.dispose();
-    _lng.dispose();
-    _radius.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadSettings() async {
-    setState(() => _loading = true);
-    try {
-      final res = await ApiService().get('${AppConstants.organizationBase}/settings/');
-      final d = res.data;
-      setState(() {
-        _lat.text = '${d['office_latitude'] ?? ''}';
-        _lng.text = '${d['office_longitude'] ?? ''}';
-        _radius.text = '${d['allowed_attendance_radius'] ?? 100}';
-        _inOffice = d['enable_in_office_attendance'] ?? true;
-        _remote = d['enable_remote_attendance'] ?? true;
-        _loading = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _save() async {
-    setState(() => _saving = true);
-    try {
-      final payload = {
-        'office_latitude': double.tryParse(_lat.text),
-        'office_longitude': double.tryParse(_lng.text),
-        'allowed_attendance_radius': int.tryParse(_radius.text) ?? 100,
-        'enable_in_office_attendance': _inOffice,
-        'enable_remote_attendance': _remote,
-      };
-      await ApiService().patch(
-        '${AppConstants.organizationBase}/settings/',
-        data: payload,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
-                SizedBox(width: 10),
-                Text('Governance & Geofence settings saved!'),
-              ],
-            ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving: ${ApiService.getErrorMessage(e)}'), backgroundColor: AppColors.error),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Geofence Card
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: context.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: context.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Iconsax.location, color: AppColors.primary, size: 20),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Office Coordinates & Geofencing',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Divider(color: context.border),
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _lat,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Office Latitude *',
-                    hintText: 'e.g. 27.7172',
-                    prefixIcon: Icon(Iconsax.map, size: 18),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                TextField(
-                  controller: _lng,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Office Longitude *',
-                    hintText: 'e.g. 85.3240',
-                    prefixIcon: Icon(Iconsax.map_1, size: 18),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                TextField(
-                  controller: _radius,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Allowed Check-In Radius (Meters) *',
-                    hintText: 'e.g. 100',
-                    prefixIcon: Icon(Iconsax.radar, size: 18),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Attendance Policy Card
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: context.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: context.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Iconsax.calendar_tick, color: Color(0xFF10B981), size: 20),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Attendance Enforcement Policies',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Divider(color: context.border),
-                const SizedBox(height: 8),
-
-                SwitchListTile(
-                  title: const Text('Enable In-Office Geofenced Attendance', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text('Enforces GPS radius check when clocking in at the office', style: TextStyle(fontSize: 12)),
-                  value: _inOffice,
-                  onChanged: (v) => setState(() => _inOffice = v),
-                  activeThumbColor: AppColors.primary,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                const Divider(),
-                SwitchListTile(
-                  title: const Text('Enable Remote / WFH Attendance', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text('Allows approved staff to check in while working remotely', style: TextStyle(fontSize: 12)),
-                  value: _remote,
-                  onChanged: (v) => setState(() => _remote = v),
-                  activeThumbColor: AppColors.primary,
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          Container(
-            height: 48,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
-            ),
-            child: ElevatedButton(
-              onPressed: _saving ? null : _save,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              child: _saving
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Iconsax.save_2, size: 16, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text('Save Governance Settings', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                      ],
-                    ),
-            ),
-          ),
-
-          const SizedBox(height: 40),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Tab 4: Reports
+// Tab 3: Reports
 // ─────────────────────────────────────────────────────────────────────────────
 class _ReportsTab extends StatefulWidget {
   const _ReportsTab();

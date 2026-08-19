@@ -44,6 +44,7 @@ class Complain(SoftDeleteModel):
     STATUS_CHOICES = (
         ('pending', 'Pending'),
         ('reviewed', 'Reviewed'),
+        ('resolved', 'Resolved'),
     )
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True)

@@ -78,6 +78,21 @@ class ComplainDetailView(generics.RetrieveUpdateDestroyAPIView):
                 return Complain.objects.all()
             return Complain.objects.none()
 
+    def perform_update(self, serializer):
+        instance = serializer.save(updated_at=nepali_datetime.date.today())
+        if instance.status in ('resolved', 'reviewed') and instance.owner and instance.owner.user:
+            try:
+                from notification.fcm import notify_user
+                notify_user(
+                    user=instance.owner.user,
+                    notification_type='feedback',
+                    title='Feedback Resolved',
+                    body=f'Your grievance "{instance.title}" has been reviewed & marked as resolved.',
+                    reference_id=instance.id,
+                )
+            except Exception:
+                pass
+
 
 class ComplainReplyCreateView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]

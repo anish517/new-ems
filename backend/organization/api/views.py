@@ -89,7 +89,6 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
 class EmployeeAddressCreateView(ListCreateAPIView):
     nepali_date_filter_field = False
-    "API view to list and create employee addresses"
     serializer_class = AddressSerializer
     permission_classes = [IsAuthenticated]
 
@@ -100,7 +99,8 @@ class EmployeeAddressCreateView(ListCreateAPIView):
         return Address.objects.none()
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data, many=True)
+        is_many = isinstance(request.data, list)
+        serializer = self.get_serializer(data=request.data, many=is_many)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -110,10 +110,7 @@ class EmployeeAddressDetailView(RetrieveUpdateDestroyAPIView):
     nepali_date_filter_field = False
     serializer_class = AddressSerializer
     permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        pk = self.kwargs['pk']
-        return Address.objects.filter(pk=pk)
+    queryset = Address.objects.all()
 
 
 class NationalIdViewSet(viewsets.ModelViewSet):
@@ -353,10 +350,13 @@ class ProfileChangeRequestListCreateAPIView(ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        is_admin = user.organization.exists() or user.is_superuser
+        is_admin = user.organization.exists() or user.is_superuser or user.is_staff or getattr(user, 'is_hr', False)
         if is_admin:
             status_filter = self.request.query_params.get('status')
             qs = EmployeeProfileChangeRequest.objects.select_related('employee__user')
+            emp_id = self.request.query_params.get('employee')
+            if emp_id:
+                qs = qs.filter(employee_id=emp_id)
             if status_filter:
                 qs = qs.filter(status=status_filter)
             return qs
@@ -369,12 +369,10 @@ class ProfileChangeRequestListCreateAPIView(ListCreateAPIView):
     def perform_create(self, serializer):
         from rest_framework.exceptions import PermissionDenied, ValidationError
         user = self.request.user
-        if user.organization.exists() or user.is_superuser:
-            raise PermissionDenied('Admins cannot submit profile change requests.')
         try:
             employee = Employee.objects.get(user=user)
         except Employee.DoesNotExist:
-            raise PermissionDenied('No employee profile found.')
+            raise PermissionDenied('No employee profile found for current user.')
 
         field_name = serializer.validated_data.get('field_name')
         allowed = ('phone_no', 'personal_email', 'emergency_phone_number')
@@ -388,17 +386,20 @@ class ProfileChangeRequestListCreateAPIView(ListCreateAPIView):
 
 class AdminProfileChangeRequestActionAPIView(RetrieveUpdateDestroyAPIView):
     """
-    PATCH /organization/profile-change-requests/<pk>/action/
+    POST/PATCH /organization/profile-change-requests/<pk>/action/
     Admin approves or rejects the request. On approval, value is written to Employee.
     """
     permission_classes = [IsAuthenticated]
     serializer_class = EmployeeProfileChangeRequestSerializer
     queryset = EmployeeProfileChangeRequest.objects.select_related('employee__user')
-    http_method_names = ['patch', 'get']
+    http_method_names = ['post', 'patch', 'get']
     nepali_date_filter_field = False
 
+    def post(self, request, *args, **kwargs):
+        return self.partial_update(request, *args, **kwargs)
+
     def partial_update(self, request, *args, **kwargs):
-        is_admin = request.user.organization.exists() or request.user.is_superuser
+        is_admin = request.user.organization.exists() or request.user.is_superuser or request.user.is_staff or getattr(request.user, 'is_hr', False)
         if not is_admin:
             return Response({'error': 'Only admins can review change requests.'}, status=status.HTTP_403_FORBIDDEN)
 
