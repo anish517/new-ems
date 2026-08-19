@@ -10,6 +10,7 @@ import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'package:nepali_utils/nepali_utils.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/providers/date_provider.dart';
 import 'employee_attendance_logs_screen.dart';
 import '../../../shared/widgets/responsive_grid_list.dart';
@@ -39,10 +40,10 @@ String _formatDate(String? raw, {String? fallback}) {
 String _formatRemoteDate(String? isoString) {
   if (isoString == null) return 'N/A';
   try {
-    final nd = DateTime.parse(isoString).toNepaliDateTime();
-    return '${nd.year}-${nd.month.toString().padLeft(2, '0')}-${nd.day.toString().padLeft(2, '0')} B.S.';
+    final dt = DateTime.parse(isoString);
+    return '${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   } catch (_) {
-    return isoString.split('T')[0];
+    return isoString;
   }
 }
 
@@ -68,6 +69,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
   // Remote work permission state
   bool? _hasRemotePermission;
+  double? _myRemoteLat;
+  double? _myRemoteLng;
   List _remoteEmployees = [];
   List _pendingRemoteRequests = [];
   bool _remoteLoading = false;
@@ -335,7 +338,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     try {
       final res = await ApiService().get('${AppConstants.attendanceBase}/remote-work-permission/me/');
       if (mounted) {
-        setState(() => _hasRemotePermission = res.data['has_remote_permission'] == true);
+        setState(() {
+          _hasRemotePermission = res.data['has_remote_permission'] == true;
+          _myRemoteLat = (res.data['remote_lat'] as num?)?.toDouble();
+          _myRemoteLng = (res.data['remote_lng'] as num?)?.toDouble();
+        });
       }
     } catch (_) {}
   }
@@ -1413,7 +1420,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                             Expanded(
                               child: Text(
                                 _hasRemotePermission!
-                                    ? 'Remote work permission active — GPS checks bypassed.'
+                                    ? (_myRemoteLat != null
+                                        ? 'Remote work approved at GPS: ${_myRemoteLat!.toStringAsFixed(4)}, ${_myRemoteLng?.toStringAsFixed(4)} (50m radius).'
+                                        : 'Remote work permission active (50m radius).')
                                     : 'Standard in-office geofencing active (50m radius).',
                                 style: TextStyle(
                                   fontSize: 12.5,
@@ -1424,58 +1433,57 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                             ),
                           ],
                         ),
-                        if (!_hasRemotePermission!) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              TextButton.icon(
-                                onPressed: () => _showCorrectionRequestSheet(),
-                                icon: const Icon(Iconsax.calendar_edit, size: 14),
-                                label: const Text('Correction', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                              ),
-                              const SizedBox(width: 4),
-                              TextButton(
-                                onPressed: () {
-                                  final ctrl = TextEditingController();
-                                  showDialog(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      title: const Text('Request Remote Work Approval'),
-                                      content: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Text(
-                                            'This will snapshot your current GPS location and submit a remote work authorization request to your admin.',
-                                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                          ),
-                                          const SizedBox(height: 14),
-                                          TextField(
-                                            controller: ctrl,
-                                            decoration: const InputDecoration(labelText: 'Reason for remote work *'),
-                                            maxLines: 3,
-                                          ),
-                                        ],
-                                      ),
-                                      actions: [
-                                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            if (ctrl.text.trim().isEmpty) return;
-                                            Navigator.pop(ctx);
-                                            _requestRemoteWork(ctrl.text.trim());
-                                          },
-                                          child: const Text('Submit'),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () => _showCorrectionRequestSheet(),
+                              icon: const Icon(Iconsax.calendar_edit, size: 14),
+                              label: const Text('Correction', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            ),
+                            const SizedBox(width: 4),
+                            TextButton.icon(
+                              onPressed: () {
+                                final ctrl = TextEditingController();
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: Text(_hasRemotePermission! ? 'Update Remote Work Location' : 'Request Remote Work Approval'),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Text(
+                                          'This will snapshot your current GPS location and submit a remote work authorization request to your admin.',
+                                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                        ),
+                                        const SizedBox(height: 14),
+                                        TextField(
+                                          controller: ctrl,
+                                          decoration: const InputDecoration(labelText: 'Reason for remote work *'),
+                                          maxLines: 3,
                                         ),
                                       ],
                                     ),
-                                  );
-                                },
-                                child: const Text('Request WFH', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                              ),
-                            ],
-                          ),
-                        ],
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          if (ctrl.text.trim().isEmpty) return;
+                                          Navigator.pop(ctx);
+                                          _requestRemoteWork(ctrl.text.trim());
+                                        },
+                                        child: const Text('Submit'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                              icon: Icon(_hasRemotePermission! ? Iconsax.location_add : Iconsax.location, size: 14),
+                              label: Text(_hasRemotePermission! ? 'Update WFH' : 'Request WFH', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            ),
+                          ],
+                        ),
                       ],
                     )
                   : Row(
@@ -1493,7 +1501,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                               Expanded(
                                 child: Text(
                                   _hasRemotePermission!
-                                      ? 'Remote work permission active — GPS checks bypassed.'
+                                      ? (_myRemoteLat != null
+                                          ? 'Remote work approved at GPS: ${_myRemoteLat!.toStringAsFixed(4)}, ${_myRemoteLng?.toStringAsFixed(4)} (50m radius).'
+                                          : 'Remote work permission active (50m radius).')
                                       : 'Standard in-office geofencing active (50m radius).',
                                   style: TextStyle(
                                     fontSize: 12.5,
@@ -1505,58 +1515,57 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                             ],
                           ),
                         ),
-                        if (!_hasRemotePermission!) ...[
-                          const SizedBox(width: 12),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              TextButton.icon(
-                                onPressed: () => _showCorrectionRequestSheet(),
-                                icon: const Icon(Iconsax.calendar_edit, size: 14),
-                                label: const Text('Correction', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                              ),
-                              const SizedBox(width: 4),
-                              TextButton(
-                                onPressed: () {
-                                  final ctrl = TextEditingController();
-                                  showDialog(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      title: const Text('Request Remote Work Approval'),
-                                      content: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Text(
-                                            'This will snapshot your current GPS location and submit a remote work authorization request to your admin.',
-                                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                          ),
-                                          const SizedBox(height: 14),
-                                          TextField(
-                                            controller: ctrl,
-                                            decoration: const InputDecoration(labelText: 'Reason for remote work *'),
-                                            maxLines: 3,
-                                          ),
-                                        ],
-                                      ),
-                                      actions: [
-                                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            if (ctrl.text.trim().isEmpty) return;
-                                            Navigator.pop(ctx);
-                                            _requestRemoteWork(ctrl.text.trim());
-                                          },
-                                          child: const Text('Submit'),
+                        const SizedBox(width: 12),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () => _showCorrectionRequestSheet(),
+                              icon: const Icon(Iconsax.calendar_edit, size: 14),
+                              label: const Text('Correction', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            ),
+                            const SizedBox(width: 4),
+                            TextButton.icon(
+                              onPressed: () {
+                                final ctrl = TextEditingController();
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: Text(_hasRemotePermission! ? 'Update Remote Work Location' : 'Request Remote Work Approval'),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Text(
+                                          'This will snapshot your current GPS location and submit a remote work authorization request to your admin.',
+                                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                        ),
+                                        const SizedBox(height: 14),
+                                        TextField(
+                                          controller: ctrl,
+                                          decoration: const InputDecoration(labelText: 'Reason for remote work *'),
+                                          maxLines: 3,
                                         ),
                                       ],
                                     ),
-                                  );
-                                },
-                                child: const Text('Request WFH', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                              ),
-                            ],
-                          ),
-                        ],
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          if (ctrl.text.trim().isEmpty) return;
+                                          Navigator.pop(ctx);
+                                          _requestRemoteWork(ctrl.text.trim());
+                                        },
+                                        child: const Text('Submit'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                              icon: Icon(_hasRemotePermission! ? Iconsax.location_add : Iconsax.location, size: 14),
+                              label: Text(_hasRemotePermission! ? 'Update WFH' : 'Request WFH', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
             ),
@@ -1940,6 +1949,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           Text('Pending Remote Requests', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary)),
           const SizedBox(height: 12),
           ..._pendingRemoteRequests.map((req) {
+            final lat = req['latitude'];
+            final lng = req['longitude'];
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
@@ -1960,6 +1971,57 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   ),
                   const SizedBox(height: 6),
                   Text('Reason: "${req['reason']}"', style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
+                  const SizedBox(height: 10),
+                  // Coordinate badge + Map button
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Iconsax.location, size: 15, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'GPS: ${lat ?? 'N/A'}, ${lng ?? 'N/A'}',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                        ),
+                        if (lat != null && lng != null) ...[
+                          const SizedBox(width: 10),
+                          InkWell(
+                            onTap: () async {
+                              final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              }
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Iconsax.map, size: 14, color: AppColors.primary),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'View Map',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primary,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -2047,6 +2109,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           ..._remoteEmployees.map((e) {
             final hasPermission = e['has_remote_permission'] == true;
             final employeeId = e['employee_id'] as int;
+            final rLat = (e['remote_lat'] as num?)?.toDouble();
+            final rLng = (e['remote_lng'] as num?)?.toDouble();
 
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
@@ -2077,10 +2141,28 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(e['employee_name'] ?? 'Staff Member', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: context.textPrimary)),
-                        Text(hasPermission ? 'Remote work approved' : 'Standard in-office geofence', style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
+                        const SizedBox(height: 2),
+                        Text(
+                          hasPermission
+                              ? (rLat != null ? 'Approved GPS: ${rLat.toStringAsFixed(4)}, ${rLng?.toStringAsFixed(4)} (50m radius)' : 'Remote work approved')
+                              : 'Standard in-office geofence (50m radius)',
+                          style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                        ),
                       ],
                     ),
                   ),
+                  if (hasPermission && rLat != null && rLng != null) ...[
+                    IconButton(
+                      icon: const Icon(Iconsax.map, color: AppColors.primary, size: 20),
+                      tooltip: 'View approved location on map',
+                      onPressed: () async {
+                        final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$rLat,$rLng');
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                    ),
+                  ],
                   hasPermission
                       ? IconButton(
                           icon: const Icon(Iconsax.close_circle, color: AppColors.error, size: 20),
