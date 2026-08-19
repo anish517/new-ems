@@ -5,7 +5,7 @@ class AppConstants {
   //   flutter run --dart-define=API_BASE_URL=http://192.168.1.5:8000
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://ems.omwaytechnologies.com',
+    defaultValue: 'http://192.168.110.108:8000',
   );
 
   // ─── Endpoints ─────────────────────────────────────────────────────────────
@@ -46,4 +46,32 @@ class AppConstants {
 
   // ─── Pagination ────────────────────────────────────────────────────────────
   static const int pageSize = 20;
+
+  // ─── Session & Inactivity Configuration ──────────────────────────────────
+  /// Admin session inactivity timeout in minutes (default: 15 minutes)
+  static const int adminInactivityTimeoutMinutes = 15;
+
+  /// Employee inactivity timeout outside working hours or on off-days in minutes (default: 5 minutes)
+  static const int employeeOffHoursInactivityTimeoutMinutes = 5;
+
+  /// Employee inactivity timeout during active working hours in minutes (default: 60 minutes)
+  static const int employeeWorkHoursInactivityTimeoutMinutes = 60;
+
+  /// Shift start time: 10:00 AM
+  static const int workHourStartHour = 10;
+  static const int workHourStartMinute = 0;
+
+  /// Shift end time: 5:30 PM (17:30)
+  static const int workHourEndHour = 17;
+  static const int workHourEndMinute = 30;
+
+  /// Working days of the week (Sunday through Friday; Saturday is off-day in Nepal)
+  static const List<int> workDays = [
+    DateTime.sunday,
+    DateTime.monday,
+    DateTime.tuesday,
+    DateTime.wednesday,
+    DateTime.thursday,
+    DateTime.friday,
+  ];
 }

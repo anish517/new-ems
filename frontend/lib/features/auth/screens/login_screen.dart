@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import '../providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/providers/session_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -52,6 +53,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Future<void> _login() async {
+    // Clear any past session expiration banner
+    ref.read(sessionExpiredMessageProvider.notifier).state = null;
     if (!_formKey.currentState!.validate()) return;
     final success = await ref.read(authProvider.notifier).login(
           _emailController.text.trim().toLowerCase(),
@@ -238,6 +241,82 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 const SizedBox(height: 24),
               ],
             ),
+          ),
+
+          // Session Expired Banner (if redirected due to inactivity / off-hours)
+          Builder(
+            builder: (ctx) {
+              final sessionExpiredMsg = ref.watch(sessionExpiredMessageProvider);
+              if (sessionExpiredMsg == null) return const SizedBox.shrink();
+              return Container(
+                margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                    width: 1.2,
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Iconsax.timer_1,
+                        color: Color(0xFFEF4444),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Session Expired',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFFEF4444),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            sessionExpiredMsg,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: context.textPrimary.withValues(alpha: 0.85),
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    InkWell(
+                      onTap: () => ref.read(sessionExpiredMessageProvider.notifier).state = null,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          Iconsax.close_circle,
+                          size: 18,
+                          color: context.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
 
           // Email Label & Field

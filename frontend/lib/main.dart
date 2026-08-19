@@ -6,6 +6,7 @@ import 'core/router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/services/firebase_notification_service.dart';
+import 'shared/widgets/session_inactivity_listener.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +45,9 @@ class EmsApp extends ConsumerWidget {
         themeMode: themeMode,
         scrollBehavior: AppScrollBehavior(),
         routerConfig: router,
+        builder: (context, child) => SessionInactivityListener(
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
     );
   }
