@@ -1,7 +1,12 @@
 class AppConstants {
   // ─── API Base URL ──────────────────────────────────────────────────────────
-  static const String baseUrl =
-      'http://192.168.110.108:8000'; // Change to your server IP
+  // Defaults to production. For local development against a dev server, pass
+  // the address at run/build time instead of editing this file:
+  //   flutter run --dart-define=API_BASE_URL=http://192.168.1.5:8000
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://ems.omwaytechnologies.com',
+  );
 
   // ─── Endpoints ─────────────────────────────────────────────────────────────
   static const String tokenEndpoint = '/api/auth/token/';

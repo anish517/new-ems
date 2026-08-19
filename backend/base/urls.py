@@ -7,9 +7,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
 def index(request):
-    if request.user.is_authenticated:
-        return redirect('authentication:dashboard')
-    return redirect('authentication:signup')
+    # Land on the Flutter app; the legacy HTML UI stays reachable at /account/...
+    return redirect('/app/')
 
 
 urlpatterns = [
