@@ -16,6 +16,7 @@ class AppConstants {
   static const String attendanceBase = '/api/attendance';
   static const String checkIn = '/api/attendance/check-in/';
   static const String checkOut = '/api/attendance/check-out/';
+  static const String todayAttendanceStatus = '/api/attendance/today-attendance-status/';
 
   static const String leaveBase = '/api/leave-tracker';
   static const String salaryBase = '/api/salary-management';

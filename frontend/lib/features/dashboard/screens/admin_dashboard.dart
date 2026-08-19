@@ -23,7 +23,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   int _employeeCount = 0;
   int _pendingLeaves = 0;
   int _onTimeToday = 0;
-  List<String> _onTimeTodayNames = [];
+  List<Map<String, dynamic>> _todayAttendanceStatus = []; // replaces _onTimeTodayNames
   List<String> _alwaysOnTimeEmployees = [];
   List<double> _weeklyAttendance = List.filled(7, 0.0);
   List<dynamic> _pendingRemoteRequests = [];
@@ -208,7 +208,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         }
       } catch (_) {}
 
-      // Load attendance data for on-time count and weekly chart
+      // Load attendance data for weekly chart and Punctuality Champions
       try {
         final attRes =
             await ApiService().get('${AppConstants.attendanceBase}/list/');
@@ -216,7 +216,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             attRes.data is List ? attRes.data : (attRes.data['results'] ?? []);
         if (attData is List && attData.isNotEmpty) {
           final now = NepaliDateTime.now();
-          final today = _fmtDate(now);
 
           final daysSinceMonday = now.weekday == 1 ? 6 : now.weekday - 2;
           final weekStart = now.subtract(Duration(days: daysSinceMonday));
@@ -228,7 +227,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           const onTimeEndMinutes = 10 * 60 + 30; // 10:30 AM
 
           final weekCounts = List<int>.filled(7, 0); // Mon=0..Sun=6
-          final onTimeTodayNames = <String>[];
 
           final employeeNames = <String, String>{};
           final employeeAttendance = <String, Map<String, bool>>{};
@@ -281,10 +279,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             final existing = employeeAttendance[employeeKey]![dateStr];
             employeeAttendance[employeeKey]![dateStr] =
                 existing == null ? isOnTime : (existing && isOnTime);
-
-            if (dateStr == today && isOnTime) {
-              onTimeTodayNames.add(employeeName);
-            }
           }
 
           final alwaysOnTime = <String>[];
@@ -302,12 +296,22 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
           if (mounted) {
             setState(() {
-              _onTimeToday = onTimeTodayNames.length;
-              _onTimeTodayNames = onTimeTodayNames;
               _alwaysOnTimeEmployees = alwaysOnTime;
               _weeklyAttendance = normalized;
             });
           }
+        }
+      } catch (_) {}
+
+      // Load today's attendance status (present / absent per employee)
+      try {
+        final todayRes = await ApiService().get(AppConstants.todayAttendanceStatus);
+        final todayData = todayRes.data is List ? todayRes.data as List : [];
+        if (mounted) {
+          setState(() {
+            _todayAttendanceStatus = todayData.cast<Map<String, dynamic>>();
+            _onTimeToday = _todayAttendanceStatus.where((e) => e['is_present'] == true).length;
+          });
         }
       } catch (_) {}
     } catch (_) {}
@@ -498,15 +502,12 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                             ),
                             const SizedBox(height: 14),
                             _KpiCard(
-                              title: 'On Time Today',
+                              title: 'Present Today',
                               value: '$_onTimeToday',
-                              subtitle: '10:00 - 10:30 AM check-ins',
-                              icon: Iconsax.clock,
+                              subtitle: 'Employees checked in',
+                              icon: Iconsax.people,
                               color: AppColors.success,
-                              onTap: _onTimeTodayNames.isEmpty
-                                  ? null
-                                  : () => _showNamesDialog(
-                                      'On Time Today', _onTimeTodayNames),
+                              onTap: null,
                             ),
                           ],
                         );
@@ -538,15 +539,12 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                           const SizedBox(width: 16),
                           Expanded(
                             child: _KpiCard(
-                              title: 'On Time Today',
+                              title: 'Present Today',
                               value: '$_onTimeToday',
-                              subtitle: '10:00 - 10:30 AM check-ins',
-                              icon: Iconsax.clock,
+                              subtitle: 'Employees checked in',
+                              icon: Iconsax.people,
                               color: AppColors.success,
-                              onTap: _onTimeTodayNames.isEmpty
-                                  ? null
-                                  : () => _showNamesDialog(
-                                      'On Time Today', _onTimeTodayNames),
+                              onTap: null,
                             ),
                           ),
                         ],
@@ -852,123 +850,208 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
                 const SizedBox(height: 28),
 
-                // ── On Time Employees Recognition ───────────────────────────────
-                if (_onTimeTodayNames.isNotEmpty) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: context.surface,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: context.border, width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                              alpha: isDark ? 0.25 : 0.04),
-                          blurRadius: 20,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.success
-                                        .withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(Iconsax.timer_1,
-                                      color: AppColors.success, size: 18),
-                                ),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'On Time Today (10:00 – 10:30 AM)',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        color: context.textPrimary,
-                                      ),
-                                    ),
-                                    const Text(
-                                      'Checked in on schedule this morning',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.success.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '${_onTimeTodayNames.length} Employees',
-                                style: const TextStyle(
-                                  color: AppColors.success,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: _onTimeTodayNames.map((name) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: context.card,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: context.border),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                // ── Attendance Status ────────────────────────────────────────────
+                if (_todayAttendanceStatus.isNotEmpty) ...[
+                  Builder(builder: (context) {
+                    final presentList = _todayAttendanceStatus.where((e) => e['is_present'] == true).toList();
+                    final absentList = _todayAttendanceStatus.where((e) => e['is_present'] != true).toList();
+                    // Sort: present by check_in_time, absent alphabetically
+                    presentList.sort((a, b) => (a['check_in_time'] ?? '').toString().compareTo((b['check_in_time'] ?? '').toString()));
+                    absentList.sort((a, b) => (a['employee_name'] ?? '').toString().compareTo((b['employee_name'] ?? '').toString()));
+                    final allSorted = [...presentList, ...absentList];
+
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: context.surface,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: context.border, width: 1),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                            blurRadius: 20,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ── Header ──
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
                                 children: [
-                                  CircleAvatar(
-                                    radius: 12,
-                                    backgroundColor:
-                                        AppColors.success.withValues(alpha: 0.15),
-                                    child: const Icon(Iconsax.user,
-                                        size: 12, color: AppColors.success),
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Iconsax.people, color: AppColors.primary, size: 18),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Attendance Status',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: context.textPrimary,
+                                        ),
+                                      ),
+                                      Text(
+                                        _fmtDate(NepaliDateTime.now()),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              // Summary badges
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.success.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '${presentList.length} Present',
+                                      style: const TextStyle(
+                                        color: AppColors.success,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
                                   const SizedBox(width: 8),
-                                  Text(
-                                    name,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: context.textPrimary,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.error.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '${absentList.length} Absent',
+                                      style: const TextStyle(
+                                        color: AppColors.error,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
-                  ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          // ── Employee list ──
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: allSorted.length,
+                            separatorBuilder: (_, __) => Divider(height: 1, color: context.border),
+                            itemBuilder: (_, i) {
+                              final emp = allSorted[i];
+                              final isPresent = emp['is_present'] == true;
+                              final name = emp['employee_name']?.toString() ?? 'Unknown';
+                              final rawTime = emp['check_in_time']?.toString();
+                              // Format check-in time as h:mm AM/PM
+                              String checkInDisplay = 'Not checked in';
+                              if (rawTime != null && rawTime.isNotEmpty) {
+                                try {
+                                  final parts = rawTime.split(':');
+                                  final h = int.parse(parts[0]);
+                                  final m = int.parse(parts[1]);
+                                  final period = h >= 12 ? 'PM' : 'AM';
+                                  final h12 = h % 12 == 0 ? 12 : h % 12;
+                                  checkInDisplay = '$h12:${m.toString().padLeft(2, '0')} $period';
+                                } catch (_) {
+                                  checkInDisplay = rawTime;
+                                }
+                              }
+
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                child: Row(
+                                  children: [
+                                    // Status icon
+                                    Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: isPresent
+                                            ? AppColors.success.withValues(alpha: 0.12)
+                                            : AppColors.error.withValues(alpha: 0.10),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        isPresent ? Iconsax.tick_circle : Iconsax.close_circle,
+                                        size: 16,
+                                        color: isPresent ? AppColors.success : AppColors.error,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    // Name
+                                    Expanded(
+                                      child: Text(
+                                        name,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: context.textPrimary,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    // Check-in time or Absent badge
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: isPresent
+                                            ? AppColors.success.withValues(alpha: 0.10)
+                                            : AppColors.error.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            isPresent ? Iconsax.timer_1 : Iconsax.slash,
+                                            size: 12,
+                                            color: isPresent ? AppColors.success : AppColors.error,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            isPresent ? checkInDisplay : 'Absent',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: isPresent ? AppColors.success : AppColors.error,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
                   const SizedBox(height: 28),
                 ],
 
@@ -1764,97 +1847,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     );
   }
 
-  void _showNamesDialog(String title, List<String> names) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: ctx.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: ctx.border),
-        ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.success.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Iconsax.clock,
-                          color: AppColors.success, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: ctx.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 300),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: names.length,
-                    separatorBuilder: (_, __) =>
-                        Divider(height: 1, color: ctx.border),
-                    itemBuilder: (_, i) => ListTile(
-                      dense: true,
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                      leading: CircleAvatar(
-                        radius: 14,
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                        child: const Icon(Iconsax.user,
-                            size: 14, color: AppColors.primary),
-                      ),
-                      title: Text(
-                        names[i],
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: ctx.textPrimary,
-                        ),
-                      ),
-                      trailing: const Icon(Iconsax.tick_circle,
-                          color: AppColors.success, size: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Close',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Future<void> _showReportDialog(String type) async {
     final now = NepaliDateTime.now();

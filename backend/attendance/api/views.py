@@ -469,7 +469,64 @@ class AttendanceListAPIView(APIView):
         return paginator.get_paginated_response(result)
 
 
+# ─── Today Attendance Status (Admin) ─────────────────────────────────────────
+
+
+class AdminTodayAttendanceStatusAPIView(APIView):
+    """Admin: returns every org employee marked as present (with check-in time)
+    or absent for today's Nepali date."""
+    permission_classes = [IsAuthenticated, IsOrgAdmin]
+
+    def get(self, request):
+        user = request.user
+        org = getattr(user.employee, 'organization', None) if hasattr(user, 'employee') else None
+        if not org:
+            if user.organization.exists():
+                org = user.organization.first()
+            elif getattr(user, 'is_superuser', False):
+                from organization.models import Organization
+                org = Organization.objects.first()
+
+        if not org:
+            return Response([])
+
+        today = nepali_datetime.date.today()
+
+        # All employees in the org
+        employees = Employee.objects.filter(
+            post__department__organization=org
+        ).select_related('user').order_by('user__first_name', 'user__last_name')
+
+        # Today's attendance records keyed by employee_id
+        today_records = {
+            att.employee_id: att
+            for att in Attendance.objects.filter(
+                organization=org, date=today
+            ).prefetch_related('check_ins_outs')
+        }
+
+        result = []
+        for emp in employees:
+            att = today_records.get(emp.id)
+            check_in_time = None
+            if att:
+                first_ci = att.check_ins_outs.order_by('id').first()
+                if first_ci and first_ci.check_in:
+                    check_in_time = str(first_ci.check_in)
+
+            result.append({
+                'employee_id': emp.id,
+                'employee_name': emp.user.full_name if emp.user else '',
+                'is_present': att is not None,
+                'check_in_time': check_in_time,
+                'date': str(today),
+            })
+
+        return Response(result)
+
+
 # ─── Remote Work Permission Views ─────────────────────────────────────────────
+
 
 class RemoteWorkPermissionListAPIView(APIView):
     """Admin: list every employee in the org with their remote-permission status."""
