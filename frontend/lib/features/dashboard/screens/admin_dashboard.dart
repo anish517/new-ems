@@ -30,6 +30,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   List<dynamic> _pendingRemoteRequests = [];
   List<dynamic> _pendingProfileChangeRequests = [];
   List<dynamic> _pendingLeaveRequests = [];
+  List<dynamic> _pendingFeedbacks = [];
+  int _pendingFeedbackCount = 0;
   bool _loading = true;
 
   @override
@@ -320,6 +322,22 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         }
       } catch (_) {}
 
+      // Load pending feedback & complaints
+      try {
+        final fbRes = await ApiService().get('${AppConstants.feedbackBase}/');
+        final fbData = fbRes.data is List ? fbRes.data as List : (fbRes.data['results'] as List? ?? []);
+        if (mounted) {
+          final pendingOnly = fbData.where((c) {
+            final s = (c['status'] ?? 'pending').toString().toLowerCase();
+            return s != 'resolved' && s != 'reviewed';
+          }).toList();
+          setState(() {
+            _pendingFeedbacks = pendingOnly;
+            _pendingFeedbackCount = pendingOnly.length;
+          });
+        }
+      } catch (_) {}
+
       // Load today's attendance status (present / absent per employee)
       try {
         final todayRes = await ApiService().get(AppConstants.todayAttendanceStatus);
@@ -333,6 +351,40 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       } catch (_) {}
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _resolveFeedback(int id) async {
+    try {
+      await ApiService().patch('${AppConstants.feedbackBase}/$id/', data: {'status': 'resolved'});
+      _loadStats();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(children: [
+              Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
+              SizedBox(width: 10),
+              Text('Feedback marked as resolved'),
+            ]),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(20),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${ApiService.getErrorMessage(e)}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(20),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -526,6 +578,15 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                               color: AppColors.success,
                               onTap: null,
                             ),
+                            const SizedBox(height: 14),
+                            _KpiCard(
+                              title: 'Pending Feedback',
+                              value: '$_pendingFeedbackCount',
+                              subtitle: 'Unresolved grievances',
+                              icon: Iconsax.messages_3,
+                              color: AppColors.error,
+                              onTap: () => context.go('/feedback'),
+                            ),
                           ],
                         );
                       }
@@ -562,6 +623,17 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                               icon: Iconsax.people,
                               color: AppColors.success,
                               onTap: null,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _KpiCard(
+                              title: 'Pending Feedback',
+                              value: '$_pendingFeedbackCount',
+                              subtitle: 'Unresolved grievances',
+                              icon: Iconsax.messages_3,
+                              color: AppColors.error,
+                              onTap: () => context.go('/feedback'),
                             ),
                           ),
                         ],
@@ -1277,6 +1349,302 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   },
                 ),
                 const SizedBox(height: 28),
+
+
+                // -- Pending Feedback & Grievances --------------------------------
+                if (_pendingFeedbacks.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Iconsax.messages_3, size: 18, color: AppColors.error),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Pending Feedback & Grievances (${_pendingFeedbacks.length})',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                            color: context.textPrimary,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => context.go('/feedback'),
+                        icon: const Icon(Iconsax.arrow_right_3, size: 16, color: AppColors.primary),
+                        label: const Text(
+                          'View All',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  ...(() {
+                    const maxShow = 5;
+                    final shown = _pendingFeedbacks.length > maxShow
+                        ? _pendingFeedbacks.sublist(0, maxShow)
+                        : _pendingFeedbacks;
+                    return [
+                      ...shown.map((c) {
+                        final id = c['id'] as int? ?? 0;
+                        final title = c['title']?.toString() ?? 'Untitled';
+                        final desc = c['description']?.toString() ?? '';
+                        final ownerName = c['owner_name']?.toString() ?? 'Anonymous';
+                        final catName = c['category_name']?.toString() ?? 'General';
+                        final isAnonymous = (c['visibility'] ?? 'anonymous') == 'anonymous';
+                        final dateStr = c['created_at']?.toString() ?? '';
+                        final repliesCount = (c['replies'] as List?)?.length ?? 0;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: context.surface,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: AppColors.error.withValues(alpha: 0.25),
+                                width: 1.2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.04),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Badges row
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    // Category
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(alpha: 0.10),
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Iconsax.tag, size: 12, color: AppColors.primary),
+                                          const SizedBox(width: 4),
+                                          Text(catName,
+                                              style: const TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.primary)),
+                                        ],
+                                      ),
+                                    ),
+                                    // Privacy
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: isAnonymous
+                                            ? const Color(0xFF8B5CF6).withValues(alpha: 0.12)
+                                            : AppColors.primary.withValues(alpha: 0.10),
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            isAnonymous ? Iconsax.shield_security : Iconsax.user,
+                                            size: 12,
+                                            color: isAnonymous ? const Color(0xFF8B5CF6) : AppColors.primary,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            isAnonymous ? 'Anonymous' : 'Identified',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                                color: isAnonymous
+                                                    ? const Color(0xFF8B5CF6)
+                                                    : AppColors.primary),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    // Status
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.warning.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Iconsax.clock, size: 12, color: AppColors.warning),
+                                          SizedBox(width: 4),
+                                          Text('Pending',
+                                              style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: AppColors.warning)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                // Title
+                                Text(
+                                  title,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.2,
+                                    color: context.textPrimary,
+                                  ),
+                                ),
+                                if (desc.isNotEmpty) ...[
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    desc,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        fontSize: 12.5,
+                                        color: AppColors.textSecondary,
+                                        height: 1.4),
+                                  ),
+                                ],
+                                const SizedBox(height: 14),
+                                Divider(color: context.border, height: 1),
+                                const SizedBox(height: 12),
+                                // Footer: submitter, date, replies + resolve button
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 11,
+                                      backgroundColor: isAnonymous
+                                          ? const Color(0xFF8B5CF6).withValues(alpha: 0.15)
+                                          : AppColors.primary.withValues(alpha: 0.15),
+                                      child: Icon(
+                                        isAnonymous ? Iconsax.user_cirlce_add : Iconsax.user,
+                                        size: 12,
+                                        color: isAnonymous ? const Color(0xFF8B5CF6) : AppColors.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Expanded(
+                                      child: Text(
+                                        ownerName,
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: context.textPrimary),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (dateStr.isNotEmpty) ...[
+                                      const Icon(Iconsax.calendar_1,
+                                          size: 11, color: AppColors.textSecondary),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        dateStr,
+                                        style: const TextStyle(
+                                            fontSize: 11, color: AppColors.textSecondary),
+                                      ),
+                                      const SizedBox(width: 10),
+                                    ],
+                                    if (repliesCount > 0) ...[
+                                      const Icon(Iconsax.message_text,
+                                          size: 11, color: AppColors.textSecondary),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '$repliesCount',
+                                        style: const TextStyle(
+                                            fontSize: 11, color: AppColors.textSecondary),
+                                      ),
+                                      const SizedBox(width: 10),
+                                    ],
+                                    // Mark Resolved button
+                                    GestureDetector(
+                                      onTap: () => _resolveFeedback(id),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.success.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(
+                                              color: AppColors.success.withValues(alpha: 0.3)),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Iconsax.tick_circle,
+                                                size: 13, color: AppColors.success),
+                                            SizedBox(width: 5),
+                                            Text(
+                                              'Resolve',
+                                              style: TextStyle(
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.success),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                      if (_pendingFeedbacks.length > maxShow)
+                        GestureDetector(
+                          onTap: () => context.go('/feedback'),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.06),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Iconsax.messages_3,
+                                    size: 15, color: AppColors.error),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'View ${_pendingFeedbacks.length - maxShow} more pending grievances',
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.error),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ];
+                  })(),
+                  const SizedBox(height: 28),
+                ],
 
                 // -- Pending Leave Requests ----------------------------------------
                 if (_pendingLeaveRequests.isNotEmpty) ...[
