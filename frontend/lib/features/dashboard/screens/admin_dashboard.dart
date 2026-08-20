@@ -29,6 +29,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   List<double> _weeklyAttendance = List.filled(7, 0.0);
   List<dynamic> _pendingRemoteRequests = [];
   List<dynamic> _pendingProfileChangeRequests = [];
+  List<dynamic> _pendingLeaveRequests = [];
   bool _loading = true;
 
   @override
@@ -165,6 +166,55 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     }
   }
 
+  Future<void> _actionLeaveRequest(int id, bool approve) async {
+    try {
+      await ApiService().patch(
+        '${AppConstants.leaveBase}/update/$id/',
+        data: {'is_approved': approve, 'is_reviewed': true},
+      );
+      _loadStats();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  approve ? Iconsax.tick_circle : Iconsax.close_circle,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(approve ? 'Leave request approved' : 'Leave request rejected'),
+              ],
+            ),
+            backgroundColor: approve ? AppColors.success : AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(20),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Iconsax.warning_2, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Error: $e')),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(20),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _loadStats() async {
     setState(() => _loading = true);
     try {
@@ -182,9 +232,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           : (leaveRes.data['results'] ?? []);
       if (!mounted) return;
       setState(() {
-        _pendingLeaves = (leaves as List)
+        final pending = (leaves as List)
             .where((l) => l['is_approved'] != true && l['is_reviewed'] != true)
-            .length;
+            .toList();
+        _pendingLeaves = pending.length;
+        _pendingLeaveRequests = pending;
       });
 
       // Load remote requests
@@ -1155,6 +1207,296 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   ),
                 ),
                 const SizedBox(height: 28),
+
+                // ── Pending Leave Requests ────────────────────────────────────────
+                if (_pendingLeaveRequests.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Iconsax.calendar_remove, size: 18, color: AppColors.warning),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Pending Leave Requests (${_pendingLeaveRequests.length})',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.4,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _pendingLeaveRequests.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) {
+                      final req = _pendingLeaveRequests[i];
+                      final employeeName = req['employee_name']?.toString() ?? 'Staff Member';
+                      final subject = req['subject']?.toString() ?? '-';
+                      final fromDate = req['from_date']?.toString() ?? '';
+                      final tillDate = req['till_date']?.toString() ?? '';
+                      final noDays = req['no_days']?.toString() ?? '?';
+                      final isPaid = req['is_paid'] as bool? ?? false;
+                      final isHalfDay = req['half_day'] as bool? ?? false;
+                      final int reqId = req['id'] is int
+                          ? req['id'] as int
+                          : (int.tryParse('${req['id']}') ?? 0);
+
+                      // Format Nepali dates
+                      String fmtNepali(String raw) {
+                        if (raw.isEmpty) return '-';
+                        try {
+                          return NepaliDateFormat('dd MMM yyyy').format(NepaliDateTime.parse(raw));
+                        } catch (_) {
+                          return raw;
+                        }
+                      }
+
+                      final leaveTypeLabel = isHalfDay
+                          ? 'Half Day'
+                          : (isPaid ? 'Paid Leave' : 'Unpaid Leave');
+                      final leaveTypeColor = isHalfDay
+                          ? AppColors.info
+                          : (isPaid ? AppColors.success : AppColors.error);
+
+                      return Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: context.surface,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: AppColors.warning.withValues(alpha: 0.35),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ── Header row ──
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: AppColors.warning.withValues(alpha: 0.12),
+                                      child: const Icon(Iconsax.calendar_remove, size: 18, color: AppColors.warning),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          employeeName,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 15.5,
+                                            color: context.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: leaveTypeColor.withValues(alpha: 0.12),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                leaveTypeLabel,
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: leaveTypeColor,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              '$noDays day${noDays == '1' ? '' : 's'}',
+                                              style: const TextStyle(
+                                                fontSize: 11.5,
+                                                color: AppColors.textSecondary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.warning.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'PENDING REVIEW',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.warning,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            // ── Details box ──
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: context.card,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: context.border),
+                              ),
+                              child: Wrap(
+                                spacing: 20,
+                                runSpacing: 8,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  // Date range
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Iconsax.calendar_1, size: 13, color: AppColors.textSecondary),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        '${fmtNepali(fromDate)} → ${fmtNepali(tillDate)}',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: context.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  // Subject
+                                  if (subject.isNotEmpty && subject != '-')
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Iconsax.message_text, size: 13, color: AppColors.textSecondary),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          subject,
+                                          style: const TextStyle(
+                                            fontSize: 12.5,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            // ── Action buttons ──
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () => _actionLeaveRequest(reqId, false),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.error.withValues(alpha: 0.10),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: AppColors.error, width: 1.5),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Iconsax.close_circle, size: 16, color: AppColors.error),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Reject',
+                                            style: TextStyle(
+                                              color: AppColors.error,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () => _actionLeaveRequest(reqId, true),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.success,
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppColors.success.withValues(alpha: 0.35),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Approve Leave',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 28),
+                ],
 
                 // ── Pending Profile Update Requests ───────────────────────────────
                 if (_pendingProfileChangeRequests.isNotEmpty) ...[
