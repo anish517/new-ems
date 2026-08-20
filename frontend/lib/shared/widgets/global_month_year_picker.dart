@@ -79,6 +79,43 @@ class GlobalMonthYearPicker extends ConsumerWidget {
           const SizedBox(height: 8),
           Row(
             children: [
+              // Year — LEFT
+              Expanded(
+                flex: 2,
+                child: Container(
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: context.card,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: context.border),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      isExpanded: true,
+                      value: dateState.year,
+                      dropdownColor: context.surface,
+                      icon: const Icon(Iconsax.arrow_down_1, size: 14),
+                      style: TextStyle(
+                        color: context.textPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      items: List.generate(30, (index) => 2075 + index).map((year) {
+                        return DropdownMenuItem<int>(
+                          value: year,
+                          child: Text('$year'),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) ref.read(nepaliDateProvider.notifier).setYear(val);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Month — RIGHT
               Expanded(
                 flex: 3,
                 child: Container(
@@ -114,41 +151,6 @@ class GlobalMonthYearPicker extends ConsumerWidget {
                       ],
                       onChanged: (val) {
                         ref.read(nepaliDateProvider.notifier).setMonth(val);
-                      },
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 2,
-                child: Container(
-                  height: 36,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: context.card,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: context.border),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<int>(
-                      isExpanded: true,
-                      value: dateState.year,
-                      dropdownColor: context.surface,
-                      icon: const Icon(Iconsax.arrow_down_1, size: 14),
-                      style: TextStyle(
-                        color: context.textPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      items: List.generate(30, (index) => 2075 + index).map((year) {
-                        return DropdownMenuItem<int>(
-                          value: year,
-                          child: Text('$year'),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) ref.read(nepaliDateProvider.notifier).setYear(val);
                       },
                     ),
                   ),
