@@ -595,10 +595,11 @@ class AdminPunctualityChampionsAPIView(APIView):
             date__lte=end_date,
         ).prefetch_related('check_ins_outs')
 
-        # Key: (employee_id, str(date)) → Attendance
+        # Key: (employee_id, year, month, day) → Attendance
         att_map = {}
         for att in att_qs:
-            att_map[(att.employee_id, str(att.date))] = att
+            d = att.date
+            att_map[(att.employee_id, d.year, d.month, d.day)] = att
 
         # ── Fetch approved leaves for the month (bulk) ──────────────────────
         from leave_management.models import LeaveRequest
@@ -619,7 +620,7 @@ class AdminPunctualityChampionsAPIView(APIView):
             cur = max(lr.from_date, start_date)
             end = min(lr.till_date, end_date)
             while cur <= end:
-                leave_dates_map[eid].add(str(cur))
+                leave_dates_map[eid].add((cur.year, cur.month, cur.day))
                 # advance one day using python date arithmetic via weekday trick
                 try:
                     cur = nepali_datetime.date(cur.year, cur.month, cur.day + 1)
@@ -645,7 +646,8 @@ class AdminPunctualityChampionsAPIView(APIView):
             leave_dates = leave_dates_map.get(emp.id, set())
 
             # Effective working days = working days not on leave
-            effective_days = [d for d in working_dates if str(d) not in leave_dates]
+            effective_days = [d for d in working_dates
+                              if (d.year, d.month, d.day) not in leave_dates]
 
             if not effective_days:
                 # All working days were on approved leave — edge case, skip
@@ -656,7 +658,7 @@ class AdminPunctualityChampionsAPIView(APIView):
             qualified       = True
 
             for d in effective_days:
-                att = att_map.get((emp.id, str(d)))
+                att = att_map.get((emp.id, d.year, d.month, d.day))
                 if att is None:
                     # Missed a working day with no approved leave → disqualify
                     qualified = False
