@@ -525,7 +525,178 @@ class AdminTodayAttendanceStatusAPIView(APIView):
         return Response(result)
 
 
+# ─── Punctuality Champions (Monthly, Admin) ──────────────────────────────────
+
+
+NEPALI_MONTHS = [
+    '', 'Baishakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin',
+    'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra',
+]
+
+ON_TIME_START = 10 * 60       # 10:00 AM in minutes
+ON_TIME_END   = 10 * 60 + 30  # 10:30 AM in minutes
+
+
+class AdminPunctualityChampionsAPIView(APIView):
+    """Admin: returns employees who qualify as Punctuality Champions for the
+    current (or requested) Nepali month.
+
+    Criteria (ALL must be met):
+      1. Attended every working day (Sun–Fri), excluding approved-leave days.
+      2. Every check-in was within 10:00–10:30 AM.
+      3. Filed zero AttendanceCorrectionRequests this month.
+    """
+    permission_classes = [IsAuthenticated, IsOrgAdmin]
+
+    def get(self, request):
+        user = request.user
+        org = getattr(user.employee, 'organization', None) if hasattr(user, 'employee') else None
+        if not org:
+            if user.organization.exists():
+                org = user.organization.first()
+            elif getattr(user, 'is_superuser', False):
+                from organization.models import Organization
+                org = Organization.objects.first()
+
+        if not org:
+            return Response({'month_name': '', 'working_days': 0, 'champions': []})
+
+        today = nepali_datetime.date.today()
+        year  = int(request.GET.get('nepali_year',  today.year))
+        month = int(request.GET.get('nepali_month', today.month))
+
+        # ── Build list of working days up to today ──────────────────────────
+        from calendar_app.utilities import total_days_in_month
+        total_days = total_days_in_month(year, month)
+        last_day   = min(total_days, today.day if (year == today.year and month == today.month) else total_days)
+
+        working_dates = []
+        for day in range(1, last_day + 1):
+            d = nepali_datetime.date(year, month, day)
+            if d.weekday() != 6:          # 6 = Saturday (off-day)
+                working_dates.append(d)
+
+        if not working_dates:
+            return Response({'month_name': f'{NEPALI_MONTHS[month]} {year}',
+                             'working_days': 0, 'champions': []})
+
+        start_date = nepali_datetime.date(year, month, 1)
+        end_date   = nepali_datetime.date(year, month, last_day)
+
+        # ── Fetch all employees in org ──────────────────────────────────────
+        employees = Employee.objects.filter(
+            post__department__organization=org
+        ).select_related('user')
+
+        # ── Fetch all attendance records for the month (bulk) ───────────────
+        att_qs = Attendance.objects.filter(
+            organization=org,
+            date__gte=start_date,
+            date__lte=end_date,
+        ).prefetch_related('check_ins_outs')
+
+        # Key: (employee_id, date) → Attendance
+        att_map = {}
+        for att in att_qs:
+            att_map[(att.employee_id, att.date)] = att
+
+        # ── Fetch approved leaves for the month (bulk) ──────────────────────
+        from leave_management.models import LeaveRequest
+        leave_qs = LeaveRequest.objects.filter(
+            organization=org,
+            is_approved=True,
+            from_date__lte=end_date,
+            till_date__gte=start_date,
+        )
+
+        # Key: employee_id → set of covered nepali dates
+        leave_dates_map: dict[int, set] = {}
+        for lr in leave_qs:
+            eid = lr.employee_id
+            if eid not in leave_dates_map:
+                leave_dates_map[eid] = set()
+            # Enumerate each date covered by the leave within the month window
+            cur = max(lr.from_date, start_date)
+            end = min(lr.till_date, end_date)
+            while cur <= end:
+                leave_dates_map[eid].add(cur)
+                # advance one day using python date arithmetic via weekday trick
+                try:
+                    cur = nepali_datetime.date(cur.year, cur.month, cur.day + 1)
+                except Exception:
+                    # day overflow → next month; safe to break
+                    break
+
+        # ── Fetch correction requests for the month (bulk) ──────────────────
+        correction_qs = AttendanceCorrectionRequest.objects.filter(
+            employee__post__department__organization=org,
+            requested_date__gte=start_date,
+            requested_date__lte=end_date,
+        )
+        employees_with_corrections = set(correction_qs.values_list('employee_id', flat=True))
+
+        # ── Evaluate each employee ──────────────────────────────────────────
+        champions = []
+        for emp in employees:
+            # Criterion 3: no correction requests
+            if emp.id in employees_with_corrections:
+                continue
+
+            leave_dates = leave_dates_map.get(emp.id, set())
+
+            # Effective working days = working days not on leave
+            effective_days = [d for d in working_dates if d not in leave_dates]
+
+            if not effective_days:
+                # All working days were on approved leave — edge case, skip
+                continue
+
+            attended_days   = 0
+            punctual_days   = 0
+            qualified       = True
+
+            for d in effective_days:
+                att = att_map.get((emp.id, d))
+                if att is None:
+                    # Missed a working day with no approved leave → disqualify
+                    qualified = False
+                    break
+
+                attended_days += 1
+
+                # Check punctuality: first check-in must be in 10:00–10:30 AM
+                first_ci = att.check_ins_outs.order_by('id').first()
+                if first_ci and first_ci.check_in:
+                    h = first_ci.check_in.hour
+                    m = first_ci.check_in.minute
+                    total_min = h * 60 + m
+                    if ON_TIME_START <= total_min <= ON_TIME_END:
+                        punctual_days += 1
+                    else:
+                        qualified = False
+                        break
+                else:
+                    # No check-in time recorded → not punctual
+                    qualified = False
+                    break
+
+            if qualified and attended_days == len(effective_days):
+                champions.append({
+                    'employee_id':   emp.id,
+                    'employee_name': emp.user.full_name if emp.user else '',
+                    'attended_days': attended_days,
+                    'punctual_days': punctual_days,
+                })
+
+        return Response({
+            'month_name':   f'{NEPALI_MONTHS[month]} {year}',
+            'working_days': len(working_dates),
+            'champions':    champions,
+        })
+
+
 # ─── Remote Work Permission Views ─────────────────────────────────────────────
+
 
 
 class RemoteWorkPermissionListAPIView(APIView):

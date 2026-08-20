@@ -13,6 +13,7 @@ urlpatterns = [
     path('today-status/', views.TodayAttendanceStatusAPIView.as_view(), name='today-status'),
     path('list/', views.AttendanceListAPIView.as_view(), name='attendance-list'),
     path('today-attendance-status/', views.AdminTodayAttendanceStatusAPIView.as_view(), name='today-attendance-status'),
+    path('punctuality-champions/', views.AdminPunctualityChampionsAPIView.as_view(), name='punctuality-champions'),
 
     # Remote work permission management
     path('remote-work-permission/list/',

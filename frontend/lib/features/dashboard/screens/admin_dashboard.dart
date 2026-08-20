@@ -24,7 +24,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   int _pendingLeaves = 0;
   int _onTimeToday = 0;
   List<Map<String, dynamic>> _todayAttendanceStatus = []; // replaces _onTimeTodayNames
-  List<String> _alwaysOnTimeEmployees = [];
+  List<Map<String, dynamic>> _punctualityChampions = [];
+  String _championsMonthName = '';
   List<double> _weeklyAttendance = List.filled(7, 0.0);
   List<dynamic> _pendingRemoteRequests = [];
   List<dynamic> _pendingProfileChangeRequests = [];
@@ -208,7 +209,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         }
       } catch (_) {}
 
-      // Load attendance data for weekly chart and Punctuality Champions
+      // Load attendance data for weekly chart
       try {
         final attRes =
             await ApiService().get('${AppConstants.attendanceBase}/list/');
@@ -223,34 +224,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           final weekStartStr = _fmtDate(weekStart);
           final weekEndStr = _fmtDate(weekEnd);
 
-          const onTimeStartMinutes = 10 * 60; // 10:00 AM
-          const onTimeEndMinutes = 10 * 60 + 30; // 10:30 AM
-
           final weekCounts = List<int>.filled(7, 0); // Mon=0..Sun=6
-
-          final employeeNames = <String, String>{};
-          final employeeAttendance = <String, Map<String, bool>>{};
 
           for (final log in attData) {
             final dateStr = log['date']?.toString() ?? '';
             if (dateStr.isEmpty) continue;
-
-            final employeeName = (log['employee_name'] ??
-                    log['employeeName'] ??
-                    (log['employee'] is Map
-                        ? (log['employee']['full_name'] ??
-                            log['employee']['fullName'] ??
-                            log['employee']['name'])
-                        : null) ??
-                    'Unknown')
-                .toString();
-            final employeeKey = (log['employee_id'] ??
-                    log['employeeId'] ??
-                    (log['employee'] is Map
-                        ? (log['employee']['_id'] ?? log['employee']['id'])
-                        : log['employee']) ??
-                    employeeName)
-                .toString();
 
             if (dateStr.compareTo(weekStartStr) >= 0 &&
                 dateStr.compareTo(weekEndStr) <= 0) {
@@ -260,34 +238,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 weekCounts[index]++;
               } catch (_) {}
             }
-
-            bool isOnTime = false;
-            final checkInStr = log['check_in_time']?.toString();
-            if (checkInStr != null && checkInStr.isNotEmpty) {
-              try {
-                final parts = checkInStr.split(':');
-                final h = int.parse(parts[0]);
-                final m = parts.length > 1 ? int.parse(parts[1]) : 0;
-                final totalMinutes = h * 60 + m;
-                isOnTime = totalMinutes >= onTimeStartMinutes &&
-                    totalMinutes <= onTimeEndMinutes;
-              } catch (_) {}
-            }
-
-            employeeNames[employeeKey] = employeeName;
-            employeeAttendance.putIfAbsent(employeeKey, () => {});
-            final existing = employeeAttendance[employeeKey]![dateStr];
-            employeeAttendance[employeeKey]![dateStr] =
-                existing == null ? isOnTime : (existing && isOnTime);
           }
-
-          final alwaysOnTime = <String>[];
-          employeeAttendance.forEach((key, dailyMap) {
-            if (dailyMap.isNotEmpty &&
-                dailyMap.values.every((onTime) => onTime)) {
-              alwaysOnTime.add(employeeNames[key] ?? 'Unknown');
-            }
-          });
 
           final maxCount = weekCounts.reduce((a, b) => a > b ? a : b);
           final normalized = weekCounts
@@ -296,8 +247,22 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
           if (mounted) {
             setState(() {
-              _alwaysOnTimeEmployees = alwaysOnTime;
               _weeklyAttendance = normalized;
+            });
+          }
+        }
+      } catch (_) {}
+
+      // Load monthly Punctuality Champions
+      try {
+        final champRes = await ApiService().get(AppConstants.punctualityChampions);
+        if (champRes.data is Map) {
+          final data = champRes.data as Map<String, dynamic>;
+          final list = data['champions'] as List? ?? [];
+          if (mounted) {
+            setState(() {
+              _championsMonthName = data['month_name']?.toString() ?? '';
+              _punctualityChampions = list.cast<Map<String, dynamic>>();
             });
           }
         }
@@ -1055,44 +1020,47 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   const SizedBox(height: 28),
                 ],
 
-                // ── Always On Time Hall of Fame ─────────────────────────────────
-                if (_alwaysOnTimeEmployees.isNotEmpty) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: context.surface,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: context.border, width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                              alpha: isDark ? 0.25 : 0.04),
-                          blurRadius: 20,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.warning.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Iconsax.medal_star,
-                                  color: AppColors.warning, size: 18),
+                // ── Punctuality Champions (Monthly) ──────────────────────────
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: context.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: context.border, width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                            alpha: isDark ? 0.25 : 0.04),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Header ──
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            const SizedBox(width: 12),
-                            Column(
+                            child: const Icon(Iconsax.medal_star,
+                                color: AppColors.warning, size: 18),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Punctuality Champions',
+                                  _championsMonthName.isNotEmpty
+                                      ? 'Punctuality Champion – $_championsMonthName'
+                                      : 'Punctuality Champions',
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w800,
@@ -1100,7 +1068,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                   ),
                                 ),
                                 const Text(
-                                  'Consistently arrived on schedule on every recorded workday',
+                                  'Perfect attendance · on-time check-ins · zero corrections',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textSecondary,
@@ -1108,47 +1076,85 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                 ),
                               ],
                             ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ── Champions list or empty state ──
+                      if (_punctualityChampions.isEmpty)
+                        Row(
+                          children: [
+                            const Icon(Iconsax.emoji_sad,
+                                size: 16, color: AppColors.textSecondary),
+                            const SizedBox(width: 8),
+                            Text(
+                              'No champions yet this month',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: context.textSecondary,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
                           ],
-                        ),
-                        const SizedBox(height: 16),
+                        )
+                      else
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: _alwaysOnTimeEmployees.map((name) {
+                          children: _punctualityChampions.map((c) {
+                            final name = c['employee_name']?.toString() ?? 'Unknown';
+                            final days = c['attended_days'] as int? ?? 0;
                             return Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
+                                  horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
-                                color: AppColors.warning.withValues(alpha: 0.12),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppColors.warning.withValues(alpha: 0.14),
+                                    AppColors.warning.withValues(alpha: 0.06),
+                                  ],
+                                ),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: AppColors.warning.withValues(alpha: 0.3),
+                                  color: AppColors.warning.withValues(alpha: 0.35),
                                 ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Iconsax.award,
-                                      size: 14, color: AppColors.warning),
+                                  const Text('🏆',
+                                      style: TextStyle(fontSize: 14)),
                                   const SizedBox(width: 6),
-                                  Text(
-                                    name,
-                                    style: TextStyle(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: context.textPrimary,
-                                    ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: context.textPrimary,
+                                        ),
+                                      ),
+                                      Text(
+                                        '$days days · 100% on-time',
+                                        style: const TextStyle(
+                                          fontSize: 10.5,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
                             );
                           }).toList(),
                         ),
-                      ],
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 28),
-                ],
+                ),
+                const SizedBox(height: 28),
 
                 // ── Pending Profile Update Requests ───────────────────────────────
                 if (_pendingProfileChangeRequests.isNotEmpty) ...[
