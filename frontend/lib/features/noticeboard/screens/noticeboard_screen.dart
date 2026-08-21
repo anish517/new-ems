@@ -479,106 +479,186 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                   ),
                 )
               else
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final cols = constraints.maxWidth < 680
-                        ? 1
-                        : constraints.maxWidth < 1100
-                            ? 2
-                            : 3;
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredNotices.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (ctx, i) {
+                    final n = filteredNotices[i];
+                    final desc = n['description'] ?? n['content'] ?? '';
+                    final cleanDesc = desc.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+                    final dateStr = _fmtDate(n['date']?.toString(), fallback: n['created_at']?.toString());
 
-                    return GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: cols,
-                        crossAxisSpacing: 14,
-                        mainAxisSpacing: 14,
-                        childAspectRatio: cols == 1 ? 2.8 : 1.75,
-                      ),
-                      itemCount: filteredNotices.length,
-                      itemBuilder: (ctx, i) {
-                        final n = filteredNotices[i];
-                        final desc = n['description'] ?? n['content'] ?? '';
-                        final cleanDesc = desc.replaceAll(RegExp(r'<[^>]*>'), '').trim();
-                        final dateStr = _fmtDate(n['date']?.toString(), fallback: n['created_at']?.toString());
-
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: context.surface,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: context.border),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                                blurRadius: 10,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: context.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: context.border, width: 1),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                            blurRadius: 12,
+                            offset: const Offset(0, 3),
                           ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: () => _showNoticeDetail(ctx, n, isAdmin),
-                              child: Padding(
-                                padding: const EdgeInsets.all(18),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(6),
-                                          ),
-                                          child: Text(
-                                            dateStr,
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.primary,
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () => _showNoticeDetail(ctx, n, isAdmin),
+                          child: Padding(
+                            padding: EdgeInsets.all(isTight ? 14 : 18),
+                            child: isTight
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primary.withValues(alpha: 0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(Iconsax.calendar_1, size: 13, color: AppColors.primary),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  dateStr,
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: AppColors.primary,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
+                                          const Icon(Icons.arrow_forward_ios, size: 13, color: AppColors.textSecondary),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        n['title'] ?? 'Notice',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: -0.2,
+                                          color: context.textPrimary,
                                         ),
-                                        const Icon(Icons.arrow_forward, size: 16, color: AppColors.textSecondary),
+                                      ),
+                                      if (cleanDesc.isNotEmpty) ...[
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          cleanDesc,
+                                          style: const TextStyle(
+                                            fontSize: 12.5,
+                                            color: AppColors.textSecondary,
+                                            height: 1.4,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      n['title'] ?? 'Notice',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: -0.2,
-                                        color: context.textPrimary,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Expanded(
-                                      child: Text(
-                                        cleanDesc.isNotEmpty ? cleanDesc : 'Tap to read full announcement...',
-                                        style: const TextStyle(
-                                          fontSize: 12.5,
-                                          color: AppColors.textSecondary,
-                                          height: 1.4,
+                                    ],
+                                  )
+                                : Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      // Left: Date Block
+                                      Container(
+                                        constraints: const BoxConstraints(minWidth: 120),
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(alpha: 0.08),
+                                          borderRadius: BorderRadius.circular(14),
+                                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.16)),
                                         ),
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Iconsax.calendar_1, size: 18, color: AppColors.primary),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              dateStr,
+                                              style: const TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w800,
+                                                color: AppColors.primary,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                                      const SizedBox(width: 18),
+
+                                      // Center: Title & Excerpt
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              n['title'] ?? 'Notice',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: -0.2,
+                                                color: context.textPrimary,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 5),
+                                            Text(
+                                              cleanDesc.isNotEmpty ? cleanDesc : 'Tap to read full corporate announcement details...',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: AppColors.textSecondary,
+                                                height: 1.4,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+
+                                      // Right: View Notice Action Button
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                                        decoration: BoxDecoration(
+                                          color: context.card,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: context.border),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              'View Notice',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
+                                            SizedBox(width: 6),
+                                            Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.primary),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     );
                   },
                 ),

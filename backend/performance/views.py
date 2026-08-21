@@ -14,6 +14,9 @@ class PerformanceCategoryViewSet(viewsets.ModelViewSet):
     serializer_class = PerformanceCategorySerializer
     permission_classes = [IsAuthenticated]
 
+    def _is_admin(self, user):
+        return user.is_superuser or user.organization.exists() or getattr(user, 'is_hr', False)
+
     def get_queryset(self):
         user = self.request.user
         try:
@@ -31,6 +34,10 @@ class PerformanceCategoryViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
+        if not self._is_admin(user):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only administrators can create performance categories.")
+
         org = user.organization.first()
         if not org and hasattr(user, 'employee'):
             org = user.employee.organization
@@ -41,6 +48,21 @@ class PerformanceCategoryViewSet(viewsets.ModelViewSet):
             serializer.save(organization=org)
         else:
             serializer.save()
+
+    def perform_update(self, serializer):
+        user = self.request.user
+        if not self._is_admin(user):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only administrators can edit performance categories.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+        if not self._is_admin(user):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only administrators can delete performance categories.")
+        instance.delete()
+
 
 
 class PerformanceReviewListCreateView(generics.ListCreateAPIView):
