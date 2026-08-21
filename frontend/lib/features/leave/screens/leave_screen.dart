@@ -1149,7 +1149,23 @@ class _LeaveBalanceTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            ...leaveBalances.map((lb) => _LeaveTypeTile(lb, pendingRequests: pendingRequests)),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isTwoCol = constraints.maxWidth >= 550;
+                final itemWidth = isTwoCol ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth;
+
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: leaveBalances.map((lb) {
+                    return SizedBox(
+                      width: itemWidth,
+                      child: _LeaveTypeTile(lb, pendingRequests: pendingRequests),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
           ],
         ],
       ),
@@ -1176,7 +1192,6 @@ class _LeaveTypeTile extends StatelessWidget {
     final netAvailable = (remaining - typePending).clamp(0, total);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: context.surface,
@@ -1876,81 +1891,206 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
         color: context.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: context.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                child: Text(
-                  empName.isNotEmpty ? empName[0].toUpperCase() : 'E',
-                  style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
-                ),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                    child: Text(
+                      empName.isNotEmpty ? empName[0].toUpperCase() : 'E',
+                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    empName,
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5, color: context.textPrimary),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Text(
-                  empName,
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5, color: context.textPrimary),
+                  '${balances.length} Quota Types',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Divider(color: context.border),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
 
-          ...balances.map((b) {
-            final quota = (b['quota'] as num?)?.toInt() ?? 0;
-            final taken = (b['leaves_taken'] as num?)?.toDouble() ?? 0;
-            final remaining = (quota - taken).clamp(0, quota);
-            final typeName = b['leave_type']?['name'] ?? 'Leave';
-            final isPaid = typeName == 'Paid Leave';
+          // ── Two-Column Quota Balance Display ──
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isTwoCol = constraints.maxWidth >= 440;
+              final itemWidth = isTwoCol ? (constraints.maxWidth - 10) / 2 : constraints.maxWidth;
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              return Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: balances.map((b) {
+                  return SizedBox(
+                    width: itemWidth,
+                    child: _buildQuotaTile(context, b),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuotaTile(BuildContext context, Map b) {
+    final quota = (b['quota'] as num?)?.toInt() ?? 0;
+    final taken = (b['leaves_taken'] as num?)?.toDouble() ?? 0;
+    final remaining = (quota - taken).clamp(0, quota);
+    final typeName = b['leave_type']?['name'] ?? 'Leave';
+    final isPaid = typeName == 'Paid Leave';
+    final pct = quota > 0 ? (taken / quota).clamp(0.0, 1.0).toDouble() : 0.0;
+    final remainingPct = quota > 0 ? (((quota - taken) / quota) * 100).round() : 0;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: (isPaid ? AppColors.success : const Color(0xFFF59E0B)).withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: Icon + Name + Edit Button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: (isPaid ? AppColors.success : const Color(0xFFF59E0B)).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      isPaid ? Iconsax.wallet_3 : Iconsax.calendar_remove,
+                      color: isPaid ? AppColors.success : const Color(0xFFF59E0B),
+                      size: 14,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Text(
                     typeName,
                     style: TextStyle(
                       color: isPaid ? AppColors.success : const Color(0xFFF59E0B),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12.5,
                     ),
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: context.card,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: context.border),
-                        ),
-                        child: Text(
-                          '$remaining / $quota days remaining',
-                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Iconsax.edit, size: 16, color: AppColors.primary),
-                        tooltip: 'Adjust Quota',
-                        onPressed: () => _showEditQuotaDialog(context, b),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
                   ),
                 ],
               ),
-            );
-          }),
+              IconButton(
+                icon: const Icon(Iconsax.edit, size: 15, color: AppColors.primary),
+                tooltip: 'Adjust Quota',
+                onPressed: () => _showEditQuotaDialog(context, b),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Numbers: Remaining / Total Quota
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    '$remaining',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    ' / $quota days remaining',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: (isPaid ? AppColors.success : const Color(0xFFF59E0B)).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '$remainingPct% left',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: isPaid ? AppColors.success : const Color(0xFFF59E0B),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Progress indicator
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: pct,
+              backgroundColor: context.surface,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                pct > 0.85
+                    ? AppColors.error
+                    : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
+              ),
+              minHeight: 4.5,
+            ),
+          ),
         ],
       ),
     );
