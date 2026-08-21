@@ -12,10 +12,23 @@ class LeaveTypeSerializer(serializers.ModelSerializer):
 
 class LeaveBalanceSerializer(serializers.ModelSerializer):
     leave_type = LeaveTypeSerializer()
+    leaves_taken = serializers.SerializerMethodField()
 
     class Meta:
         model = LeaveBalance
         fields = ['id', 'leave_type', 'quota', 'leaves_taken']
+
+    def get_leaves_taken(self, obj):
+        if not obj.employee or not obj.leave_type:
+            return float(obj.leaves_taken or 0.0)
+        approved = LeaveRequest.objects.filter(
+            employee=obj.employee,
+            type=obj.leave_type,
+            is_approved=True,
+            is_reviewed=True
+        )
+        return float(sum(lr.no_days for lr in approved))
+
 
 
 class EmployeeLeaveBalanceSerializer(serializers.Serializer):
