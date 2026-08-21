@@ -69,16 +69,47 @@ def _connect_leave_signals():
                             notification_type='leave',
                             reference_id=instance.id,
                         )
-            elif instance.is_reviewed:
-                # Notify employee about their leave status
-                status_str = 'approved ✅' if instance.is_approved else 'rejected ❌'
+            elif instance.is_initial_approved and not instance.is_reviewed:
+                # Notify employee about initial approval
                 notify_user(
                     user=instance.employee.user,
-                    title=f'Leave Request {status_str.split()[0].capitalize()}',
-                    body=f'Your leave request "{instance.subject}" has been {status_str}.',
+                    title='📋 Sick Leave Initial Approved',
+                    body=f'Your sick leave request "{instance.subject}" received Initial Approval and is awaiting final review.',
                     notification_type='leave',
                     reference_id=instance.id,
                 )
+                # Notify org admins ready for final approval
+                if instance.organization:
+                    for admin_user in instance.organization.admin_users.all():
+                        if admin_user != instance.initial_approved_by:
+                            notify_user(
+                                user=admin_user,
+                                title='📋 Sick Leave Ready for Final Approval',
+                                body=f'{instance.employee.user.full_name}\'s sick leave "{instance.subject}" received initial approval.',
+                                notification_type='leave',
+                                reference_id=instance.id,
+                            )
+            elif instance.is_reviewed:
+                # Notify employee about their final leave status
+                if instance.is_approved:
+                    leave_mode = 'paid leave' if instance.is_paid else 'unpaid leave'
+                    notify_user(
+                        user=instance.employee.user,
+                        title='✅ Leave Request Approved',
+                        body=f'Your leave request "{instance.subject}" ({instance.no_days} days) has been fully approved as {leave_mode}.',
+                        notification_type='leave',
+                        reference_id=instance.id,
+                    )
+                else:
+                    reason_suffix = f' Reason: {instance.rejection_reason}' if instance.rejection_reason else ''
+                    notify_user(
+                        user=instance.employee.user,
+                        title='❌ Leave Request Rejected',
+                        body=f'Your leave request "{instance.subject}" was rejected.{reason_suffix}',
+                        notification_type='leave',
+                        reference_id=instance.id,
+                    )
+
     except Exception as e:
         print(f'[Signals] Could not connect leave signals: {e}')
 

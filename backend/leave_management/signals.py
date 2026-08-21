@@ -111,21 +111,28 @@ def send_leave_request_notification(sender, instance, created, **kwargs):
         employee_notification_message = 'Your leave request has been sent.'
         admin_notification_title = 'New leave request received'
         admin_notification_message = f'{emp_name} has requested for leave.'
+    elif instance.is_initial_approved and not instance.is_reviewed:
+        employee_notification_title = '📋 Sick Leave Initial Approved'
+        employee_notification_message = f'Your sick leave request "{instance.subject}" has received Initial Approval and is awaiting final review.'
+        admin_notification_title = '📋 Sick Leave Ready for Final Approval'
+        admin_notification_message = f'{emp_name}\'s sick leave "{instance.subject}" received initial approval and is ready for final approval.'
     elif instance.is_reviewed:
         if instance.is_approved:
             leave_mode = 'paid leave' if instance.is_paid else 'unpaid leave'
-            employee_notification_title = f'Leave request approved as {leave_mode}.'
-            employee_notification_message = f'Your leave request for {instance.no_days} days has been approved as {leave_mode}.'
-            admin_notification_title = f'Leave request approved as {leave_mode}.'
+            employee_notification_title = f'✅ Leave request approved as {leave_mode}'
+            employee_notification_message = f'Your leave request "{instance.subject}" for {instance.no_days} days has been approved as {leave_mode}.'
+            admin_notification_title = f'✅ Leave request approved as {leave_mode}'
             admin_notification_message = f'Leave requested by {emp_name} for {instance.no_days} days approved as {leave_mode}.'
         else:
-            employee_notification_title = 'Leave request declined'
-            employee_notification_message = 'Your leave request has been declined.'
-            admin_notification_title = 'Leave request declined'
-            admin_notification_message = f'Leave requested by {emp_name} for {instance.no_days} days was declined.'
+            reason_suffix = f' Reason: {instance.rejection_reason}' if instance.rejection_reason else ''
+            employee_notification_title = '❌ Leave request declined'
+            employee_notification_message = f'Your leave request "{instance.subject}" has been declined.{reason_suffix}'
+            admin_notification_title = '❌ Leave request declined'
+            admin_notification_message = f'Leave requested by {emp_name} for {instance.no_days} days was declined.{reason_suffix}'
     else:
-        # Not a new leave and not yet reviewed — do not generate notifications
+        # Not a new leave, not initial approved, and not yet reviewed — do not generate notifications
         return
+
 
     if employee_notification_title:
         Notification.objects.create(
