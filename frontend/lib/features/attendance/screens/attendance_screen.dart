@@ -101,7 +101,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     _adminTabs = TabController(length: 5, vsync: this);
     _adminTabs.addListener(() {
       if (_adminTabs.indexIsChanging || _adminTabs.index != _selectedAdminTab) {
-        if (mounted) setState(() => _selectedAdminTab = _adminTabs.index);
+        if (mounted) {
+          setState(() => _selectedAdminTab = _adminTabs.index);
+          if (_adminTabs.index == 4) {
+            _loadGeofenceSettings();
+          }
+        }
       }
     });
     WidgetsBinding.instance.addObserver(this);
@@ -426,8 +431,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       final d = res.data;
       if (mounted && d != null) {
         setState(() {
-          _officeLatCtrl.text = '${d['office_latitude'] ?? ''}';
-          _officeLngCtrl.text = '${d['office_longitude'] ?? ''}';
+          final lat = d['office_latitude'];
+          final lng = d['office_longitude'];
+          _officeLatCtrl.text = (lat != null && lat.toString() != 'null') ? '$lat' : '';
+          _officeLngCtrl.text = (lng != null && lng.toString() != 'null') ? '$lng' : '';
           _officeRadiusCtrl.text = '${d['allowed_attendance_radius'] ?? 100}';
           _enableInOffice = d['enable_in_office_attendance'] ?? true;
           _enableRemote = d['enable_remote_attendance'] ?? true;
@@ -1072,7 +1079,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         'latitude': pos.latitude,
         'longitude': pos.longitude,
       });
+      // Also update the geofence settings controllers so the fields auto-populate
+      if (mounted) {
+        setState(() {
+          _officeLatCtrl.text = pos.latitude.toStringAsFixed(7);
+          _officeLngCtrl.text = pos.longitude.toStringAsFixed(7);
+        });
+      }
       _showSnack('✅ Office Location geofence configured successfully!', AppColors.success);
+      // Reload settings from server to ensure full sync
+      await _loadGeofenceSettings();
     } catch (e) {
       _showSnack('❌ Failed to set office location: ${ApiService.getErrorMessage(e)}', AppColors.error);
     } finally {

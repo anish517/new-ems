@@ -205,6 +205,9 @@ class Employee(SoftDeleteModel):
     marital_status = models.CharField(
         max_length=10, choices=MARITAL_STATUS_CHOICES, default="single", null=True, blank=True
     )
+    pan_number = models.CharField(
+        max_length=50, null=True, blank=True, verbose_name="PAN Number"
+    )
 
     class Meta:
         ordering = ["user__first_name", "user__last_name"]

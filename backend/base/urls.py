@@ -42,6 +42,7 @@ api_routes = [
     path('api/attendance/', include('attendance.api.routes')),
     path('api/calendar/', include('calendar_app.api.routes')),
     path('api/salary-management/', include('salary_management.api.routes')),
+    path('api/salary/', include('salary_management.api.routes')),
     path('api/leave-tracker/', include('leave_management.api.routes')),
     path('api/task-management/', include('task_management.api.routes')),
     path('api/noticeboard/', include('noticeboard.api.routes')),

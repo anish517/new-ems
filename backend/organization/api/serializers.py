@@ -120,6 +120,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "post",
             "gender",
             "marital_status",
+            "pan_number",
             "date_of_birth",
             "father_name",
             "grandfather_name",

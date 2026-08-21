@@ -46,6 +46,8 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
 
   String _fatherName = '', _grandfatherName = '', _bloodGroup = 'A+', _altPhone = '';
   String _personalEmail = '';
+  String _panNumber = '';
+  final _panCtrl = TextEditingController();
   final List<_AttachedDocItem> _attachedDocs = [];
   List<dynamic> _existingDocuments = [];
 
@@ -71,6 +73,10 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
       _gender = widget.employee!['gender'] ?? 'male';
       _maritalStatus = widget.employee!['marital_status'] ?? 'single';
       _employeeType = widget.employee!['employee_type'] ?? 'full_time';
+      _panNumber = widget.employee!['pan_number']?.toString() ??
+          widget.employee!['pan']?.toString() ??
+          '';
+      _panCtrl.text = _panNumber;
 
       final postVal = widget.employee!['post'];
       if (postVal is int) {
@@ -110,6 +116,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
   void dispose() {
     _dobCtrl.dispose();
     _customPostCtrl.dispose();
+    _panCtrl.dispose();
     super.dispose();
   }
 
@@ -152,6 +159,21 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
   Future<void> _fetchExtraDetails(int empId) async {
     setState(() => _isLoadingDetails = true);
     try {
+      final empRes = await ApiService()
+          .get('${AppConstants.organizationBase}/employees/$empId/');
+      if (empRes.data != null && empRes.data is Map) {
+        final empData = empRes.data as Map;
+        final fetchedPan = empData['pan_number']?.toString() ?? empData['pan']?.toString() ?? '';
+        if (fetchedPan.isNotEmpty) {
+          if (mounted) {
+            setState(() {
+              _panNumber = fetchedPan;
+              _panCtrl.text = fetchedPan;
+            });
+          }
+        }
+      }
+
       final addrRes = await ApiService()
           .get('${AppConstants.organizationBase}/addresses/?employee=$empId');
       final addrs =
@@ -587,6 +609,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
       return;
     }
     _formKey.currentState!.save();
+    _panNumber = _panCtrl.text.trim();
 
     if (widget.employee == null && _attachedDocs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -640,6 +663,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
         'post': postId,
         'gender': _gender,
         'marital_status': _maritalStatus,
+        'pan_number': _panNumber.trim(),
         'date_of_birth': dobStr,
         'phone_no': _phone.trim(),
         'father_name': _fatherName.trim(),
@@ -1030,47 +1054,37 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                     ),
                     const SizedBox(height: 14),
 
-                    TextFormField(
-                      initialValue: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'Official Work Email *',
-                        hintText: 'employee@company.com',
-                        prefixIcon: Icon(Iconsax.sms, size: 18),
-                      ),
-                      validator: (v) => (v == null || !v.contains('@'))
-                          ? 'Valid work email is required'
-                          : null,
-                      onSaved: (v) => _email = v ?? '',
-                    ),
-                    const SizedBox(height: 14),
-
-                    TextFormField(
-                      initialValue: _personalEmail,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'Personal Email (Optional)',
-                        hintText: 'personal@gmail.com',
-                        prefixIcon: Icon(Iconsax.sms_tracking, size: 18),
-                      ),
-                      onSaved: (v) => _personalEmail = v ?? '',
-                    ),
-                    const SizedBox(height: 14),
-
-                    TextFormField(
-                      decoration: InputDecoration(
-                        labelText: widget.employee == null
-                            ? 'Login Password *'
-                            : 'Login Password (leave blank to keep unchanged)',
-                        hintText: 'Min 6 characters',
-                        prefixIcon: const Icon(Iconsax.lock, size: 18),
-                      ),
-                      obscureText: true,
-                      validator: (v) =>
-                          (widget.employee == null && (v == null || v.length < 6))
-                              ? 'Password (min 6 characters) is required'
-                              : null,
-                      onSaved: (v) => _password = v ?? '',
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            initialValue: _email,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: const InputDecoration(
+                              labelText: 'Official Work Email *',
+                              hintText: 'employee@company.com',
+                              prefixIcon: Icon(Iconsax.sms, size: 18),
+                            ),
+                            validator: (v) => (v == null || !v.contains('@'))
+                                ? 'Valid work email is required'
+                                : null,
+                            onSaved: (v) => _email = v ?? '',
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: TextFormField(
+                            initialValue: _personalEmail,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: const InputDecoration(
+                              labelText: 'Personal Email (Optional)',
+                              hintText: 'personal@gmail.com',
+                              prefixIcon: Icon(Iconsax.sms_tracking, size: 18),
+                            ),
+                            onSaved: (v) => _personalEmail = v ?? '',
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 14),
 
@@ -1093,6 +1107,25 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                         ),
                         const SizedBox(width: 14),
                         Expanded(
+                          child: TextFormField(
+                            controller: _panCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'PAN Number (Optional)',
+                              hintText: 'e.g. 123456789',
+                              prefixIcon: Icon(Iconsax.receipt_item, size: 18),
+                            ),
+                            keyboardType: TextInputType.text,
+                            onChanged: (v) => _panNumber = v,
+                            onSaved: (v) => _panNumber = v ?? '',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    Row(
+                      children: [
+                        Expanded(
                           child: DropdownButtonFormField<String>(
                             initialValue: _gender,
                             decoration: const InputDecoration(
@@ -1105,6 +1138,21 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                               DropdownMenuItem(value: 'others', child: Text('Others')),
                             ],
                             onChanged: (v) => setState(() => _gender = v!),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            initialValue: _maritalStatus,
+                            decoration: const InputDecoration(
+                              labelText: 'Marital Status',
+                              prefixIcon: Icon(Iconsax.heart, size: 18),
+                            ),
+                            items: const [
+                              DropdownMenuItem(value: 'single', child: Text('Single')),
+                              DropdownMenuItem(value: 'married', child: Text('Married')),
+                            ],
+                            onChanged: (v) => setState(() => _maritalStatus = v!),
                           ),
                         ),
                       ],
@@ -1148,17 +1196,20 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                     ),
                     const SizedBox(height: 14),
 
-                    DropdownButtonFormField<String>(
-                      initialValue: _maritalStatus,
-                      decoration: const InputDecoration(
-                        labelText: 'Marital Status',
-                        prefixIcon: Icon(Iconsax.heart, size: 18),
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: widget.employee == null
+                            ? 'Login Password *'
+                            : 'Login Password (leave blank to keep unchanged)',
+                        hintText: 'Min 6 characters',
+                        prefixIcon: const Icon(Iconsax.lock, size: 18),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'single', child: Text('Single')),
-                        DropdownMenuItem(value: 'married', child: Text('Married')),
-                      ],
-                      onChanged: (v) => setState(() => _maritalStatus = v!),
+                      obscureText: true,
+                      validator: (v) =>
+                          (widget.employee == null && (v == null || v.length < 6))
+                              ? 'Password (min 6 characters) is required'
+                              : null,
+                      onSaved: (v) => _password = v ?? '',
                     ),
 
                     // ── 2. Family & Emergency Info ──────────────────────

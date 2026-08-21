@@ -4,7 +4,7 @@ import time
 from rest_framework import status
 from rest_framework import generics
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import permissions
 from django.http import HttpResponse
 from django.core.mail import send_mail
@@ -564,9 +564,23 @@ th{{background:#f1f5f9;color:#64748b;font-weight:600;font-size:12px;text-transfo
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class GenerateSalaryReportAPIView(generics.GenericAPIView):
-    permission_classes = [IsSalaryAdminOrHR]
+    permission_classes = [AllowAny]
 
     def get(self, request):
+        # Authenticate via Header or Query Token
+        user = request.user
+        if not user or not user.is_authenticated:
+            token = request.GET.get('token')
+            if token:
+                try:
+                    from rest_framework_simplejwt.authentication import JWTAuthentication
+                    validated = JWTAuthentication().get_validated_token(token)
+                    user = JWTAuthentication().get_user(validated)
+                except Exception:
+                    pass
+        if not user or not user.is_authenticated:
+            return Response({'error': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
+
         year_str = request.GET.get('year')
         month_str = request.GET.get('month')
         start_date_str = request.GET.get('start_date')
@@ -574,7 +588,7 @@ class GenerateSalaryReportAPIView(generics.GenericAPIView):
         employee_id = request.GET.get('employee')
 
         try:
-            organization = _get_org(request.user)
+            organization = _get_org(user)
         except Exception:
             organization = None
 
@@ -592,11 +606,16 @@ class GenerateSalaryReportAPIView(generics.GenericAPIView):
 
             response['Content-Disposition'] = f'attachment; filename="salary_report_{start_date_str}_to_{end_date_str}.csv"'
             writer = csv.writer(response)
-            writer.writerow(['Date', 'Employee Name', 'Email', 'Basic Salary', 'Remote Salary', 'Days Present',
+            writer.writerow(['Date', 'Employee Name', 'Email', 'PAN Number', 'Basic Salary', 'Remote Salary', 'Days Present',
                              'Paid Leaves', 'Unpaid Leaves', 'Half Leaves',
                              'Incentive', 'Bonus', 'Salary TDS', 'Incentive TDS', 'Bonus TDS', 'Total TDS', 'Net Salary'])
             
-            qs = SalaryTransaction.objects.filter(date__gte=start_date, date__lte=end_date)
+            qs = SalaryTransaction.objects.filter(
+                date__gte=start_date,
+                date__lte=end_date,
+                salary__isnull=False,
+                salary__employee__isnull=False
+            )
             if organization:
                 qs = qs.filter(organization=organization)
             if employee_id and employee_id != 'null':
@@ -604,13 +623,20 @@ class GenerateSalaryReportAPIView(generics.GenericAPIView):
                 
             for transaction in qs.order_by('-date'):
                 salary = transaction.salary
-                year = transaction.date.year
-                month = transaction.date.month
+                if not salary or not getattr(salary, 'employee', None):
+                    continue
+                employee = salary.employee
+                user_obj = getattr(employee, 'user', None)
+                if not user_obj:
+                    continue
+
+                year = transaction.date.year if transaction.date else 2083
+                month = transaction.date.month if transaction.date else 1
                 
-                no_of_days_present = Attendance.get_no_of_present_days(salary.employee, year, month)
-                paid_leaves = LeaveRequest.get_total_paid_leaves(salary.employee, year, month)
-                unpaid_leaves = LeaveRequest.get_total_unpaid_leaves(salary.employee, year, month)
-                half_leaves = LeaveRequest.get_total_half_leaves(salary.employee, year, month)
+                no_of_days_present = transaction.stored_no_of_days_present if transaction.stored_no_of_days_present is not None else Attendance.get_no_of_present_days(employee, year, month)
+                paid_leaves = transaction.stored_paid_leaves if transaction.stored_paid_leaves is not None else LeaveRequest.get_total_paid_leaves(employee, year, month)
+                unpaid_leaves = transaction.stored_unpaid_leaves if transaction.stored_unpaid_leaves is not None else LeaveRequest.get_total_unpaid_leaves(employee, year, month)
+                half_leaves = transaction.stored_half_leaves if transaction.stored_half_leaves is not None else LeaveRequest.get_total_half_leaves(employee, year, month)
                 
                 incentive_amt = transaction.incentive or 0
                 bonus_amt = transaction.bonus or 0
@@ -631,10 +657,11 @@ class GenerateSalaryReportAPIView(generics.GenericAPIView):
                 
                 writer.writerow([
                     str(transaction.date),
-                    str(salary.employee.user.full_name),
-                    salary.employee.user.email,
-                    salary.basic_salary,
-                    salary.remote_salary,
+                    str(user_obj.full_name or user_obj.username),
+                    user_obj.email or '',
+                    getattr(employee, 'pan_number', '') or '',
+                    salary.basic_salary or 0,
+                    salary.remote_salary or 0,
                     no_of_days_present,
                     paid_leaves,
                     unpaid_leaves,
@@ -655,17 +682,24 @@ class GenerateSalaryReportAPIView(generics.GenericAPIView):
             month = int(month_str)
 
             if organization:
-                salaries = Salary.objects.filter(organization=organization)
+                salaries = Salary.objects.filter(organization=organization, employee__isnull=False)
             else:
-                salaries = Salary.objects.all()
+                salaries = Salary.objects.filter(employee__isnull=False)
 
             response['Content-Disposition'] = f'attachment; filename="salary_report_{year}_{month}.csv"'
             writer = csv.writer(response)
-            writer.writerow(['Employee Name', 'Email', 'Basic Salary', 'Remote Salary', 'Days Present',
+            writer.writerow(['Employee Name', 'Email', 'PAN Number', 'Basic Salary', 'Remote Salary', 'Days Present',
                              'Paid Leaves', 'Unpaid Leaves', 'Half Leaves',
                              'Incentive', 'Bonus', 'Total TDS', 'Net Salary'])
 
             for salary in salaries:
+                if not getattr(salary, 'employee', None):
+                    continue
+                employee = salary.employee
+                user_obj = getattr(employee, 'user', None)
+                if not user_obj:
+                    continue
+
                 emp_transactions = SalaryTransaction.objects.filter(salary=salary)
                 transaction = next((t for t in emp_transactions if getattr(t.date, 'year', None) == year and getattr(t.date, 'month', None) == month), None)
 
@@ -674,22 +708,35 @@ class GenerateSalaryReportAPIView(generics.GenericAPIView):
                     incentive_csv = transaction.incentive or 0
                     bonus_csv = transaction.bonus or 0
                     total_tds_csv = transaction.transaction_tds or 0
+                    no_of_days_present = transaction.stored_no_of_days_present if transaction.stored_no_of_days_present is not None else Attendance.get_no_of_present_days(employee, year, month)
+                    paid_leaves = transaction.stored_paid_leaves if transaction.stored_paid_leaves is not None else LeaveRequest.get_total_paid_leaves(employee, year, month)
+                    unpaid_leaves = transaction.stored_unpaid_leaves if transaction.stored_unpaid_leaves is not None else LeaveRequest.get_total_unpaid_leaves(employee, year, month)
+                    half_leaves = transaction.stored_half_leaves if transaction.stored_half_leaves is not None else LeaveRequest.get_total_half_leaves(employee, year, month)
                 else:
-                    net_salary = Salary.calculate_net_salary(employee=salary.employee, year=year, month=month)
+                    try:
+                        net_salary = Salary.calculate_net_salary(employee=employee, year=year, month=month)
+                    except Exception:
+                        net_salary = salary.basic_salary or 0
                     incentive_csv = 0
                     bonus_csv = 0
-                    total_tds_csv = round((salary.basic_salary * (salary.tax_rate or 0)) / 100) if (salary.tax_rate or 0) > 0 else (salary.tds or 0)
-
-                no_of_days_present = Attendance.get_no_of_present_days(salary.employee, year, month)
-                paid_leaves = LeaveRequest.get_total_paid_leaves(salary.employee, year, month)
-                unpaid_leaves = LeaveRequest.get_total_unpaid_leaves(salary.employee, year, month)
-                half_leaves = LeaveRequest.get_total_half_leaves(salary.employee, year, month)
+                    total_tds_csv = round(((salary.basic_salary or 0) * (salary.tax_rate or 0)) / 100) if (salary.tax_rate or 0) > 0 else (salary.tds or 0)
+                    try:
+                        no_of_days_present = Attendance.get_no_of_present_days(employee, year, month)
+                    except Exception:
+                        no_of_days_present = 0
+                    try:
+                        paid_leaves = LeaveRequest.get_total_paid_leaves(employee, year, month)
+                        unpaid_leaves = LeaveRequest.get_total_unpaid_leaves(employee, year, month)
+                        half_leaves = LeaveRequest.get_total_half_leaves(employee, year, month)
+                    except Exception:
+                        paid_leaves, unpaid_leaves, half_leaves = 0, 0, 0
 
                 writer.writerow([
-                    str(salary.employee),
-                    salary.employee.user.email,
-                    salary.basic_salary,
-                    salary.remote_salary,
+                    str(user_obj.full_name or user_obj.username),
+                    user_obj.email or '',
+                    getattr(employee, 'pan_number', '') or '',
+                    salary.basic_salary or 0,
+                    salary.remote_salary or 0,
                     no_of_days_present,
                     paid_leaves,
                     unpaid_leaves,

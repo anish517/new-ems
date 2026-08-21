@@ -74,6 +74,10 @@ class ApiService {
     await _storage.deleteAll();
   }
 
+  /// Returns the current access token from secure storage.
+  Future<String?> getAccessToken() =>
+      _storage.read(key: AppConstants.accessTokenKey);
+
   Future<Response> get(String path, {Map<String, dynamic>? queryParams}) {
     final params = queryParams != null ? Map<String, dynamic>.from(queryParams) : <String, dynamic>{};
     if (globalNepaliYear != null) params['nepali_year'] = globalNepaliYear;

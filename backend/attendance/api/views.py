@@ -2,7 +2,7 @@ import nepali_datetime
 from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated, BasePermission
+from rest_framework.permissions import IsAuthenticated, BasePermission, AllowAny
 from django.http import HttpResponse
 import csv
 
@@ -797,10 +797,24 @@ class MyRemoteWorkPermissionAPIView(APIView):
 
 
 class GenerateAttendanceReportAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request):
-        if not (request.user.is_superuser or getattr(request.user, 'is_hr', False) or (hasattr(request.user, 'employee') and request.user.employee.organization.admin_users.filter(id=request.user.id).exists())):
+        # Authenticate via Header or Query Token
+        user = request.user
+        if not user or not user.is_authenticated:
+            token = request.GET.get('token')
+            if token:
+                try:
+                    from rest_framework_simplejwt.authentication import JWTAuthentication
+                    validated = JWTAuthentication().get_validated_token(token)
+                    user = JWTAuthentication().get_user(validated)
+                except Exception:
+                    pass
+        if not user or not user.is_authenticated:
+            return Response({'error': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        if not (user.is_superuser or getattr(user, 'is_hr', False) or user.organization.exists() or (hasattr(user, 'employee') and getattr(user.employee, 'organization', None) and user.employee.organization.admin_users.filter(id=user.id).exists())):
             return Response({'error': 'You do not have permission to generate this report.'}, status=status.HTTP_403_FORBIDDEN)
 
         year_str = request.GET.get('year')
@@ -814,7 +828,6 @@ class GenerateAttendanceReportAPIView(APIView):
         except ValueError:
             return Response({'error': 'Year and month must be valid integers.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = request.user
         organization = getattr(user.employee, 'organization', None) if hasattr(user, 'employee') else None
         if not organization:
             if user.organization.exists():

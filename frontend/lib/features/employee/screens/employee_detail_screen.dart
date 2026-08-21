@@ -1755,6 +1755,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             runSpacing: 18,
             children: [
               _infoTile(Iconsax.call, 'Primary Phone', emp['phone_no'] ?? 'N/A'),
+              _infoTile(Iconsax.receipt_item, 'PAN Number',
+                  emp['pan_number']?.toString().isNotEmpty == true ? emp['pan_number'] : 'N/A'),
               _infoTile(Iconsax.user, "Father's Name", emp['father_name'] ?? 'N/A'),
               _infoTile(Iconsax.user, "Grandfather's Name",
                   emp['grandfather_name'] ?? 'N/A'),

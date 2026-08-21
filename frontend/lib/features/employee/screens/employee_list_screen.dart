@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
@@ -64,6 +65,7 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
       if (mounted) setState(() => _loading = false);
     }
   }
+
 
   Future<void> _deleteEmployee(int id, String name) async {
     final confirm = await showDialog<bool>(
@@ -382,6 +384,46 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
       );
     }
   }
+  Future<void> _exportEmployeeCSV() async {
+    try {
+      final token = await ApiService().getAccessToken();
+      if (token == null || token.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Session expired. Please log in again.'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+      final url =
+          '${AppConstants.baseUrl}/api/organization/employees/export-csv/?token=$token';
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not launch the CSV export. Try again.'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: ${ApiService.getErrorMessage(e)}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
 
   List<dynamic> _getFiltered(List<dynamic> list) => list.where((e) {
         final name =
@@ -450,132 +492,154 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        Wrap(
+                          spacing: 14,
+                          runSpacing: 14,
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            Container(
-                              padding: EdgeInsets.all(isTight ? 9 : 12),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Icon(Iconsax.people,
-                                  color: AppColors.primary, size: isTight ? 20 : 24),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      'Employee Directory',
-                                      style: TextStyle(
-                                        fontSize: isTight ? 17 : 20,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: -0.4,
-                                        color: context.textPrimary,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(14),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      '${_employees.length} Active',
-                                      style: const TextStyle(
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: context.card,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: context.border),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  InkWell(
-                                    onTap: () => setState(() => _isGridView = true),
-                                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(11)),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: _isGridView ? AppColors.primary.withValues(alpha: 0.15) : Colors.transparent,
-                                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(11)),
-                                      ),
-                                      child: Icon(
-                                        Iconsax.grid_1,
-                                        size: 17,
-                                        color: _isGridView ? AppColors.primary : AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(width: 1, height: 18, color: context.border),
-                                  InkWell(
-                                    onTap: () => setState(() => _isGridView = false),
-                                    borderRadius: const BorderRadius.horizontal(right: Radius.circular(11)),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: !_isGridView ? AppColors.primary.withValues(alpha: 0.15) : Colors.transparent,
-                                        borderRadius: const BorderRadius.horizontal(right: Radius.circular(11)),
-                                      ),
-                                      child: Icon(
-                                        Iconsax.row_vertical,
-                                        size: 17,
-                                        color: !_isGridView ? AppColors.primary : AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Iconsax.refresh, size: 18),
-                              onPressed: _load,
-                              tooltip: 'Refresh',
-                              style: IconButton.styleFrom(
-                                backgroundColor: context.card,
-                                side: BorderSide(color: context.border),
-                                padding: const EdgeInsets.all(8),
-                              ),
-                            ),
-                            if (!isTight) ...[
-                              const SizedBox(width: 10),
-                              ElevatedButton.icon(
-                                onPressed: () => _openAddEmployeeModal(),
-                                icon: const Icon(Iconsax.user_add, size: 18, color: Colors.white),
-                                label: const Text('Add Employee',
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  child: const Icon(Iconsax.people,
+                                      color: AppColors.primary, size: 22),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Employee Directory',
+                                          style: TextStyle(
+                                            fontSize: isTight ? 17 : 20,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: -0.4,
+                                            color: context.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            '${_employees.length} Active',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Manage staff profiles, contracts & CSV records',
+                                      style: TextStyle(
+                                        fontSize: isTight ? 11 : 12,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: context.card,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: context.border),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      InkWell(
+                                        onTap: () => setState(() => _isGridView = true),
+                                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(11)),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: _isGridView ? AppColors.primary.withValues(alpha: 0.15) : Colors.transparent,
+                                            borderRadius: const BorderRadius.horizontal(left: Radius.circular(11)),
+                                          ),
+                                          child: Icon(
+                                            Iconsax.grid_1,
+                                            size: 17,
+                                            color: _isGridView ? AppColors.primary : AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(width: 1, height: 18, color: context.border),
+                                      InkWell(
+                                        onTap: () => setState(() => _isGridView = false),
+                                        borderRadius: const BorderRadius.horizontal(right: Radius.circular(11)),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: !_isGridView ? AppColors.primary.withValues(alpha: 0.15) : Colors.transparent,
+                                            borderRadius: const BorderRadius.horizontal(right: Radius.circular(11)),
+                                          ),
+                                          child: Icon(
+                                            Iconsax.row_vertical,
+                                            size: 17,
+                                            color: !_isGridView ? AppColors.primary : AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Iconsax.refresh, size: 18),
+                                  onPressed: _load,
+                                  tooltip: 'Refresh',
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: context.card,
+                                    side: BorderSide(color: context.border),
+                                    padding: const EdgeInsets.all(8),
+                                  ),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: _exportEmployeeCSV,
+                                  icon: const Icon(Iconsax.document_download, size: 16),
+                                  label: const Text('Export CSV',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    side: BorderSide(color: context.border),
+                                  ),
+                                ),
+                                ElevatedButton.icon(
+                                  onPressed: () => _openAddEmployeeModal(),
+                                  icon: const Icon(Iconsax.user_add, size: 17, color: Colors.white),
+                                  label: const Text('Add Employee',
+                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Manage staff profiles, contracts & access credentials',
-                          style: TextStyle(
-                            fontSize: isTight ? 11.5 : 12,
-                            color: AppColors.textSecondary,
-                          ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),

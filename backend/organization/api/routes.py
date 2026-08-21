@@ -10,6 +10,9 @@ router.register(r'bank-details', views.BankDetailViewSet)
 router.register(r'documents', views.DocumentViewSet)
 
 urlpatterns = [
+    path('employees/export-csv/', views.EmployeeExportCSVAPIView.as_view(), name='employee-export-csv'),
+    path('employees/import-csv/', views.EmployeeImportCSVAPIView.as_view(), name='employee-import-csv'),
+    path('employees/sample-csv/', views.EmployeeSampleCSVAPIView.as_view(), name='employee-sample-csv'),
     path('', include(router.urls)),
     path('organization_file/<int:pk>/',
          views.OrganizationFileRetrieveAPIView.as_view()),
