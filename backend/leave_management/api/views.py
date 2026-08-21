@@ -1,16 +1,51 @@
 import nepali_datetime
-import time
+import datetime as dt
+from django.utils import timezone
+from django.db import models
 from rest_framework import status, serializers
 from rest_framework import generics
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.exceptions import NotFound
-from leave_management.models import LeaveBalance, LeaveRequest, LeaveType
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
-from .serializers import EmployeeLeaveBalanceSerializer, LeaveRequestSerializer, LeaveTypeSerializer, LeaveBalanceSerializer
+from leave_management.models import LeaveBalance, LeaveRequest, LeaveType
+from .serializers import (
+    EmployeeLeaveBalanceSerializer,
+    LeaveRequestSerializer,
+    LeaveTypeSerializer,
+    LeaveBalanceSerializer,
+)
 from organization.models import Employee
 
+
+class LeaveTypeListCreateAPIView(generics.ListCreateAPIView):
+    serializer_class = LeaveTypeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        org = None
+        if user.organization.exists():
+            org = user.organization.first()
+        elif hasattr(user, 'employee') and user.employee.organization:
+            org = user.employee.organization
+
+        if org:
+            return LeaveType.objects.filter(
+                models.Q(organization=org) | models.Q(organization__isnull=True)
+            ).order_by('id')
+        return LeaveType.objects.all().order_by('id')
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        org = None
+        if user.organization.exists():
+            org = user.organization.first()
+        elif hasattr(user, 'employee'):
+            org = user.employee.organization
+        serializer.save(organization=org)
 
 
 class RetrieveLeaveRequestApiView(generics.RetrieveAPIView):
@@ -30,6 +65,60 @@ class RetrieveLeaveRequestApiView(generics.RetrieveAPIView):
 class UpdateLeaveRequestApiView(generics.RetrieveUpdateDestroyAPIView):
     queryset = LeaveRequest.objects.all()
     serializer_class = LeaveRequestSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
+
+    def patch(self, request, *args, **kwargs):
+        instance = self.get_object()
+        data = request.data
+
+        action = data.get('action')
+        is_initial_approved = data.get('is_initial_approved')
+        is_approved = data.get('is_approved')
+        is_reviewed = data.get('is_reviewed')
+        rejection_reason = data.get('rejection_reason')
+
+        # 1. Initial Approval (for Sick Leave 2-tier approval)
+        if action == 'initial_approve' or is_initial_approved is True:
+            instance.is_initial_approved = True
+            instance.initial_approved_by = request.user
+            instance.initial_approved_at = timezone.now()
+            instance.save(update_fields=['is_initial_approved', 'initial_approved_by', 'initial_approved_at'])
+            return Response(LeaveRequestSerializer(instance, context={'request': request}).data, status=status.HTTP_200_OK)
+
+        # 2. Final Approval
+        if action == 'final_approve' or (is_approved is True and (action != 'reject')):
+            instance.is_approved = True
+            instance.is_reviewed = True
+            instance.is_initial_approved = True
+            if not instance.initial_approved_by:
+                instance.initial_approved_by = request.user
+                instance.initial_approved_at = timezone.now()
+            instance.rejection_reason = None
+            instance.save(update_fields=['is_approved', 'is_reviewed', 'is_initial_approved', 'initial_approved_by', 'initial_approved_at', 'rejection_reason'])
+            return Response(LeaveRequestSerializer(instance, context={'request': request}).data, status=status.HTTP_200_OK)
+
+        # 3. Rejection (Mandatory Reason Required)
+        if action == 'reject' or (is_reviewed is True and (is_approved is False or is_approved == 'false')):
+            reason_str = str(rejection_reason or '').strip()
+            if not reason_str:
+                return Response(
+                    {'error': 'A reason for rejection is required.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            instance.is_approved = False
+            instance.is_reviewed = True
+            instance.rejection_reason = reason_str
+            instance.save(update_fields=['is_approved', 'is_reviewed', 'rejection_reason'])
+        # 4. Upload / Update Supporting Document
+        if 'document' in request.FILES:
+            instance.document = request.FILES['document']
+            instance.save(update_fields=['document'])
+            return Response(LeaveRequestSerializer(instance, context={'request': request}).data, status=status.HTTP_200_OK)
+
+        # Standard partial update fallback
+        return super().partial_update(request, *args, **kwargs)
+
 
 
 class EmployeeLeaveCountDetailAPIView(APIView):
@@ -37,7 +126,6 @@ class EmployeeLeaveCountDetailAPIView(APIView):
         try:
             employee = Employee.objects.get(id=employee_id)
         except:
-            employee = None
             return Response({'message': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
 
         from django.db.models import Sum
@@ -51,7 +139,7 @@ class EmployeeLeaveCountDetailAPIView(APIView):
         total_no_of_leaves = sum(lr.no_days for lr in all_approved_leave_requests if getattr(lr.created_at, 'year', None) == current_year)
 
         leave_types = LeaveType.objects.filter(organization=employee.organization)
-        no_of_allowed_leaves = leave_types.aggregate(Sum('maximum_leave'))['maximum_leave__sum'] or 0
+        no_of_allowed_leaves = leave_types.aggregate(Sum('quota'))['quota__sum'] or 0
 
         remaining_leaves = no_of_allowed_leaves - total_no_of_leaves
         if remaining_leaves <= 0:
@@ -66,7 +154,6 @@ class EmployeeLeaveCountDetailAPIView(APIView):
 
 
 class LeaveTypeRetrieveAPIView(generics.RetrieveUpdateDestroyAPIView):
-
     model = LeaveType
     serializer_class = LeaveTypeSerializer
     permission_classes = [IsAuthenticated]
@@ -76,14 +163,8 @@ class LeaveTypeRetrieveAPIView(generics.RetrieveUpdateDestroyAPIView):
         try:
             obj = LeaveType.objects.get(id=self.kwargs[self.lookup_field])
         except LeaveType.DoesNotExist:
-            raise NotFound(f"Leave type not found.")
+            raise NotFound("Leave type not found.")
         return obj
-
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
 
 
 class LeaveQuotaRetrieveAPIView(APIView):
@@ -153,12 +234,12 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
     model = LeaveRequest
     serializer_class = LeaveRequestSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
     nepali_date_filter_field = 'from_date'
 
     def get_queryset(self):
         user = self.request.user
         
-        # Check if user is an admin
         is_admin = False
         org = None
         if user.organization.exists():
@@ -181,20 +262,19 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
         if not org:
             return LeaveRequest.objects.none()
 
-        # Check for specific employee filter
         employeeId = self.request.GET.get('employee', None)
         qs = LeaveRequest.objects.none()
         
         if employeeId:
             try:
                 emp = Employee.objects.get(id=employeeId, post__department__organization=org)
-                qs = LeaveRequest.objects.filter(organization=org, employee=emp).order_by('-id')
+                qs = LeaveRequest.objects.filter(organization=org, employee=emp).select_related('type', 'employee__user', 'initial_approved_by').order_by('-id')
             except Employee.DoesNotExist:
                 qs = LeaveRequest.objects.none()
         elif is_admin or user.is_superuser:
-            qs = LeaveRequest.objects.filter(organization=org).order_by('-id')
+            qs = LeaveRequest.objects.filter(organization=org).select_related('type', 'employee__user', 'initial_approved_by').order_by('-id')
         elif employee:
-            qs = LeaveRequest.objects.filter(organization=org, employee=employee).order_by('-id')
+            qs = LeaveRequest.objects.filter(organization=org, employee=employee).select_related('type', 'employee__user', 'initial_approved_by').order_by('-id')
 
         start_date_str = self.request.GET.get('start_date')
         end_date_str = self.request.GET.get('end_date')
@@ -216,10 +296,6 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
         except Exception:
             raise serializers.ValidationError({'detail': 'You must have an employee profile to apply for leave.'})
         
-        # Convert Gregorian dates to Nepali dates
-        import datetime as dt
-        import nepali_datetime
-        
         def to_nepali(date_val):
             if date_val is None:
                 return None
@@ -227,8 +303,6 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
                 y, m, d = map(int, date_val.split('-'))
                 return nepali_datetime.date(y, m, d)
             if isinstance(date_val, dt.date):
-                # DRF might parse a Nepali date string "2083-04-15" into a Gregorian dt.date(2083, 4, 15).
-                # We extract the components directly instead of converting it from Gregorian.
                 return nepali_datetime.date(date_val.year, date_val.month, date_val.day)
             return date_val
         
@@ -245,50 +319,85 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
         else:
             if from_date > till_date:
                 raise serializers.ValidationError({'detail': 'From date cannot be after Till date.'})
-            requested_days = (till_date - from_date).days + 1
+            # Count working days excluding Saturdays (isoweekday == 6)
+            days = 0.0
+            curr = from_date
+            while curr <= till_date:
+                try:
+                    py_date = curr.to_datetime_date()
+                    if py_date.isoweekday() != 6:
+                        days += 1.0
+                except Exception:
+                    days += 1.0
+                try:
+                    curr = curr + dt.timedelta(days=1)
+                except Exception:
+                    break
+            requested_days = days
 
-        # Strict Quota Validation (includes both approved leaves and pending unreviewed leaves)
-        leave_type_name = 'Paid Leave' if is_paid else 'Unpaid Leave'
-        lb = LeaveBalance.objects.filter(employee=employee, leave_type__name__iexact=leave_type_name).first()
-        if lb:
-            quota = lb.quota or 0
-            # Total approved taken
-            approved_leaves = LeaveRequest.objects.filter(
-                employee=employee, is_approved=True, is_reviewed=True, is_paid=is_paid
-            )
-            total_approved = sum(lr.no_days for lr in approved_leaves)
 
-            # Total pending requests already in the queue
-            pending_leaves = LeaveRequest.objects.filter(
-                employee=employee, is_approved=False, is_reviewed=False, is_paid=is_paid
-            )
-            total_pending = sum(lr.no_days for lr in pending_leaves)
+        if requested_days <= 0:
+            raise serializers.ValidationError({'detail': 'The requested date range contains no working days (e.g. only Saturdays).'})
 
-            available_quota = quota - (total_approved + total_pending)
-            if requested_days > available_quota:
-                available_display = max(0.0, available_quota)
-                raise serializers.ValidationError({
-                    'detail': f'Quota exceeded for {leave_type_name}. You requested {requested_days} day(s), but only have {available_display} day(s) available (Total Quota: {quota}d, Approved: {total_approved}d, Pending: {total_pending}d).'
-                })
+        # Resolve LeaveType
+        leave_type = serializer.validated_data.get('type')
+        if not leave_type:
+            type_id = self.request.data.get('leave_type_id') or self.request.data.get('type')
+            if type_id:
+                try:
+                    leave_type = LeaveType.objects.get(id=int(type_id))
+                except Exception:
+                    pass
 
-        leave_type_obj = None
-        if employee.organization:
-            leave_type_obj = LeaveType.objects.filter(organization=employee.organization, name__iexact=leave_type_name).first()
-        if not leave_type_obj:
-            leave_type_obj = LeaveType.objects.filter(name__iexact=leave_type_name).first()
+        if not leave_type:
+            cat_name = self.request.data.get('leave_category') or ('Paid Leave' if is_paid else 'Unpaid Leave')
+            if employee.organization:
+                leave_type = LeaveType.objects.filter(organization=employee.organization, name__iexact=cat_name).first()
+            if not leave_type:
+                leave_type = LeaveType.objects.filter(name__iexact=cat_name).first()
+
+        # Quota Validation
+        if leave_type:
+            lb = LeaveBalance.objects.filter(employee=employee, leave_type=leave_type).first()
+            if not lb and is_paid:
+                lb = LeaveBalance.objects.filter(employee=employee, leave_type__name__iexact='Paid Leave').first()
+            elif not lb and not is_paid:
+                lb = LeaveBalance.objects.filter(employee=employee, leave_type__name__iexact='Unpaid Leave').first()
+
+            if lb and lb.quota > 0:
+                quota = lb.quota or 0
+                approved_leaves = LeaveRequest.objects.filter(
+                    employee=employee, is_approved=True, is_reviewed=True, type=leave_type
+                )
+                total_approved = sum(lr.no_days for lr in approved_leaves)
+
+                pending_leaves = LeaveRequest.objects.filter(
+                    employee=employee, is_approved=False, is_reviewed=False, type=leave_type
+                )
+                total_pending = sum(lr.no_days for lr in pending_leaves)
+
+                available_quota = quota - (total_approved + total_pending)
+                if requested_days > available_quota:
+                    available_display = max(0.0, available_quota)
+                    raise serializers.ValidationError({
+                        'detail': f'Quota exceeded for {leave_type.name}. You requested {requested_days} day(s), but only have {available_display} day(s) available (Total Quota: {quota}d, Approved: {total_approved}d, Pending: {total_pending}d).'
+                    })
+
+        doc_file = self.request.FILES.get('document') or serializer.validated_data.get('document')
 
         serializer.save(
             employee=employee,
             organization=employee.organization,
-            type=leave_type_obj,
+            type=leave_type,
             from_date=from_date,
             till_date=till_date,
+            is_paid=is_paid,
             remarks=serializer.validated_data.get('remarks', ''),
+            document=doc_file,
             is_approved=False,
             is_reviewed=False,
+            is_initial_approved=False,
         )
-
-
 
 
 class LeaveBalanceDetailAPIView(generics.RetrieveUpdateAPIView):
@@ -308,6 +417,3 @@ class LeaveBalanceDetailAPIView(generics.RetrieveUpdateAPIView):
             org = Organization.objects.first()
             
         return LeaveBalance.objects.filter(organization=org)
-
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)

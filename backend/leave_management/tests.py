@@ -27,29 +27,38 @@ class LeaveManagementTests(TestCase):
         """
         Test that no_days calculates correctly for full days and half days.
         """
-        # 1. Single full day
+        # 1. Single full day (Friday)
         req_single = LeaveRequest.objects.create(
             organization=self.org, employee=self.emp, type=self.leave_type,
             from_date=nepali_date(2080, 1, 1), till_date=nepali_date(2080, 1, 1),
             is_half_day=False
         )
-        self.assertEqual(req_single.no_days, 1)
+        self.assertEqual(req_single.no_days, 1.0)
         
-        # 2. Multi-day (3 days)
-        req_multi = LeaveRequest.objects.create(
+        # 2. Multi-day spanning Saturday (Friday to Sunday = 2 working days, Saturday excluded)
+        req_multi_weekend = LeaveRequest.objects.create(
             organization=self.org, employee=self.emp, type=self.leave_type,
             from_date=nepali_date(2080, 1, 1), till_date=nepali_date(2080, 1, 3),
             is_half_day=False
         )
-        self.assertEqual(req_multi.no_days, 3)
+        self.assertEqual(req_multi_weekend.no_days, 2.0)
+
+        # 3. Multi-day with no weekend (Sunday to Tuesday = 3 working days)
+        req_multi_weekdays = LeaveRequest.objects.create(
+            organization=self.org, employee=self.emp, type=self.leave_type,
+            from_date=nepali_date(2080, 1, 3), till_date=nepali_date(2080, 1, 5),
+            is_half_day=False
+        )
+        self.assertEqual(req_multi_weekdays.no_days, 3.0)
         
-        # 3. Half day
+        # 4. Half day
         req_half = LeaveRequest.objects.create(
             organization=self.org, employee=self.emp, type=self.leave_type,
             from_date=nepali_date(2080, 1, 1), till_date=nepali_date(2080, 1, 1),
             is_half_day=True, half_day_period="First Half"
         )
         self.assertEqual(req_half.no_days, 0.5)
+
 
     def test_get_total_paid_and_unpaid_leaves(self):
         """

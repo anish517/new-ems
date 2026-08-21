@@ -18,6 +18,9 @@ urlpatterns = [
     path('leave-balance/update/<int:pk>/',
          views.LeaveBalanceUpdateAPIView.as_view()),
 
+    # Leave Types (Casual Leave, Sick Leave, etc.)
+    path('leave-types/', views.LeaveTypeListCreateAPIView.as_view()),
+
     # Legacy detail endpoint
     path('leave-balance/detail/<int:pk>/',
          views.LeaveBalanceDetailAPIView.as_view()),
@@ -25,3 +28,4 @@ urlpatterns = [
     # Admin: summary of ALL employees' balances
     path('leave-summary/', views.AllEmployeeLeaveSummaryView.as_view()),
 ]
+

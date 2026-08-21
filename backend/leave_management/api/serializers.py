@@ -7,7 +7,7 @@ from organization.api.serializers import EmployeeSerializer
 class LeaveTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveType
-        fields = ['id', 'name', 'quota']
+        fields = ['id', 'name', 'quota', 'is_sick_leave', 'is_casual_leave']
 
 
 class LeaveBalanceSerializer(serializers.ModelSerializer):
@@ -36,10 +36,15 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
             'is_approved', 'is_reviewed', 'is_paid',
             'remarks', 'employee', 'organization',
             'is_half_day', 'half_day_period',
+            'type', 'is_initial_approved', 'initial_approved_by',
+            'initial_approved_at', 'rejection_reason', 'document',
         ]
-        read_only_fields = ['id', 'created_at', 'no_days']
+        read_only_fields = ['id', 'created_at', 'no_days', 'initial_approved_by', 'initial_approved_at']
         extra_kwargs = {
             'remarks': {'required': False, 'allow_blank': True, 'default': ''},
+            'rejection_reason': {'required': False, 'allow_blank': True, 'default': ''},
+            'type': {'required': False, 'allow_null': True},
+            'document': {'required': False, 'allow_null': True},
         }
 
     def to_representation(self, instance):
@@ -48,5 +53,30 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
             rep['employee_name'] = instance.employee.user.full_name
         else:
             rep['employee_name'] = 'Unknown Employee'
+        
+        if instance.type:
+            rep['leave_type_name'] = instance.type.name
+            rep['is_sick_leave'] = instance.type.is_sick_leave
+            rep['is_casual_leave'] = instance.type.is_casual_leave
+        else:
+            rep['leave_type_name'] = 'Paid Leave' if instance.is_paid else 'Unpaid Leave'
+            rep['is_sick_leave'] = False
+            rep['is_casual_leave'] = False
+
+        if instance.initial_approved_by:
+            rep['initial_approved_by_name'] = getattr(instance.initial_approved_by, 'full_name', str(instance.initial_approved_by))
+        else:
+            rep['initial_approved_by_name'] = None
+
+        if instance.document:
+            request = self.context.get('request')
+            if request:
+                rep['document_url'] = request.build_absolute_uri(instance.document.url)
+            else:
+                rep['document_url'] = instance.document.url
+        else:
+            rep['document_url'] = None
+
         return rep
+
 

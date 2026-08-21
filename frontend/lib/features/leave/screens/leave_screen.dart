@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:nepali_utils/nepali_utils.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:dio/dio.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
@@ -99,23 +102,49 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> with SingleTickerProv
     if (mounted) setState(() => _isLoading = false);
   }
 
-  Future<void> _approveLeave(int leaveId, bool approve) async {
+  Future<void> _handleLeaveApproval(int leaveId, String action, {String? rejectionReason}) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
+      final Map<String, dynamic> data = {'action': action};
+      if (action == 'reject') {
+        data['rejection_reason'] = rejectionReason ?? '';
+        data['is_approved'] = false;
+        data['is_reviewed'] = true;
+      } else if (action == 'initial_approve') {
+        data['is_initial_approved'] = true;
+      } else if (action == 'final_approve') {
+        data['is_approved'] = true;
+        data['is_reviewed'] = true;
+      }
+
       await ApiService().patch(
         '${AppConstants.leaveBase}/update/$leaveId/',
-        data: {'is_approved': approve, 'is_reviewed': true},
+        data: data,
       );
+
+      String msg = 'Leave request updated';
+      Color bgColor = AppColors.success;
+      if (action == 'initial_approve') {
+        msg = 'Sick leave initial approved!';
+        bgColor = const Color(0xFF6366F1);
+      } else if (action == 'final_approve') {
+        msg = 'Leave request approved successfully!';
+        bgColor = AppColors.success;
+      } else if (action == 'reject') {
+        msg = 'Leave request rejected (reason recorded)';
+        bgColor = AppColors.error;
+      }
+
       messenger.showSnackBar(
         SnackBar(
           content: Row(
             children: [
-              Icon(approve ? Iconsax.tick_circle : Iconsax.close_circle, color: Colors.white, size: 18),
+              Icon(action == 'reject' ? Iconsax.close_circle : Iconsax.tick_circle, color: Colors.white, size: 18),
               const SizedBox(width: 10),
-              Text(approve ? 'Leave request approved' : 'Leave request rejected'),
+              Expanded(child: Text(msg)),
             ],
           ),
-          backgroundColor: approve ? AppColors.success : AppColors.error,
+          backgroundColor: bgColor,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
@@ -130,6 +159,95 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> with SingleTickerProv
         ),
       );
     }
+  }
+
+  void _promptRejectLeave(BuildContext context, int leaveId, String empName) {
+    final reasonController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateModal) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Iconsax.close_circle, color: AppColors.error, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text('Reject Leave Request', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              ),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Please provide a mandatory reason for rejecting $empName's leave application. This reason will be shared with the employee.",
+                  style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: reasonController,
+                  maxLines: 3,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Reason for Rejection *',
+                    hintText: 'e.g. Critical project deadline, staffing coverage...',
+                    alignLabelWithHint: true,
+                    prefixIcon: Icon(Iconsax.edit_2, size: 18),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) {
+                      return 'A rejection reason is required';
+                    }
+                    if (val.trim().length < 5) {
+                      return 'Please enter at least 5 characters';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          actions: [
+            TextButton(
+              onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setStateModal(() => isSubmitting = true);
+                      Navigator.pop(ctx);
+                      await _handleLeaveApproval(leaveId, 'reject', rejectionReason: reasonController.text.trim());
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: isSubmitting
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Confirm Rejection', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showApplyLeaveDialog(BuildContext context) async {
@@ -211,17 +329,20 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> with SingleTickerProv
     final pendingCount = _requests.where((r) => r['is_approved'] != true && r['is_reviewed'] != true).length;
     final approvedCount = _requests.where((r) => r['is_approved'] == true).length;
 
-    // Leave Balances for employee
+    // Leave Balances for employee (sum of all paid leave types: Casual, Sick, Paid Leave)
     final myBalances = (_balance?['leave_balances'] as List?) ?? [];
     double myPaidRemaining = 0;
-    double myPaidQuota = 0;
     for (final lb in myBalances) {
-      if (lb['leave_type']?['name'] == 'Paid Leave') {
-        myPaidQuota = (lb['quota'] as num? ?? 0).toDouble();
+      final typeName = lb['leave_type']?['name']?.toString().toLowerCase() ?? '';
+      if (!typeName.contains('unpaid')) {
+        final quota = (lb['quota'] as num? ?? 0).toDouble();
         final taken = (lb['leaves_taken'] as num? ?? 0).toDouble();
-        myPaidRemaining = (myPaidQuota - taken).clamp(0, myPaidQuota);
+        myPaidRemaining += (quota - taken);
       }
     }
+    if (myPaidRemaining < 0) myPaidRemaining = 0;
+
+
 
     return Scaffold(
       backgroundColor: context.bg,
@@ -299,54 +420,49 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> with SingleTickerProv
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(
-                                          '$totalRequests Requests',
+                                          isAdmin ? 'Admin View' : 'Employee View',
                                           style: const TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
                                             color: Color(0xFFF59E0B),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
                                           ),
                                         ),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 3),
-                                  const Text(
-                                    'Time-off requests & quota tracking',
-                                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  Text(
+                                    isAdmin
+                                        ? 'Review leave applications, manage categories & staff quotas'
+                                        : 'Request time-off, track leave balances & approvals',
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                                   ),
                                 ],
                               ),
                             ),
                           ],
                         ),
-                        if (isMobile) const SizedBox(height: 14),
+                        if (isMobile) const SizedBox(height: 16),
                         Row(
-                          mainAxisAlignment: isMobile ? MainAxisAlignment.end : MainAxisAlignment.start,
                           children: [
-                            if (!isAdmin) ...[
-                              ElevatedButton.icon(
-                                onPressed: () => _showApplyLeaveDialog(context),
-                                icon: const Icon(Iconsax.calendar_add, size: 18, color: Colors.white),
-                                label: const Text('Apply Leave', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
                             IconButton(
+                              onPressed: _loadLeaves,
                               icon: const Icon(Iconsax.refresh, size: 20),
                               tooltip: 'Refresh Leaves',
-                              onPressed: _loadLeaves,
-                              style: IconButton.styleFrom(
-                                backgroundColor: context.card,
-                                side: BorderSide(color: context.border),
-                              ),
                             ),
+                            if (isAdmin) ...[
+                              const SizedBox(width: 8),
+                              ElevatedButton.icon(
+                                onPressed: () => _showApplyLeaveDialog(context),
+                                icon: const Icon(Iconsax.add, size: 16, color: Colors.white),
+                                label: const Text('New Leave', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ],
@@ -354,142 +470,144 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> with SingleTickerProv
                   );
                 },
               ),
-
               const SizedBox(height: 20),
 
-              // ── Executive KPI Row ────────────────────────────────────────
+              // ── KPI Summary Cards ─────────────────────────────────────────
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final isTight = constraints.maxWidth < 740;
+                  final isVeryNarrow = constraints.maxWidth < 400;
+                  final isNarrow = constraints.maxWidth < 600;
+                  final count = isAdmin ? 3 : 4;
+                  final spacing = isVeryNarrow ? 6.0 : 10.0;
+                  final itemWidth = (constraints.maxWidth - ((count - 1) * spacing)) / count;
 
-                  return Row(
+                  return Wrap(
+                    spacing: spacing,
+                    runSpacing: 10,
                     children: [
-                      if (isAdmin) ...[
-                        Expanded(
-                          child: _buildKpiCard(
-                            'Pending Approvals',
-                            '$pendingCount In Queue',
-                            Iconsax.timer_start,
-                            const Color(0xFFF59E0B),
-                            isTight,
-                          ),
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildKpiCard(
+                          isAdmin ? 'Total' : 'Total App',
+                          '$totalRequests',
+                          Iconsax.calendar_tick,
+                          AppColors.primary,
+                          isNarrow,
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildKpiCard(
-                            'Approved Leaves',
-                            '$approvedCount Processed',
-                            Iconsax.tick_circle,
-                            AppColors.success,
-                            isTight,
-                          ),
+                      ),
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildKpiCard(
+                          'Pending',
+                          '$pendingCount',
+                          Iconsax.timer_1,
+                          const Color(0xFFF59E0B),
+                          isNarrow,
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildKpiCard(
-                            'Total Applications',
-                            '$totalRequests Filed',
-                            Iconsax.document_text,
-                            AppColors.primary,
-                            isTight,
-                          ),
+                      ),
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildKpiCard(
+                          'Approved',
+                          '$approvedCount',
+                          Iconsax.tick_circle,
+                          AppColors.success,
+                          isNarrow,
                         ),
-                      ] else ...[
-                        Expanded(
+                      ),
+                      if (!isAdmin)
+                        SizedBox(
+                          width: itemWidth,
                           child: _buildKpiCard(
-                            'Paid Leave Available',
-                            '$myPaidRemaining / ${myPaidQuota.toInt()} Days',
+                            'Paid Left',
+                            '${myPaidRemaining.toStringAsFixed(1)}d',
                             Iconsax.wallet_3,
-                            AppColors.success,
-                            isTight,
+                            const Color(0xFF6366F1),
+                            isNarrow,
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildKpiCard(
-                            'Pending Decisions',
-                            '$pendingCount In Review',
-                            Iconsax.timer_1,
-                            const Color(0xFFF59E0B),
-                            isTight,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildKpiCard(
-                            'Approved Leaves',
-                            '$approvedCount Granted',
-                            Iconsax.tick_circle,
-                            AppColors.primary,
-                            isTight,
-                          ),
-                        ),
-                      ],
                     ],
                   );
                 },
               ),
-
               const SizedBox(height: 20),
 
-              // ── Tab Switcher ─────────────────────────────────────────────
+              // ── Tab Bar Navigation ────────────────────────────────────────
               Container(
                 decoration: BoxDecoration(
                   color: context.surface,
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: context.border),
                 ),
                 child: TabBar(
                   controller: _tabs,
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  labelColor: AppColors.primary,
+                  isScrollable: false,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicator: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  labelColor: Colors.white,
                   unselectedLabelColor: AppColors.textSecondary,
-                  indicatorColor: AppColors.primary,
-                  indicatorWeight: 3,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
-                  tabs: isAdmin
-                      ? [
-                          Tab(text: 'All Leaves ($totalRequests)'),
-                          Tab(text: 'Pending Approvals ($pendingCount)'),
-                          Tab(text: 'Staff Quotas (${_adminBalances.length})'),
-                        ]
-                      : const [
-                          Tab(text: 'My Requests'),
-                          Tab(text: 'Leave Balances & Quota'),
+                  labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  padding: const EdgeInsets.all(4),
+                  tabs: [
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Iconsax.document_text, size: 16),
+                          const SizedBox(width: 6),
+                          Text(isAdmin ? 'All Requests' : 'My Requests'),
                         ],
+                      ),
+                    ),
+                    if (isAdmin)
+                      Tab(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Iconsax.tick_circle, size: 16),
+                            const SizedBox(width: 6),
+                            Text('Approvals ($pendingCount)'),
+                          ],
+                        ),
+                      ),
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Iconsax.chart_2, size: 16),
+                          const SizedBox(width: 6),
+                          Text(isAdmin ? 'Staff Quotas' : 'My Balance'),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-
               const SizedBox(height: 18),
 
-              // ── Tab Content ──────────────────────────────────────────────
-              if (_isLoading)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 60),
-                  child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                )
-              else
-                SizedBox(
-                  height: 680,
-                  child: TabBarView(
-                    controller: _tabs,
-                    children: [
-                      // Tab 1: All Leaves (Admin) or My Leaves (Employee)
-                      _buildRequestsListTab(filtered, isAdmin),
-
-                      // Tab 2: Pending Approvals (Admin) or Balances (Employee)
-                      isAdmin
-                          ? _buildPendingApprovalsTab()
-                          : _LeaveBalanceTab(balance: _balance, existingRequests: _requests),
-
-                      // Tab 3 (Admin Only): Staff Quotas
-                      if (isAdmin) _buildAdminBalancesTab(),
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: 40),
+              // ── Tab Content Views ─────────────────────────────────────────
+              _isLoading
+                  ? const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+                  : SizedBox(
+                      height: 600,
+                      child: TabBarView(
+                        controller: _tabs,
+                        children: [
+                          _buildRequestsListTab(filtered, isAdmin),
+                          if (isAdmin) _buildPendingApprovalsTab(),
+                          isAdmin
+                              ? _buildAdminBalancesTab()
+                              : _LeaveBalanceTab(
+                                  balance: _balance,
+                                  existingRequests: _requests,
+                                ),
+                        ],
+                      ),
+                    ),
             ],
           ),
         ),
@@ -559,7 +677,8 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> with SingleTickerProv
               : ListView.separated(
                   itemCount: filtered.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) => _LeaveCard(filtered[i], isAdmin: isAdmin),
+                  itemBuilder: (_, i) => _LeaveCard(filtered[i], isAdmin: isAdmin, onRefresh: _loadLeaves),
+
                 ),
         ),
       ],
@@ -605,8 +724,9 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> with SingleTickerProv
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (_, i) => _AdminLeaveCard(
               leave: _pending[i],
-              onApprove: () => _approveLeave(_pending[i]['id'] as int, true),
-              onReject: () => _approveLeave(_pending[i]['id'] as int, false),
+              onInitialApprove: () => _handleLeaveApproval(_pending[i]['id'] as int, 'initial_approve'),
+              onFinalApprove: () => _handleLeaveApproval(_pending[i]['id'] as int, 'final_approve'),
+              onReject: () => _promptRejectLeave(context, _pending[i]['id'] as int, _pending[i]['employee_name'] ?? 'Employee'),
             ),
           );
   }
@@ -782,17 +902,20 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> with SingleTickerProv
 class _LeaveCard extends StatelessWidget {
   final Map data;
   final bool isAdmin;
-  const _LeaveCard(this.data, {required this.isAdmin});
+  final VoidCallback? onRefresh;
+  const _LeaveCard(this.data, {required this.isAdmin, this.onRefresh});
 
   Color get _statusColor {
     if (data['is_approved'] == true) return AppColors.success;
     if (data['is_reviewed'] == true) return AppColors.error;
+    if (data['is_initial_approved'] == true) return const Color(0xFF6366F1);
     return const Color(0xFFF59E0B);
   }
 
   String get _status {
     if (data['is_approved'] == true) return 'Approved';
     if (data['is_reviewed'] == true) return 'Rejected';
+    if (data['is_initial_approved'] == true) return 'Initial Approved';
     return 'Pending';
   }
 
@@ -800,6 +923,8 @@ class _LeaveCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = context.isDark;
     final empName = data['employee_name'] ?? 'Employee';
+    final typeName = data['leave_type_name'] ?? (data['is_paid'] == true ? 'Paid Leave' : 'Unpaid Leave');
+    final hasDoc = data['document_url'] != null && data['document_url'].toString().isNotEmpty;
 
     return Container(
       decoration: BoxDecoration(
@@ -818,7 +943,8 @@ class _LeaveCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTap: () => _showLeaveDetails(context, data, isAdmin),
+          onTap: () => _showLeaveDetails(context, data, isAdmin, onRefresh: onRefresh),
+
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -836,7 +962,9 @@ class _LeaveCard extends StatelessWidget {
                         ? Iconsax.tick_circle
                         : data['is_reviewed'] == true
                             ? Iconsax.close_circle
-                            : Iconsax.timer_1,
+                            : data['is_initial_approved'] == true
+                                ? Iconsax.verify
+                                : Iconsax.timer_1,
                     color: _statusColor,
                     size: 22,
                   ),
@@ -880,17 +1008,41 @@ class _LeaveCard extends StatelessWidget {
                         ),
                       ],
                       const SizedBox(height: 6),
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
-                          const Icon(Iconsax.calendar, size: 14, color: AppColors.textSecondary),
-                          const SizedBox(width: 6),
-                          Text(
-                            data['is_half_day'] == true
-                                ? '${_fmtDate(data['from_date']?.toString())} (Half Day • ${data['half_day_period'] ?? 'N/A'})'
-                                : '${_fmtDate(data['from_date']?.toString())} → ${_fmtDate(data['till_date']?.toString())}',
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Iconsax.calendar, size: 14, color: AppColors.textSecondary),
+                              const SizedBox(width: 6),
+                              Text(
+                                data['is_half_day'] == true
+                                    ? '${_fmtDate(data['from_date']?.toString())} (Half Day • ${data['half_day_period'] ?? 'N/A'})'
+                                    : '${_fmtDate(data['from_date']?.toString())} → ${_fmtDate(data['till_date']?.toString())}',
+                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 10),
+                          // Category Chip
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              typeName,
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                          // Paid/Unpaid Chip
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
@@ -908,6 +1060,22 @@ class _LeaveCard extends StatelessWidget {
                               ),
                             ),
                           ),
+                          if (hasDoc)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Iconsax.paperclip_2, size: 10, color: Color(0xFF6366F1)),
+                                  SizedBox(width: 3),
+                                  Text('Doc', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF6366F1))),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ],
@@ -925,20 +1093,34 @@ class _LeaveCard extends StatelessWidget {
 // ─── Admin Leave Approval Card ───────────────────────────────────────────────
 class _AdminLeaveCard extends StatelessWidget {
   final Map leave;
-  final VoidCallback onApprove, onReject;
-  const _AdminLeaveCard({required this.leave, required this.onApprove, required this.onReject});
+  final VoidCallback onInitialApprove, onFinalApprove, onReject;
+  const _AdminLeaveCard({
+    required this.leave,
+    required this.onInitialApprove,
+    required this.onFinalApprove,
+    required this.onReject,
+  });
 
   @override
   Widget build(BuildContext context) {
     final empName = leave['employee_name'] ?? 'Unknown Employee';
+    final typeName = leave['leave_type_name'] ?? (leave['is_paid'] == true ? 'Paid Leave' : 'Unpaid Leave');
+    final isSickLeave = leave['is_sick_leave'] == true || typeName.toString().toLowerCase().contains('sick');
+    final isInitialApproved = leave['is_initial_approved'] == true;
     final isDark = context.isDark;
+    final hasDoc = leave['document_url'] != null && leave['document_url'].toString().isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4), width: 1.5),
+        border: Border.all(
+          color: isSickLeave
+              ? (isInitialApproved ? const Color(0xFF6366F1) : const Color(0xFFF59E0B)).withValues(alpha: 0.5)
+              : const Color(0xFFF59E0B).withValues(alpha: 0.4),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
@@ -976,15 +1158,25 @@ class _AdminLeaveCard extends StatelessWidget {
                   ],
                 ),
               ),
+              // Status Badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                  color: (isSickLeave && isInitialApproved
+                          ? const Color(0xFF6366F1)
+                          : const Color(0xFFF59E0B))
+                      .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
-                  'Pending Review',
-                  style: TextStyle(color: Color(0xFFF59E0B), fontSize: 11, fontWeight: FontWeight.w800),
+                child: Text(
+                  isSickLeave
+                      ? (isInitialApproved ? '📋 Initial Approved' : '⏳ Pending Initial')
+                      : 'Pending Review',
+                  style: TextStyle(
+                    color: isSickLeave && isInitialApproved ? const Color(0xFF6366F1) : const Color(0xFFF59E0B),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
@@ -993,17 +1185,35 @@ class _AdminLeaveCard extends StatelessWidget {
           Divider(color: context.border),
           const SizedBox(height: 10),
 
-          Row(
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
-              const Icon(Iconsax.calendar, size: 14, color: AppColors.textSecondary),
-              const SizedBox(width: 6),
-              Text(
-                leave['is_half_day'] == true
-                    ? 'Half Day (${leave['half_day_period'] ?? 'N/A'}) • ${_fmtDate(leave['from_date']?.toString())}'
-                    : '${_fmtDate(leave['from_date']?.toString())} → ${_fmtDate(leave['till_date']?.toString())} (${leave['no_days']} days)',
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: context.textPrimary),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Iconsax.calendar, size: 14, color: AppColors.textSecondary),
+                  const SizedBox(width: 6),
+                  Text(
+                    leave['is_half_day'] == true
+                        ? 'Half Day (${leave['half_day_period'] ?? 'N/A'}) • ${_fmtDate(leave['from_date']?.toString())}'
+                        : '${_fmtDate(leave['from_date']?.toString())} → ${_fmtDate(leave['till_date']?.toString())} (${leave['no_days']} days)',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: context.textPrimary),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  typeName,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                ),
+              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
@@ -1013,7 +1223,7 @@ class _AdminLeaveCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  leave['is_paid'] == true ? 'Paid Leave' : 'Unpaid Leave',
+                  leave['is_paid'] == true ? 'Paid' : 'Unpaid',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -1021,6 +1231,28 @@ class _AdminLeaveCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (hasDoc)
+                InkWell(
+                  onTap: () async {
+                    final uri = Uri.parse(leave['document_url']);
+                    if (await canLaunchUrl(uri)) launchUrl(uri);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Iconsax.document_download, size: 12, color: Color(0xFF6366F1)),
+                        SizedBox(width: 4),
+                        Text('View Certificate', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF6366F1))),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
 
@@ -1029,6 +1261,29 @@ class _AdminLeaveCard extends StatelessWidget {
             Text(
               'Reason: "${leave['remarks']}"',
               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+            ),
+          ],
+
+          if (isSickLeave && isInitialApproved) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366F1).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Iconsax.info_circle, size: 14, color: Color(0xFF6366F1)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Initial Approval by: ${leave['initial_approved_by_name'] ?? 'Admin'} • Ready for Final Approval',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF6366F1)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
 
@@ -1048,18 +1303,35 @@ class _AdminLeaveCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: onApprove,
-                  icon: const Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
-                  label: const Text('Approve Leave', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+              if (isSickLeave && !isInitialApproved)
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: onInitialApprove,
+                    icon: const Icon(Iconsax.verify, size: 16, color: Colors.white),
+                    label: const Text('Initial Approve', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: onFinalApprove,
+                    icon: const Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
+                    label: Text(
+                      isSickLeave ? 'Final Approve' : 'Approve Leave',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
@@ -1090,14 +1362,19 @@ class _LeaveBalanceTab extends StatelessWidget {
     }
     final leaveBalances = (balance!['leave_balances'] as List?) ?? [];
 
-    // Compute totals from the per-type list
+    // Compute totals for paid leave types (Casual, Sick, Paid Leave)
     double totalTaken = 0;
     double totalQuota = 0;
     for (final lb in leaveBalances) {
-      totalTaken += (lb['leaves_taken'] as num? ?? 0).toDouble();
-      totalQuota += (lb['quota'] as num? ?? 0).toDouble();
+
+      final typeName = lb['leave_type']?['name']?.toString().toLowerCase() ?? '';
+      if (!typeName.contains('unpaid')) {
+        totalTaken += (lb['leaves_taken'] as num? ?? 0).toDouble();
+        totalQuota += (lb['quota'] as num? ?? 0).toDouble();
+      }
     }
     final remaining = (totalQuota - totalTaken).clamp(0, totalQuota);
+
 
     // Pending unreviewed requests days
     final pendingRequests = existingRequests.where((r) => r['is_approved'] != true && r['is_reviewed'] != true).toList();
@@ -1181,14 +1458,14 @@ class _LeaveTypeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final typeName = lb['leave_type']?['name'] ?? 'Leave';
-    final isPaid = typeName == 'Paid Leave';
+    final isPaid = typeName == 'Paid Leave' || typeName == 'Casual Leave';
     final used = (lb['leaves_taken'] as num? ?? 0).toDouble();
     final total = (lb['quota'] as num? ?? 1).toDouble();
     final remaining = (total - used).clamp(0, total);
     final pct = total > 0 ? (used / total).clamp(0.0, 1.0).toDouble() : 0.0;
 
     // Filter pending for this specific type
-    final typePending = pendingRequests.where((r) => r['is_paid'] == isPaid).fold<double>(0, (sum, r) => sum + ((r['no_days'] as num?)?.toDouble() ?? 0.0));
+    final typePending = pendingRequests.where((r) => (r['leave_type_name'] ?? (r['is_paid'] == true ? 'Paid Leave' : 'Unpaid Leave')) == typeName).fold<double>(0, (sum, r) => sum + ((r['no_days'] as num?)?.toDouble() ?? 0.0));
     final netAvailable = (remaining - typePending).clamp(0, total);
 
     return Container(
@@ -1213,7 +1490,11 @@ class _LeaveTypeTile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
-                      isPaid ? Iconsax.wallet_3 : Iconsax.calendar_remove,
+                      typeName.toString().toLowerCase().contains('sick')
+                          ? Iconsax.health
+                          : typeName.toString().toLowerCase().contains('casual')
+                              ? Iconsax.sun_1
+                              : (isPaid ? Iconsax.wallet_3 : Iconsax.calendar_remove),
                       color: isPaid ? AppColors.success : const Color(0xFFF59E0B),
                       size: 18,
                     ),
@@ -1285,11 +1566,63 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
   bool _isHalfDay = false;
   String _halfDayPeriod = 'First Half';
 
+  // Leave Category selection
+  List<dynamic> _leaveTypes = [];
+  int? _selectedLeaveTypeId;
+  String _selectedCategoryName = 'Casual Leave';
+  PlatformFile? _selectedFile;
+  int _excludedSaturdays = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLeaveTypes();
+  }
+
   @override
   void dispose() {
     _fromCtrl.dispose();
     _tillCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchLeaveTypes() async {
+    try {
+      final res = await ApiService().get('${AppConstants.leaveBase}/leave-types/');
+      if (mounted) {
+        final list = res.data is List ? res.data as List : ((res.data['results'] ?? []) as List);
+        setState(() {
+          _leaveTypes = list;
+          if (list.isNotEmpty) {
+            final casual = list.firstWhere(
+              (t) => t['name']?.toString().toLowerCase().contains('casual') == true,
+              orElse: () => list.first,
+            );
+            _selectedLeaveTypeId = casual['id'];
+            _selectedCategoryName = casual['name'] ?? 'Casual Leave';
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _pickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty && mounted) {
+        setState(() => _selectedFile = result.files.first);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('File picker error: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
   }
 
   Future<void> _pickDate(bool isFrom) async {
@@ -1320,18 +1653,38 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
   }
 
   double _calculateRequestedDays() {
-    if (_isHalfDay) return 0.5;
-    if (_fromDate.isEmpty || _tillDate.isEmpty) return 0;
+    if (_isHalfDay) {
+      _excludedSaturdays = 0;
+      return 0.5;
+    }
+    if (_fromDate.isEmpty || _tillDate.isEmpty) {
+      _excludedSaturdays = 0;
+      return 0;
+    }
     try {
       final fromNd = NepaliDateTime.parse(_fromDate);
       final tillNd = NepaliDateTime.parse(_tillDate);
-      final adFrom = fromNd.toDateTime();
-      final adTill = tillNd.toDateTime();
-      final utcFrom = DateTime.utc(adFrom.year, adFrom.month, adFrom.day);
-      final utcTill = DateTime.utc(adTill.year, adTill.month, adTill.day);
-      final diff = utcTill.difference(utcFrom).inDays + 1;
-      return diff > 0 ? diff.toDouble() : 0.0;
+      if (fromNd.isAfter(tillNd)) {
+        _excludedSaturdays = 0;
+        return 0.0;
+      }
+
+      double workingDays = 0.0;
+      int saturdays = 0;
+      NepaliDateTime curr = fromNd;
+      while (!curr.isAfter(tillNd)) {
+        final adDate = curr.toDateTime();
+        if (adDate.weekday == DateTime.saturday) {
+          saturdays++;
+        } else {
+          workingDays += 1.0;
+        }
+        curr = curr.add(const Duration(days: 1));
+      }
+      _excludedSaturdays = saturdays;
+      return workingDays;
     } catch (_) {
+      _excludedSaturdays = 0;
       return 0.0;
     }
   }
@@ -1339,13 +1692,27 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
   double _calculateAvailableQuota() {
     if (widget.balance == null) return 999.0;
     final leaveBalances = (widget.balance!['leave_balances'] as List?) ?? [];
-    final targetTypeName = _isPaid ? 'Paid Leave' : 'Unpaid Leave';
 
     dynamic targetBalance;
     for (final lb in leaveBalances) {
-      if (lb['leave_type']?['name']?.toString().toLowerCase() == targetTypeName.toLowerCase()) {
+      final typeName = lb['leave_type']?['name']?.toString().toLowerCase() ?? '';
+      if (_selectedLeaveTypeId != null && lb['leave_type']?['id'] == _selectedLeaveTypeId) {
         targetBalance = lb;
         break;
+      }
+      if (typeName == _selectedCategoryName.toLowerCase()) {
+        targetBalance = lb;
+        break;
+      }
+    }
+
+    if (targetBalance == null) {
+      final fallbackName = _isPaid ? 'Paid Leave' : 'Unpaid Leave';
+      for (final lb in leaveBalances) {
+        if (lb['leave_type']?['name']?.toString().toLowerCase() == fallbackName.toLowerCase()) {
+          targetBalance = lb;
+          break;
+        }
       }
     }
 
@@ -1355,12 +1722,18 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
     final taken = (targetBalance['leaves_taken'] as num? ?? 0).toDouble();
     final approvedRemaining = (quota - taken).clamp(0.0, quota);
 
-    // Subtract pending requests of this type
     final pendingOfThisType = widget.existingRequests
-        .where((r) => r['is_approved'] != true && r['is_reviewed'] != true && r['is_paid'] == _isPaid)
+        .where((r) =>
+            r['is_approved'] != true &&
+            r['is_reviewed'] != true &&
+            (r['leave_type_name'] == _selectedCategoryName || r['is_paid'] == _isPaid))
         .fold<double>(0.0, (sum, r) => sum + ((r['no_days'] as num?)?.toDouble() ?? 0.0));
 
     return (approvedRemaining - pendingOfThisType).clamp(0.0, quota);
+  }
+
+  bool get _isSickLeaveSelected {
+    return _selectedCategoryName.toLowerCase().contains('sick');
   }
 
   Future<void> _submit() async {
@@ -1376,18 +1749,19 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
     final reqDays = _calculateRequestedDays();
     if (reqDays <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Till date cannot be earlier than From date'), backgroundColor: AppColors.error),
+        const SnackBar(
+          content: Text('Selected date range contains no working days (only weekend/Saturday).'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
 
     final available = _calculateAvailableQuota();
-    final targetTypeName = _isPaid ? 'Paid Leave' : 'Unpaid Leave';
-
     if (reqDays > available) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Quota exceeded for $targetTypeName. You requested $reqDays day(s), but only have $available day(s) available.'),
+          content: Text('Quota exceeded for $_selectedCategoryName. You requested $reqDays day(s), but only have $available day(s) available.'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -1397,18 +1771,33 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
 
     setState(() => _isLoading = true);
     try {
+      final formData = FormData();
+      formData.fields.add(MapEntry('subject', _subject.trim()));
+      formData.fields.add(MapEntry('from_date', _fromDate));
+      formData.fields.add(MapEntry('till_date', _tillDate));
+      formData.fields.add(MapEntry('remarks', _reason.trim()));
+      formData.fields.add(MapEntry('is_paid', _isPaid.toString()));
+      formData.fields.add(MapEntry('is_half_day', _isHalfDay.toString()));
+      if (_isHalfDay) {
+        formData.fields.add(MapEntry('half_day_period', _halfDayPeriod));
+      }
+      if (_selectedLeaveTypeId != null) {
+        formData.fields.add(MapEntry('type', _selectedLeaveTypeId.toString()));
+      }
+      formData.fields.add(MapEntry('leave_category', _selectedCategoryName));
+
+      if (_selectedFile != null && _selectedFile!.bytes != null) {
+        formData.files.add(MapEntry(
+          'document',
+          MultipartFile.fromBytes(_selectedFile!.bytes!, filename: _selectedFile!.name),
+        ));
+      }
+
       await ApiService().post(
         '${AppConstants.leaveBase}/leave-requests/',
-        data: {
-          'subject': _subject.trim(),
-          'from_date': _fromDate,
-          'till_date': _tillDate,
-          'remarks': _reason.trim(),
-          'is_paid': _isPaid,
-          'is_half_day': _isHalfDay,
-          if (_isHalfDay) 'half_day_period': _halfDayPeriod,
-        },
+        data: formData,
       );
+
       if (mounted) {
         Navigator.pop(context, true);
         widget.onSuccess();
@@ -1487,7 +1876,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const Text(
-                                'Submit time-off request for approval',
+                                'Submit time-off request for review',
                                 style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -1509,7 +1898,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
               Divider(color: context.border),
               const SizedBox(height: 14),
 
-              // Live Quota Indicator Card
+              // Live Quota & Saturday Indicator Card
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -1534,19 +1923,22 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Available ${_isPaid ? 'Paid' : 'Unpaid'} Quota: ${availableQuota.toStringAsFixed(1)} Days',
+                            'Available Quota ($_selectedCategoryName): ${availableQuota.toStringAsFixed(1)} Days',
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w800,
                               color: isExceeded ? AppColors.error : context.textPrimary,
                             ),
                           ),
+                          const SizedBox(height: 2),
                           Text(
                             requestedDays > 0
-                                ? 'Requested Duration: ${requestedDays.toStringAsFixed(1)} day(s)'
-                                : 'Select dates to verify duration vs remaining quota',
+                                ? 'Duration: ${requestedDays.toStringAsFixed(1)} working day(s)'
+                                    '${_excludedSaturdays > 0 ? ' ($_excludedSaturdays Saturday(s) excluded)' : ''}'
+                                : 'Select dates to calculate working duration & verify quota',
                             style: TextStyle(
                               fontSize: 11,
+                              fontWeight: FontWeight.w600,
                               color: isExceeded ? AppColors.error : AppColors.textSecondary,
                             ),
                           ),
@@ -1558,10 +1950,41 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
               ),
               const SizedBox(height: 14),
 
+              // Leave Category Selection Dropdown
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: 'Leave Category *',
+                  prefixIcon: Icon(Iconsax.category, size: 18),
+                ),
+                // ignore: deprecated_member_use
+                value: _selectedCategoryName,
+
+                items: (_leaveTypes.isNotEmpty
+                        ? _leaveTypes.map((t) => t['name']?.toString() ?? 'Leave').toSet().toList()
+                        : ['Casual Leave', 'Sick Leave', 'Paid Leave', 'Unpaid Leave'])
+                    .map((cat) => DropdownMenuItem(
+                          value: cat,
+                          child: Text(cat, style: const TextStyle(fontWeight: FontWeight.w700)),
+                        ))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() {
+                      _selectedCategoryName = val;
+                      try {
+                        final found = _leaveTypes.firstWhere((t) => t['name'] == val);
+                        _selectedLeaveTypeId = found['id'];
+                      } catch (_) {}
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+
               TextFormField(
                 decoration: const InputDecoration(
                   labelText: 'Subject / Purpose *',
-                  hintText: 'e.g. Medical emergency, Vacation',
+                  hintText: 'e.g. Medical checkup, Family event',
                   prefixIcon: Icon(Iconsax.document_text, size: 18),
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Subject is required' : null,
@@ -1602,17 +2025,93 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
               const SizedBox(height: 12),
 
               TextFormField(
-                maxLines: 3,
+                maxLines: 2,
                 decoration: const InputDecoration(
                   labelText: 'Reason & Remarks (Optional)',
-                  hintText: 'Provide additional details for the reviewing manager...',
+                  hintText: 'Provide additional details for reviewing managers...',
                   alignLabelWithHint: true,
                   prefixIcon: Icon(Iconsax.note_text, size: 18),
                 ),
                 onSaved: (v) => _reason = v ?? '',
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
+              // ── Supporting Document Upload (Highlighted for Sick Leave) ───
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _isSickLeaveSelected
+                      ? const Color(0xFF6366F1).withValues(alpha: 0.08)
+                      : context.card,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: _isSickLeaveSelected
+                        ? const Color(0xFF6366F1).withValues(alpha: 0.35)
+                        : context.border,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Iconsax.document_upload,
+                          size: 18,
+                          color: _isSickLeaveSelected ? const Color(0xFF6366F1) : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _isSickLeaveSelected
+                                ? 'Supporting Medical Certificate (Required for Sick Leave)'
+                                : 'Supporting Document (Optional)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: _isSickLeaveSelected ? const Color(0xFF6366F1) : context.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (_selectedFile != null) ...[
+                      Row(
+                        children: [
+                          const Icon(Iconsax.document_1, size: 16, color: AppColors.primary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '${_selectedFile!.name} (${(_selectedFile!.size / 1024).toStringAsFixed(1)} KB)',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Iconsax.trash, size: 16, color: AppColors.error),
+                            onPressed: () => setState(() => _selectedFile = null),
+                            tooltip: 'Remove file',
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      OutlinedButton.icon(
+                        onPressed: _pickFile,
+                        icon: const Icon(Iconsax.paperclip, size: 16),
+                        label: const Text('Attach File (PDF, JPG, PNG)'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 38),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Paid Leave & Half Day Switches
               LayoutBuilder(
                 builder: (context, constraints) {
                   final isMobile = constraints.maxWidth < 450;
@@ -1622,7 +2121,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                       isMobile
                           ? SwitchListTile(
                               title: const Text('Paid Leave', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                              subtitle: const Text('Toggle for unpaid leave', style: TextStyle(fontSize: 11)),
+                              subtitle: const Text('Toggle for unpaid leave days', style: TextStyle(fontSize: 11)),
                               value: _isPaid,
                               onChanged: (v) => setState(() => _isPaid = v),
                               activeThumbColor: AppColors.primary,
@@ -1631,7 +2130,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                           : Expanded(
                               child: SwitchListTile(
                                 title: const Text('Paid Leave', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                                subtitle: const Text('Toggle for unpaid leave', style: TextStyle(fontSize: 11)),
+                                subtitle: const Text('Toggle for unpaid leave days', style: TextStyle(fontSize: 11)),
                                 value: _isPaid,
                                 onChanged: (v) => setState(() => _isPaid = v),
                                 activeThumbColor: AppColors.primary,
@@ -1733,7 +2232,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
 }
 
 // ─── Details Modal ───────────────────────────────────────────────────────────
-void _showLeaveDetails(BuildContext context, Map leave, bool isAdmin) {
+void _showLeaveDetails(BuildContext context, Map leave, bool isAdmin, {VoidCallback? onRefresh}) {
   String status = 'Pending';
   Color statusColor = const Color(0xFFF59E0B);
   if (leave['is_approved'] == true) {
@@ -1742,7 +2241,16 @@ void _showLeaveDetails(BuildContext context, Map leave, bool isAdmin) {
   } else if (leave['is_reviewed'] == true) {
     status = 'Rejected';
     statusColor = AppColors.error;
+  } else if (leave['is_initial_approved'] == true) {
+    status = 'Initial Approved';
+    statusColor = const Color(0xFF6366F1);
   }
+
+  final typeName = leave['leave_type_name'] ?? (leave['is_paid'] == true ? 'Paid Leave' : 'Unpaid Leave');
+  final isSickLeave = leave['is_sick_leave'] == true || typeName.toString().toLowerCase().contains('sick');
+  final rejectionReason = leave['rejection_reason']?.toString().trim();
+  String? currentDocUrl = leave['document_url']?.toString();
+  bool isUploadingDoc = false;
 
   showModalBottomSheet(
     context: context,
@@ -1752,108 +2260,266 @@ void _showLeaveDetails(BuildContext context, Map leave, bool isAdmin) {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (ctx) => Padding(
-      padding: const EdgeInsets.all(28),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setModalState) {
+        Future<void> pickAndUploadDocument() async {
+          try {
+            final result = await FilePicker.platform.pickFiles(
+              type: FileType.custom,
+              allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
+              withData: true,
+            );
+            if (result == null || result.files.isEmpty) return;
+            final file = result.files.first;
+            if (file.bytes == null) return;
+
+            setModalState(() => isUploadingDoc = true);
+
+            final formData = FormData();
+            formData.files.add(MapEntry(
+              'document',
+              MultipartFile.fromBytes(file.bytes!, filename: file.name),
+            ));
+
+            final res = await ApiService().patch(
+              '${AppConstants.leaveBase}/update/${leave['id']}/',
+              data: formData,
+            );
+
+            setModalState(() {
+              isUploadingDoc = false;
+              if (res.data != null && res.data['document_url'] != null) {
+                currentDocUrl = res.data['document_url'].toString();
+                leave['document_url'] = currentDocUrl;
+              }
+            });
+
+            onRefresh?.call();
+
+            if (ctx.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Row(
+                    children: [
+                      Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
+                      SizedBox(width: 10),
+                      Text('Medical document uploaded successfully!'),
+                    ],
+                  ),
+                  backgroundColor: AppColors.success,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              );
+            }
+          } catch (e) {
+            setModalState(() => isUploadingDoc = false);
+            if (ctx.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to upload document: ${ApiService.getErrorMessage(e)}'),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          }
+        }
+
+        final hasDoc = currentDocUrl != null && currentDocUrl!.isNotEmpty;
+
+        return Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Iconsax.calendar_tick, color: statusColor, size: 22),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Iconsax.calendar_tick, color: statusColor, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          status.toUpperCase(),
+                          style: TextStyle(color: statusColor, fontSize: 11.5, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      status.toUpperCase(),
-                      style: TextStyle(color: statusColor, fontSize: 11.5, fontWeight: FontWeight.w800),
-                    ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Iconsax.close_circle, size: 20),
+                    color: AppColors.textSecondary,
                   ),
                 ],
               ),
-              IconButton(
+              const SizedBox(height: 16),
+              Text(
+                leave['subject'] ?? 'Leave Request',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: context.textPrimary),
+              ),
+              const SizedBox(height: 14),
+              Divider(color: context.border),
+              const SizedBox(height: 14),
+
+              if (isAdmin && leave['employee_name'] != null) ...[
+                _DetailRow(icon: Iconsax.user, label: 'Employee', value: leave['employee_name']),
+                const SizedBox(height: 12),
+              ],
+              _DetailRow(
+                icon: Iconsax.category,
+                label: 'Leave Category',
+                value: typeName,
+                valueColor: AppColors.primary,
+              ),
+              const SizedBox(height: 12),
+              _DetailRow(
+                icon: Iconsax.calendar,
+                label: 'Date Range',
+                value: leave['is_half_day'] == true
+                    ? '${_fmtDate(leave['from_date']?.toString())} (Half Day • ${leave['half_day_period'] ?? 'N/A'})'
+                    : '${_fmtDate(leave['from_date']?.toString())} → ${_fmtDate(leave['till_date']?.toString())}',
+              ),
+              const SizedBox(height: 12),
+              _DetailRow(
+                icon: Iconsax.timer_1,
+                label: 'Total Working Days',
+                value: leave['is_half_day'] == true ? '0.5 Day' : '${leave['no_days']} Days (Saturdays excluded)',
+              ),
+              const SizedBox(height: 12),
+              _DetailRow(
+                icon: Iconsax.wallet_3,
+                label: 'Payment Type',
+                value: leave['is_paid'] == true ? 'Paid Leave' : 'Unpaid Leave',
+                valueColor: leave['is_paid'] == true ? AppColors.success : const Color(0xFFF59E0B),
+              ),
+
+              if (leave['remarks'] != null && (leave['remarks'] as String).trim().isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text('Reason / Remarks', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.textSecondary)),
+                const SizedBox(height: 4),
+                Text(leave['remarks'], style: TextStyle(fontSize: 13.5, color: context.textPrimary, height: 1.5)),
+              ],
+
+              // Rejection Reason Alert Box
+              if (rejectionReason != null && rejectionReason.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.error.withValues(alpha: 0.35)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Iconsax.info_circle, color: AppColors.error, size: 16),
+                          SizedBox(width: 8),
+                          Text('Reason for Rejection', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w800, fontSize: 12.5)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(rejectionReason, style: TextStyle(color: context.textPrimary, fontSize: 13, height: 1.4)),
+                    ],
+                  ),
+                ),
+              ],
+
+              // Supporting Document Section (View / Upload / Replace)
+              const SizedBox(height: 16),
+              if (hasDoc) ...[
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final uri = Uri.parse(currentDocUrl!);
+                    if (await canLaunchUrl(uri)) launchUrl(uri);
+                  },
+                  icon: const Icon(Iconsax.document_download, size: 18, color: Colors.white),
+                  label: const Text('View Medical Document / Certificate', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    minimumSize: const Size(double.infinity, 44),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: isUploadingDoc ? null : pickAndUploadDocument,
+                  icon: isUploadingDoc
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Iconsax.document_upload, size: 16, color: Color(0xFF6366F1)),
+                  label: Text(
+                    isUploadingDoc ? 'Uploading...' : 'Replace / Update Document',
+                    style: const TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.w700),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF6366F1)),
+                    minimumSize: const Size(double.infinity, 40),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ] else ...[
+                // If no document is attached, provide an Upload Supporting Document button
+                OutlinedButton.icon(
+                  onPressed: isUploadingDoc ? null : pickAndUploadDocument,
+                  icon: isUploadingDoc
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Iconsax.document_upload, size: 18, color: Color(0xFF6366F1)),
+                  label: Text(
+                    isUploadingDoc
+                        ? 'Uploading Medical Document...'
+                        : (isSickLeave ? '📎 Attach Supporting Medical Document' : '📎 Attach Supporting Document'),
+                    style: const TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.w700),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                    backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.05),
+                    minimumSize: const Size(double.infinity, 44),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 20),
+              OutlinedButton(
                 onPressed: () => Navigator.pop(ctx),
-                icon: const Icon(Iconsax.close_circle, size: 20),
-                color: AppColors.textSecondary,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 44),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Close Details'),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            leave['subject'] ?? 'Leave Request',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: context.textPrimary),
-          ),
-          const SizedBox(height: 14),
-          Divider(color: context.border),
-          const SizedBox(height: 14),
-
-          if (isAdmin && leave['employee_name'] != null) ...[
-            _DetailRow(icon: Iconsax.user, label: 'Employee', value: leave['employee_name']),
-            const SizedBox(height: 12),
-          ],
-          _DetailRow(
-            icon: Iconsax.calendar,
-            label: 'Date Range',
-            value: leave['is_half_day'] == true
-                ? '${_fmtDate(leave['from_date']?.toString())} (Half Day • ${leave['half_day_period'] ?? 'N/A'})'
-                : '${_fmtDate(leave['from_date']?.toString())} → ${_fmtDate(leave['till_date']?.toString())}',
-          ),
-          const SizedBox(height: 12),
-          _DetailRow(
-            icon: Iconsax.timer_1,
-            label: 'Total Duration',
-            value: leave['is_half_day'] == true ? '0.5 Day' : '${leave['no_days']} Days',
-          ),
-          const SizedBox(height: 12),
-          _DetailRow(
-            icon: Iconsax.wallet_3,
-            label: 'Leave Type',
-            value: leave['is_paid'] == true ? 'Paid Leave' : 'Unpaid Leave',
-            valueColor: leave['is_paid'] == true ? AppColors.success : const Color(0xFFF59E0B),
-          ),
-
-          if (leave['remarks'] != null && (leave['remarks'] as String).trim().isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const Text('Reason / Remarks', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.textSecondary)),
-            const SizedBox(height: 4),
-            Text(leave['remarks'], style: TextStyle(fontSize: 13.5, color: context.textPrimary, height: 1.5)),
-          ],
-
-          const SizedBox(height: 24),
-          OutlinedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 44),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Close Details'),
-          ),
-        ],
-      ),
+        );
+      },
     ),
   );
 }
 
+
 class _DetailRow extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final String value;
+  final String label, value;
   final Color? valueColor;
-
   const _DetailRow({required this.icon, required this.label, required this.value, this.valueColor});
 
   @override
@@ -1971,7 +2637,7 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
     final taken = (b['leaves_taken'] as num?)?.toDouble() ?? 0;
     final remaining = (quota - taken).clamp(0, quota);
     final typeName = b['leave_type']?['name'] ?? 'Leave';
-    final isPaid = typeName == 'Paid Leave';
+    final isPaid = typeName == 'Paid Leave' || typeName == 'Casual Leave';
     final pct = quota > 0 ? (taken / quota).clamp(0.0, 1.0).toDouble() : 0.0;
     final remainingPct = quota > 0 ? (((quota - taken) / quota) * 100).round() : 0;
 
@@ -2002,7 +2668,11 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
-                      isPaid ? Iconsax.wallet_3 : Iconsax.calendar_remove,
+                      typeName.toString().toLowerCase().contains('sick')
+                          ? Iconsax.health
+                          : typeName.toString().toLowerCase().contains('casual')
+                              ? Iconsax.sun_1
+                              : (isPaid ? Iconsax.wallet_3 : Iconsax.calendar_remove),
                       color: isPaid ? AppColors.success : const Color(0xFFF59E0B),
                       size: 14,
                     ),
