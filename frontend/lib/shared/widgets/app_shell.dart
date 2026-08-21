@@ -320,6 +320,64 @@ class AppShell extends ConsumerWidget {
 
       return Scaffold(
         backgroundColor: context.bg,
+        drawer: Drawer(
+          backgroundColor: context.surface,
+          child: sidebarContent,
+        ),
+        appBar: AppBar(
+          backgroundColor: context.surface,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: Builder(
+            builder: (ctx) => IconButton(
+              icon: const Icon(Iconsax.menu_1, color: AppColors.primary, size: 22),
+              tooltip: 'Open Navigation Drawer',
+              onPressed: () => Scaffold.of(ctx).openDrawer(),
+            ),
+          ),
+          titleSpacing: 0,
+          title: Row(
+            children: [
+              Image.asset(
+                'assets/images/logo.png',
+                height: 30,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Iconsax.box, color: AppColors.primary, size: 18),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: Badge(
+                isLabelVisible: unreadCount > 0,
+                backgroundColor: AppColors.primary,
+                label: Text(
+                  unreadCount > 99 ? '99+' : '$unreadCount',
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+                child: Icon(
+                  Iconsax.notification,
+                  color: location == '/notifications' || unreadCount > 0
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                  size: 20,
+                ),
+              ),
+              tooltip: 'Notifications',
+              onPressed: () => context.go('/notifications'),
+            ),
+            const ThemeToggleBtn(),
+            const SizedBox(width: 8),
+          ],
+        ),
         body: child,
         bottomNavigationBar: Container(
           decoration: BoxDecoration(

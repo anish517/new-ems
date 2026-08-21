@@ -3039,7 +3039,12 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
   Widget build(BuildContext context) {
     final status = (widget.req['status'] as String? ?? 'pending').toLowerCase();
     final isPending = status == 'pending';
-    final employeeName = widget.req['employee_name']?.toString() ?? 'Employee';
+    final rawName = widget.req['employee_name']?.toString() ??
+        widget.req['employee']?['full_name']?.toString() ??
+        widget.req['employee']?['name']?.toString() ??
+        '';
+    final employeeName = (rawName.isNotEmpty && rawName != 'null') ? rawName : 'Employee';
+    final employeeEmail = widget.req['employee_email']?.toString();
     final requestedDate = widget.req['requested_date']?.toString() ?? '-';
     final checkIn = widget.req['requested_check_in']?.toString();
     final checkOut = widget.req['requested_check_out']?.toString();
@@ -3092,14 +3097,24 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (widget.isAdmin) ...[
-                      Text(
-                        employeeName,
-                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: context.textPrimary),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                    ],
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      children: [
+                        Text(
+                          employeeName,
+                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: context.textPrimary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (employeeEmail != null && employeeEmail.isNotEmpty && employeeEmail != 'null')
+                          Text(
+                            '($employeeEmail)',
+                            style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -3108,7 +3123,7 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                         Flexible(
                           child: Text(
                             'Target Date: $requestedDate',
-                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: context.textPrimary),
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5, color: context.textPrimary),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
