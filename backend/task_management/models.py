@@ -161,9 +161,16 @@ class TaskProgressReport(models.Model):
     hours_worked = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     days_worked = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_deletion_requested = models.BooleanField(default=False)
+    deletion_reason = models.TextField(null=True, blank=True)
+    deletion_requested_by = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name="deletion_requested_reports"
+    )
+    deletion_requested_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
 
     def __str__(self) -> str:
         return f"Progress on \"{self.task}\" -- {self.date}"
+

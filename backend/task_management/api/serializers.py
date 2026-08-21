@@ -151,19 +151,34 @@ class TaskProgressReportSerializer(serializers.ModelSerializer):
     submitted_by_name = serializers.SerializerMethodField()
     attachment_url = serializers.SerializerMethodField()
     earned_amount = serializers.SerializerMethodField()
+    deletion_requested_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = TaskProgressReport
         fields = [
             "id", "task", "date", "description", "attachment",
             "attachment_url", "submitted_by_name", "created_at",
-            "hours_worked", "days_worked", "earned_amount"
+            "hours_worked", "days_worked", "earned_amount",
+            "is_deletion_requested", "deletion_reason",
+            "deletion_requested_by_name", "deletion_requested_at",
         ]
-        read_only_fields = ["submitted_by_name", "attachment_url", "created_at", "earned_amount"]
+        read_only_fields = [
+            "submitted_by_name", "attachment_url", "created_at",
+            "earned_amount", "deletion_requested_by_name", "deletion_requested_at"
+        ]
 
     def get_submitted_by_name(self, obj):
         if obj.submitted_by and obj.submitted_by.user:
             user = obj.submitted_by.user
+            if hasattr(user, 'first_name'):
+                name = f"{getattr(user, 'first_name', '')} {getattr(user, 'last_name', '')}".strip()
+                if name: return name
+            return getattr(user, 'full_name', getattr(user, 'username', 'Unknown'))
+        return None
+
+    def get_deletion_requested_by_name(self, obj):
+        if obj.deletion_requested_by and obj.deletion_requested_by.user:
+            user = obj.deletion_requested_by.user
             if hasattr(user, 'first_name'):
                 name = f"{getattr(user, 'first_name', '')} {getattr(user, 'last_name', '')}".strip()
                 if name: return name
@@ -190,6 +205,7 @@ class TaskProgressReportSerializer(serializers.ModelSerializer):
         except ProjectAssignment.DoesNotExist:
             pass
         return None
+
 
 
 class TaskSerializer(serializers.ModelSerializer):

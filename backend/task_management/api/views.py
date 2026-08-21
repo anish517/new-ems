@@ -1,8 +1,11 @@
+from django.utils import timezone
 from rest_framework import status, generics, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
+from notification.models import Notification
+from notification.fcm import notify_user
 from organization.models import Employee, Organization
 from task_management.models import Project, ProjectAssignment, ProjectFile, Task, TaskProgressReport
 from task_management.utils import (
@@ -30,6 +33,21 @@ def _get_org(user, employee=None):
     if getattr(user, "is_superuser", False) or getattr(user, "is_hr", False):
         return Organization.objects.first()
     return None
+
+
+def _is_admin_user(user, employee=None):
+    if not user or not user.is_authenticated:
+        return False
+    if getattr(user, "is_superuser", False) or getattr(user, "is_admin", False) or getattr(user, "is_hr", False):
+        return True
+    if hasattr(user, "organization") and user.organization.exists():
+        return True
+    if employee and getattr(employee, "post", None):
+        post_title = (employee.post.title or "").lower()
+        if any(w in post_title for w in ["admin", "manager", "director", "lead", "head", "ceo", "cto", "coo", "hr"]):
+            return True
+    return False
+
 
 
 # ─── Project CRUD ────────────────────────────────────────────────────────────
@@ -243,16 +261,194 @@ class TaskProgressReportListCreateAPIView(APIView):
 
 
 class TaskProgressReportDestroyAPIView(APIView):
-    """Delete a single progress report."""
+    """Delete a single progress report. Super Admin / Admin can delete directly; regular employees must request deletion."""
     permission_classes = [permissions.IsAuthenticated]
 
     def delete(self, request, pk):
         try:
-            report = TaskProgressReport.objects.get(pk=pk)
+            report = TaskProgressReport.objects.select_related("task", "submitted_by__user").get(pk=pk)
         except TaskProgressReport.DoesNotExist:
             return Response({"error": "Not found"}, status=404)
+
+        employee = _get_employee(request.user)
+        is_admin = _is_admin_user(request.user, employee)
+
+        if not is_admin:
+            return Response(
+                {"error": "Employees cannot delete progress reports directly. Please submit a deletion request with a reason for Super Admin approval."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         report.delete()
         return Response(status=204)
+
+
+class TaskProgressReportRequestDeletionAPIView(APIView):
+    """Employee submits a deletion request for a progress report with a mandatory reason."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            report = TaskProgressReport.objects.select_related("task", "submitted_by__user").get(pk=pk)
+        except TaskProgressReport.DoesNotExist:
+            return Response({"error": "Progress report not found"}, status=404)
+
+        reason = str(request.data.get("reason", "")).strip()
+        if not reason:
+            return Response({"error": "A reason for deletion is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        employee = _get_employee(request.user)
+        report.is_deletion_requested = True
+        report.deletion_reason = reason
+        report.deletion_requested_by = employee
+        report.deletion_requested_at = timezone.now()
+        report.save(update_fields=["is_deletion_requested", "deletion_reason", "deletion_requested_by", "deletion_requested_at"])
+
+        # Notify Super Admins / Org Admins
+        emp_name = "Employee"
+        if employee and employee.user:
+            emp_name = getattr(employee.user, "full_name", "") or getattr(employee.user, "username", "Employee")
+
+        task_title = report.task.title if report.task else "Task"
+        notif_title = "🗑️ Progress Report Deletion Request"
+        notif_msg = f"{emp_name} requested to delete a progress log on \"{task_title}\". Reason: {reason}"
+
+        # Send FCM & In-App notification to Org Admins / Super Admins
+        try:
+            org = _get_org(request.user, employee)
+            admin_users = []
+            if org:
+                admin_users = list(org.admin_users.all())
+            else:
+                from authentication.models import Account
+                admin_users = list(Account.objects.filter(is_superuser=True))
+
+            for admin_user in admin_users:
+                Notification.objects.create(
+                    user=admin_user,
+                    title=notif_title,
+                    message=notif_msg,
+                    notification_type="task",
+                    reference_id=report.id,
+                    is_read=False,
+                )
+                notify_user(
+                    user=admin_user,
+                    title=notif_title,
+                    body=notif_msg,
+                    notification_type="task",
+                    reference_id=report.id,
+                )
+        except Exception as e:
+            print(f"[TaskProgressReport] Notification error: {e}")
+
+        serializer = TaskProgressReportSerializer(report, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class TaskProgressReportApproveDeletionAPIView(APIView):
+    """Super Admin approves a deletion request, permanently deleting the progress report."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            report = TaskProgressReport.objects.select_related("task", "submitted_by__user", "deletion_requested_by__user").get(pk=pk)
+        except TaskProgressReport.DoesNotExist:
+            return Response({"error": "Progress report not found"}, status=404)
+
+        employee = _get_employee(request.user)
+        if not _is_admin_user(request.user, employee):
+            return Response({"error": "Only Super Admins / Admins can approve deletion requests."}, status=status.HTTP_403_FORBIDDEN)
+
+        target_user = None
+        if report.deletion_requested_by and report.deletion_requested_by.user:
+            target_user = report.deletion_requested_by.user
+        elif report.submitted_by and report.submitted_by.user:
+            target_user = report.submitted_by.user
+
+        task_title = report.task.title if report.task else "Task"
+
+        if target_user:
+            notif_title = "✅ Deletion Request Approved"
+            notif_msg = f"Your deletion request for progress log on \"{task_title}\" was approved and deleted."
+            try:
+                Notification.objects.create(
+                    user=target_user,
+                    title=notif_title,
+                    message=notif_msg,
+                    notification_type="task",
+                    reference_id=report.task_id,
+                    is_read=False,
+                )
+                notify_user(
+                    user=target_user,
+                    title=notif_title,
+                    body=notif_msg,
+                    notification_type="task",
+                    reference_id=report.task_id,
+                )
+            except Exception as e:
+                print(f"[TaskProgressReport] Notification error: {e}")
+
+        report.delete()
+        return Response({"detail": "Progress report deleted successfully."}, status=status.HTTP_200_OK)
+
+
+class TaskProgressReportRejectDeletionAPIView(APIView):
+    """Super Admin rejects a deletion request, restoring the progress report."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            report = TaskProgressReport.objects.select_related("task", "submitted_by__user", "deletion_requested_by__user").get(pk=pk)
+        except TaskProgressReport.DoesNotExist:
+            return Response({"error": "Progress report not found"}, status=404)
+
+        employee = _get_employee(request.user)
+        if not _is_admin_user(request.user, employee):
+            return Response({"error": "Only Super Admins / Admins can reject deletion requests."}, status=status.HTTP_403_FORBIDDEN)
+
+        rejection_reason = str(request.data.get("rejection_reason", "")).strip()
+        target_user = None
+        if report.deletion_requested_by and report.deletion_requested_by.user:
+            target_user = report.deletion_requested_by.user
+        elif report.submitted_by and report.submitted_by.user:
+            target_user = report.submitted_by.user
+
+        task_title = report.task.title if report.task else "Task"
+
+        report.is_deletion_requested = False
+        report.deletion_reason = None
+        report.deletion_requested_by = None
+        report.deletion_requested_at = None
+        report.save(update_fields=["is_deletion_requested", "deletion_reason", "deletion_requested_by", "deletion_requested_at"])
+
+        if target_user:
+            reason_suffix = f" Reason: {rejection_reason}" if rejection_reason else ""
+            notif_title = "❌ Deletion Request Declined"
+            notif_msg = f"Your deletion request for progress log on \"{task_title}\" was declined.{reason_suffix}"
+            try:
+                Notification.objects.create(
+                    user=target_user,
+                    title=notif_title,
+                    message=notif_msg,
+                    notification_type="task",
+                    reference_id=report.id,
+                    is_read=False,
+                )
+                notify_user(
+                    user=target_user,
+                    title=notif_title,
+                    body=notif_msg,
+                    notification_type="task",
+                    reference_id=report.id,
+                )
+            except Exception as e:
+                print(f"[TaskProgressReport] Notification error: {e}")
+
+        serializer = TaskProgressReportSerializer(report, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 # ─── Summary Views ───────────────────────────────────────────────────────────

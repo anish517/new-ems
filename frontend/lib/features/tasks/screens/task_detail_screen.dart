@@ -7,6 +7,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import 'package:nepali_utils/nepali_utils.dart';
+import '../../auth/providers/auth_provider.dart';
+
+
 
 class TaskDetailScreen extends ConsumerStatefulWidget {
   final Map task;
@@ -26,6 +29,253 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     super.initState();
     _task = widget.task;
     _loadReports();
+  }
+
+  Future<void> _deleteReportDirect(Map report) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Delete Report", style: TextStyle(fontWeight: FontWeight.w800)),
+        content: const Text("Are you sure you want to permanently remove this progress log?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ApiService().delete("${AppConstants.progressEndpoint}/${report["id"]}/");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Progress report deleted successfully."),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+      _loadReports();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ApiService.getErrorMessage(e)),
+          backgroundColor: AppColors.error,
+        ));
+      }
+    }
+  }
+
+  Future<void> _requestReportDeletion(Map report) async {
+    final reasonController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final submit = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Iconsax.trash, color: AppColors.error, size: 20),
+            SizedBox(width: 8),
+            Text("Request Deletion", style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "As an employee, deleting a progress report requires Super Admin approval. Please provide a mandatory reason for deletion:",
+                style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: reasonController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: "Reason for Deletion *",
+                  hintText: "e.g., Logged on incorrect date / duplicate entry...",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  alignLabelWithHint: true,
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().length < 5) {
+                    return "Please provide a valid reason (min 5 characters).";
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              if (formKey.currentState?.validate() == true) {
+                Navigator.pop(ctx, true);
+              }
+            },
+            child: const Text("Submit Request"),
+          ),
+        ],
+      ),
+    );
+
+    if (submit != true) return;
+
+    try {
+      await ApiService().post(
+        "${AppConstants.progressEndpoint}/${report["id"]}/request-deletion/",
+        data: {"reason": reasonController.text.trim()},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Deletion request submitted to Super Admin for approval."),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+      _loadReports();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ApiService.getErrorMessage(e)),
+          backgroundColor: AppColors.error,
+        ));
+      }
+    }
+  }
+
+  Future<void> _approveReportDeletion(Map report) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Approve Deletion", style: TextStyle(fontWeight: FontWeight.w800)),
+        content: Text(
+          "Are you sure you want to approve this deletion request? The progress log will be permanently deleted.\n\nReason: \"${report["deletion_reason"] ?? ""}\"",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text("Approve & Delete"),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+
+    try {
+      await ApiService().post("${AppConstants.progressEndpoint}/${report["id"]}/approve-deletion/");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Progress report deleted successfully."),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+      _loadReports();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ApiService.getErrorMessage(e)),
+          backgroundColor: AppColors.error,
+        ));
+      }
+    }
+  }
+
+  Future<void> _rejectReportDeletion(Map report) async {
+    final reasonCtrl = TextEditingController();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Reject Deletion Request"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Are you sure you want to reject this deletion request? The progress log will remain active.",
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              decoration: InputDecoration(
+                labelText: "Optional Note for Employee",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Reject Request"),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ApiService().post(
+        "${AppConstants.progressEndpoint}/${report["id"]}/reject-deletion/",
+        data: {"rejection_reason": reasonCtrl.text.trim()},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Deletion request rejected."),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+      _loadReports();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ApiService.getErrorMessage(e)),
+          backgroundColor: AppColors.error,
+        ));
+      }
+    }
   }
 
   Future<void> _loadReports() async {
@@ -123,7 +373,11 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = ref.watch(currentUserProvider);
+    final isAdmin = currentUser?.canManage ?? false;
+
     final taskStatus = (_task["status"] ?? "to-do") as String;
+
     final taskType = (_task["task_type"] ?? "daily") as String;
     final priority = (_task["priority"] ?? "low") as String;
     final priorityColor = priority == 'high'
@@ -469,19 +723,11 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   else
                     ..._reports.map((r) => _ProgressReportCard(
                           report: r,
-                          onDelete: () async {
-                            try {
-                              await ApiService().delete("${AppConstants.taskProgressBase}/${r["id"]}/");
-                              _loadReports();
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                  content: Text(ApiService.getErrorMessage(e)),
-                                  backgroundColor: AppColors.error,
-                                ));
-                              }
-                            }
-                          },
+                          isAdmin: isAdmin,
+                          onDirectDelete: () => _deleteReportDirect(r),
+                          onRequestDeletion: () => _requestReportDeletion(r),
+                          onApproveDeletion: () => _approveReportDeletion(r),
+                          onRejectDeletion: () => _rejectReportDeletion(r),
                         )),
 
                   const SizedBox(height: 80),
@@ -522,15 +768,29 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 // ─── Progress Report Card ────────────────────────────────────────────────────
 class _ProgressReportCard extends StatelessWidget {
   final Map report;
-  final VoidCallback onDelete;
+  final bool isAdmin;
+  final VoidCallback onDirectDelete;
+  final VoidCallback onRequestDeletion;
+  final VoidCallback onApproveDeletion;
+  final VoidCallback onRejectDeletion;
 
-  const _ProgressReportCard({required this.report, required this.onDelete});
+  const _ProgressReportCard({
+    required this.report,
+    required this.isAdmin,
+    required this.onDirectDelete,
+    required this.onRequestDeletion,
+    required this.onApproveDeletion,
+    required this.onRejectDeletion,
+  });
 
   @override
   Widget build(BuildContext context) {
     final hasAttachment = report["attachment_url"] != null && (report["attachment_url"] as String).isNotEmpty;
     final submitterName = report["submitted_by_name"] ?? "Staff Member";
     final date = report["date"] ?? "";
+    final isDeletionRequested = report["is_deletion_requested"] == true;
+    final deletionReason = report["deletion_reason"]?.toString();
+    final requestedByName = report["deletion_requested_by_name"]?.toString() ?? submitterName;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -538,7 +798,12 @@ class _ProgressReportCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: context.border),
+        border: Border.all(
+          color: isDeletionRequested
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.5)
+              : context.border,
+          width: isDeletionRequested ? 1.5 : 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -567,28 +832,111 @@ class _ProgressReportCard extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
-                icon: const Icon(Iconsax.trash, size: 16, color: AppColors.error),
-                onPressed: () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text("Delete Report"),
-                      content: const Text("Are you sure you want to remove this progress log?"),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text("Delete", style: TextStyle(color: AppColors.error)),
+
+              // Top Right Actions
+              if (isDeletionRequested) ...[
+                if (isAdmin) ...[
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: onApproveDeletion,
+                        icon: const Icon(Iconsax.trash, size: 12, color: Colors.white),
+                        label: const Text("Approve", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.error,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      OutlinedButton(
+                        onPressed: onRejectDeletion,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: const Text("Reject", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Iconsax.timer_1, size: 12, color: Color(0xFFF59E0B)),
+                        SizedBox(width: 4),
+                        Text(
+                          "Deletion Pending",
+                          style: TextStyle(color: Color(0xFFF59E0B), fontSize: 11, fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
-                  );
-                  if (confirm == true) onDelete();
-                },
-              ),
+                  ),
+                ],
+              ] else ...[
+                IconButton(
+                  icon: const Icon(Iconsax.trash, size: 16, color: AppColors.error),
+                  tooltip: isAdmin ? "Delete Report" : "Request Report Deletion",
+                  onPressed: isAdmin ? onDirectDelete : onRequestDeletion,
+                ),
+              ],
             ],
           ),
+
+          // Pending Deletion Alert Banner
+          if (isDeletionRequested) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Iconsax.info_circle, color: Color(0xFFF59E0B), size: 15),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          isAdmin
+                              ? "Deletion Requested by $requestedByName"
+                              : "Deletion Request Pending Super Admin Approval",
+                          style: const TextStyle(
+                            color: Color(0xFFF59E0B),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (deletionReason != null && deletionReason.isNotEmpty) ...[
+                    const SizedBox(height: 5),
+                    Text(
+                      'Reason: "$deletionReason"',
+                      style: TextStyle(fontSize: 12.5, color: context.textPrimary, height: 1.3),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
 
           const SizedBox(height: 10),
 
@@ -667,6 +1015,7 @@ class _ProgressReportCard extends StatelessWidget {
     );
   }
 }
+
 
 // ─── Add Progress Report Dialog ───────────────────────────────────────────────
 class _AddProgressReportDialog extends ConsumerStatefulWidget {

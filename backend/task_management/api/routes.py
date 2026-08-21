@@ -1,4 +1,4 @@
-﻿from django.urls import path
+from django.urls import path
 from task_management.api.views import (
     EmployeeTaskSummaryAPIView,
     OrganizationProjectSummary,
@@ -9,8 +9,11 @@ from task_management.api.views import (
     ProjectRetrieveUpdateDestroyAPIView,
     ProjectTaskSummaryAPIView,
     TaskListCreateAPIView,
+    TaskProgressReportApproveDeletionAPIView,
     TaskProgressReportDestroyAPIView,
     TaskProgressReportListCreateAPIView,
+    TaskProgressReportRejectDeletionAPIView,
+    TaskProgressReportRequestDeletionAPIView,
     TaskRetrieveUpdateDestroyView,
 )
 
@@ -32,4 +35,8 @@ urlpatterns = [
     # Task Progress Reports
     path("tasks/<int:task_id>/progress/", TaskProgressReportListCreateAPIView.as_view()),
     path("progress/<int:pk>/", TaskProgressReportDestroyAPIView.as_view()),
+    path("progress/<int:pk>/request-deletion/", TaskProgressReportRequestDeletionAPIView.as_view()),
+    path("progress/<int:pk>/approve-deletion/", TaskProgressReportApproveDeletionAPIView.as_view()),
+    path("progress/<int:pk>/reject-deletion/", TaskProgressReportRejectDeletionAPIView.as_view()),
 ]
+

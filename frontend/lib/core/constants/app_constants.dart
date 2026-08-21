@@ -24,6 +24,8 @@ class AppConstants {
   static const String taskBase = '/api/task-management';
   static const String projectsBase = '/api/task-management/projects';
   static const String taskProgressBase = '/api/task-management/tasks';
+  static const String progressEndpoint = '/api/task-management/progress';
+
   static const String calendarBase = '/api/calendar';
   static const String noticeboardBase = '/api/noticeboard';
   static const String noticesEndpoint = '/api/noticeboard/notices/';
