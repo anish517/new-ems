@@ -429,19 +429,45 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Performance & Appraisals',
-                                style: TextStyle(
-                                  fontSize: isTight ? 17 : 20,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.4,
-                                  color: context.textPrimary,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      'Performance & Appraisals',
+                                      style: TextStyle(
+                                        fontSize: isTight ? 17 : 20,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.4,
+                                        color: context.textPrimary,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (!isAdmin) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${_reviews.length} Appraisals',
+                                        style: const TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFFF59E0B),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Employee evaluations, scoring, KPI reviews & category management',
+                                isAdmin
+                                    ? 'Employee evaluations, scoring, KPI reviews & category management'
+                                    : 'Your evaluations, performance scoring, feedback & career growth goals',
                                 style: TextStyle(fontSize: isTight ? 11 : 12, color: AppColors.textSecondary),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -461,39 +487,40 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 16),
-                    const Divider(height: 1),
-                    const SizedBox(height: 16),
-
-                    // ── Segmented Tab Switcher ──────────────────────────────
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: context.card,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: context.border),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildSegmentButton(
-                              index: 0,
-                              label: 'Appraisals & Reviews (${_reviews.length})',
-                              icon: Iconsax.document_text,
-                              isSelected: _selectedTab == 0,
+                    // ── Segmented Tab Switcher (Admins Only) ────────────────
+                    if (isAdmin) ...[
+                      const SizedBox(height: 16),
+                      const Divider(height: 1),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: context.card,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: context.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildSegmentButton(
+                                index: 0,
+                                label: 'Appraisals & Reviews (${_reviews.length})',
+                                icon: Iconsax.document_text,
+                                isSelected: _selectedTab == 0,
+                              ),
                             ),
-                          ),
-                          Expanded(
-                            child: _buildSegmentButton(
-                              index: 1,
-                              label: 'Review Categories (${_categories.length})',
-                              icon: Iconsax.category,
-                              isSelected: _selectedTab == 1,
+                            Expanded(
+                              child: _buildSegmentButton(
+                                index: 1,
+                                label: 'Review Categories (${_categories.length})',
+                                icon: Iconsax.category,
+                                isSelected: _selectedTab == 1,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -501,7 +528,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
               const SizedBox(height: 20),
 
               // ── Active Tab View ──────────────────────────────────────────
-              if (_selectedTab == 0)
+              if (!isAdmin || _selectedTab == 0)
                 _buildReviewsTab(isAdmin, isDark, isTight)
               else
                 _buildCategoriesTab(isAdmin, isDark, isTight),
