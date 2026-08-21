@@ -10,6 +10,7 @@ class UserProfile {
   final String role;        // 'super_admin' | 'org_admin' | 'hr' | 'employee'
   final int? employeeId;
   final int? organizationId;
+  final bool hasApprovedPolicy;
 
   const UserProfile({
     required this.id,
@@ -23,20 +24,22 @@ class UserProfile {
     required this.role,
     this.employeeId,
     this.organizationId,
+    this.hasApprovedPolicy = true,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
-    id:             json['id']             as int,
-    email:          json['email']          as String,
-    firstName:      json['first_name']     as String,
-    lastName:       json['last_name']      as String,
-    fullName:       json['full_name']      as String? ?? '${json['first_name']} ${json['last_name']}',
-    profilePicture: json['profile_picture'] as String?,
-    isStaff:        json['is_staff']       as bool? ?? false,
-    isSuperuser:    json['is_superuser']   as bool? ?? false,
-    role:           json['role']           as String? ?? 'employee',
-    employeeId:     json['employee_id']    as int?,
-    organizationId: json['organization_id'] as int?,
+    id:                 json['id']                  as int,
+    email:              json['email']               as String,
+    firstName:          json['first_name']          as String,
+    lastName:           json['last_name']           as String,
+    fullName:           json['full_name']           as String? ?? '${json['first_name']} ${json['last_name']}',
+    profilePicture:     json['profile_picture']     as String?,
+    isStaff:            json['is_staff']            as bool? ?? false,
+    isSuperuser:        json['is_superuser']        as bool? ?? false,
+    role:               json['role']                as String? ?? 'employee',
+    employeeId:         json['employee_id']         as int?,
+    organizationId:     json['organization_id']     as int?,
+    hasApprovedPolicy:  json['has_approved_policy']  as bool? ?? true,
   );
 
   bool get isOrgAdmin   => role == 'org_admin';
@@ -45,6 +48,7 @@ class UserProfile {
   bool get isEmployee   => role == 'employee';
   bool get canManage    => isOrgAdmin || isSuperAdmin || isHr;
 }
+
 
 
 

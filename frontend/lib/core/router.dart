@@ -11,6 +11,7 @@ import '../features/tasks/screens/tasks_screen.dart';
 import '../features/tasks/screens/projects_screen.dart';
 import '../features/noticeboard/screens/noticeboard_screen.dart';
 import '../features/noticeboard/screens/policy_screen.dart';
+import '../features/noticeboard/screens/policy_approval_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/employee/screens/employee_list_screen.dart';
@@ -34,10 +35,25 @@ class RouterNotifier extends ChangeNotifier {
     final authState = _ref.read(authProvider);
     final isLoggedIn = authState.isAuthenticated;
     final isLoading = authState.isLoading;
+    final user = authState.user;
     final onLoginPage = state.matchedLocation == '/login';
+    final onPolicyApprovalPage = state.matchedLocation == '/policy-approval';
 
     if (isLoading) return null;
     if (!isLoggedIn && !onLoginPage) return '/login';
+    if (!isLoggedIn && onLoginPage) return null;
+
+    // First login Policy Approval guard for non-admin employees
+    final needsPolicyApproval = user != null && !user.canManage && !user.hasApprovedPolicy;
+    if (needsPolicyApproval) {
+      if (!onPolicyApprovalPage) return '/policy-approval';
+      return null;
+    }
+
+    if (onPolicyApprovalPage && !needsPolicyApproval) {
+      return '/';
+    }
+
     if (isLoggedIn && onLoginPage) return '/';
     return null;
   }
@@ -52,6 +68,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: notifier.redirect,
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/policy-approval', builder: (_, __) => const PolicyApprovalScreen()),
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
         routes: [

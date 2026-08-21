@@ -4,8 +4,9 @@ from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .serializers import NoticeSerializer, CompanyPolicySerializer
-from noticeboard.models import Notice, CompanyPolicy
+from .serializers import NoticeSerializer, CompanyPolicySerializer, PolicyApprovalSerializer
+from noticeboard.models import Notice, CompanyPolicy, PolicyApproval
+
 
 
 class NoticeboardListView(generics.ListCreateAPIView):
@@ -144,4 +145,147 @@ class CompanyPolicyDetailView(generics.RetrieveUpdateDestroyAPIView):
         if not (request.user.organization.exists() or request.user.is_superuser):
             return Response({'error': 'Only admins can delete policies.'}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
+
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+
+class PolicyApproveView(generics.GenericAPIView):
+    """
+    POST: Employee submits approval of company policy.
+    Records approval status, exact date/time, device name, OS, browser, IP address, and User-Agent.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        employee = getattr(user, 'employee', None)
+        org = None
+        if employee and getattr(employee, 'organization', None):
+            org = employee.organization
+        elif user.organization.exists():
+            org = user.organization.first()
+
+        device_name = request.data.get('device_name', '')
+        os_info = request.data.get('os', '')
+        browser_info = request.data.get('browser', '')
+        ip = get_client_ip(request)
+        ua = request.META.get('HTTP_USER_AGENT', '')
+
+        # Auto-parse browser/OS from User-Agent
+        if (not os_info or os_info in ('Web', 'Client Device', 'Unknown Platform')) and ua:
+            if 'Windows NT 10.0' in ua or 'Windows NT 11.0' in ua or 'Windows' in ua:
+                os_info = 'Windows Desktop'
+            elif 'Android' in ua:
+                os_info = 'Android Mobile'
+            elif 'iPhone' in ua:
+                os_info = 'iPhone'
+            elif 'iPad' in ua:
+                os_info = 'iPad'
+            elif 'Macintosh' in ua or 'Mac OS' in ua:
+                os_info = 'macOS Desktop'
+            elif 'Linux' in ua:
+                os_info = 'Linux Workstation'
+            else:
+                os_info = 'Web Platform'
+
+        if (not browser_info or browser_info == 'Web Browser') and ua:
+            if 'Edg/' in ua:
+                browser_info = 'Microsoft Edge'
+            elif 'Chrome/' in ua and 'Edg/' not in ua:
+                browser_info = 'Google Chrome'
+            elif 'Firefox/' in ua:
+                browser_info = 'Mozilla Firefox'
+            elif 'Safari/' in ua and 'Chrome/' not in ua:
+                browser_info = 'Apple Safari'
+            else:
+                browser_info = 'Web Browser'
+
+        if not device_name or device_name in ('Web Browser', 'Workstation'):
+            device_name = f"{os_info} • {browser_info}"
+
+
+        # Create or update Master Approval record
+        approval, _ = PolicyApproval.objects.update_or_create(
+            user=user,
+            policy=None,
+            defaults={
+                'employee': employee,
+                'organization': org,
+                'is_approved': True,
+                'device_name': device_name,
+                'os': os_info,
+                'browser': browser_info,
+                'ip_address': ip,
+                'user_agent': ua,
+            }
+        )
+
+        # Also link individual active policies if any
+        if org:
+            for p in CompanyPolicy.objects.filter(organization=org, is_active=True):
+                PolicyApproval.objects.update_or_create(
+                    user=user,
+                    policy=p,
+                    defaults={
+                        'employee': employee,
+                        'organization': org,
+                        'is_approved': True,
+                        'device_name': device_name,
+                        'os': os_info,
+                        'browser': browser_info,
+                        'ip_address': ip,
+                        'user_agent': ua,
+                    }
+                )
+
+        return Response({
+            'success': True,
+            'message': 'Company policies approved successfully.',
+            'approved_at': approval.approved_at,
+            'device_name': approval.device_name,
+            'has_approved_policy': True,
+        }, status=status.HTTP_200_OK)
+
+
+class PolicyApprovalStatusView(generics.GenericAPIView):
+    """GET: Check if the current user has approved the policies."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        last_approval = PolicyApproval.objects.filter(user=user, is_approved=True).order_by('-approved_at').first()
+        has_approved = bool(last_approval) or user.is_superuser
+        return Response({
+            'has_approved': has_approved,
+            'approved_at': last_approval.approved_at if last_approval else None,
+            'device_name': last_approval.device_name if last_approval else None,
+            'os': last_approval.os if last_approval else None,
+            'browser': last_approval.browser if last_approval else None,
+        })
+
+
+class PolicyApprovalAuditListView(generics.ListAPIView):
+    """Admin GET: Lists all policy approval records with date, time, employee, and device."""
+    serializer_class = PolicyApprovalSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        is_admin = user.organization.exists() or user.is_superuser
+        if not is_admin:
+            return PolicyApproval.objects.none()
+
+        org = user.organization.first() if user.organization.exists() else None
+        qs = PolicyApproval.objects.filter(policy__isnull=True)
+        if org:
+            qs = qs.filter(organization=org)
+        return qs.select_related('user', 'employee', 'employee__user').order_by('-approved_at')
+
 

@@ -48,4 +48,28 @@ class CompanyPolicy(SoftDeleteModel):
         verbose_name_plural = 'Company Policies'
 
     def __str__(self):
-        return f"{self.title} ({self.organization.name})"
+        return f"{self.title} ({self.organization.name})"
+
+
+class PolicyApproval(models.Model):
+    """Audit log of an employee/user approving company policies."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='policy_approvals')
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, null=True, blank=True, related_name='policy_approvals')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True, related_name='policy_approvals')
+    policy = models.ForeignKey(CompanyPolicy, on_delete=models.CASCADE, null=True, blank=True, related_name='approvals')
+    is_approved = models.BooleanField(default=True)
+    approved_at = models.DateTimeField(auto_now_add=True)
+    device_name = models.CharField(max_length=255, blank=True, null=True)
+    browser = models.CharField(max_length=255, blank=True, null=True)
+    os = models.CharField(max_length=255, blank=True, null=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    user_agent = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-approved_at']
+        verbose_name = 'Policy Approval'
+        verbose_name_plural = 'Policy Approvals'
+
+    def __str__(self):
+        return f"{self.user.email} approved at {self.approved_at} ({self.device_name or 'Unknown Device'})"
+

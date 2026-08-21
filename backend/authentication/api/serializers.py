@@ -95,17 +95,18 @@ class AccountSerializer(serializers.ModelSerializer):
 
 
 class MeSerializer(serializers.ModelSerializer):
-    """Returns the current logged-in user's profile with role and employee info."""
+    """Returns the current logged-in user's profile with role, employee info, and policy approval status."""
     role = serializers.SerializerMethodField()
     employee_id = serializers.SerializerMethodField()
     organization_id = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
+    has_approved_policy = serializers.SerializerMethodField()
 
     class Meta:
         model = Account
         fields = ['id', 'email', 'first_name', 'last_name', 'full_name',
                   'profile_picture', 'is_staff', 'is_superuser',
-                  'role', 'employee_id', 'organization_id']
+                  'role', 'employee_id', 'organization_id', 'has_approved_policy']
 
     def get_full_name(self, obj):
         return obj.full_name
@@ -134,6 +135,16 @@ class MeSerializer(serializers.ModelSerializer):
             return obj.employee.organization.id if obj.employee.organization else None
         except Exception:
             return None
+
+    def get_has_approved_policy(self, obj):
+        if obj.is_superuser:
+            return True
+        try:
+            from noticeboard.models import PolicyApproval
+            return PolicyApproval.objects.filter(user=obj, is_approved=True).exists()
+        except Exception:
+            return True
+
 
 
 class ChangePasswordSerializer(serializers.Serializer):
