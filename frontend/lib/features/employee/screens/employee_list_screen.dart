@@ -18,6 +18,7 @@ class EmployeeListScreen extends ConsumerStatefulWidget {
 class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isGridView = true;
   List<dynamic> _employees = [];
   List<dynamic> _archivedEmployees = [];
   bool _loading = true;
@@ -28,6 +29,9 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _load();
   }
 
@@ -416,15 +420,18 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isTight = constraints.maxWidth < 600;
-            return SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.symmetric(
-                horizontal: isTight ? 14 : 24,
-                vertical: isTight ? 16 : 24,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+            return RefreshIndicator(
+              onRefresh: _load,
+              color: AppColors.primary,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTight ? 14 : 24,
+                  vertical: isTight ? 16 : 24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                   // ── Header Bar ───────────────────────────────────────────
                   Container(
                     padding: EdgeInsets.all(isTight ? 14 : 20),
@@ -489,6 +496,52 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                                 ],
                               ),
                             ),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: context.card,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: context.border),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  InkWell(
+                                    onTap: () => setState(() => _isGridView = true),
+                                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(11)),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: _isGridView ? AppColors.primary.withValues(alpha: 0.15) : Colors.transparent,
+                                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(11)),
+                                      ),
+                                      child: Icon(
+                                        Iconsax.grid_1,
+                                        size: 17,
+                                        color: _isGridView ? AppColors.primary : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(width: 1, height: 18, color: context.border),
+                                  InkWell(
+                                    onTap: () => setState(() => _isGridView = false),
+                                    borderRadius: const BorderRadius.horizontal(right: Radius.circular(11)),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: !_isGridView ? AppColors.primary.withValues(alpha: 0.15) : Colors.transparent,
+                                        borderRadius: const BorderRadius.horizontal(right: Radius.circular(11)),
+                                      ),
+                                      child: Icon(
+                                        Iconsax.row_vertical,
+                                        size: 17,
+                                        color: !_isGridView ? AppColors.primary : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
                             IconButton(
                               icon: const Icon(Iconsax.refresh, size: 18),
                               onPressed: _load,
@@ -604,408 +657,821 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                     child: CircularProgressIndicator(color: AppColors.primary),
                   ),
                 )
+              else if (_tabController.index == 0)
+                _isGridView
+                    ? _buildEmployeeGrid(_getFiltered(_employees), false)
+                    : _buildEmployeeList(_getFiltered(_employees), false)
               else
-                SizedBox(
-                  height: 600,
-                  child: TabBarView(
-                    controller: _tabController,
+                _isGridView
+                    ? _buildEmployeeGrid(_getFiltered(_archivedEmployees), true)
+                    : _buildEmployeeList(_getFiltered(_archivedEmployees), true),
+            ],
+          ),
+        ),
+      );
+    },
+  ),
+),
+);
+  }
+
+  Widget _buildEmptyState(bool isArchived) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: context.border),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Iconsax.user_search,
+                size: 38, color: AppColors.primary),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _search.isNotEmpty
+                ? 'No employees match "$_search"'
+                : (isArchived
+                    ? 'No archived employees.'
+                    : 'No active employees found.'),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: context.textPrimary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _search.isNotEmpty
+                ? 'Try searching with a different name, email, or department.'
+                : (isArchived
+                    ? 'Archived staff members will appear here.'
+                    : 'Get started by adding your first employee to the directory.'),
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          if (!isArchived && _search.isEmpty) ...[
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () => _openAddEmployeeModal(),
+              icon: const Icon(Iconsax.user_add, size: 18, color: Colors.white),
+              label: const Text('Add First Employee',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 2,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFallbackAvatar(String fname, String fullName) {
+    final initial = fname.isNotEmpty
+        ? fname[0].toUpperCase()
+        : (fullName.isNotEmpty ? fullName[0].toUpperCase() : 'E');
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF6366F1),
+            Color(0xFF8B5CF6),
+            Color(0xFFEC4899),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          initial,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            fontSize: 36,
+            letterSpacing: -1,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmployeeGrid(List<dynamic> list, bool isArchived) {
+    if (list.isEmpty) {
+      return _buildEmptyState(isArchived);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final int crossAxisCount;
+        final double childAspectRatio;
+
+        if (width >= 1200) {
+          crossAxisCount = 5;
+          childAspectRatio = 0.70;
+        } else if (width >= 900) {
+          crossAxisCount = 4;
+          childAspectRatio = 0.71;
+        } else if (width >= 620) {
+          crossAxisCount = 3;
+          childAspectRatio = 0.70;
+        } else if (width >= 420) {
+          crossAxisCount = 2;
+          childAspectRatio = 0.68;
+        } else {
+          crossAxisCount = 2;
+          childAspectRatio = 0.63;
+        }
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: list.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 14,
+            childAspectRatio: childAspectRatio,
+          ),
+          itemBuilder: (context, i) {
+            final e = list[i];
+            return _buildEmployeeGridCard(e, isArchived);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildEmployeeGridCard(dynamic e, bool isArchived) {
+    final user = e['user'] ?? {};
+    final fname = (user['first_name'] ?? '').toString();
+    final lname = (user['last_name'] ?? '').toString();
+    final fullName = '$fname $lname'.trim().isNotEmpty
+        ? '$fname $lname'.trim()
+        : (e['official_email'] ?? 'Unnamed Employee');
+    final profilePic = user['profile_picture']?.toString();
+    final email = user['email'] ?? e['official_email'] ?? 'No email';
+    final empType = e['employee_type'] ?? 'full_time';
+    final isActive = e['is_active'] == true;
+    final designation = e['designation_title'] ??
+        (e['post'] is Map ? e['post']['title'] : null) ??
+        'Staff Member';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => context.push('/employees/${e['id']}'),
+        child: Container(
+          decoration: BoxDecoration(
+            color: context.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: context.border,
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: context.isDark ? 0.25 : 0.04),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Large Profile Image with Status and Action Overlays ──
+              Expanded(
+                flex: 11,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
+                      child: profilePic != null && profilePic.isNotEmpty
+                          ? Image.network(
+                              profilePic,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              errorBuilder: (_, __, ___) => _buildFallbackAvatar(fname, fullName),
+                              loadingBuilder: (ctx, child, progress) {
+                                if (progress == null) return child;
+                                return Container(
+                                  color: AppColors.primary.withValues(alpha: 0.08),
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                          : _buildFallbackAvatar(fname, fullName),
+                    ),
+
+                    // Bottom subtle gradient overlay
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: 36,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.35),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Status Badge (Top-Left)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: (isArchived
+                                    ? AppColors.error
+                                    : (isActive ? AppColors.success : AppColors.error))
+                                .withValues(alpha: 0.7),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: isArchived
+                                    ? AppColors.error
+                                    : (isActive ? AppColors.success : AppColors.error),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isArchived
+                                  ? 'Archived'
+                                  : (isActive ? 'Active' : 'Inactive'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Actions Menu (Top-Right)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            shape: BoxShape.circle,
+                          ),
+                          child: isArchived
+                              ? IconButton(
+                                  icon: const Icon(Iconsax.trash, size: 15, color: Colors.white),
+                                  tooltip: 'Permanently Delete',
+                                  padding: const EdgeInsets.all(5),
+                                  constraints: const BoxConstraints(),
+                                  onPressed: () => _deleteEmployee(e['id'], fullName),
+                                )
+                              : PopupMenuButton<String>(
+                                  icon: const Icon(Iconsax.more, size: 15, color: Colors.white),
+                                  padding: const EdgeInsets.all(5),
+                                  constraints: const BoxConstraints(),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16)),
+                                  onSelected: (val) {
+                                    if (val == 'edit') {
+                                      _openAddEmployeeModal(employee: e);
+                                    } else if (val == 'delete') {
+                                      _deleteEmployee(e['id'], fullName);
+                                    } else if (val == 'password') {
+                                      _changePassword(e['id'], fullName);
+                                    } else if (val == 'salary') {
+                                      showModalBottomSheet(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        constraints: const BoxConstraints(maxWidth: 600),
+                                        backgroundColor: context.surface,
+                                        shape: const RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                                        ),
+                                        builder: (_) => AddSalarySheet(
+                                          employeeId: e['id'],
+                                          employeeName: fullName,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'edit',
+                                      child: Row(
+                                        children: [
+                                          Icon(Iconsax.edit, size: 16, color: AppColors.primary),
+                                          SizedBox(width: 10),
+                                          Text('Edit Profile'),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'salary',
+                                      child: Row(
+                                        children: [
+                                          Icon(Iconsax.wallet_money, size: 16, color: AppColors.success),
+                                          SizedBox(width: 10),
+                                          Text('Manage Salary'),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'password',
+                                      child: Row(
+                                        children: [
+                                          Icon(Iconsax.key, size: 16, color: AppColors.warning),
+                                          SizedBox(width: 10),
+                                          Text('Reset Password'),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuDivider(),
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Row(
+                                        children: [
+                                          Icon(Iconsax.trash, size: 16, color: AppColors.error),
+                                          SizedBox(width: 10),
+                                          Text(
+                                            'Archive Staff',
+                                            style: TextStyle(
+                                              color: AppColors.error,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Details Section ──
+              Expanded(
+                flex: 9,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildEmployeeList(
-                          _getFiltered(_employees), false),
-                      _buildEmployeeList(
-                          _getFiltered(_archivedEmployees), true),
+                      Column(
+                        children: [
+                          Text(
+                            fullName,
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
+                              color: context.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            designation,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+
+                      // Badge (Employment Type / Archived)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isArchived
+                              ? AppColors.error.withValues(alpha: 0.1)
+                              : AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isArchived
+                              ? 'Archived'
+                              : (empType == 'full_time'
+                                  ? 'Full-Time'
+                                  : empType == 'part_time'
+                                      ? 'Part-Time'
+                                      : 'Intern'),
+                          style: TextStyle(
+                            color: isArchived ? AppColors.error : AppColors.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+
+                      // Email / Subtitle
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Iconsax.sms, size: 11, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              email,
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                color: AppColors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
+              ),
             ],
           ),
-        );
-      },
-    ),
-  ),
-);
+        ),
+      ),
+    );
   }
 
   Widget _buildEmployeeList(List<dynamic> list, bool isArchived) {
     if (list.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-        decoration: BoxDecoration(
-          color: context.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: context.border),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Iconsax.user_search,
-                  size: 38, color: AppColors.primary),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _search.isNotEmpty
-                  ? 'No employees match "$_search"'
-                  : (isArchived
-                      ? 'No archived employees.'
-                      : 'No active employees found.'),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: context.textPrimary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _search.isNotEmpty
-                  ? 'Try searching with a different name, email, or department.'
-                  : (isArchived
-                      ? 'Archived staff members will appear here.'
-                      : 'Get started by adding your first employee to the directory.'),
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            if (!isArchived && _search.isEmpty) ...[
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () => _openAddEmployeeModal(),
-                icon: const Icon(Iconsax.user_add, size: 18, color: Colors.white),
-                label: const Text('Add First Employee',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13.5)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  elevation: 2,
-                ),
-              ),
-            ],
-          ],
-        ),
-      );
+      return _buildEmptyState(isArchived);
     }
 
-    return RefreshIndicator(
-      onRefresh: _load,
-      color: AppColors.primary,
-      child: ListView.separated(
-        itemCount: list.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, i) {
-          final e = list[i];
-          final user = e['user'] ?? {};
-          final fname = (user['first_name'] ?? '').toString();
-          final lname = (user['last_name'] ?? '').toString();
-          final fullName = '$fname $lname'.trim().isNotEmpty
-              ? '$fname $lname'.trim()
-              : (e['official_email'] ?? 'Unnamed Employee');
-          final email = user['email'] ?? e['official_email'] ?? 'No email';
-          final phone = e['phone_no'] ?? 'No phone';
-          final empType = e['employee_type'] ?? 'full_time';
-          final isActive = e['is_active'] == true;
-          final designation = e['designation_title'] ??
-              (e['post'] is Map ? e['post']['title'] : null) ??
-              'Staff Member';
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: list.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, i) {
+        final e = list[i];
+        final user = e['user'] ?? {};
+        final fname = (user['first_name'] ?? '').toString();
+        final lname = (user['last_name'] ?? '').toString();
+        final fullName = '$fname $lname'.trim().isNotEmpty
+            ? '$fname $lname'.trim()
+            : (e['official_email'] ?? 'Unnamed Employee');
+        final email = user['email'] ?? e['official_email'] ?? 'No email';
+        final phone = e['phone_no'] ?? 'No phone';
+        final empType = e['employee_type'] ?? 'full_time';
+        final isActive = e['is_active'] == true;
+        final designation = e['designation_title'] ??
+            (e['post'] is Map ? e['post']['title'] : null) ??
+            'Staff Member';
 
-          return Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: () => context.push('/employees/${e['id']}'),
-              child: Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: context.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: context.border, width: 1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(
-                          alpha: context.isDark ? 0.2 : 0.03),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    // Avatar with Active Indicator
-                    Stack(
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => context.push('/employees/${e['id']}'),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: context.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: context.border, width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                        alpha: context.isDark ? 0.2 : 0.03),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  // Avatar with Active Indicator
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor:
+                            AppColors.primary.withValues(alpha: 0.12),
+                        backgroundImage: user['profile_picture'] != null
+                            ? NetworkImage(user['profile_picture'])
+                            : null,
+                        child: user['profile_picture'] == null
+                            ? Text(
+                                fname.isNotEmpty ? fname[0].toUpperCase() : 'E',
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18,
+                                ),
+                              )
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: isActive ? AppColors.success : AppColors.error,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: context.surface, width: 2),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 16),
+
+                  // Employee Info Details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundColor:
-                              AppColors.primary.withValues(alpha: 0.12),
-                          backgroundImage: user['profile_picture'] != null
-                              ? NetworkImage(user['profile_picture'])
-                              : null,
-                          child: user['profile_picture'] == null
-                              ? Text(
-                                  fname.isNotEmpty ? fname[0].toUpperCase() : 'E',
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                fullName,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.textPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (isArchived)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.error.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'Archived',
+                                  style: TextStyle(
+                                    color: AppColors.error,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  empType == 'full_time'
+                                      ? 'Full-Time'
+                                      : empType == 'part_time'
+                                          ? 'Part-Time'
+                                          : 'Intern',
                                   style: const TextStyle(
                                     color: AppColors.primary,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 18,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
                                   ),
-                                )
-                              : null,
+                                ),
+                              ),
+                          ],
                         ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: isActive ? AppColors.success : AppColors.error,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: context.surface, width: 2),
-                            ),
+                        const SizedBox(height: 3),
+                        Text(
+                          designation,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
                           ),
+                        ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Iconsax.sms,
+                                    size: 13, color: AppColors.textSecondary),
+                                const SizedBox(width: 4),
+                                Text(
+                                  email,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Iconsax.call,
+                                    size: 13, color: AppColors.textSecondary),
+                                const SizedBox(width: 4),
+                                Text(
+                                  phone,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    const SizedBox(width: 16),
+                  ),
 
-                    // Employee Info Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  fullName,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: context.textPrimary,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                  // Quick Action Buttons
+                  if (!isArchived)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Iconsax.user_octagon,
+                              size: 18, color: AppColors.primary),
+                          tooltip: 'View Profile',
+                          onPressed: () =>
+                              context.push('/employees/${e['id']}'),
+                        ),
+                        PopupMenuButton<String>(
+                          icon: const Icon(Iconsax.more,
+                              size: 18, color: AppColors.textSecondary),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
+                          onSelected: (val) {
+                            if (val == 'edit') {
+                              _openAddEmployeeModal(employee: e);
+                            } else if (val == 'delete') {
+                              _deleteEmployee(e['id'], fullName);
+                            } else if (val == 'password') {
+                              _changePassword(e['id'], fullName);
+                            } else if (val == 'salary') {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                constraints:
+                                    const BoxConstraints(maxWidth: 600),
+                                backgroundColor: context.surface,
+                                shape: const RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(24))),
+                                builder: (_) => AddSalarySheet(
+                                    employeeId: e['id'],
+                                    employeeName: fullName),
+                              );
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(Iconsax.edit,
+                                      size: 16, color: AppColors.primary),
+                                  SizedBox(width: 10),
+                                  Text('Edit Profile'),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              if (isArchived)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.error.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Text(
-                                    'Archived',
-                                    style: TextStyle(
-                                      color: AppColors.error,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                )
-                              else
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    empType == 'full_time'
-                                        ? 'Full-Time'
-                                        : empType == 'part_time'
-                                            ? 'Part-Time'
-                                            : 'Intern',
-                                    style: const TextStyle(
-                                      color: AppColors.primary,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            designation,
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 4,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
+                            const PopupMenuItem(
+                              value: 'salary',
+                              child: Row(
                                 children: [
-                                  const Icon(Iconsax.sms,
-                                      size: 13, color: AppColors.textSecondary),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    email,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 11.5,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
+                                  Icon(Iconsax.wallet_money,
+                                      size: 16, color: AppColors.success),
+                                  SizedBox(width: 10),
+                                  Text('Manage Salary'),
                                 ],
                               ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
+                            ),
+                            const PopupMenuItem(
+                              value: 'password',
+                              child: Row(
                                 children: [
-                                  const Icon(Iconsax.call,
-                                      size: 13, color: AppColors.textSecondary),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    phone,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 11.5,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
+                                  Icon(Iconsax.key,
+                                      size: 16, color: AppColors.warning),
+                                  SizedBox(width: 10),
+                                  Text('Reset Password'),
                                 ],
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            ),
+                            const PopupMenuDivider(),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(Iconsax.trash,
+                                      size: 16, color: AppColors.error),
+                                  SizedBox(width: 10),
+                                  Text('Archive Staff',
+                                      style: TextStyle(
+                                          color: AppColors.error,
+                                          fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Iconsax.trash,
+                          color: AppColors.error, size: 18),
+                      tooltip: 'Permanently Delete Record',
+                      onPressed: () => _deleteEmployee(e['id'], fullName),
                     ),
-
-                    // Quick Action Buttons
-                    if (!isArchived)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Iconsax.user_octagon,
-                                size: 18, color: AppColors.primary),
-                            tooltip: 'View Profile',
-                            onPressed: () =>
-                                context.push('/employees/${e['id']}'),
-                          ),
-                          PopupMenuButton<String>(
-                            icon: const Icon(Iconsax.more,
-                                size: 18, color: AppColors.textSecondary),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16)),
-                            onSelected: (val) {
-                              if (val == 'edit') {
-                                _openAddEmployeeModal(employee: e);
-                              } else if (val == 'delete') {
-                                _deleteEmployee(e['id'], fullName);
-                              } else if (val == 'password') {
-                                _changePassword(e['id'], fullName);
-                              } else if (val == 'salary') {
-                                showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 600),
-                                  backgroundColor: context.surface,
-                                  shape: const RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.vertical(
-                                          top: Radius.circular(24))),
-                                  builder: (_) => AddSalarySheet(
-                                      employeeId: e['id'],
-                                      employeeName: fullName),
-                                );
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: 'edit',
-                                child: Row(
-                                  children: [
-                                    Icon(Iconsax.edit,
-                                        size: 16, color: AppColors.primary),
-                                    SizedBox(width: 10),
-                                    Text('Edit Profile'),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuItem(
-                                value: 'salary',
-                                child: Row(
-                                  children: [
-                                    Icon(Iconsax.wallet_money,
-                                        size: 16, color: AppColors.success),
-                                    SizedBox(width: 10),
-                                    Text('Manage Salary'),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuItem(
-                                value: 'password',
-                                child: Row(
-                                  children: [
-                                    Icon(Iconsax.key,
-                                        size: 16, color: AppColors.warning),
-                                    SizedBox(width: 10),
-                                    Text('Reset Password'),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuDivider(),
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: Row(
-                                  children: [
-                                    Icon(Iconsax.trash,
-                                        size: 16, color: AppColors.error),
-                                    SizedBox(width: 10),
-                                    Text('Archive Staff',
-                                        style: TextStyle(
-                                            color: AppColors.error,
-                                            fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      )
-                    else
-                      IconButton(
-                        icon: const Icon(Iconsax.trash,
-                            color: AppColors.error, size: 18),
-                        tooltip: 'Permanently Delete Record',
-                        onPressed: () => _deleteEmployee(e['id'], fullName),
-                      ),
-                  ],
-                ),
+                ],
               ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }
