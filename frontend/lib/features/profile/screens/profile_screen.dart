@@ -36,42 +36,75 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
+    // If user is a super admin / admin without an employee profile, don't load other employees' records
+    if (user.employeeId == null && user.canManage) {
+      if (mounted) setState(() => _employeeDetails = null);
+      return;
+    }
+
     try {
-      // If user has employee profile or is staff
-      final res = await ApiService().get('${AppConstants.organizationBase}/employees/');
-      final list = res.data is List ? res.data : (res.data['results'] ?? res.data);
-      if (list is List && list.isNotEmpty) {
-        final myEmp = list.firstWhere(
-          (e) => (e['user']?['id'] == user.id) || (e['user']?['email'] == user.email),
-          orElse: () => list.first,
-        );
-        if (mounted && myEmp != null) {
-          // Fetch full employee detail
-          final empId = myEmp['id'];
-          final detailRes = await ApiService().get('${AppConstants.organizationBase}/employees/$empId/');
-          Map<String, dynamic> empData = detailRes.data is Map
-              ? Map<String, dynamic>.from(detailRes.data)
-              : Map<String, dynamic>.from(myEmp);
+      if (user.employeeId != null) {
+        final empId = user.employeeId;
+        final detailRes = await ApiService().get('${AppConstants.organizationBase}/employees/$empId/');
+        Map<String, dynamic> empData = detailRes.data is Map
+            ? Map<String, dynamic>.from(detailRes.data)
+            : {};
 
-          // Fetch address fallback if not already in detail
-          if (empData['address'] == null || (empData['address'] is List && (empData['address'] as List).isEmpty)) {
-            try {
-              final addrRes = await ApiService().get('${AppConstants.organizationBase}/addresses/?employee=$empId');
-              final addrs = addrRes.data is List ? addrRes.data : (addrRes.data['results'] ?? []);
-              if (addrs is List && addrs.isNotEmpty) {
-                empData['address'] = addrs;
-              }
-            } catch (_) {}
-          }
+        // Fetch address fallback if not already in detail
+        if (empData['address'] == null || (empData['address'] is List && (empData['address'] as List).isEmpty)) {
+          try {
+            final addrRes = await ApiService().get('${AppConstants.organizationBase}/addresses/?employee=$empId');
+            final addrs = addrRes.data is List ? addrRes.data : (addrRes.data['results'] ?? []);
+            if (addrs is List && addrs.isNotEmpty) {
+              empData['address'] = addrs;
+            }
+          } catch (_) {}
+        }
 
-          if (mounted) {
-            setState(() {
-              _employeeDetails = empData;
-            });
+        if (mounted) {
+          setState(() {
+            _employeeDetails = empData;
+          });
+        }
+      } else {
+        // Fallback search only by exact user match (never take list.first)
+        final res = await ApiService().get('${AppConstants.organizationBase}/employees/');
+        final list = res.data is List ? res.data : (res.data['results'] ?? res.data);
+        if (list is List && list.isNotEmpty) {
+          final myEmp = list.cast<Map?>().firstWhere(
+            (e) => e != null && ((e['user']?['id'] == user.id) || (e['user']?['email'] == user.email)),
+            orElse: () => null,
+          );
+          if (mounted && myEmp != null) {
+            final empId = myEmp['id'];
+            final detailRes = await ApiService().get('${AppConstants.organizationBase}/employees/$empId/');
+            Map<String, dynamic> empData = detailRes.data is Map
+                ? Map<String, dynamic>.from(detailRes.data)
+                : Map<String, dynamic>.from(myEmp);
+
+            if (empData['address'] == null || (empData['address'] is List && (empData['address'] as List).isEmpty)) {
+              try {
+                final addrRes = await ApiService().get('${AppConstants.organizationBase}/addresses/?employee=$empId');
+                final addrs = addrRes.data is List ? addrRes.data : (addrRes.data['results'] ?? []);
+                if (addrs is List && addrs.isNotEmpty) {
+                  empData['address'] = addrs;
+                }
+              } catch (_) {}
+            }
+
+            if (mounted) {
+              setState(() {
+                _employeeDetails = empData;
+              });
+            }
+          } else {
+            if (mounted) setState(() => _employeeDetails = null);
           }
         }
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _employeeDetails = null);
+    }
   }
 
   Future<void> _loadChangeRequests() async {
@@ -404,6 +437,65 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  Widget _buildPrivilegeTile({
+    required IconData icon,
+    required String title,
+    required String description,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: context.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
@@ -413,7 +505,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final post = emp != null ? emp['post'] : null;
     final designation = (emp != null ? emp['designation_title'] : null) ??
         (post is Map ? post['title'] : null) ??
-        (user?.role.replaceAll('_', ' ').toUpperCase() ?? 'Staff Member');
+        (user?.isSuperAdmin == true
+            ? 'Super Administrator'
+            : user?.isOrgAdmin == true
+                ? 'Organization Administrator'
+                : user?.isHr == true
+                    ? 'HR Administrator'
+                    : 'Staff Member');
     final phone = emp?['phone_no'] ?? 'Not provided';
     final personalEmail = emp?['personal_email'] ?? user?.email ?? 'Not provided';
     final emergencyPhone = emp?['emergency_phone_number'] ??
@@ -624,7 +722,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                               ),
                                               const SizedBox(height: 3),
                                               Text(
-                                                '$designation · ${empType == 'full_time' ? 'Full-Time' : empType == 'part_time' ? 'Part-Time' : 'Intern'}',
+                                                (user?.canManage == true && emp == null)
+                                                    ? 'System Administrator · Full Platform Control'
+                                                    : '$designation · ${empType == 'full_time' ? 'Full-Time' : empType == 'part_time' ? 'Part-Time' : 'Intern'}',
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   fontWeight: FontWeight.w600,
@@ -687,174 +787,319 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                   const SizedBox(height: 24),
 
-                  // ── Contact Information Section (Self-service Change Requests) ─
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: context.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: context.border, width: 1),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(Iconsax.call_calling, color: AppColors.primary, size: 18),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  'Contact Details & Self-Edit Requests',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: context.textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (_myChangeRequests.any((r) => r['status'] == 'pending'))
+                  // ── If Admin without Employee record: Show Admin Privileges & Account Settings ──
+                  if (emp == null && (user?.canManage == true)) ...[
+                    // ── Administrator System Privileges ──────────────────────────
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: context.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: context.border, width: 1),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.warning.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Text(
-                                  '⏳ Change Pending Review',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.warning,
+                                child: const Icon(Iconsax.shield_security, color: AppColors.primary, size: 18),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Administrator Roles & System Privileges',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Overview of elevated administrative privileges associated with this account.',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(height: 16),
+                          LayoutBuilder(
+                            builder: (context, c) {
+                              final cols = c.maxWidth < 650 ? 1 : 2;
+                              return GridView.count(
+                                crossAxisCount: cols,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                childAspectRatio: cols == 1 ? 4.5 : 3.2,
+                                children: [
+                                  _buildPrivilegeTile(
+                                    icon: Iconsax.security_user,
+                                    title: 'Platform Control',
+                                    description: user?.isSuperAdmin == true ? 'Root Super Administrator' : 'Organization Administrator',
+                                    color: AppColors.primary,
+                                  ),
+                                  _buildPrivilegeTile(
+                                    icon: Iconsax.people,
+                                    title: 'Employee Governance',
+                                    description: 'Full Access to Profiles, Leaves, Attendance & Payroll',
+                                    color: const Color(0xFF10B981),
+                                  ),
+                                  _buildPrivilegeTile(
+                                    icon: Iconsax.document_text,
+                                    title: 'Policies & Notices',
+                                    description: 'Publish, Edit & Audit Employee Acknowledgments',
+                                    color: const Color(0xFFF59E0B),
+                                  ),
+                                  _buildPrivilegeTile(
+                                    icon: Iconsax.finger_scan,
+                                    title: 'Audit & Compliance',
+                                    description: 'Full Access to System Logs, IP & Device Tracking',
+                                    color: const Color(0xFF8B5CF6),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── Account & Security Overview ──────────────────────────────
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: context.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: context.border, width: 1),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Iconsax.lock, color: AppColors.primary, size: 18),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Account & Security Settings',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          LayoutBuilder(
+                            builder: (context, c) {
+                              final cols = c.maxWidth < 650 ? 1 : 3;
+                              return GridView.count(
+                                crossAxisCount: cols,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                childAspectRatio: cols == 1 ? 4.5 : 2.5,
+                                children: [
+                                  _buildInfoTile(Iconsax.sms, 'Primary Email', user?.email ?? 'N/A'),
+                                  _buildInfoTile(Iconsax.user, 'Account Name', user?.fullName ?? 'N/A'),
+                                  _buildInfoTile(Iconsax.shield_tick, 'Account Status', 'Active & Verified'),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+                  ] else ...[
+                    // ── Contact Information Section (Self-service Change Requests) ─
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: context.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: context.border, width: 1),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Iconsax.call_calling, color: AppColors.primary, size: 18),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Contact Details & Self-Edit Requests',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: context.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_myChangeRequests.any((r) => r['status'] == 'pending'))
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.warning.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    '⏳ Change Pending Review',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.warning,
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'You can request updates to your contact channels. Changes take effect upon HR approval.',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(height: 16),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'You can request updates to your contact channels. Changes take effect upon HR approval.',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(height: 16),
 
-                        // Contact items with self-edit buttons
-                        LayoutBuilder(
-                          builder: (context, c) {
-                            final cols = c.maxWidth < 650 ? 1 : 3;
-                            return GridView.count(
-                              crossAxisCount: cols,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              childAspectRatio: cols == 1 ? 4.5 : 2.5,
-                              children: [
-                                _ContactFieldTile(
-                                  icon: Iconsax.call,
-                                  label: 'Primary Phone',
-                                  value: phone,
-                                  fieldName: 'phone_no',
-                                  pendingRequests: _myChangeRequests,
-                                  onRequest: (f, v) => _submitContactChange(f, v),
-                                ),
-                                _ContactFieldTile(
-                                  icon: Iconsax.sms,
-                                  label: 'Personal Email',
-                                  value: personalEmail,
-                                  fieldName: 'personal_email',
-                                  pendingRequests: _myChangeRequests,
-                                  onRequest: (f, v) => _submitContactChange(f, v),
-                                ),
-                                _ContactFieldTile(
-                                  icon: Iconsax.call_slash,
-                                  label: 'Emergency Phone',
-                                  value: emergencyPhone,
-                                  fieldName: 'emergency_phone_number',
-                                  pendingRequests: _myChangeRequests,
-                                  onRequest: (f, v) => _submitContactChange(f, v),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      ],
+                          // Contact items with self-edit buttons
+                          LayoutBuilder(
+                            builder: (context, c) {
+                              final cols = c.maxWidth < 650 ? 1 : 3;
+                              return GridView.count(
+                                crossAxisCount: cols,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                childAspectRatio: cols == 1 ? 4.5 : 2.5,
+                                children: [
+                                  _ContactFieldTile(
+                                    icon: Iconsax.call,
+                                    label: 'Primary Phone',
+                                    value: phone,
+                                    fieldName: 'phone_no',
+                                    pendingRequests: _myChangeRequests,
+                                    onRequest: (f, v) => _submitContactChange(f, v),
+                                  ),
+                                  _ContactFieldTile(
+                                    icon: Iconsax.sms,
+                                    label: 'Personal Email',
+                                    value: personalEmail,
+                                    fieldName: 'personal_email',
+                                    pendingRequests: _myChangeRequests,
+                                    onRequest: (f, v) => _submitContactChange(f, v),
+                                  ),
+                                  _ContactFieldTile(
+                                    icon: Iconsax.call_slash,
+                                    label: 'Emergency Phone',
+                                    value: emergencyPhone,
+                                    fieldName: 'emergency_phone_number',
+                                    pendingRequests: _myChangeRequests,
+                                    onRequest: (f, v) => _submitContactChange(f, v),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
 
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                  // ── Statutory & Personal Information ─────────────────────────
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: context.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: context.border, width: 1),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Iconsax.user_octagon, color: AppColors.primary, size: 18),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              'Personal & Statutory Information',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                color: context.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        LayoutBuilder(
-                          builder: (context, c) {
-                            final cols = c.maxWidth < 600 ? 1 : 3;
-                            return GridView.count(
-                              crossAxisCount: cols,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              childAspectRatio: cols == 1 ? 4.5 : 2.5,
-                              children: [
-                                _buildInfoTile(Iconsax.user, "Father's Name", fatherName),
-                                _buildInfoTile(Iconsax.calendar_1, 'Date of Birth (B.S.)', dob),
-                                _buildInfoTile(
-                                  Iconsax.location,
-                                  'Permanent Address',
-                                  addressDisplay,
+                    // ── Statutory & Personal Information ─────────────────────────
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: context.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: context.border, width: 1),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                              ],
-                            );
-                          },
-                        ),
-                      ],
+                                child: const Icon(Iconsax.user_octagon, color: AppColors.primary, size: 18),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Personal & Statutory Information',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          LayoutBuilder(
+                            builder: (context, c) {
+                              final cols = c.maxWidth < 600 ? 1 : 3;
+                              return GridView.count(
+                                crossAxisCount: cols,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                childAspectRatio: cols == 1 ? 4.5 : 2.5,
+                                children: [
+                                  _buildInfoTile(Iconsax.user, "Father's Name", fatherName),
+                                  _buildInfoTile(Iconsax.calendar_1, 'Date of Birth (B.S.)', dob),
+                                  _buildInfoTile(
+                                    Iconsax.location,
+                                    'Permanent Address',
+                                    addressDisplay,
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
 
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
+                  ],
 
                   // ── Account Actions (Logout) ─────────────────────────────────
                   Material(
