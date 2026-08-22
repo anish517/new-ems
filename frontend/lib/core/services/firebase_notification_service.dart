@@ -45,15 +45,18 @@ class FirebaseNotificationService {
     }
 
     // Request permissions (iOS/Android 13+)
-    NotificationSettings settings = await _fcm.requestPermission(
+    await _fcm.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      debugPrint('User granted permission for notifications');
-    }
+    // Configure foreground presentation options
+    await _fcm.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
 
     if (!kIsWeb) {
       // Setup Local Notifications for FOREGROUND messages
@@ -62,6 +65,21 @@ class FirebaseNotificationService {
               'ic_stat_notify'); // small white status-bar icon (required)
       const InitializationSettings initSettings =
           InitializationSettings(android: androidInitSettings);
+
+      final androidPlugin = _localNotifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'ems_main_channel',
+            'EMS Notifications',
+            description: 'Main channel for EMS push notifications',
+            importance: Importance.max,
+            playSound: true,
+            enableVibration: true,
+          ),
+        );
+      }
 
       await _localNotifications.initialize(
         initSettings,
@@ -73,13 +91,10 @@ class FirebaseNotificationService {
 
     // Listen for messages while app is in foreground
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('Got a message whilst in the foreground!');
-      debugPrint('Message data: ${message.data}');
-
-      if (message.notification != null) {
-        if (!kIsWeb) {
-          _showLocalNotification(message);
-        }
+      final title = message.notification?.title ?? message.data['title'];
+      debugPrint('Got a message whilst in the foreground: $title');
+      if (!kIsWeb) {
+        _showLocalNotification(message);
       }
     });
 
@@ -92,27 +107,56 @@ class FirebaseNotificationService {
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'ems_main_channel',
-      'EMS Notifications',
-      icon: 'ic_stat_notify', // small icon — status bar, white, required
-      largeIcon: DrawableResourceAndroidBitmap(
-          'ic_notification_large'), // full-color brand logo
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-    );
-    const NotificationDetails platformDetails =
-        NotificationDetails(android: androidDetails);
+    final title = message.notification?.title ?? message.data['title'];
+    final body = message.notification?.body ?? message.data['body'] ?? message.data['message'];
+    if (title == null && body == null) return;
 
-    await _localNotifications.show(
-      message.hashCode,
-      message.notification?.title,
-      message.notification?.body,
-      platformDetails,
-      payload: jsonEncode(message.data),
-    );
+    try {
+      const AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'ems_main_channel',
+        'EMS Notifications',
+        channelDescription: 'Main channel for EMS push notifications',
+        icon: 'ic_stat_notify', // small icon — status bar, white, required
+        largeIcon: DrawableResourceAndroidBitmap('ic_notification_large'),
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+        showWhen: true,
+      );
+      const NotificationDetails platformDetails =
+          NotificationDetails(android: androidDetails);
+
+      await _localNotifications.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        body,
+        platformDetails,
+        payload: jsonEncode(message.data),
+      );
+    } catch (e) {
+      debugPrint('Error showing local notification with custom icons: $e');
+      try {
+        const AndroidNotificationDetails fallbackDetails =
+            AndroidNotificationDetails(
+          'ems_main_channel',
+          'EMS Notifications',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+        );
+        await _localNotifications.show(
+          DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          title,
+          body,
+          const NotificationDetails(android: fallbackDetails),
+          payload: jsonEncode(message.data),
+        );
+      } catch (e2) {
+        debugPrint('Error showing fallback local notification: $e2');
+      }
+    }
   }
 
   void _handleNotificationTap(String? payload) {

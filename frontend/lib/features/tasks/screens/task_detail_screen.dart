@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../shared/utils/document_viewer_util.dart';
 import 'package:nepali_utils/nepali_utils.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -452,68 +452,64 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Badges Row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        // Badges (Responsive Wrap)
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: priorityColor.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: priorityColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    priority == 'high'
+                                        ? Iconsax.danger
+                                        : priority == 'medium'
+                                            ? Iconsax.flash
+                                            : Iconsax.tick_circle,
+                                    size: 13,
+                                    color: priorityColor,
                                   ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        priority == 'high'
-                                            ? Iconsax.danger
-                                            : priority == 'medium'
-                                                ? Iconsax.flash
-                                                : Iconsax.tick_circle,
-                                        size: 13,
-                                        color: priorityColor,
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        '${priority.toUpperCase()} PRIORITY',
-                                        style: TextStyle(color: priorityColor, fontSize: 11, fontWeight: FontWeight.w800),
-                                      ),
-                                    ],
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    '${priority.toUpperCase()} PRIORITY',
+                                    style: TextStyle(color: priorityColor, fontSize: 11, fontWeight: FontWeight.w800),
                                   ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                projName,
+                                style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: context.card,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: context.border),
+                              ),
+                              child: Text(
+                                taskType.toUpperCase(),
+                                style: TextStyle(
+                                  color: context.textPrimary,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
                                 ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    projName,
-                                    style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w700),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: context.card,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: context.border),
-                                  ),
-                                  child: Text(
-                                    taskType.toUpperCase(),
-                                    style: TextStyle(
-                                      color: context.textPrimary,
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -650,8 +646,11 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                           const SizedBox(height: 14),
                           OutlinedButton.icon(
                             onPressed: () {
-                              final url = Uri.tryParse(_task["description_pdf"]);
-                              if (url != null) launchUrl(url);
+                              viewDocumentOrImage(
+                                context,
+                                _task["description_pdf"]?.toString(),
+                                title: "Task Specification Document",
+                              );
                             },
                             icon: const Icon(Iconsax.document_download, size: 18, color: AppColors.primary),
                             label: const Text("View Attached Specification Document"),
@@ -994,9 +993,12 @@ class _ProgressReportCard extends StatelessWidget {
           if (hasAttachment) ...[
             const SizedBox(height: 10),
             InkWell(
-              onTap: () async {
-                final url = Uri.parse(report["attachment_url"] as String);
-                if (await canLaunchUrl(url)) launchUrl(url);
+              onTap: () {
+                viewDocumentOrImage(
+                  context,
+                  report["attachment_url"] as String?,
+                  title: "Progress Report Attachment",
+                );
               },
               child: const Row(
                 children: [
@@ -1121,32 +1123,41 @@ class _AddProgressReportDialogState extends ConsumerState<_AddProgressReportDial
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Iconsax.clock, color: AppColors.primary, size: 22),
                       ),
-                      child: const Icon(Iconsax.clock, color: AppColors.primary, size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Log Task Progress',
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: context.textPrimary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Log Task Progress',
+                              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: context.textPrimary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const Text(
+                              'Record effort, billable time & proof',
+                              style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                        const Text(
-                          'Record effort, billable time & milestone proof',
-                          style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Iconsax.close_circle, size: 20),

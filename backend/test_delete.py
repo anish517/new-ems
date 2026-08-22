@@ -3,9 +3,9 @@ User = get_user_model()
 from organization.models import Employee
 
 # clean up
-User.objects.filter(username='testx').delete()
+User.objects.filter(email='testx@test.com').delete()
 
-user=User.objects.create(username='testx', email='testx@test.com')
+user=User.objects.create(email='testx@test.com')
 emp=Employee.objects.create(user=user, gender='male', father_name='X', phone_no='1', official_email='x', personal_email='x')
 
 print('Before delete:', User.objects.filter(id=user.id).exists())

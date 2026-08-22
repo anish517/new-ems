@@ -4,11 +4,11 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:nepali_utils/nepali_utils.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/date_provider.dart';
+import '../../../shared/utils/document_viewer_util.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/nepali_date_picker.dart';
 
@@ -1235,8 +1235,11 @@ class _TaskDetailSheet extends StatelessWidget {
               const SizedBox(height: 16),
               OutlinedButton.icon(
                 onPressed: () {
-                  final url = Uri.tryParse(task['description_pdf']);
-                  if (url != null) launchUrl(url);
+                  viewDocumentOrImage(
+                    context,
+                    task['description_pdf']?.toString(),
+                    title: 'Task Specification Document',
+                  );
                 },
                 icon: const Icon(Iconsax.document_download, size: 18),
                 label: const Text('View Attached Specification Document'),

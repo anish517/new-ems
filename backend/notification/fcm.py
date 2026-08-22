@@ -36,10 +36,25 @@ def send_push_notification(device_token: str, title: str, body: str, data: dict 
         message = messaging.Message(
             notification=messaging.Notification(title=title, body=body),
             data={k: str(v) for k, v in (data or {}).items()},
-            android=messaging.AndroidConfig(priority='high'),
+            android=messaging.AndroidConfig(
+                priority='high',
+                notification=messaging.AndroidNotification(
+                    channel_id='ems_main_channel',
+                    priority='max',
+                    default_sound=True,
+                    default_vibrate_timings=True,
+                    icon='ic_stat_notify',
+                ),
+            ),
             apns=messaging.APNSConfig(
+                headers={'apns-priority': '10'},
                 payload=messaging.APNSPayload(
-                    aps=messaging.Aps(badge=1, sound='default')
+                    aps=messaging.Aps(
+                        alert=messaging.ApsAlert(title=title, body=body),
+                        badge=1,
+                        sound='default',
+                        content_available=True,
+                    )
                 )
             ),
             token=device_token,

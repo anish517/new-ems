@@ -5,7 +5,7 @@ class AppConstants {
   //   flutter run --dart-define=API_BASE_URL=http://192.168.1.5:8000
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.110.108:8000',
+    defaultValue: 'http://192.168.16.113:8000',
   );
 
   // ─── Endpoints ─────────────────────────────────────────────────────────────
@@ -16,8 +16,10 @@ class AppConstants {
   static const String attendanceBase = '/api/attendance';
   static const String checkIn = '/api/attendance/check-in/';
   static const String checkOut = '/api/attendance/check-out/';
-  static const String todayAttendanceStatus = '/api/attendance/today-attendance-status/';
-  static const String punctualityChampions  = '/api/attendance/punctuality-champions/';
+  static const String todayAttendanceStatus =
+      '/api/attendance/today-attendance-status/';
+  static const String punctualityChampions =
+      '/api/attendance/punctuality-champions/';
 
   static const String leaveBase = '/api/leave-tracker';
   static const String salaryBase = '/api/salary-management';

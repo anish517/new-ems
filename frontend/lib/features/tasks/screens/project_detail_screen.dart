@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:currency_converter/currency.dart';
 import 'package:currency_converter/currency_converter.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../shared/utils/document_viewer_util.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'task_detail_screen.dart';
 
@@ -377,8 +377,11 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
                       children: files.map<Widget>((file) {
                         return OutlinedButton.icon(
                           onPressed: () {
-                            final url = Uri.tryParse(file["file"]?.toString() ?? "");
-                            if (url != null) launchUrl(url);
+                            viewDocumentOrImage(
+                              context,
+                              file["file"]?.toString(),
+                              title: file["title"] ?? "Project Document",
+                            );
                           },
                           icon: const Icon(Iconsax.document_download, size: 16, color: AppColors.primary),
                           label: Text(file["title"] ?? "Project Document"),
