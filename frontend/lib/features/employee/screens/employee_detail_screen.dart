@@ -2667,57 +2667,124 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                   ),
 
                   const SizedBox(height: 20),
-                  const Text(
-                    'GPS Geo-Location Verification',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'GPS Geo-Location Verification',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      Builder(
+                        builder: (context) {
+                          double? lat = double.tryParse(log['check_in_lat']?.toString() ?? '');
+                          double? lng = double.tryParse(log['check_in_lng']?.toString() ?? '');
+                          if (lat != null && lng != null) {
+                            return InkWell(
+                              onTap: () async {
+                                final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              child: const Row(
+                                children: [
+                                  Icon(Iconsax.export_1, size: 14, color: AppColors.primary),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Open in Maps',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primary,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
-                  SizedBox(
-                    height: 200,
-                    child: Builder(
-                      builder: (context) {
-                        double? lat = double.tryParse(
-                            log['check_in_lat']?.toString() ?? '');
-                        double? lng = double.tryParse(
-                            log['check_in_lng']?.toString() ?? '');
-                        if (lat != null && lng != null) {
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: GoogleMap(
-                              initialCameraPosition: CameraPosition(
-                                target: LatLng(lat, lng),
-                                zoom: 15,
+                  Builder(
+                    builder: (context) {
+                      double? lat = double.tryParse(
+                          log['check_in_lat']?.toString() ?? '');
+                      double? lng = double.tryParse(
+                          log['check_in_lng']?.toString() ?? '');
+                      if (lat != null && lng != null) {
+                        return Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
                               ),
-                              markers: {
-                                Marker(
-                                  markerId: const MarkerId('checkin'),
-                                  position: LatLng(lat, lng),
-                                  infoWindow: const InfoWindow(
-                                      title: 'Check-In Location'),
+                              child: Row(
+                                children: [
+                                  const Icon(Iconsax.location, size: 14, color: AppColors.success),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Coordinates: ${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}',
+                                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.success),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              height: 200,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: ctx.border),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: GoogleMap(
+                                  initialCameraPosition: CameraPosition(
+                                    target: LatLng(lat, lng),
+                                    zoom: 15,
+                                  ),
+                                  markers: {
+                                    Marker(
+                                      markerId: const MarkerId('checkin'),
+                                      position: LatLng(lat, lng),
+                                      infoWindow: const InfoWindow(
+                                          title: 'Check-In Location'),
+                                    ),
+                                  },
+                                  zoomControlsEnabled: false,
+                                  myLocationButtonEnabled: false,
                                 ),
-                              },
-                              zoomControlsEnabled: false,
-                              myLocationButtonEnabled: false,
+                              ),
                             ),
-                          );
-                        }
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: ctx.bg,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: ctx.border),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'No GPS coordinates recorded for this check-in.',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary),
-                            ),
-                          ),
+                          ],
                         );
-                      },
-                    ),
+                      }
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: ctx.bg,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: ctx.border),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'No GPS coordinates recorded for this check-in.',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

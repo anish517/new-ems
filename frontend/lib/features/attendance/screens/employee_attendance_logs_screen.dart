@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:nepali_utils/nepali_utils.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
@@ -189,62 +190,169 @@ class _EmployeeAttendanceLogsScreenState extends ConsumerState<EmployeeAttendanc
               ),
               const SizedBox(height: 18),
 
-              const Text('GPS Geolocation Map View', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 220,
-                child: Builder(
-                  builder: (context) {
-                    double? inLat = double.tryParse(log['check_in_lat']?.toString() ?? '');
-                    double? inLng = double.tryParse(log['check_in_lng']?.toString() ?? '');
-                    double? outLat = double.tryParse(log['check_out_lat']?.toString() ?? '');
-                    double? outLng = double.tryParse(log['check_out_lng']?.toString() ?? '');
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('GPS Geolocation Map View', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+                  Builder(
+                    builder: (context) {
+                      double? inLat = double.tryParse(log['check_in_lat']?.toString() ?? '');
+                      double? inLng = double.tryParse(log['check_in_lng']?.toString() ?? '');
+                      double? outLat = double.tryParse(log['check_out_lat']?.toString() ?? '');
+                      double? outLng = double.tryParse(log['check_out_lng']?.toString() ?? '');
+                      final lat = inLat ?? outLat;
+                      final lng = inLng ?? outLng;
 
-                    if (inLat == null && outLat == null) {
-                      return Container(
+                      if (lat != null && lng != null) {
+                        return InkWell(
+                          onTap: () async {
+                            final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            }
+                          },
+                          child: const Row(
+                            children: [
+                              Icon(Iconsax.export_1, size: 14, color: AppColors.primary),
+                              SizedBox(width: 4),
+                              Text(
+                                'Open in Google Maps',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Coordinates Badges
+              Builder(
+                builder: (context) {
+                  double? inLat = double.tryParse(log['check_in_lat']?.toString() ?? '');
+                  double? inLng = double.tryParse(log['check_in_lng']?.toString() ?? '');
+                  double? outLat = double.tryParse(log['check_out_lat']?.toString() ?? '');
+                  double? outLng = double.tryParse(log['check_out_lng']?.toString() ?? '');
+
+                  if (inLat == null && outLat == null) {
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: context.card,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: context.border),
+                      ),
+                      child: const Center(
+                        child: Text('No GPS coordinates recorded for this session.', style: TextStyle(fontSize: 12)),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      if (inLat != null && inLng != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Iconsax.location, size: 14, color: AppColors.success),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Check-In: ${inLat.toStringAsFixed(6)}, ${inLng.toStringAsFixed(6)}',
+                                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.success),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                      ],
+                      if (outLat != null && outLng != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Iconsax.location, size: 14, color: AppColors.error),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Check-Out: ${outLat.toStringAsFixed(6)}, ${outLng.toStringAsFixed(6)}',
+                                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.error),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+
+                      // Embedded Google Map Box
+                      Container(
+                        height: 220,
                         decoration: BoxDecoration(
-                          color: context.card,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(color: context.border),
                         ),
-                        child: const Center(child: Text('No GPS coordinates recorded for this session.', style: TextStyle(fontSize: 12))),
-                      );
-                    }
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Builder(
+                            builder: (context) {
+                              final markers = <Marker>{};
+                              LatLng center = LatLng(inLat ?? outLat!, inLng ?? outLng!);
 
-                    final markers = <Marker>{};
-                    LatLng center = LatLng(inLat ?? outLat!, inLng ?? outLng!);
+                              if (inLat != null && inLng != null) {
+                                markers.add(Marker(
+                                  markerId: const MarkerId('checkin'),
+                                  position: LatLng(inLat, inLng),
+                                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+                                  infoWindow: const InfoWindow(title: 'Check-In Pin'),
+                                ));
+                              }
+                              if (outLat != null && outLng != null) {
+                                markers.add(Marker(
+                                  markerId: const MarkerId('checkout'),
+                                  position: LatLng(outLat, outLng),
+                                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+                                  infoWindow: const InfoWindow(title: 'Check-Out Pin'),
+                                ));
+                                final centerLat = ((inLat ?? outLat) + outLat) / 2;
+                                final centerLng = ((inLng ?? outLng) + outLng) / 2;
+                                center = LatLng(centerLat, centerLng);
+                              }
 
-                    if (inLat != null && inLng != null) {
-                      markers.add(Marker(
-                        markerId: const MarkerId('checkin'),
-                        position: LatLng(inLat, inLng),
-                        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-                        infoWindow: const InfoWindow(title: 'Check-In Pin'),
-                      ));
-                    }
-                    if (outLat != null && outLng != null) {
-                      markers.add(Marker(
-                        markerId: const MarkerId('checkout'),
-                        position: LatLng(outLat, outLng),
-                        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-                        infoWindow: const InfoWindow(title: 'Check-Out Pin'),
-                      ));
-                      final centerLat = ((inLat ?? outLat) + outLat) / 2;
-                      final centerLng = ((inLng ?? outLng) + outLng) / 2;
-                      center = LatLng(centerLat, centerLng);
-                    }
-
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: GoogleMap(
-                        initialCameraPosition: CameraPosition(target: center, zoom: 15),
-                        markers: markers,
-                        zoomControlsEnabled: true,
-                        myLocationButtonEnabled: false,
+                              return GoogleMap(
+                                initialCameraPosition: CameraPosition(target: center, zoom: 15),
+                                markers: markers,
+                                zoomControlsEnabled: true,
+                                myLocationButtonEnabled: false,
+                              );
+                            },
+                          ),
+                        ),
                       ),
-                    );
-                  },
-                ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 24),
 

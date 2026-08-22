@@ -50,7 +50,7 @@
             android:value="2" />
 
         <meta-data android:name="com.google.android.geo.API_KEY"
-               android:value="AIzaSyDC4JTsPubXlPpiDUNUcZN0m3zTWuO15V0"/>
+               android:value="AIzaSyDguZE-X0Ym7fE83z-DEGWe4ffh2ONsBu4"/>
 
         <!-- Default small icon for push notifications (white silhouette, required by Android) -->
         <meta-data
