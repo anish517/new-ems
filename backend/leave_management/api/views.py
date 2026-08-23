@@ -78,6 +78,27 @@ class UpdateLeaveRequestApiView(generics.RetrieveUpdateDestroyAPIView):
         is_reviewed = data.get('is_reviewed')
         rejection_reason = data.get('rejection_reason')
 
+        # Approving or rejecting is an administrative act. Without this gate any
+        # authenticated employee could PATCH {"action": "final_approve"} onto
+        # their own request. Document upload and the plain partial update below
+        # remain available to the requesting employee.
+        is_decision = (
+            action in ('initial_approve', 'final_approve', 'reject')
+            or is_initial_approved is True
+            or is_approved is True
+            or is_reviewed is True
+        )
+        if is_decision:
+            user = request.user
+            is_admin = user.organization.exists() or user.is_superuser or user.is_staff or getattr(user, 'is_hr', False)
+            if not is_admin:
+                return Response({'error': 'Only administrators and HR can approve or reject leave requests.'}, status=status.HTTP_403_FORBIDDEN)
+            # Scope the decision to the acting admin's own organization.
+            if not (user.is_superuser or getattr(user, 'is_hr', False)):
+                admin_org_ids = set(user.organization.values_list('id', flat=True))
+                if instance.organization_id not in admin_org_ids:
+                    return Response({'error': 'This leave request belongs to another organization.'}, status=status.HTTP_403_FORBIDDEN)
+
         # 1. Initial Approval (for Sick Leave 2-tier approval)
         if action == 'initial_approve' or is_initial_approved is True:
             instance.is_initial_approved = True

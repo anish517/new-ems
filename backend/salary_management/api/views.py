@@ -564,22 +564,14 @@ th{{background:#f1f5f9;color:#64748b;font-weight:600;font-size:12px;text-transfo
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class GenerateSalaryReportAPIView(generics.GenericAPIView):
-    permission_classes = [AllowAny]
+    # Was AllowAny with no authorization check after resolving the user, which
+    # let any authenticated employee export org-wide salary data.
+    permission_classes = [IsSalaryAdminOrHR]
 
     def get(self, request):
-        # Authenticate via Header or Query Token
+        # ?token= is resolved globally by base.query_param_auth.QueryParamJWTAuthentication,
+        # so request.user is already populated for browser-initiated downloads.
         user = request.user
-        if not user or not user.is_authenticated:
-            token = request.GET.get('token')
-            if token:
-                try:
-                    from rest_framework_simplejwt.authentication import JWTAuthentication
-                    validated = JWTAuthentication().get_validated_token(token)
-                    user = JWTAuthentication().get_user(validated)
-                except Exception:
-                    pass
-        if not user or not user.is_authenticated:
-            return Response({'error': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
 
         year_str = request.GET.get('year')
         month_str = request.GET.get('month')
@@ -591,6 +583,11 @@ class GenerateSalaryReportAPIView(generics.GenericAPIView):
             organization = _get_org(user)
         except Exception:
             organization = None
+
+        # Fail closed. Every queryset below applies its organization filter
+        # conditionally, so a None here silently reported across all tenants.
+        if not organization:
+            return Response({'error': 'No organization could be resolved for this account.'}, status=status.HTTP_400_BAD_REQUEST)
 
         response = HttpResponse(content_type='text/csv')
 
