@@ -26,5 +26,7 @@ def notice_post_notification(sender, instance, created, **kwargs):
                 user=emp.user,
                 title='New Notice',
                 message=f'A new notice has been posted: {instance.title}',
+                notification_type='notice',
+                reference_id=instance.id,
                 is_read=False
             )

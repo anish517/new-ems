@@ -9,9 +9,13 @@ class Notification(models.Model):
     TYPE_CHOICES = [
         ('task', 'Task'),
         ('leave', 'Leave'),
+        ('salary', 'Salary'),
+        ('payroll', 'Payroll'),
         ('performance', 'Performance'),
         ('feedback', 'Feedback'),
         ('calendar', 'Calendar'),
+        ('notice', 'Notice'),
+        ('noticeboard', 'Noticeboard'),
         ('general', 'General'),
     ]
 

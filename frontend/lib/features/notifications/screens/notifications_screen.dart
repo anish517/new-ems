@@ -20,10 +20,12 @@ IconData _notifIcon(String? type) {
     case 'performance':
       return Iconsax.star_1;
     case 'feedback':
+    case 'complain':
       return Iconsax.message_question;
     case 'calendar':
       return Iconsax.calendar;
     case 'notice':
+    case 'noticeboard':
       return Iconsax.notification_bing;
     default:
       return Iconsax.notification;
@@ -42,7 +44,11 @@ Color _notifColor(String? type) {
     case 'performance':
       return const Color(0xFF8B5CF6); // Purple
     case 'feedback':
+    case 'complain':
       return AppColors.primary; // Indigo
+    case 'notice':
+    case 'noticeboard':
+      return const Color(0xFF8B5CF6); // Violet
     case 'calendar':
       return const Color(0xFF06B6D4);
     default:
@@ -275,13 +281,38 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
             // Filter by type & search
             final filtered = list.where((n) {
-              final type = (n['notification_type'] ?? 'general').toString().toLowerCase();
-              if (_selectedType != 'all' && type != _selectedType.toLowerCase()) {
+              final rawType = (n['notification_type'] ?? 'general').toString().toLowerCase();
+              final title = (n['title'] ?? '').toString().toLowerCase();
+              final msg = (n['message'] ?? '').toString().toLowerCase();
+
+              // Normalize notification type
+              String normalizedType = rawType;
+              if (rawType == 'noticeboard' || rawType == 'notice') {
+                normalizedType = 'notice';
+              } else if (rawType == 'payroll' || rawType == 'salary') {
+                normalizedType = 'salary';
+              } else if (rawType == 'feedback' || rawType == 'complain') {
+                normalizedType = 'feedback';
+              } else if (rawType == 'general') {
+                if (title.contains('task') || msg.contains('task') || title.contains('remote work') || msg.contains('remote work') || title.contains('progress report')) {
+                  normalizedType = 'task';
+                } else if (title.contains('leave') || msg.contains('leave') || title.contains('vacation') || title.contains('sick leave')) {
+                  normalizedType = 'leave';
+                } else if (title.contains('salary') || msg.contains('salary') || title.contains('payroll') || title.contains('payout') || title.contains('disburs')) {
+                  normalizedType = 'salary';
+                } else if (title.contains('notice') || msg.contains('notice') || title.contains('announcement')) {
+                  normalizedType = 'notice';
+                } else if (title.contains('complain') || msg.contains('complain') || title.contains('feedback')) {
+                  normalizedType = 'feedback';
+                } else if (title.contains('performance') || msg.contains('performance') || title.contains('review')) {
+                  normalizedType = 'performance';
+                }
+              }
+
+              if (_selectedType != 'all' && normalizedType != _selectedType.toLowerCase()) {
                 return false;
               }
               if (_searchQuery.isEmpty) return true;
-              final title = (n['title'] ?? '').toString().toLowerCase();
-              final msg = (n['message'] ?? '').toString().toLowerCase();
               final query = _searchQuery.toLowerCase();
               return title.contains(query) || msg.contains(query);
             }).toList();
