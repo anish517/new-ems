@@ -595,7 +595,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                                   ],
                                 ),
                               ),
-                              if (rating != null) ...[
+                              if (isAdmin && rating != null) ...[
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(

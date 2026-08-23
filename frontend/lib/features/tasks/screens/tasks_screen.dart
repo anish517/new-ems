@@ -904,6 +904,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     final projName = proj is Map ? (proj['name'] ?? proj['title'] ?? 'Project') : null;
     final rating = t['rating'];
     final hasPdf = t['description_pdf'] != null && t['description_pdf'].toString().isNotEmpty;
+    final isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
 
     return Material(
       color: Colors.transparent,
@@ -1048,7 +1049,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                         const Icon(Iconsax.document_1, size: 14, color: AppColors.primary),
                         const SizedBox(width: 6),
                       ],
-                      if (rating != null) ...[
+                      if (isAdmin && rating != null) ...[
                         const Icon(Iconsax.star1, size: 13, color: Colors.amber),
                         const SizedBox(width: 2),
                         Text(
@@ -1074,13 +1075,14 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
 }
 
 // ─── Task Details Sheet ───────────────────────────────────────────────────────
-class _TaskDetailSheet extends StatelessWidget {
+class _TaskDetailSheet extends ConsumerWidget {
   final Map task;
   final void Function(String newStatus) onStatusChange;
   const _TaskDetailSheet({required this.task, required this.onStatusChange});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
     final priority = (task['priority'] ?? 'low').toString().toLowerCase();
     final priorityColor = priority == 'high'
         ? AppColors.error
@@ -1201,7 +1203,7 @@ class _TaskDetailSheet extends StatelessWidget {
                     'Due Date',
                     _fmtDate(task['planned_end_date']?.toString(), fallback: task['created_at']?.toString()),
                   ),
-                  if (task['rating'] != null) ...[
+                  if (isAdmin && task['rating'] != null) ...[
                     const Divider(height: 20),
                     _buildDetailRow(Iconsax.star1, 'Quality Score', '${task['rating']}/10'),
                   ],
