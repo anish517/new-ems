@@ -45,16 +45,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     try {
       if (user.employeeId != null) {
         final empId = user.employeeId;
-        final detailRes = await ApiService().get('${AppConstants.organizationBase}/employees/$empId/');
+        final detailRes = await ApiService()
+            .get('${AppConstants.organizationBase}/employees/$empId/');
         Map<String, dynamic> empData = detailRes.data is Map
             ? Map<String, dynamic>.from(detailRes.data)
             : {};
 
         // Fetch address fallback if not already in detail
-        if (empData['address'] == null || (empData['address'] is List && (empData['address'] as List).isEmpty)) {
+        if (empData['address'] == null ||
+            (empData['address'] is List &&
+                (empData['address'] as List).isEmpty)) {
           try {
-            final addrRes = await ApiService().get('${AppConstants.organizationBase}/addresses/?employee=$empId');
-            final addrs = addrRes.data is List ? addrRes.data : (addrRes.data['results'] ?? []);
+            final addrRes = await ApiService().get(
+                '${AppConstants.organizationBase}/addresses/?employee=$empId');
+            final addrs = addrRes.data is List
+                ? addrRes.data
+                : (addrRes.data['results'] ?? []);
             if (addrs is List && addrs.isNotEmpty) {
               empData['address'] = addrs;
             }
@@ -68,24 +74,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         }
       } else {
         // Fallback search only by exact user match (never take list.first)
-        final res = await ApiService().get('${AppConstants.organizationBase}/employees/');
-        final list = res.data is List ? res.data : (res.data['results'] ?? res.data);
+        final res = await ApiService()
+            .get('${AppConstants.organizationBase}/employees/');
+        final list =
+            res.data is List ? res.data : (res.data['results'] ?? res.data);
         if (list is List && list.isNotEmpty) {
           final myEmp = list.cast<Map?>().firstWhere(
-            (e) => e != null && ((e['user']?['id'] == user.id) || (e['user']?['email'] == user.email)),
-            orElse: () => null,
-          );
+                (e) =>
+                    e != null &&
+                    ((e['user']?['id'] == user.id) ||
+                        (e['user']?['email'] == user.email)),
+                orElse: () => null,
+              );
           if (mounted && myEmp != null) {
             final empId = myEmp['id'];
-            final detailRes = await ApiService().get('${AppConstants.organizationBase}/employees/$empId/');
+            final detailRes = await ApiService()
+                .get('${AppConstants.organizationBase}/employees/$empId/');
             Map<String, dynamic> empData = detailRes.data is Map
                 ? Map<String, dynamic>.from(detailRes.data)
                 : Map<String, dynamic>.from(myEmp);
 
-            if (empData['address'] == null || (empData['address'] is List && (empData['address'] as List).isEmpty)) {
+            if (empData['address'] == null ||
+                (empData['address'] is List &&
+                    (empData['address'] as List).isEmpty)) {
               try {
-                final addrRes = await ApiService().get('${AppConstants.organizationBase}/addresses/?employee=$empId');
-                final addrs = addrRes.data is List ? addrRes.data : (addrRes.data['results'] ?? []);
+                final addrRes = await ApiService().get(
+                    '${AppConstants.organizationBase}/addresses/?employee=$empId');
+                final addrs = addrRes.data is List
+                    ? addrRes.data
+                    : (addrRes.data['results'] ?? []);
                 if (addrs is List && addrs.isNotEmpty) {
                   empData['address'] = addrs;
                 }
@@ -111,10 +128,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = ref.read(currentUserProvider);
     if (user?.canManage == true) return;
     try {
-      final res = await ApiService().get('/api/organization/profile-change-requests/');
+      final res =
+          await ApiService().get('/api/organization/profile-change-requests/');
       if (mounted) {
         setState(() {
-          _myChangeRequests = res.data is List ? res.data : (res.data['results'] ?? []);
+          _myChangeRequests =
+              res.data is List ? res.data : (res.data['results'] ?? []);
         });
       }
     } catch (_) {}
@@ -123,7 +142,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _pickAndUploadImage() async {
     final picker = ImagePicker();
     try {
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 75);
+      final XFile? image =
+          await picker.pickImage(source: ImageSource.gallery, imageQuality: 75);
       if (image == null) return;
 
       setState(() => _isUploading = true);
@@ -133,7 +153,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final ext = image.name.split('.').last.toLowerCase();
       final dataUri = 'data:image/$ext;base64,$base64Image';
 
-      await ApiService().patch('/api/auth/me/', data: {'profile_picture': dataUri});
+      await ApiService()
+          .patch('/api/auth/me/', data: {'profile_picture': dataUri});
       await ref.read(authProvider.notifier).refreshUser();
       _loadEmployeeDetails();
 
@@ -149,7 +170,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -157,7 +179,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update picture: ${ApiService.getErrorMessage(e)}'),
+            content: Text(
+                'Failed to update picture: ${ApiService.getErrorMessage(e)}'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -180,12 +203,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               children: [
                 Icon(Iconsax.tick_circle, color: Colors.white, size: 20),
                 SizedBox(width: 12),
-                Expanded(child: Text('Change request submitted for admin review!')),
+                Expanded(
+                    child: Text('Change request submitted for admin review!')),
               ],
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
         _loadChangeRequests();
@@ -306,7 +331,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: AppColors.error.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Iconsax.logout, color: AppColors.error, size: 22),
+                      child: const Icon(Iconsax.logout,
+                          color: AppColors.error, size: 22),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -374,7 +400,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         },
                         child: const Text(
                           'Log Out',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -513,20 +540,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ? 'HR Administrator'
                     : 'Staff Member');
     final phone = emp?['phone_no'] ?? 'Not provided';
-    final personalEmail = emp?['personal_email'] ?? user?.email ?? 'Not provided';
+    final personalEmail =
+        emp?['personal_email'] ?? user?.email ?? 'Not provided';
     final emergencyPhone = emp?['emergency_phone_number'] ??
         emp?['alternative_contact_number'] ??
         'Not provided';
-    final fatherName = (emp?['father_name'] != null && emp!['father_name'].toString().isNotEmpty)
+    final fatherName = (emp?['father_name'] != null &&
+            emp!['father_name'].toString().isNotEmpty)
         ? emp['father_name'].toString()
         : 'Not provided';
-    final dob = (emp?['date_of_birth'] != null && emp!['date_of_birth'].toString().isNotEmpty)
+    final dob = (emp?['date_of_birth'] != null &&
+            emp!['date_of_birth'].toString().isNotEmpty)
         ? emp['date_of_birth'].toString()
         : 'Not provided';
     final empType = emp?['employee_type'] ?? 'full_time';
 
     // Address extraction
-    final addresses = (emp?['address'] is List) ? (emp!['address'] as List) : [];
+    final addresses =
+        (emp?['address'] is List) ? (emp!['address'] as List) : [];
     final permanent = addresses.firstWhere(
       (a) => a['type'] == 'permanent',
       orElse: () => addresses.isNotEmpty ? addresses.first : null,
@@ -536,11 +567,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             permanent['street']?.toString().trim(),
             permanent['district']?.toString().trim(),
             permanent['state']?.toString().trim(),
-          ]
-            .where((s) => s != null && s.isNotEmpty)
-            .join(', ')
+          ].where((s) => s != null && s.isNotEmpty).join(', ')
         : '';
-    final addressDisplay = permanentAddress.isNotEmpty ? permanentAddress : 'Not provided';
+    final addressDisplay =
+        permanentAddress.isNotEmpty ? permanentAddress : 'Not provided';
 
     return Scaffold(
       backgroundColor: context.bg,
@@ -566,614 +596,291 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                  // ── Hero Profile Card ─────────────────────────────────────────
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: context.surface,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: context.border, width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-                          blurRadius: 20,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        // Gradient Top Banner
-                        Container(
-                          height: 100,
-                          decoration: const BoxDecoration(
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                            gradient: LinearGradient(
-                              colors: [AppColors.primary, AppColors.primaryDark],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                        ),
-
-                        // Profile Info & Avatar Row
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              // Avatar floating over banner
-                              Transform.translate(
-                                offset: const Offset(0, -40),
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: context.surface,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.15),
-                                            blurRadius: 12,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                        ],
-                                      ),
-                                      child: CircleAvatar(
-                                        radius: 46,
-                                        backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                                        backgroundImage: user?.profilePicture != null
-                                            ? NetworkImage(user!.profilePicture!)
-                                            : null,
-                                        child: user?.profilePicture == null
-                                            ? Text(
-                                                (user?.firstName.isNotEmpty == true)
-                                                    ? user!.firstName[0].toUpperCase()
-                                                    : 'U',
-                                                style: const TextStyle(
-                                                  fontSize: 34,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: AppColors.primary,
-                                                ),
-                                              )
-                                            : null,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      bottom: 4,
-                                      right: 4,
-                                      child: GestureDetector(
-                                        onTap: _isUploading ? null : _pickAndUploadImage,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary,
-                                            shape: BoxShape.circle,
-                                            border: Border.all(color: context.surface, width: 2.5),
-                                          ),
-                                          child: _isUploading
-                                              ? const SizedBox(
-                                                  width: 14,
-                                                  height: 14,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    color: Colors.white,
-                                                  ),
-                                                )
-                                              : const Icon(Iconsax.camera, size: 14, color: Colors.white),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 18),
-
-                              // Name & Designation Details
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(bottom: 6),
-                                  child: LayoutBuilder(
-                                    builder: (context, c) {
-                                      final isTight = c.maxWidth < 450;
-
-                                      return Flex(
-                                        direction: isTight ? Axis.vertical : Axis.horizontal,
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment: isTight
-                                            ? CrossAxisAlignment.start
-                                            : CrossAxisAlignment.center,
-                                        children: [
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Wrap(
-                                                spacing: 8,
-                                                runSpacing: 4,
-                                                crossAxisAlignment: WrapCrossAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    user?.fullName ?? 'User Profile',
-                                                    style: TextStyle(
-                                                      fontSize: isTight ? 19 : 22,
-                                                      fontWeight: FontWeight.w900,
-                                                      letterSpacing: -0.4,
-                                                      color: context.textPrimary,
-                                                    ),
-                                                  ),
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(
-                                                        horizontal: 8, vertical: 2),
-                                                    decoration: BoxDecoration(
-                                                      color: AppColors.primary.withValues(alpha: 0.12),
-                                                      borderRadius: BorderRadius.circular(8),
-                                                    ),
-                                                    child: Text(
-                                                      user?.role.replaceAll('_', ' ').toUpperCase() ?? 'STAFF',
-                                                      style: const TextStyle(
-                                                        fontSize: 10.5,
-                                                        fontWeight: FontWeight.w800,
-                                                        color: AppColors.primary,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 3),
-                                              Text(
-                                                (user?.canManage == true && emp == null)
-                                                    ? 'System Administrator · Full Platform Control'
-                                                    : '$designation · ${empType == 'full_time' ? 'Full-Time' : empType == 'part_time' ? 'Part-Time' : 'Intern'}',
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: AppColors.textSecondary,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 3),
-                                              Row(
-                                                children: [
-                                                  const Icon(Iconsax.sms, size: 13, color: AppColors.textSecondary),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    user?.email ?? 'No email',
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                      color: AppColors.textSecondary,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                          if (isTight) const SizedBox(height: 12),
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              OutlinedButton.icon(
-                                                onPressed: _showEditProfile,
-                                                icon: const Icon(Iconsax.edit, size: 16),
-                                                label: const Text('Edit Name'),
-                                                style: OutlinedButton.styleFrom(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              IconButton(
-                                                icon: const Icon(Iconsax.key, size: 18, color: AppColors.primary),
-                                                tooltip: 'Change Password',
-                                                onPressed: _showChangePassword,
-                                                style: IconButton.styleFrom(
-                                                  backgroundColor: context.card,
-                                                  side: BorderSide(color: context.border),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // ── If Admin without Employee record: Show Admin Privileges & Account Settings ──
-                  if (emp == null && (user?.canManage == true)) ...[
-                    // ── Administrator System Privileges ──────────────────────────
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: context.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: context.border, width: 1),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(Iconsax.shield_security, color: AppColors.primary, size: 18),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Administrator Roles & System Privileges',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: context.textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'Overview of elevated administrative privileges associated with this account.',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          ),
-                          const SizedBox(height: 16),
-                          LayoutBuilder(
-                            builder: (context, c) {
-                              final cols = c.maxWidth < 650 ? 1 : 2;
-                              return GridView.count(
-                                crossAxisCount: cols,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                childAspectRatio: cols == 1 ? 4.5 : 3.2,
-                                children: [
-                                  _buildPrivilegeTile(
-                                    icon: Iconsax.security_user,
-                                    title: 'Platform Control',
-                                    description: user?.isSuperAdmin == true ? 'Root Super Administrator' : 'Organization Administrator',
-                                    color: AppColors.primary,
-                                  ),
-                                  _buildPrivilegeTile(
-                                    icon: Iconsax.people,
-                                    title: 'Employee Governance',
-                                    description: 'Full Access to Profiles, Leaves, Attendance & Payroll',
-                                    color: const Color(0xFF10B981),
-                                  ),
-                                  _buildPrivilegeTile(
-                                    icon: Iconsax.document_text,
-                                    title: 'Policies & Notices',
-                                    description: 'Publish, Edit & Audit Employee Acknowledgments',
-                                    color: const Color(0xFFF59E0B),
-                                  ),
-                                  _buildPrivilegeTile(
-                                    icon: Iconsax.finger_scan,
-                                    title: 'Audit & Compliance',
-                                    description: 'Full Access to System Logs, IP & Device Tracking',
-                                    color: const Color(0xFF8B5CF6),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // ── Account & Security Overview ──────────────────────────────
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: context.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: context.border, width: 1),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(Iconsax.lock, color: AppColors.primary, size: 18),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Account & Security Settings',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: context.textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          LayoutBuilder(
-                            builder: (context, c) {
-                              final cols = c.maxWidth < 650 ? 1 : 3;
-                              return GridView.count(
-                                crossAxisCount: cols,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                childAspectRatio: cols == 1 ? 4.5 : 2.5,
-                                children: [
-                                  _buildInfoTile(Iconsax.sms, 'Primary Email', user?.email ?? 'N/A'),
-                                  _buildInfoTile(Iconsax.user, 'Account Name', user?.fullName ?? 'N/A'),
-                                  _buildInfoTile(Iconsax.shield_tick, 'Account Status', 'Active & Verified'),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-                  ] else ...[
-                    // ── Contact Information Section (Self-service Change Requests) ─
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: context.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: context.border, width: 1),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(Iconsax.call_calling, color: AppColors.primary, size: 18),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    'Contact Details & Self-Edit Requests',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: context.textPrimary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (_myChangeRequests.any((r) => r['status'] == 'pending'))
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.warning.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text(
-                                    '⏳ Change Pending Review',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.warning,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'You can request updates to your contact channels. Changes take effect upon HR approval.',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Contact items with self-edit buttons
-                          LayoutBuilder(
-                            builder: (context, c) {
-                              final cols = c.maxWidth < 650 ? 1 : 3;
-                              return GridView.count(
-                                crossAxisCount: cols,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                childAspectRatio: cols == 1 ? 4.5 : 2.5,
-                                children: [
-                                  _ContactFieldTile(
-                                    icon: Iconsax.call,
-                                    label: 'Primary Phone',
-                                    value: phone,
-                                    fieldName: 'phone_no',
-                                    pendingRequests: _myChangeRequests,
-                                    onRequest: (f, v) => _submitContactChange(f, v),
-                                  ),
-                                  _ContactFieldTile(
-                                    icon: Iconsax.sms,
-                                    label: 'Personal Email',
-                                    value: personalEmail,
-                                    fieldName: 'personal_email',
-                                    pendingRequests: _myChangeRequests,
-                                    onRequest: (f, v) => _submitContactChange(f, v),
-                                  ),
-                                  _ContactFieldTile(
-                                    icon: Iconsax.call_slash,
-                                    label: 'Emergency Phone',
-                                    value: emergencyPhone,
-                                    fieldName: 'emergency_phone_number',
-                                    pendingRequests: _myChangeRequests,
-                                    onRequest: (f, v) => _submitContactChange(f, v),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // ── Statutory & Personal Information ─────────────────────────
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: context.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: context.border, width: 1),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(Iconsax.user_octagon, color: AppColors.primary, size: 18),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Personal & Statutory Information',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: context.textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          LayoutBuilder(
-                            builder: (context, c) {
-                              final cols = c.maxWidth < 600 ? 1 : 3;
-                              return GridView.count(
-                                crossAxisCount: cols,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                childAspectRatio: cols == 1 ? 4.5 : 2.5,
-                                children: [
-                                  _buildInfoTile(Iconsax.user, "Father's Name", fatherName),
-                                  _buildInfoTile(Iconsax.calendar_1, 'Date of Birth (B.S.)', dob),
-                                  _buildInfoTile(
-                                    Iconsax.location,
-                                    'Permanent Address',
-                                    addressDisplay,
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-                  ],
-
-                  // ── Account Actions (Logout) ─────────────────────────────────
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _confirmLogout,
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
+                      // ── Hero Profile Card ─────────────────────────────────────────
+                      Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: AppColors.error.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: AppColors.error.withValues(alpha: 0.25),
-                            width: 1.2,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AppColors.error.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(Iconsax.logout, color: AppColors.error, size: 20),
+                          color: context.surface,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: context.border, width: 1),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black
+                                  .withValues(alpha: isDark ? 0.25 : 0.04),
+                              blurRadius: 20,
+                              offset: const Offset(0, 6),
                             ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // Gradient Top Banner
+                            Container(
+                              height: 100,
+                              decoration: const BoxDecoration(
+                                borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(24)),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppColors.primary,
+                                    AppColors.primaryDark
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                            ),
+
+                            // Profile Info & Avatar Row
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text(
-                                    'Sign Out of EMS',
-                                    style: TextStyle(
-                                      fontSize: 14.5,
-                                      fontWeight: FontWeight.w800,
-                                      color: context.textPrimary,
+                                  // Avatar floating over banner
+                                  Transform.translate(
+                                    offset: const Offset(0, -40),
+                                    child: Stack(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: context.surface,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black
+                                                    .withValues(alpha: 0.15),
+                                                blurRadius: 12,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: CircleAvatar(
+                                            radius: 46,
+                                            backgroundColor: AppColors.primary
+                                                .withValues(alpha: 0.15),
+                                            backgroundImage:
+                                                user?.profilePicture != null
+                                                    ? NetworkImage(
+                                                        user!.profilePicture!)
+                                                    : null,
+                                            child: user?.profilePicture == null
+                                                ? Text(
+                                                    (user?.firstName
+                                                                .isNotEmpty ==
+                                                            true)
+                                                        ? user!.firstName[0]
+                                                            .toUpperCase()
+                                                        : 'U',
+                                                    style: const TextStyle(
+                                                      fontSize: 34,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                      color: AppColors.primary,
+                                                    ),
+                                                  )
+                                                : null,
+                                          ),
+                                        ),
+                                        Positioned(
+                                          bottom: 4,
+                                          right: 4,
+                                          child: GestureDetector(
+                                            onTap: _isUploading
+                                                ? null
+                                                : _pickAndUploadImage,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary,
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                    color: context.surface,
+                                                    width: 2.5),
+                                              ),
+                                              child: _isUploading
+                                                  ? const SizedBox(
+                                                      width: 14,
+                                                      height: 14,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color: Colors.white,
+                                                      ),
+                                                    )
+                                                  : const Icon(Iconsax.camera,
+                                                      size: 14,
+                                                      color: Colors.white),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
-                                  const Text(
-                                    'Safely terminate your current active session',
-                                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: AppColors.error,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.error.withValues(alpha: 0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Iconsax.logout, size: 16, color: Colors.white),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Log Out',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 13,
+                                  const SizedBox(width: 18),
+
+                                  // Name & Designation Details
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(bottom: 6),
+                                      child: LayoutBuilder(
+                                        builder: (context, c) {
+                                          final isTight = c.maxWidth < 450;
+
+                                          return Flex(
+                                            direction: isTight
+                                                ? Axis.vertical
+                                                : Axis.horizontal,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            crossAxisAlignment: isTight
+                                                ? CrossAxisAlignment.start
+                                                : CrossAxisAlignment.center,
+                                            children: [
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Wrap(
+                                                    spacing: 8,
+                                                    runSpacing: 4,
+                                                    crossAxisAlignment:
+                                                        WrapCrossAlignment
+                                                            .center,
+                                                    children: [
+                                                      Text(
+                                                        user?.fullName ??
+                                                            'User Profile',
+                                                        style: TextStyle(
+                                                          fontSize:
+                                                              isTight ? 19 : 22,
+                                                          fontWeight:
+                                                              FontWeight.w900,
+                                                          letterSpacing: -0.4,
+                                                          color: context
+                                                              .textPrimary,
+                                                        ),
+                                                      ),
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 8,
+                                                                vertical: 2),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: AppColors
+                                                              .primary
+                                                              .withValues(
+                                                                  alpha: 0.12),
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(8),
+                                                        ),
+                                                        child: Text(
+                                                          user?.role
+                                                                  .replaceAll(
+                                                                      '_', ' ')
+                                                                  .toUpperCase() ??
+                                                              'STAFF',
+                                                          style:
+                                                              const TextStyle(
+                                                            fontSize: 10.5,
+                                                            fontWeight:
+                                                                FontWeight.w800,
+                                                            color: AppColors
+                                                                .primary,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 3),
+                                                  Text(
+                                                    (user?.canManage == true &&
+                                                            emp == null)
+                                                        ? 'System Administrator · Full Platform Control'
+                                                        : '$designation · ${empType == 'full_time' ? 'Full-Time' : empType == 'part_time' ? 'Part-Time' : 'Intern'}',
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: AppColors
+                                                          .textSecondary,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 3),
+                                                  Row(
+                                                    children: [
+                                                      const Icon(Iconsax.sms,
+                                                          size: 13,
+                                                          color: AppColors
+                                                              .textSecondary),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        user?.email ??
+                                                            'No email',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          color: AppColors
+                                                              .textSecondary,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                              if (isTight)
+                                                const SizedBox(height: 12),
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  OutlinedButton.icon(
+                                                    onPressed: _showEditProfile,
+                                                    icon: const Icon(
+                                                        Iconsax.edit,
+                                                        size: 16),
+                                                    label:
+                                                        const Text('Edit Name'),
+                                                    style: OutlinedButton
+                                                        .styleFrom(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 14,
+                                                          vertical: 10),
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          12)),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  IconButton(
+                                                    icon: const Icon(
+                                                        Iconsax.key,
+                                                        size: 18,
+                                                        color:
+                                                            AppColors.primary),
+                                                    tooltip: 'Change Password',
+                                                    onPressed:
+                                                        _showChangePassword,
+                                                    style: IconButton.styleFrom(
+                                                      backgroundColor:
+                                                          context.card,
+                                                      side: BorderSide(
+                                                          color:
+                                                              context.border),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1182,18 +889,464 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ],
                         ),
                       ),
-                    ),
+
+                      const SizedBox(height: 24),
+
+                      // ── If Admin without Employee record: Show Admin Privileges & Account Settings ──
+                      if (emp == null && (user?.canManage == true)) ...[
+                        // ── Administrator System Privileges ──────────────────────────
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: context.border, width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Iconsax.shield_security,
+                                        color: AppColors.primary, size: 18),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Administrator Roles & System Privileges',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: context.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Overview of elevated administrative privileges associated with this account.',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary),
+                              ),
+                              const SizedBox(height: 16),
+                              LayoutBuilder(
+                                builder: (context, c) {
+                                  final cols = c.maxWidth < 650 ? 1 : 2;
+                                  return GridView.count(
+                                    crossAxisCount: cols,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    childAspectRatio: cols == 1 ? 4.5 : 3.2,
+                                    children: [
+                                      _buildPrivilegeTile(
+                                        icon: Iconsax.security_user,
+                                        title: 'Platform Control',
+                                        description: user?.isSuperAdmin == true
+                                            ? 'Root Super Administrator'
+                                            : 'Organization Administrator',
+                                        color: AppColors.primary,
+                                      ),
+                                      _buildPrivilegeTile(
+                                        icon: Iconsax.people,
+                                        title: 'Employee Governance',
+                                        description:
+                                            'Full Access to Profiles, Leaves, Attendance & Payroll',
+                                        color: const Color(0xFF10B981),
+                                      ),
+                                      _buildPrivilegeTile(
+                                        icon: Iconsax.document_text,
+                                        title: 'Policies & Notices',
+                                        description:
+                                            'Publish, Edit & Audit Employee Acknowledgments',
+                                        color: const Color(0xFFF59E0B),
+                                      ),
+                                      _buildPrivilegeTile(
+                                        icon: Iconsax.finger_scan,
+                                        title: 'Audit & Compliance',
+                                        description:
+                                            'Full Access to System Logs, IP & Device Tracking',
+                                        color: const Color(0xFF8B5CF6),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ── Account & Security Overview ──────────────────────────────
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: context.border, width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Iconsax.lock,
+                                        color: AppColors.primary, size: 18),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Account & Security Settings',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: context.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              LayoutBuilder(
+                                builder: (context, c) {
+                                  final cols = c.maxWidth < 650 ? 1 : 3;
+                                  return GridView.count(
+                                    crossAxisCount: cols,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    childAspectRatio: cols == 1 ? 4.5 : 2.5,
+                                    children: [
+                                      _buildInfoTile(
+                                          Iconsax.sms,
+                                          'Primary Email',
+                                          user?.email ?? 'N/A'),
+                                      _buildInfoTile(
+                                          Iconsax.user,
+                                          'Account Name',
+                                          user?.fullName ?? 'N/A'),
+                                      _buildInfoTile(
+                                          Iconsax.shield_tick,
+                                          'Account Status',
+                                          'Active & Verified'),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+                      ] else ...[
+                        // ── Contact Information Section (Self-service Change Requests) ─
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: context.border, width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: const Icon(Iconsax.call_calling,
+                                            color: AppColors.primary, size: 18),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        'Contact Details & Self-Edit Requests',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: context.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (_myChangeRequests
+                                      .any((r) => r['status'] == 'pending'))
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.warning
+                                            .withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text(
+                                        '⏳ Change Pending Review',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.warning,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'You can request updates to your contact channels. Changes take effect upon HR approval.',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Contact items with self-edit buttons
+                              LayoutBuilder(
+                                builder: (context, c) {
+                                  final cols = c.maxWidth < 650 ? 1 : 3;
+                                  return GridView.count(
+                                    crossAxisCount: cols,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    childAspectRatio: cols == 1 ? 4.5 : 2.5,
+                                    children: [
+                                      _ContactFieldTile(
+                                        icon: Iconsax.call,
+                                        label: 'Primary Phone',
+                                        value: phone,
+                                        fieldName: 'phone_no',
+                                        pendingRequests: _myChangeRequests,
+                                        onRequest: (f, v) =>
+                                            _submitContactChange(f, v),
+                                      ),
+                                      _ContactFieldTile(
+                                        icon: Iconsax.sms,
+                                        label: 'Personal Email',
+                                        value: personalEmail,
+                                        fieldName: 'personal_email',
+                                        pendingRequests: _myChangeRequests,
+                                        onRequest: (f, v) =>
+                                            _submitContactChange(f, v),
+                                      ),
+                                      _ContactFieldTile(
+                                        icon: Iconsax.call_slash,
+                                        label: 'Emergency Phone',
+                                        value: emergencyPhone,
+                                        fieldName: 'emergency_phone_number',
+                                        pendingRequests: _myChangeRequests,
+                                        onRequest: (f, v) =>
+                                            _submitContactChange(f, v),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ── Statutory & Personal Information ─────────────────────────
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: context.border, width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Iconsax.user_octagon,
+                                        color: AppColors.primary, size: 18),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Personal & Statutory Information',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: context.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              LayoutBuilder(
+                                builder: (context, c) {
+                                  final cols = c.maxWidth < 600 ? 1 : 3;
+                                  return GridView.count(
+                                    crossAxisCount: cols,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    childAspectRatio: cols == 1 ? 4.5 : 2.5,
+                                    children: [
+                                      _buildInfoTile(Iconsax.user,
+                                          "Father's Name", fatherName),
+                                      _buildInfoTile(Iconsax.calendar_1,
+                                          'Date of Birth (B.S.)', dob),
+                                      _buildInfoTile(
+                                        Iconsax.location,
+                                        'Permanent Address',
+                                        addressDisplay,
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+                      ],
+
+                      // ── Account Actions (Logout) ─────────────────────────────────
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _confirmLogout,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: AppColors.error.withValues(alpha: 0.25),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        AppColors.error.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Iconsax.logout,
+                                      color: AppColors.error, size: 20),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Sign Out of EMS',
+                                        style: TextStyle(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: context.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      const Text(
+                                        'Safely terminate your current active session',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.error,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.error
+                                            .withValues(alpha: 0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Iconsax.logout,
+                                          size: 16, color: Colors.white),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Log Out',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-        );
-      },
-    ),
-  ),
-);
-}
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
 
 // ─── Contact Field Tile (With Inline Request Change Modal) ──────────────────────
@@ -1216,8 +1369,9 @@ class _ContactFieldTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pending = pendingRequests.where((r) =>
-        r['field_name'] == fieldName && r['status'] == 'pending').toList();
+    final pending = pendingRequests
+        .where((r) => r['field_name'] == fieldName && r['status'] == 'pending')
+        .toList();
     final hasPending = pending.isNotEmpty;
 
     return Container(
@@ -1226,7 +1380,9 @@ class _ContactFieldTile extends StatelessWidget {
         color: context.card,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: hasPending ? AppColors.warning.withValues(alpha: 0.5) : context.border,
+          color: hasPending
+              ? AppColors.warning.withValues(alpha: 0.5)
+              : context.border,
         ),
       ),
       child: Row(
@@ -1284,13 +1440,16 @@ class _ContactFieldTile extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(Iconsax.edit_2, size: 15, color: AppColors.primary),
+            icon:
+                const Icon(Iconsax.edit_2, size: 15, color: AppColors.primary),
             tooltip: 'Request $label Update',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             onPressed: () {
               final ctrl = TextEditingController(
-                  text: value == 'Not provided' || value == 'Not set' ? '' : value);
+                  text: value == 'Not provided' || value == 'Not set'
+                      ? ''
+                      : value);
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
@@ -1315,10 +1474,12 @@ class _ContactFieldTile extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: Icon(icon, color: AppColors.primary, size: 20),
+                                child: Icon(icon,
+                                    color: AppColors.primary, size: 20),
                               ),
                               const SizedBox(width: 12),
                               Text(
@@ -1341,7 +1502,8 @@ class _ContactFieldTile extends StatelessWidget {
                       const SizedBox(height: 8),
                       const Text(
                         'Updates to statutory contact details require HR verification before becoming active.',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 18),
                       TextField(
@@ -1369,7 +1531,8 @@ class _ContactFieldTile extends StatelessWidget {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
                           ),
                           onPressed: () {
                             if (ctrl.text.trim().isEmpty) return;
@@ -1379,11 +1542,14 @@ class _ContactFieldTile extends StatelessWidget {
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Iconsax.send_1, size: 16, color: Colors.white),
+                              Icon(Iconsax.send_1,
+                                  size: 16, color: Colors.white),
                               SizedBox(width: 8),
                               Text(
                                 'Submit Change Request',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800),
                               ),
                             ],
                           ),
@@ -1450,7 +1616,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -1471,7 +1638,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+          24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Form(
         key: _formKey,
         child: Column(
@@ -1489,7 +1657,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                         color: AppColors.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Iconsax.user_edit, color: AppColors.primary, size: 20),
+                      child: const Icon(Iconsax.user_edit,
+                          color: AppColors.primary, size: 20),
                     ),
                     const SizedBox(width: 12),
                     Text(
@@ -1519,7 +1688,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                       labelText: 'First Name *',
                       prefixIcon: Icon(Iconsax.user, size: 18),
                     ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Required' : null,
                     onSaved: (v) => _firstName = v ?? '',
                   ),
                 ),
@@ -1550,17 +1720,20 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
                 child: _isLoading
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : const Text(
                         'Save Name Changes',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.w800),
                       ),
               ),
             ),
@@ -1600,7 +1773,8 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       return;
@@ -1624,7 +1798,8 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -1645,7 +1820,8 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+          24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Form(
         key: _formKey,
         child: Column(
@@ -1663,7 +1839,8 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                         color: AppColors.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Iconsax.key, color: AppColors.primary, size: 20),
+                      child: const Icon(Iconsax.key,
+                          color: AppColors.primary, size: 20),
                     ),
                     const SizedBox(width: 12),
                     Text(
@@ -1690,11 +1867,14 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                 labelText: 'Current Password *',
                 prefixIcon: const Icon(Iconsax.lock, size: 18),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscureOld ? Iconsax.eye_slash : Iconsax.eye, size: 18),
+                  icon: Icon(_obscureOld ? Iconsax.eye_slash : Iconsax.eye,
+                      size: 18),
                   onPressed: () => setState(() => _obscureOld = !_obscureOld),
                 ),
               ),
-              validator: (v) => (v == null || v.isEmpty) ? 'Current password is required' : null,
+              validator: (v) => (v == null || v.isEmpty)
+                  ? 'Current password is required'
+                  : null,
               onSaved: (v) => _oldPwd = v ?? '',
             ),
             const SizedBox(height: 12),
@@ -1705,11 +1885,14 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                 hintText: 'Min 6 characters',
                 prefixIcon: const Icon(Iconsax.lock_1, size: 18),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscureNew ? Iconsax.eye_slash : Iconsax.eye, size: 18),
+                  icon: Icon(_obscureNew ? Iconsax.eye_slash : Iconsax.eye,
+                      size: 18),
                   onPressed: () => setState(() => _obscureNew = !_obscureNew),
                 ),
               ),
-              validator: (v) => (v == null || v.length < 6) ? 'Min 6 characters required' : null,
+              validator: (v) => (v == null || v.length < 6)
+                  ? 'Min 6 characters required'
+                  : null,
               onSaved: (v) => _newPwd = v ?? '',
             ),
             const SizedBox(height: 12),
@@ -1719,11 +1902,15 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                 labelText: 'Confirm New Password *',
                 prefixIcon: const Icon(Iconsax.lock_circle, size: 18),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscureConfirm ? Iconsax.eye_slash : Iconsax.eye, size: 18),
-                  onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                  icon: Icon(_obscureConfirm ? Iconsax.eye_slash : Iconsax.eye,
+                      size: 18),
+                  onPressed: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
                 ),
               ),
-              validator: (v) => (v == null || v.isEmpty) ? 'Please confirm your password' : null,
+              validator: (v) => (v == null || v.isEmpty)
+                  ? 'Please confirm your password'
+                  : null,
               onSaved: (v) => _confirmPwd = v ?? '',
             ),
             const SizedBox(height: 22),
@@ -1740,17 +1927,20 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
                 child: _isLoading
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : const Text(
                         'Change Password',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.w800),
                       ),
               ),
             ),

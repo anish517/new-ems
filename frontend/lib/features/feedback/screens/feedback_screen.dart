@@ -154,8 +154,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                         child: const Text(
                           'Delete',
                           style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold),
+                              color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -184,8 +183,8 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -202,8 +201,10 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
   }
 
   Future<void> _toggleStatus(Map complaint) async {
-    final currentStatus = (complaint['status'] ?? 'pending').toString().toLowerCase();
-    final isResolved = currentStatus == 'resolved' || currentStatus == 'reviewed';
+    final currentStatus =
+        (complaint['status'] ?? 'pending').toString().toLowerCase();
+    final isResolved =
+        currentStatus == 'resolved' || currentStatus == 'reviewed';
     final newStatus = isResolved ? 'pending' : 'resolved';
 
     try {
@@ -218,7 +219,9 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
             content: Row(
               children: [
                 Icon(
-                  newStatus == 'resolved' ? Iconsax.tick_circle : Iconsax.refresh_2,
+                  newStatus == 'resolved'
+                      ? Iconsax.tick_circle
+                      : Iconsax.refresh_2,
                   color: Colors.white,
                   size: 20,
                 ),
@@ -228,10 +231,11 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                     : 'Feedback reopened as Pending'),
               ],
             ),
-            backgroundColor: newStatus == 'resolved' ? AppColors.success : AppColors.warning,
+            backgroundColor:
+                newStatus == 'resolved' ? AppColors.success : AppColors.warning,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -255,9 +259,8 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
       if (statusFilter == 'reviewed' && !isResolved) return false;
 
       if (_selectedCategoryId != null) {
-        final catId = c['category'] is Map
-            ? c['category']['id']
-            : c['category'];
+        final catId =
+            c['category'] is Map ? c['category']['id'] : c['category'];
         if (catId != _selectedCategoryId) return false;
       }
 
@@ -333,7 +336,8 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
               complaint: c,
               isAdmin: isAdmin,
               onStatusToggle: () => _toggleStatus(c),
-              onDelete: () => _deleteComplaint(c['id'], c['title'] ?? 'Feedback'),
+              onDelete: () =>
+                  _deleteComplaint(c['id'], c['title'] ?? 'Feedback'),
               onReplySuccess: _loadComplaints,
             ),
           ),
@@ -414,7 +418,8 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                       border: Border.all(color: context.border, width: 1),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                          color: Colors.black
+                              .withValues(alpha: isDark ? 0.25 : 0.04),
                           blurRadius: 18,
                           offset: const Offset(0, 4),
                         ),
@@ -428,11 +433,13 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                             Container(
                               padding: EdgeInsets.all(isTight ? 9 : 12),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Icon(Iconsax.messages_3,
-                                  color: AppColors.primary, size: isTight ? 20 : 24),
+                                  color: AppColors.primary,
+                                  size: isTight ? 20 : 24),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -452,9 +459,11 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                                   ),
                                   const SizedBox(width: 8),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 7, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.12),
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
@@ -483,13 +492,18 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                               const SizedBox(width: 10),
                               ElevatedButton.icon(
                                 onPressed: _showSubmitDialog,
-                                icon: const Icon(Iconsax.add_circle, size: 18, color: Colors.white),
+                                icon: const Icon(Iconsax.add_circle,
+                                    size: 18, color: Colors.white),
                                 label: const Text('Submit Feedback',
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold)),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
-                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 18, vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14)),
                                 ),
                               ),
                             ],
@@ -498,7 +512,9 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                         const SizedBox(height: 6),
                         Text(
                           'Confidential grievances, suggestions & resolution portal',
-                          style: TextStyle(fontSize: isTight ? 11.5 : 12, color: AppColors.textSecondary),
+                          style: TextStyle(
+                              fontSize: isTight ? 11.5 : 12,
+                              color: AppColors.textSecondary),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
@@ -545,175 +561,175 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                     ],
                   ),
 
-              const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-              // ── Search & Filter Tabs ─────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: context.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: context.border, width: 1),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText:
-                            'Search complaints by subject, message, or submitter...',
-                        prefixIcon:
-                            const Icon(Iconsax.search_normal, size: 20),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Iconsax.close_circle,
-                                    size: 18),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() => _searchQuery = '');
-                                },
-                              )
-                            : null,
-                      ),
-                      onChanged: (v) => setState(() => _searchQuery = v),
+                  // ── Search & Filter Tabs ─────────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: context.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: context.border, width: 1),
                     ),
-                    if (_categories.isNotEmpty) ...[
-                      const SizedBox(height: 14),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: FilterChip(
-                                label: const Text('All Categories'),
-                                selected: _selectedCategoryId == null,
-                                onSelected: (_) => setState(
-                                    () => _selectedCategoryId = null),
-                                selectedColor: AppColors.primary
-                                    .withValues(alpha: 0.15),
-                                labelStyle: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: _selectedCategoryId == null
-                                      ? AppColors.primary
-                                      : context.textPrimary,
-                                ),
-                              ),
-                            ),
-                            ..._categories.map((cat) {
-                              final isSelected =
-                                  _selectedCategoryId == cat['id'];
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: FilterChip(
-                                  label: Text(cat['title'] ?? 'Category'),
-                                  selected: isSelected,
-                                  onSelected: (sel) => setState(() =>
-                                      _selectedCategoryId =
-                                          sel ? cat['id'] : null),
-                                  selectedColor: AppColors.primary
-                                      .withValues(alpha: 0.15),
-                                  labelStyle: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: isSelected
-                                        ? AppColors.primary
-                                        : context.textPrimary,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText:
+                                'Search complaints by subject, message, or submitter...',
+                            prefixIcon:
+                                const Icon(Iconsax.search_normal, size: 20),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Iconsax.close_circle,
+                                        size: 18),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _searchQuery = '');
+                                    },
+                                  )
+                                : null,
+                          ),
+                          onChanged: (v) => setState(() => _searchQuery = v),
+                        ),
+                        if (_categories.isNotEmpty) ...[
+                          const SizedBox(height: 14),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: FilterChip(
+                                    label: const Text('All Categories'),
+                                    selected: _selectedCategoryId == null,
+                                    onSelected: (_) => setState(
+                                        () => _selectedCategoryId = null),
+                                    selectedColor: AppColors.primary
+                                        .withValues(alpha: 0.15),
+                                    labelStyle: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: _selectedCategoryId == null
+                                          ? AppColors.primary
+                                          : context.textPrimary,
+                                    ),
                                   ),
                                 ),
-                              );
-                            }),
+                                ..._categories.map((cat) {
+                                  final isSelected =
+                                      _selectedCategoryId == cat['id'];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: FilterChip(
+                                      label: Text(cat['title'] ?? 'Category'),
+                                      selected: isSelected,
+                                      onSelected: (sel) => setState(() =>
+                                          _selectedCategoryId =
+                                              sel ? cat['id'] : null),
+                                      selectedColor: AppColors.primary
+                                          .withValues(alpha: 0.15),
+                                      labelStyle: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: isSelected
+                                            ? AppColors.primary
+                                            : context.textPrimary,
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+                        TabBar(
+                          controller: _tabController,
+                          isScrollable: true,
+                          tabAlignment: TabAlignment.start,
+                          labelColor: AppColors.primary,
+                          unselectedLabelColor: AppColors.textSecondary,
+                          indicatorColor: AppColors.primary,
+                          indicatorWeight: 3,
+                          tabs: [
+                            Tab(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Iconsax.document_text, size: 18),
+                                  const SizedBox(width: 8),
+                                  Text('All (${_complaints.length})',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700)),
+                                ],
+                              ),
+                            ),
+                            Tab(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Iconsax.clock, size: 18),
+                                  const SizedBox(width: 8),
+                                  Text('Pending ($pendingCount)',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700)),
+                                ],
+                              ),
+                            ),
+                            Tab(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Iconsax.tick_circle, size: 18),
+                                  const SizedBox(width: 8),
+                                  Text('Resolved ($resolvedCount)',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700)),
+                                ],
+                              ),
+                            ),
                           ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    TabBar(
-                      controller: _tabController,
-                      isScrollable: true,
-                      tabAlignment: TabAlignment.start,
-                      labelColor: AppColors.primary,
-                      unselectedLabelColor: AppColors.textSecondary,
-                      indicatorColor: AppColors.primary,
-                      indicatorWeight: 3,
-                      tabs: [
-                        Tab(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Iconsax.document_text, size: 18),
-                              const SizedBox(width: 8),
-                              Text('All (${_complaints.length})',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w700)),
-                            ],
-                          ),
-                        ),
-                        Tab(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Iconsax.clock, size: 18),
-                              const SizedBox(width: 8),
-                              Text('Pending ($pendingCount)',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w700)),
-                            ],
-                          ),
-                        ),
-                        Tab(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Iconsax.tick_circle, size: 18),
-                              const SizedBox(width: 8),
-                              Text('Resolved ($resolvedCount)',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w700)),
-                            ],
-                          ),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // ── Complaints Content ───────────────────────────────────────
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 60),
+                      child: Center(
+                        child:
+                            CircularProgressIndicator(color: AppColors.primary),
+                      ),
+                    )
+                  else
+                    SizedBox(
+                      height: 650,
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildComplaintListView(
+                              _getFilteredList('all'), isAdmin),
+                          _buildComplaintListView(
+                              _getFilteredList('pending'), isAdmin),
+                          _buildComplaintListView(
+                              _getFilteredList('reviewed'), isAdmin),
+                        ],
+                      ),
+                    ),
+                ],
               ),
-
-              const SizedBox(height: 20),
-
-              // ── Complaints Content ───────────────────────────────────────
-              if (_loading)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 60),
-                  child: Center(
-                    child:
-                        CircularProgressIndicator(color: AppColors.primary),
-                  ),
-                )
-              else
-                SizedBox(
-                  height: 650,
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildComplaintListView(
-                          _getFilteredList('all'), isAdmin),
-                      _buildComplaintListView(
-                          _getFilteredList('pending'), isAdmin),
-                      _buildComplaintListView(
-                          _getFilteredList('reviewed'), isAdmin),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
-    ),
-  ),
-);
+            );
+          },
+        ),
+      ),
+    );
   }
 
   Widget _buildSummaryMiniCard(String title, String count, String subtitle,
@@ -727,7 +743,8 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
           border: Border.all(color: context.border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.03),
+              color:
+                  Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.03),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -872,8 +889,8 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                         color: Colors.white, fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
@@ -897,10 +914,13 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
           final isAnonymous = (c['visibility'] ?? 'anonymous') == 'anonymous';
           final title = c['title'] ?? 'Untitled Grievance';
           final desc = c['description'] ?? '';
-          final ownerName = isAnonymous ? 'Anonymous Employee' : (c['owner_name'] ?? 'Staff Member');
+          final ownerName = isAnonymous
+              ? 'Anonymous Employee'
+              : (c['owner_name'] ?? 'Staff Member');
           final catName = c['category_name'] ?? 'General Suggestion';
           final replies = (c['replies'] as List?) ?? [];
-          final date = c['created_at'] != null ? c['created_at'].toString() : '';
+          final date =
+              c['created_at'] != null ? c['created_at'].toString() : '';
 
           return Material(
             color: Colors.transparent,
@@ -915,8 +935,8 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                   border: Border.all(color: context.border, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(
-                          alpha: context.isDark ? 0.2 : 0.03),
+                      color: Colors.black
+                          .withValues(alpha: context.isDark ? 0.2 : 0.03),
                       blurRadius: 14,
                       offset: const Offset(0, 4),
                     ),
@@ -941,8 +961,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: AppColors.primary
-                                    .withValues(alpha: 0.1),
+                                color: AppColors.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
@@ -969,8 +988,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                                 color: isAnonymous
                                     ? const Color(0xFF8B5CF6)
                                         .withValues(alpha: 0.12)
-                                    : AppColors.primary
-                                        .withValues(alpha: 0.12),
+                                    : AppColors.primary.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
@@ -1086,10 +1104,11 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                               backgroundColor: isAnonymous
                                   ? const Color(0xFF8B5CF6)
                                       .withValues(alpha: 0.15)
-                                  : AppColors.primary
-                                      .withValues(alpha: 0.15),
+                                  : AppColors.primary.withValues(alpha: 0.15),
                               child: Icon(
-                                isAnonymous ? Iconsax.user_cirlce_add : Iconsax.user,
+                                isAnonymous
+                                    ? Iconsax.user_cirlce_add
+                                    : Iconsax.user,
                                 size: 13,
                                 color: isAnonymous
                                     ? const Color(0xFF8B5CF6)
@@ -1165,7 +1184,8 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                                         horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: isResolved
-                                          ? AppColors.warning.withValues(alpha: 0.12)
+                                          ? AppColors.warning
+                                              .withValues(alpha: 0.12)
                                           : const Color(0xFF10B981),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
@@ -1296,8 +1316,8 @@ class _SubmitComplaintSheetState extends State<_SubmitComplaintSheet> {
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -1618,8 +1638,7 @@ class _SubmitComplaintSheetState extends State<_SubmitComplaintSheet> {
                       : const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Iconsax.send_1,
-                                size: 18, color: Colors.white),
+                            Icon(Iconsax.send_1, size: 18, color: Colors.white),
                             SizedBox(width: 8),
                             Text(
                               'Submit Complaint',
@@ -1695,8 +1714,8 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -1719,12 +1738,13 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
     final c = widget.complaint;
     final isResolved =
         (c['status'] ?? 'pending').toString().toLowerCase() == 'reviewed' ||
-        (c['status'] ?? 'pending').toString().toLowerCase() == 'resolved';
+            (c['status'] ?? 'pending').toString().toLowerCase() == 'resolved';
     final isAnonymous = (c['visibility'] ?? 'anonymous') == 'anonymous';
     final title = c['title'] ?? 'Feedback Details';
     final desc = c['description'] ?? 'No description provided';
-    final ownerName =
-        isAnonymous ? 'Anonymous Employee' : (c['owner_name'] ?? 'Staff Member');
+    final ownerName = isAnonymous
+        ? 'Anonymous Employee'
+        : (c['owner_name'] ?? 'Staff Member');
     final catName = c['category_name'] ?? 'General Suggestion';
     final replies = (c['replies'] as List?) ?? [];
     final date = c['created_at'] != null ? c['created_at'].toString() : '';
@@ -1776,10 +1796,9 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: (isResolved
-                                ? AppColors.success
-                                : AppColors.warning)
-                            .withValues(alpha: 0.12),
+                        color:
+                            (isResolved ? AppColors.success : AppColors.warning)
+                                .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -1801,17 +1820,14 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
                     if (widget.isAdmin) ...[
                       IconButton(
                         icon: Icon(
-                          isResolved
-                              ? Iconsax.refresh_2
-                              : Iconsax.tick_circle,
+                          isResolved ? Iconsax.refresh_2 : Iconsax.tick_circle,
                           color: isResolved
                               ? AppColors.warning
                               : AppColors.success,
                           size: 18,
                         ),
-                        tooltip: isResolved
-                            ? 'Reopen Case'
-                            : 'Mark as Resolved',
+                        tooltip:
+                            isResolved ? 'Reopen Case' : 'Mark as Resolved',
                         padding: const EdgeInsets.all(4),
                         constraints: const BoxConstraints(),
                         onPressed: () {
@@ -1953,7 +1969,8 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
                   },
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 16),
                     decoration: BoxDecoration(
                       color: isResolved
                           ? AppColors.warning.withValues(alpha: 0.1)
@@ -1972,7 +1989,9 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
                         Icon(
                           isResolved ? Iconsax.refresh_2 : Iconsax.tick_circle,
                           size: 18,
-                          color: isResolved ? AppColors.warning : const Color(0xFF10B981),
+                          color: isResolved
+                              ? AppColors.warning
+                              : const Color(0xFF10B981),
                         ),
                         const SizedBox(width: 8),
                         Text(

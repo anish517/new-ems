@@ -50,7 +50,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
       final res = await ApiService().get("${AppConstants.projectsBase}/");
       if (mounted) {
         setState(() {
-          _projects = (res.data is List ? res.data : (res.data["results"] ?? [])) as List;
+          _projects = (res.data is List
+              ? res.data
+              : (res.data["results"] ?? [])) as List;
         });
       }
     } catch (_) {
@@ -76,7 +78,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
         final title = (p["title"] ?? "").toString().toLowerCase();
         final desc = (p["description"] ?? "").toString().toLowerCase();
         final assignments = (p["assignments"] as List?) ?? [];
-        final hasMember = assignments.any((a) => (a["name"] ?? "").toString().toLowerCase().contains(q));
+        final hasMember = assignments
+            .any((a) => (a["name"] ?? "").toString().toLowerCase().contains(q));
         return title.contains(q) || desc.contains(q) || hasMember;
       }
 
@@ -92,7 +95,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
         context: context,
         builder: (_) => Dialog(
           backgroundColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: const _CreateProjectDialog(),
@@ -119,9 +123,13 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
 
-    final ongoingCount = _projects.where((p) => (p["status"] ?? "ongoing") == "ongoing").length;
-    final incompleteCount = _projects.where((p) => (p["status"] ?? "ongoing") == "incomplete").length;
-    final completeCount = _projects.where((p) => (p["status"] ?? "ongoing") == "complete").length;
+    final ongoingCount =
+        _projects.where((p) => (p["status"] ?? "ongoing") == "ongoing").length;
+    final incompleteCount = _projects
+        .where((p) => (p["status"] ?? "ongoing") == "incomplete")
+        .length;
+    final completeCount =
+        _projects.where((p) => (p["status"] ?? "ongoing") == "complete").length;
 
     final isMobile = MediaQuery.sizeOf(context).width < 700;
 
@@ -133,16 +141,19 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
               onPressed: _showCreateProjectDialog,
               backgroundColor: AppColors.primary,
               elevation: 6,
-              icon: const Icon(Iconsax.folder_add, color: Colors.white, size: 20),
+              icon:
+                  const Icon(Iconsax.folder_add, color: Colors.white, size: 20),
               label: const Text(
                 'New Project',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
               ),
             )
           : null,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: isMobile ? 14 : 24, vertical: isMobile ? 14 : 24),
+          padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 14 : 24, vertical: isMobile ? 14 : 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -156,7 +167,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                   border: Border.all(color: context.border, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: context.isDark ? 0.25 : 0.04),
+                      color: Colors.black
+                          .withValues(alpha: context.isDark ? 0.25 : 0.04),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
@@ -171,10 +183,12 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(Iconsax.briefcase, color: AppColors.primary, size: 22),
+                                child: const Icon(Iconsax.briefcase,
+                                    color: AppColors.primary, size: 22),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -197,10 +211,13 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                                         ),
                                         const SizedBox(width: 6),
                                         Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 7, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: AppColors.primary.withValues(alpha: 0.12),
-                                            borderRadius: BorderRadius.circular(6),
+                                            color: AppColors.primary
+                                                .withValues(alpha: 0.12),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
                                           ),
                                           child: Text(
                                             '${_projects.length}',
@@ -216,7 +233,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                                     const SizedBox(height: 2),
                                     const Text(
                                       'Manage project budgets & billing',
-                                      style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                                      style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: AppColors.textSecondary),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -237,14 +256,22 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                                 onPressed: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const CurrencyConverterScreen()),
+                                    MaterialPageRoute(
+                                        builder: (_) =>
+                                            const CurrencyConverterScreen()),
                                   );
                                 },
-                                icon: const Icon(Iconsax.money, size: 14, color: AppColors.success),
-                                label: const Text('Currency', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                                icon: const Icon(Iconsax.money,
+                                    size: 14, color: AppColors.success),
+                                label: const Text('Currency',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12)),
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10)),
                                 ),
                               ),
                               IconButton(
@@ -260,12 +287,20 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                               if (isAdmin)
                                 ElevatedButton.icon(
                                   onPressed: _showCreateProjectDialog,
-                                  icon: const Icon(Iconsax.add_circle, size: 15, color: Colors.white),
-                                  label: const Text('New Project', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                                  icon: const Icon(Iconsax.add_circle,
+                                      size: 15, color: Colors.white),
+                                  label: const Text('New Project',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12)),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primary,
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(10)),
                                   ),
                                 ),
                             ],
@@ -280,10 +315,12 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
-                                child: const Icon(Iconsax.briefcase, color: AppColors.primary, size: 24),
+                                child: const Icon(Iconsax.briefcase,
+                                    color: AppColors.primary, size: 24),
                               ),
                               const SizedBox(width: 14),
                               Column(
@@ -302,10 +339,13 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                                       ),
                                       const SizedBox(width: 8),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
                                         child: Text(
                                           '${_projects.length} Total',
@@ -321,7 +361,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                                   const SizedBox(height: 3),
                                   const Text(
                                     'Manage project budgets, billing & milestones',
-                                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary),
                                   ),
                                 ],
                               ),
@@ -334,14 +376,21 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                                 onPressed: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const CurrencyConverterScreen()),
+                                    MaterialPageRoute(
+                                        builder: (_) =>
+                                            const CurrencyConverterScreen()),
                                   );
                                 },
-                                icon: const Icon(Iconsax.money, size: 16, color: AppColors.success),
-                                label: const Text('Currency', style: TextStyle(fontWeight: FontWeight.w700)),
+                                icon: const Icon(Iconsax.money,
+                                    size: 16, color: AppColors.success),
+                                label: const Text('Currency',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w700)),
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -358,12 +407,19 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                                 const SizedBox(width: 12),
                                 ElevatedButton.icon(
                                   onPressed: _showCreateProjectDialog,
-                                  icon: const Icon(Iconsax.add_circle, size: 18, color: Colors.white),
-                                  label: const Text('New Project', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  icon: const Icon(Iconsax.add_circle,
+                                      size: 18, color: Colors.white),
+                                  label: const Text('New Project',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold)),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primary,
-                                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 18, vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(14)),
                                   ),
                                 ),
                               ],
@@ -379,15 +435,18 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
               Row(
                 children: [
                   Expanded(
-                    child: _buildKpiCard('Ongoing', '$ongoingCount', Iconsax.play_circle, AppColors.primary, isMobile),
+                    child: _buildKpiCard('Ongoing', '$ongoingCount',
+                        Iconsax.play_circle, AppColors.primary, isMobile),
                   ),
                   SizedBox(width: isMobile ? 8 : 12),
                   Expanded(
-                    child: _buildKpiCard('Incomplete', '$incompleteCount', Iconsax.pause_circle, AppColors.warning, isMobile),
+                    child: _buildKpiCard('Incomplete', '$incompleteCount',
+                        Iconsax.pause_circle, AppColors.warning, isMobile),
                   ),
                   SizedBox(width: isMobile ? 8 : 12),
                   Expanded(
-                    child: _buildKpiCard('Completed', '$completeCount', Iconsax.tick_circle, AppColors.success, isMobile),
+                    child: _buildKpiCard('Completed', '$completeCount',
+                        Iconsax.tick_circle, AppColors.success, isMobile),
                   ),
                 ],
               ),
@@ -407,11 +466,13 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                     TextField(
                       controller: _searchController,
                       decoration: InputDecoration(
-                        hintText: 'Search projects by title, member name, or description...',
+                        hintText:
+                            'Search projects by title, member name, or description...',
                         prefixIcon: const Icon(Iconsax.search_normal, size: 20),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Iconsax.close_circle, size: 18),
+                                icon:
+                                    const Icon(Iconsax.close_circle, size: 18),
                                 onPressed: () {
                                   _searchController.clear();
                                   setState(() => _searchQuery = '');
@@ -430,13 +491,20 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                         children: [
                           const Text(
                             'Billing Model:',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textSecondary),
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textSecondary),
                           ),
                           const SizedBox(width: 8),
-                          _buildTypeFilterChip('all', 'All Models', AppColors.primary, Iconsax.category),
-                          _buildTypeFilterChip('monthly', 'Monthly Retainer', const Color(0xFF8B5CF6), Iconsax.briefcase),
-                          _buildTypeFilterChip('hourly', 'Hourly Billing', AppColors.warning, Iconsax.flash),
-                          _buildTypeFilterChip('daily', 'Daily Rate', const Color(0xFF0284C7), Iconsax.calendar),
+                          _buildTypeFilterChip('all', 'All Models',
+                              AppColors.primary, Iconsax.category),
+                          _buildTypeFilterChip('monthly', 'Monthly Retainer',
+                              const Color(0xFF8B5CF6), Iconsax.briefcase),
+                          _buildTypeFilterChip('hourly', 'Hourly Billing',
+                              AppColors.warning, Iconsax.flash),
+                          _buildTypeFilterChip('daily', 'Daily Rate',
+                              const Color(0xFF0284C7), Iconsax.calendar),
                         ],
                       ),
                     ),
@@ -456,12 +524,14 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                 child: TabBar(
                   controller: _tabs,
                   isScrollable: isMobile,
-                  tabAlignment: isMobile ? TabAlignment.start : TabAlignment.fill,
+                  tabAlignment:
+                      isMobile ? TabAlignment.start : TabAlignment.fill,
                   labelColor: AppColors.primary,
                   unselectedLabelColor: AppColors.textSecondary,
                   indicatorColor: AppColors.primary,
                   indicatorWeight: 3,
-                  labelPadding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16),
+                  labelPadding:
+                      EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16),
                   tabs: [
                     Tab(
                       child: Row(
@@ -470,7 +540,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                         children: [
                           const Icon(Iconsax.play_circle, size: 16),
                           const SizedBox(width: 6),
-                          Text('Ongoing (${_byStatus('ongoing').length})', style: TextStyle(fontWeight: FontWeight.w700, fontSize: isMobile ? 12.5 : 13.5)),
+                          Text('Ongoing (${_byStatus('ongoing').length})',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: isMobile ? 12.5 : 13.5)),
                         ],
                       ),
                     ),
@@ -481,7 +554,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                         children: [
                           const Icon(Iconsax.pause_circle, size: 16),
                           const SizedBox(width: 6),
-                          Text('Incomplete (${_byStatus('incomplete').length})', style: TextStyle(fontWeight: FontWeight.w700, fontSize: isMobile ? 12.5 : 13.5)),
+                          Text('Incomplete (${_byStatus('incomplete').length})',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: isMobile ? 12.5 : 13.5)),
                         ],
                       ),
                     ),
@@ -492,7 +568,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                         children: [
                           const Icon(Iconsax.tick_circle, size: 16),
                           const SizedBox(width: 6),
-                          Text('Completed (${_byStatus('complete').length})', style: TextStyle(fontWeight: FontWeight.w700, fontSize: isMobile ? 12.5 : 13.5)),
+                          Text('Completed (${_byStatus('complete').length})',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: isMobile ? 12.5 : 13.5)),
                         ],
                       ),
                     ),
@@ -505,7 +584,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
               if (_loading)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 60),
-                  child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                  child: Center(
+                      child:
+                          CircularProgressIndicator(color: AppColors.primary)),
                 )
               else
                 SizedBox(
@@ -526,13 +607,17 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Iconsax.folder_open, size: 48, color: context.textSecondary),
+                                Icon(Iconsax.folder_open,
+                                    size: 48, color: context.textSecondary),
                                 const SizedBox(height: 12),
                                 Text(
                                   _searchQuery.isNotEmpty
                                       ? 'No ${_statusLabels[e.key].toLowerCase()} projects match "$_searchQuery"'
                                       : 'No ${_statusLabels[e.key].toLowerCase()} projects found.',
-                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary),
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: context.textPrimary),
                                 ),
                               ],
                             ),
@@ -548,7 +633,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                             await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => ProjectDetailScreen(project: list[i]),
+                                builder: (_) =>
+                                    ProjectDetailScreen(project: list[i]),
                               ),
                             );
                             _loadProjects();
@@ -565,7 +651,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
     );
   }
 
-  Widget _buildTypeFilterChip(String key, String label, Color color, IconData icon) {
+  Widget _buildTypeFilterChip(
+      String key, String label, Color color, IconData icon) {
     final isSelected = _typeFilter == key;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
@@ -588,7 +675,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 14, color: isSelected ? color : AppColors.textSecondary),
+                Icon(icon,
+                    size: 14,
+                    color: isSelected ? color : AppColors.textSecondary),
                 const SizedBox(width: 6),
                 Text(
                   label,
@@ -606,9 +695,11 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
     );
   }
 
-  Widget _buildKpiCard(String title, String count, IconData icon, Color color, bool isMobile) {
+  Widget _buildKpiCard(
+      String title, String count, IconData icon, Color color, bool isMobile) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 14, vertical: isMobile ? 10 : 14),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 8 : 14, vertical: isMobile ? 10 : 14),
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(16),
@@ -773,7 +864,8 @@ class _ProjectCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: _typeColor(type).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
@@ -790,13 +882,17 @@ class _ProjectCard extends StatelessWidget {
                   ],
                 ),
 
-                if (project["description"] != null && (project["description"] as String).isNotEmpty) ...[
+                if (project["description"] != null &&
+                    (project["description"] as String).isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(
                     project["description"],
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.3),
+                    style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.textSecondary,
+                        height: 1.3),
                   ),
                 ],
 
@@ -825,7 +921,10 @@ class _ProjectCard extends StatelessWidget {
                     const SizedBox(width: 12),
                     Text(
                       "$completion%",
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: context.textPrimary),
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: context.textPrimary),
                     ),
                   ],
                 ),
@@ -835,17 +934,22 @@ class _ProjectCard extends StatelessWidget {
                   children: [
                     Text(
                       "${taskCounts["done"] ?? 0}/${taskCounts["total"] ?? 0} Tasks Completed",
-                      style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                      style: const TextStyle(
+                          fontSize: 11.5, color: AppColors.textSecondary),
                     ),
                     if (budget != null && budget.toString().isNotEmpty)
                       Text(
                         "Budget: NPR $budget",
-                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.success),
+                        style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.success),
                       )
                     else if (estHours != null && estHours.toString().isNotEmpty)
                       Text(
                         "Est: $estHours ${type == 'monthly' ? 'months' : type == 'daily' ? 'days' : 'hrs'}",
-                        style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                            fontSize: 11.5, color: AppColors.textSecondary),
                       ),
                   ],
                 ),
@@ -860,19 +964,28 @@ class _ProjectCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(Iconsax.people, size: 14, color: AppColors.primary),
+                        const Icon(Iconsax.people,
+                            size: 14, color: AppColors.primary),
                         const SizedBox(width: 6),
                         Text(
                           "${assignments.length} Team Members",
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: context.textPrimary),
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: context.textPrimary),
                         ),
                       ],
                     ),
                     const Row(
                       children: [
-                        Text('View Project', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                        Text('View Project',
+                            style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary)),
                         SizedBox(width: 4),
-                        Icon(Icons.chevron_right, size: 16, color: AppColors.primary),
+                        Icon(Icons.chevron_right,
+                            size: 16, color: AppColors.primary),
                       ],
                     ),
                   ],
@@ -891,7 +1004,8 @@ class _CreateProjectDialog extends ConsumerStatefulWidget {
   const _CreateProjectDialog();
 
   @override
-  ConsumerState<_CreateProjectDialog> createState() => _CreateProjectDialogState();
+  ConsumerState<_CreateProjectDialog> createState() =>
+      _CreateProjectDialogState();
 }
 
 class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
@@ -928,8 +1042,10 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
 
   Future<void> _loadEmployees() async {
     try {
-      final res = await ApiService().get("${AppConstants.organizationBase}/employees/");
-      final data = (res.data is List ? res.data : (res.data["results"] ?? [])) as List;
+      final res =
+          await ApiService().get("${AppConstants.organizationBase}/employees/");
+      final data =
+          (res.data is List ? res.data : (res.data["results"] ?? [])) as List;
       if (mounted) setState(() => _allEmployees = data);
     } catch (_) {}
   }
@@ -959,24 +1075,33 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
         "title": _titleCtrl.text.trim(),
         "description": _descCtrl.text.trim(),
         "project_type": _projectType,
-        if (_budgetCtrl.text.isNotEmpty) "total_budget": _budgetCtrl.text.trim(),
-        if (_estHoursCtrl.text.isNotEmpty) "estimated_hours": _estHoursCtrl.text.trim(),
+        if (_budgetCtrl.text.isNotEmpty)
+          "total_budget": _budgetCtrl.text.trim(),
+        if (_estHoursCtrl.text.isNotEmpty)
+          "estimated_hours": _estHoursCtrl.text.trim(),
         "assign_members": assignMembers,
       };
 
-      final res = await ApiService().post("${AppConstants.projectsBase}/", data: payload);
+      final res = await ApiService()
+          .post("${AppConstants.projectsBase}/", data: payload);
 
-      if (_attachments.isNotEmpty && res.data != null && res.data['id'] != null) {
+      if (_attachments.isNotEmpty &&
+          res.data != null &&
+          res.data['id'] != null) {
         final projectId = res.data['id'];
         final formData = FormData();
         for (final file in _attachments) {
           if (file.bytes != null) {
-            formData.files.add(MapEntry("files", MultipartFile.fromBytes(file.bytes!, filename: file.name)));
+            formData.files.add(MapEntry("files",
+                MultipartFile.fromBytes(file.bytes!, filename: file.name)));
           } else if (file.path != null) {
-            formData.files.add(MapEntry("files", await MultipartFile.fromFile(file.path!, filename: file.name)));
+            formData.files.add(MapEntry("files",
+                await MultipartFile.fromFile(file.path!, filename: file.name)));
           }
         }
-        await ApiService().post("${AppConstants.projectsBase}/$projectId/files/", data: formData);
+        await ApiService().post(
+            "${AppConstants.projectsBase}/$projectId/files/",
+            data: formData);
       }
 
       if (mounted) Navigator.pop(context, true);
@@ -999,7 +1124,8 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
         color: context.surface,
         borderRadius: BorderRadius.circular(28),
       ),
-      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+          24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -1018,7 +1144,8 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                           color: AppColors.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Iconsax.folder_add, color: AppColors.primary, size: 22),
+                        child: const Icon(Iconsax.folder_add,
+                            color: AppColors.primary, size: 22),
                       ),
                       const SizedBox(width: 12),
                       Column(
@@ -1026,11 +1153,15 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                         children: [
                           Text(
                             'Create Project',
-                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: context.textPrimary),
+                            style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: context.textPrimary),
                           ),
                           const Text(
                             'Define billing structure, budget & team allocation',
-                            style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                            style: TextStyle(
+                                fontSize: 11.5, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -1054,7 +1185,9 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                   hintText: 'e.g. Mobile Banking App v2',
                   prefixIcon: Icon(Iconsax.briefcase, size: 18),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? "Title is required" : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? "Title is required"
+                    : null,
               ),
               const SizedBox(height: 12),
 
@@ -1077,9 +1210,12 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                   prefixIcon: Icon(Iconsax.card, size: 18),
                 ),
                 items: const [
-                  DropdownMenuItem(value: "monthly", child: Text("💼 Monthly Retainer")),
-                  DropdownMenuItem(value: "daily", child: Text("📅 Daily Rate Billing")),
-                  DropdownMenuItem(value: "hourly", child: Text("⚡ Hourly Billing")),
+                  DropdownMenuItem(
+                      value: "monthly", child: Text("💼 Monthly Retainer")),
+                  DropdownMenuItem(
+                      value: "daily", child: Text("📅 Daily Rate Billing")),
+                  DropdownMenuItem(
+                      value: "hourly", child: Text("⚡ Hourly Billing")),
                 ],
                 onChanged: (v) => setState(() => _projectType = v!),
               ),
@@ -1098,7 +1234,8 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                                 : "Est. Hours",
                         prefixIcon: const Icon(Iconsax.timer, size: 18),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1110,7 +1247,8 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                         prefixText: "NPR ",
                         prefixIcon: Icon(Iconsax.money_recive, size: 18),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                     ),
                   ),
                 ],
@@ -1126,7 +1264,8 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                     : "${_attachments.length} file(s) selected"),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 44),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
               const SizedBox(height: 16),
@@ -1144,21 +1283,29 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Iconsax.people, size: 16, color: AppColors.primary),
+                        const Icon(Iconsax.people,
+                            size: 16, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(
                           "Assign Team Members & Set Rates",
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: context.textPrimary),
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: context.textPrimary),
                         ),
                       ],
                     ),
                     const SizedBox(height: 10),
                     if (_allEmployees.isEmpty)
-                      const Text("Loading team members...", style: TextStyle(fontSize: 12, color: AppColors.textSecondary))
+                      const Text("Loading team members...",
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary))
                     else
                       ..._allEmployees.map((emp) {
                         final id = emp["id"] as int;
-                        final name = "${emp["user"]?["first_name"] ?? ""} ${emp["user"]?["last_name"] ?? ""}".trim();
+                        final name =
+                            "${emp["user"]?["first_name"] ?? ""} ${emp["user"]?["last_name"] ?? ""}"
+                                .trim();
                         final isSelected = _selectedRoles.containsKey(id);
 
                         return Padding(
@@ -1172,7 +1319,8 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                                   setState(() {
                                     if (v == true) {
                                       _selectedRoles[id] = "junior";
-                                      _rateControllers[id] = TextEditingController();
+                                      _rateControllers[id] =
+                                          TextEditingController();
                                     } else {
                                       _selectedRoles.remove(id);
                                       _rateControllers[id]?.dispose();
@@ -1184,7 +1332,11 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                               Expanded(
                                 child: Text(
                                   name.isEmpty ? "Employee #$id" : name,
-                                  style: TextStyle(fontSize: 13, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal),
                                 ),
                               ),
                               if (isSelected && _projectType != "monthly") ...[
@@ -1194,12 +1346,18 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                                   child: TextField(
                                     controller: _rateControllers[id],
                                     decoration: InputDecoration(
-                                      labelText: _projectType == "hourly" ? "Rate/hr" : "Rate/day",
+                                      labelText: _projectType == "hourly"
+                                          ? "Rate/hr"
+                                          : "Rate/day",
                                       prefixText: "NPR ",
                                       isDense: true,
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 8),
                                     ),
-                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                            decimal: true),
                                   ),
                                 ),
                               ],
@@ -1212,10 +1370,17 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                                     isExpanded: true,
                                     underline: const SizedBox(),
                                     items: const [
-                                      DropdownMenuItem(value: "senior", child: Text("Senior", style: TextStyle(fontSize: 12))),
-                                      DropdownMenuItem(value: "junior", child: Text("Junior", style: TextStyle(fontSize: 12))),
+                                      DropdownMenuItem(
+                                          value: "senior",
+                                          child: Text("Senior",
+                                              style: TextStyle(fontSize: 12))),
+                                      DropdownMenuItem(
+                                          value: "junior",
+                                          child: Text("Junior",
+                                              style: TextStyle(fontSize: 12))),
                                     ],
-                                    onChanged: (v) => setState(() => _selectedRoles[id] = v!),
+                                    onChanged: (v) =>
+                                        setState(() => _selectedRoles[id] = v!),
                                   ),
                                 ),
                               ],
@@ -1234,23 +1399,33 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                 height: 48,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
-                  gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
+                  gradient: const LinearGradient(
+                      colors: [AppColors.primary, AppColors.primaryDark]),
                 ),
                 child: ElevatedButton(
                   onPressed: _saving ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                   child: _saving
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
                       : const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Iconsax.folder_add, size: 16, color: Colors.white),
+                            Icon(Iconsax.folder_add,
+                                size: 16, color: Colors.white),
                             SizedBox(width: 8),
-                            Text('Create Project', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                            Text('Create Project',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800)),
                           ],
                         ),
                 ),

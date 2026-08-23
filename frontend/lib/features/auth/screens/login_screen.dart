@@ -69,13 +69,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               const Icon(Iconsax.warning_2, color: Colors.white, size: 20),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(error ?? 'Login failed. Please check your credentials.'),
+                child: Text(
+                    error ?? 'Login failed. Please check your credentials.'),
               ),
             ],
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: const EdgeInsets.all(20),
         ),
       );
@@ -131,7 +133,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             child: Center(
               child: SingleChildScrollView(
                 physics: const ClampingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
                 child: FadeTransition(
                   opacity: _fadeAnim,
                   child: SlideTransition(
@@ -140,14 +143,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 460),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 38),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 36, vertical: 38),
                           decoration: BoxDecoration(
                             color: context.surface,
                             borderRadius: BorderRadius.circular(28),
-                            border: Border.all(color: context.border, width: 1.2),
+                            border:
+                                Border.all(color: context.border, width: 1.2),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                                color: Colors.black
+                                    .withValues(alpha: isDark ? 0.35 : 0.06),
                                 blurRadius: 36,
                                 offset: const Offset(0, 16),
                               ),
@@ -207,7 +213,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 ),
                 const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
@@ -246,7 +253,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           // Session Expired Banner (if redirected due to inactivity / off-hours)
           Builder(
             builder: (ctx) {
-              final sessionExpiredMsg = ref.watch(sessionExpiredMessageProvider);
+              final sessionExpiredMsg =
+                  ref.watch(sessionExpiredMessageProvider);
               if (sessionExpiredMsg == null) return const SizedBox.shrink();
               return Container(
                 margin: const EdgeInsets.only(bottom: 20),
@@ -293,7 +301,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color: context.textPrimary.withValues(alpha: 0.85),
+                              color:
+                                  context.textPrimary.withValues(alpha: 0.85),
                               height: 1.3,
                             ),
                           ),
@@ -302,7 +311,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     ),
                     const SizedBox(width: 6),
                     InkWell(
-                      onTap: () => ref.read(sessionExpiredMessageProvider.notifier).state = null,
+                      onTap: () => ref
+                          .read(sessionExpiredMessageProvider.notifier)
+                          .state = null,
                       borderRadius: BorderRadius.circular(12),
                       child: Padding(
                         padding: const EdgeInsets.all(4),
@@ -465,7 +476,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           ),
                         ),
                         SizedBox(width: 8),
-                        Icon(Iconsax.arrow_right_3, size: 18, color: Colors.white),
+                        Icon(Iconsax.arrow_right_3,
+                            size: 18, color: Colors.white),
                       ],
                     ),
             ),
@@ -549,7 +561,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     color: AppColors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Iconsax.key, color: AppColors.primary, size: 22),
+                  child: const Icon(Iconsax.key,
+                      color: AppColors.primary, size: 22),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -595,11 +608,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 decoration: BoxDecoration(
                   color: AppColors.success.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                  border: Border.all(
+                      color: AppColors.success.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Iconsax.tick_circle, color: AppColors.success, size: 20),
+                    const Icon(Iconsax.tick_circle,
+                        color: AppColors.success, size: 20),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -633,7 +648,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           if (ctx.mounted) {
                             ScaffoldMessenger.of(ctx).showSnackBar(
                               const SnackBar(
-                                content: Text('Please enter a valid email address'),
+                                content:
+                                    Text('Please enter a valid email address'),
                                 backgroundColor: AppColors.error,
                               ),
                             );
@@ -656,8 +672,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           if (ctx.mounted) {
                             ScaffoldMessenger.of(ctx).showSnackBar(
                               SnackBar(
-                                content:
-                                    Text('Error: ${ApiService.getErrorMessage(e)}'),
+                                content: Text(
+                                    'Error: ${ApiService.getErrorMessage(e)}'),
                                 backgroundColor: AppColors.error,
                               ),
                             );

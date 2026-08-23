@@ -15,7 +15,8 @@ String _fmtDate(String? raw, {String? fallback}) {
   final s = raw ?? fallback!;
   try {
     if (s.contains('T')) {
-      return NepaliDateFormat('dd MMMM yyyy').format(DateTime.parse(s).toNepaliDateTime());
+      return NepaliDateFormat('dd MMMM yyyy')
+          .format(DateTime.parse(s).toNepaliDateTime());
     }
     return NepaliDateFormat('dd MMMM yyyy').format(NepaliDateTime.parse(s));
   } catch (_) {
@@ -57,7 +58,9 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
       final res = await ApiService().get(AppConstants.noticesEndpoint);
       if (!mounted) return;
       setState(() {
-        _notices = res.data is List ? res.data as List : ((res.data['results'] ?? res.data) as List);
+        _notices = res.data is List
+            ? res.data as List
+            : ((res.data['results'] ?? res.data) as List);
         _loading = false;
       });
     } catch (_) {
@@ -103,7 +106,8 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
   void _showNoticeDetail(BuildContext ctx, Map n, bool isAdmin) {
     final desc = n['description'] ?? n['content'] ?? '';
     final cleanDesc = desc.replaceAll(RegExp(r'<[^>]*>'), '').trim();
-    final dateStr = _fmtDate(n['date']?.toString(), fallback: n['created_at']?.toString());
+    final dateStr =
+        _fmtDate(n['date']?.toString(), fallback: n['created_at']?.toString());
 
     showModalBottomSheet(
       context: ctx,
@@ -123,18 +127,23 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Iconsax.calendar, size: 14, color: AppColors.primary),
+                      const Icon(Iconsax.calendar,
+                          size: 14, color: AppColors.primary),
                       const SizedBox(width: 6),
                       Text(
                         dateStr,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.primary),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary),
                       ),
                     ],
                   ),
@@ -160,7 +169,9 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
             Divider(color: context.border),
             const SizedBox(height: 16),
             SelectableText(
-              cleanDesc.isNotEmpty ? cleanDesc : 'No further content published for this notice.',
+              cleanDesc.isNotEmpty
+                  ? cleanDesc
+                  : 'No further content published for this notice.',
               style: TextStyle(
                 fontSize: 14.5,
                 height: 1.7,
@@ -180,15 +191,20 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                   CircleAvatar(
                     radius: 16,
                     backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                    child: const Icon(Iconsax.verify, color: AppColors.primary, size: 18),
+                    child: const Icon(Iconsax.verify,
+                        color: AppColors.primary, size: 18),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Official Corporate Broadcast', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-                        Text('Published by Management / Human Resources', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        Text('Official Corporate Broadcast',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 13)),
+                        Text('Published by Management / Human Resources',
+                            style: TextStyle(
+                                fontSize: 11, color: AppColors.textSecondary)),
                       ],
                     ),
                   ),
@@ -203,19 +219,24 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                     context: ctx,
                     builder: (dCtx) => AlertDialog(
                       title: const Text('Delete Notice'),
-                      content: const Text('Are you sure you want to remove this announcement?'),
+                      content: const Text(
+                          'Are you sure you want to remove this announcement?'),
                       actions: [
-                        TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('Cancel')),
+                        TextButton(
+                            onPressed: () => Navigator.pop(dCtx, false),
+                            child: const Text('Cancel')),
                         TextButton(
                           onPressed: () => Navigator.pop(dCtx, true),
-                          child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+                          child: const Text('Delete',
+                              style: TextStyle(color: AppColors.error)),
                         ),
                       ],
                     ),
                   );
                   if (confirm == true) {
                     try {
-                      await ApiService().delete('${AppConstants.noticesEndpoint}${n['id']}/');
+                      await ApiService()
+                          .delete('${AppConstants.noticesEndpoint}${n['id']}/');
                       if (ctx.mounted) {
                         Navigator.pop(ctx);
                         _loadNotices();
@@ -223,12 +244,16 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                     } catch (_) {}
                   }
                 },
-                icon: const Icon(Iconsax.trash, size: 16, color: AppColors.error),
-                label: const Text('Delete Notice', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+                icon:
+                    const Icon(Iconsax.trash, size: 16, color: AppColors.error),
+                label: const Text('Delete Notice',
+                    style: TextStyle(
+                        color: AppColors.error, fontWeight: FontWeight.bold)),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 44),
                   side: const BorderSide(color: AppColors.error),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ],
@@ -248,7 +273,8 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
     final filteredNotices = _notices.where((n) {
       if (_searchQuery.isEmpty) return true;
       final title = (n['title'] ?? '').toString().toLowerCase();
-      final desc = (n['description'] ?? n['content'] ?? '').toString().toLowerCase();
+      final desc =
+          (n['description'] ?? n['content'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
       return title.contains(query) || desc.contains(query);
     }).toList();
@@ -260,10 +286,12 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
               onPressed: () => _showCreateNotice(context),
               backgroundColor: AppColors.primary,
               elevation: 6,
-              icon: const Icon(Iconsax.add_circle, color: Colors.white, size: 20),
+              icon:
+                  const Icon(Iconsax.add_circle, color: Colors.white, size: 20),
               label: const Text(
                 'Post Notice',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
               ),
             )
           : null,
@@ -288,7 +316,8 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                       border: Border.all(color: context.border, width: 1),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                          color: Colors.black
+                              .withValues(alpha: isDark ? 0.25 : 0.04),
                           blurRadius: 18,
                           offset: const Offset(0, 4),
                         ),
@@ -302,11 +331,13 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                             Container(
                               padding: EdgeInsets.all(isTight ? 9 : 12),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Icon(Iconsax.notification_bing,
-                                  color: AppColors.primary, size: isTight ? 20 : 24),
+                                  color: AppColors.primary,
+                                  size: isTight ? 20 : 24),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -326,9 +357,11 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                                   ),
                                   const SizedBox(width: 8),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 7, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.12),
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
@@ -357,13 +390,18 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                               const SizedBox(width: 10),
                               ElevatedButton.icon(
                                 onPressed: () => _showCreateNotice(context),
-                                icon: const Icon(Iconsax.add_circle, size: 18, color: Colors.white),
+                                icon: const Icon(Iconsax.add_circle,
+                                    size: 18, color: Colors.white),
                                 label: const Text('Post Notice',
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold)),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
-                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 18, vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14)),
                                 ),
                               ),
                             ],
@@ -372,7 +410,9 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                         const SizedBox(height: 6),
                         Text(
                           'Official circulars, holiday announcements & corporate updates',
-                          style: TextStyle(fontSize: isTight ? 11.5 : 12, color: AppColors.textSecondary),
+                          style: TextStyle(
+                              fontSize: isTight ? 11.5 : 12,
+                              color: AppColors.textSecondary),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
@@ -416,209 +456,180 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                     ],
                   ),
 
-              const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-              // ── Search Bar ───────────────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: context.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: context.border, width: 1),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search notices by title, date, or keywords...',
-                    prefixIcon: const Icon(Iconsax.search_normal, size: 20),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Iconsax.close_circle, size: 18),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                          )
-                        : null,
-                  ),
-                  onChanged: (v) => setState(() => _searchQuery = v),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // ── Notices Grid / List ──────────────────────────────────────
-              if (_loading)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 60),
-                  child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                )
-              else if (filteredNotices.isEmpty)
-                Container(
-                  padding: const EdgeInsets.all(40),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: context.surface,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: context.border),
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(Iconsax.notification_1, size: 48, color: AppColors.textSecondary),
-                      const SizedBox(height: 12),
-                      Text(
-                        _searchQuery.isNotEmpty ? 'No notices matching "$_searchQuery"' : 'No announcements published yet.',
-                        style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: context.textPrimary),
+                  // ── Search Bar ───────────────────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: context.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: context.border, width: 1),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Search notices by title, date, or keywords...',
+                        prefixIcon: const Icon(Iconsax.search_normal, size: 20),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon:
+                                    const Icon(Iconsax.close_circle, size: 18),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Check back later for company updates and circulars.',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                      ),
-                    ],
+                      onChanged: (v) => setState(() => _searchQuery = v),
+                    ),
                   ),
-                )
-              else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredNotices.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (ctx, i) {
-                    final n = filteredNotices[i];
-                    final desc = n['description'] ?? n['content'] ?? '';
-                    final cleanDesc = desc.replaceAll(RegExp(r'<[^>]*>'), '').trim();
-                    final dateStr = _fmtDate(n['date']?.toString(), fallback: n['created_at']?.toString());
 
-                    return Container(
+                  const SizedBox(height: 20),
+
+                  // ── Notices Grid / List ──────────────────────────────────────
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 60),
+                      child: Center(
+                          child: CircularProgressIndicator(
+                              color: AppColors.primary)),
+                    )
+                  else if (filteredNotices.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(40),
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: context.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: context.border, width: 1),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                            blurRadius: 12,
-                            offset: const Offset(0, 3),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: context.border),
+                      ),
+                      child: Column(
+                        children: [
+                          const Icon(Iconsax.notification_1,
+                              size: 48, color: AppColors.textSecondary),
+                          const SizedBox(height: 12),
+                          Text(
+                            _searchQuery.isNotEmpty
+                                ? 'No notices matching "$_searchQuery"'
+                                : 'No announcements published yet.',
+                            style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700,
+                                color: context.textPrimary),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Check back later for company updates and circulars.',
+                            style: TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: () => _showNoticeDetail(ctx, n, isAdmin),
-                          child: Padding(
-                            padding: EdgeInsets.all(isTight ? 14 : 18),
-                            child: isTight
-                                ? Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.primary.withValues(alpha: 0.1),
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(Iconsax.calendar_1, size: 13, color: AppColors.primary),
-                                                const SizedBox(width: 5),
-                                                Text(
-                                                  dateStr,
-                                                  style: const TextStyle(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w800,
-                                                    color: AppColors.primary,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const Icon(Icons.arrow_forward_ios, size: 13, color: AppColors.textSecondary),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Text(
-                                        n['title'] ?? 'Notice',
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: -0.2,
-                                          color: context.textPrimary,
-                                        ),
-                                      ),
-                                      if (cleanDesc.isNotEmpty) ...[
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          cleanDesc,
-                                          style: const TextStyle(
-                                            fontSize: 12.5,
-                                            color: AppColors.textSecondary,
-                                            height: 1.4,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ],
-                                  )
-                                : Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      // Left: Date Block
-                                      Container(
-                                        constraints: const BoxConstraints(minWidth: 120),
-                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(alpha: 0.08),
-                                          borderRadius: BorderRadius.circular(14),
-                                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.16)),
-                                        ),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(Iconsax.calendar_1, size: 18, color: AppColors.primary),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              dateStr,
-                                              style: const TextStyle(
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.w800,
-                                                color: AppColors.primary,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 18),
+                    )
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: filteredNotices.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (ctx, i) {
+                        final n = filteredNotices[i];
+                        final desc = n['description'] ?? n['content'] ?? '';
+                        final cleanDesc =
+                            desc.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+                        final dateStr = _fmtDate(n['date']?.toString(),
+                            fallback: n['created_at']?.toString());
 
-                                      // Center: Title & Excerpt
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              n['title'] ?? 'Notice',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w800,
-                                                letterSpacing: -0.2,
-                                                color: context.textPrimary,
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: context.border, width: 1),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black
+                                    .withValues(alpha: isDark ? 0.2 : 0.03),
+                                blurRadius: 12,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => _showNoticeDetail(ctx, n, isAdmin),
+                              child: Padding(
+                                padding: EdgeInsets.all(isTight ? 14 : 18),
+                                child: isTight
+                                    ? Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 9,
+                                                        vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.primary
+                                                      .withValues(alpha: 0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    const Icon(
+                                                        Iconsax.calendar_1,
+                                                        size: 13,
+                                                        color:
+                                                            AppColors.primary),
+                                                    const SizedBox(width: 5),
+                                                    Text(
+                                                      dateStr,
+                                                      style: const TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color:
+                                                            AppColors.primary,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                              const Icon(
+                                                  Icons.arrow_forward_ios,
+                                                  size: 13,
+                                                  color:
+                                                      AppColors.textSecondary),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                            n['title'] ?? 'Notice',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: -0.2,
+                                              color: context.textPrimary,
                                             ),
-                                            const SizedBox(height: 5),
+                                          ),
+                                          if (cleanDesc.isNotEmpty) ...[
+                                            const SizedBox(height: 6),
                                             Text(
-                                              cleanDesc.isNotEmpty ? cleanDesc : 'Tap to read full corporate announcement details...',
+                                              cleanDesc,
                                               style: const TextStyle(
-                                                fontSize: 13,
+                                                fontSize: 12.5,
                                                 color: AppColors.textSecondary,
                                                 height: 1.4,
                                               ),
@@ -626,52 +637,135 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                           ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-
-                                      // Right: View Notice Action Button
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                                        decoration: BoxDecoration(
-                                          color: context.card,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: context.border),
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              'View Notice',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w700,
-                                                color: AppColors.primary,
-                                              ),
+                                        ],
+                                      )
+                                    : Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          // Left: Date Block
+                                          Container(
+                                            constraints: const BoxConstraints(
+                                                minWidth: 120),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 14, vertical: 10),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primary
+                                                  .withValues(alpha: 0.08),
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                              border: Border.all(
+                                                  color: AppColors.primary
+                                                      .withValues(alpha: 0.16)),
                                             ),
-                                            SizedBox(width: 6),
-                                            Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.primary),
-                                          ],
-                                        ),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(Iconsax.calendar_1,
+                                                    size: 18,
+                                                    color: AppColors.primary),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  dateStr,
+                                                  style: const TextStyle(
+                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: AppColors.primary,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 18),
+
+                                          // Center: Title & Excerpt
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  n['title'] ?? 'Notice',
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w800,
+                                                    letterSpacing: -0.2,
+                                                    color: context.textPrimary,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                const SizedBox(height: 5),
+                                                Text(
+                                                  cleanDesc.isNotEmpty
+                                                      ? cleanDesc
+                                                      : 'Tap to read full corporate announcement details...',
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    color:
+                                                        AppColors.textSecondary,
+                                                    height: 1.4,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 16),
+
+                                          // Right: View Notice Action Button
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 14, vertical: 9),
+                                            decoration: BoxDecoration(
+                                              color: context.card,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                  color: context.border),
+                                            ),
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  'View Notice',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: AppColors.primary,
+                                                  ),
+                                                ),
+                                                SizedBox(width: 6),
+                                                Icon(
+                                                    Icons.arrow_forward_rounded,
+                                                    size: 14,
+                                                    color: AppColors.primary),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-            ],
-          ),
-        );
-      },
-    ),
-  ),
-);
+                        );
+                      },
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 
-  Widget _buildKpiCard(String title, String count, IconData icon, Color color, bool isTight) {
+  Widget _buildKpiCard(
+      String title, String count, IconData icon, Color color, bool isTight) {
     if (isTight) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
@@ -681,7 +775,8 @@ class _NoticeboardScreenState extends ConsumerState<NoticeboardScreen> {
           border: Border.all(color: context.border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.03),
+              color:
+                  Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.03),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -807,7 +902,8 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
   void initState() {
     super.initState();
     final now = NepaliDateTime.now();
-    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final todayStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     _date = todayStr;
     _dateCtrl.text = todayStr;
   }
@@ -863,7 +959,8 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -909,7 +1006,8 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
                           color: AppColors.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Iconsax.notification_bing, color: AppColors.primary, size: 22),
+                        child: const Icon(Iconsax.notification_bing,
+                            color: AppColors.primary, size: 22),
                       ),
                       const SizedBox(width: 12),
                       Column(
@@ -917,11 +1015,15 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
                         children: [
                           Text(
                             'Post Company Notice',
-                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: context.textPrimary),
+                            style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: context.textPrimary),
                           ),
                           const Text(
                             'Broadcast official updates to all staff',
-                            style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                            style: TextStyle(
+                                fontSize: 11.5, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -937,18 +1039,18 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
               const SizedBox(height: 16),
               Divider(color: context.border),
               const SizedBox(height: 16),
-
               TextFormField(
                 decoration: const InputDecoration(
                   labelText: 'Notice Title *',
                   hintText: 'e.g. Office Closure for Dashain Festival',
                   prefixIcon: Icon(Iconsax.document_text, size: 18),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Notice title is required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Notice title is required'
+                    : null,
                 onSaved: (v) => _title = v ?? '',
               ),
               const SizedBox(height: 12),
-
               TextFormField(
                 controller: _dateCtrl,
                 readOnly: true,
@@ -960,41 +1062,51 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
                 onTap: _pickDate,
               ),
               const SizedBox(height: 12),
-
               TextFormField(
                 maxLines: 5,
                 decoration: const InputDecoration(
                   labelText: 'Notice Content / Body *',
-                  hintText: 'Provide full announcement details, directives, or schedules...',
+                  hintText:
+                      'Provide full announcement details, directives, or schedules...',
                   alignLabelWithHint: true,
                   prefixIcon: Icon(Iconsax.note_text, size: 18),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Content is required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Content is required'
+                    : null,
                 onSaved: (v) => _description = v ?? '',
               ),
               const SizedBox(height: 22),
-
               Container(
                 height: 48,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
-                  gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
+                  gradient: const LinearGradient(
+                      colors: [AppColors.primary, AppColors.primaryDark]),
                 ),
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                   child: _isLoading
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
                       : const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Iconsax.send_1, size: 16, color: Colors.white),
                             SizedBox(width: 8),
-                            Text('Publish Notice Now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                            Text('Publish Notice Now',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800)),
                           ],
                         ),
                 ),

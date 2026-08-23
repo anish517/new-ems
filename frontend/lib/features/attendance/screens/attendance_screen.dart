@@ -93,7 +93,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   int _selectedAdminTab = 0;
   Timer? _autoActionTimer;
   bool _autoInFlight = false;
-  bool _hasPromptedAutoAttendance = true; // start true so we don't auto-prompt before data loads
+  bool _hasPromptedAutoAttendance =
+      true; // start true so we don't auto-prompt before data loads
 
   @override
   void initState() {
@@ -165,7 +166,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       bool isPM = timeStr.contains('PM');
       bool isAM = timeStr.contains('AM');
 
-      timeStr = timeStr.replaceAll(' AM', '').replaceAll(' PM', '').replaceAll('AM', '').replaceAll('PM', '').trim();
+      timeStr = timeStr
+          .replaceAll(' AM', '')
+          .replaceAll(' PM', '')
+          .replaceAll('AM', '')
+          .replaceAll('PM', '')
+          .trim();
       final parts = timeStr.split(':');
 
       int hour = int.parse(parts[0]);
@@ -179,7 +185,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       if (isPM && hour < 12) hour += 12;
       if (isAM && hour == 12) hour = 0;
 
-      final checkedInAt = DateTime(now.year, now.month, now.day, hour, minute, second);
+      final checkedInAt =
+          DateTime(now.year, now.month, now.day, hour, minute, second);
       if (now.hour < 17) return false;
       return now.difference(checkedInAt) >= const Duration(hours: 6);
     } catch (_) {
@@ -257,7 +264,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       setState(() {
         _isCheckedIn = false;
         _checkInTime = null;
-        _lastAction = 'Auto checked out at ${res.data['check_out_time'] ?? res.data['check_in_time']}';
+        _lastAction =
+            'Auto checked out at ${res.data['check_out_time'] ?? res.data['check_in_time']}';
       });
       _showSnack('✅ Auto checked-out — see you next time!', AppColors.success);
       await _loadStats();
@@ -291,7 +299,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
   Future<void> _loadTodayStatus() async {
     try {
-      final res = await ApiService().get('${AppConstants.attendanceBase}/today-status/');
+      final res = await ApiService()
+          .get('${AppConstants.attendanceBase}/today-status/');
       if (mounted) {
         setState(() {
           _isCheckedIn = res.data['is_checked_in'] == true;
@@ -316,10 +325,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     try {
       final user = ref.read(currentUserProvider);
       if (user?.employeeId == null) return;
-      final res = await ApiService().get('${AppConstants.attendanceBase}/list/');
+      final res =
+          await ApiService().get('${AppConstants.attendanceBase}/list/');
       if (!mounted) return;
-      final all = res.data is List ? res.data as List : (res.data['results'] ?? []);
-      final myLogs = all.where((a) => a['employee_id'] == user?.employeeId).toList();
+      final all =
+          res.data is List ? res.data as List : (res.data['results'] ?? []);
+      final myLogs =
+          all.where((a) => a['employee_id'] == user?.employeeId).toList();
       setState(() => _dailyHistory = myLogs);
     } catch (_) {}
   }
@@ -327,10 +339,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   Future<void> _loadEmployees() async {
     setState(() => _employeesLoading = true);
     try {
-      final res = await ApiService().get('${AppConstants.organizationBase}/employees/');
+      final res =
+          await ApiService().get('${AppConstants.organizationBase}/employees/');
       if (mounted) {
         setState(() {
-          _employees = res.data is List ? res.data : (res.data['results'] ?? []);
+          _employees =
+              res.data is List ? res.data : (res.data['results'] ?? []);
           _employeesLoading = false;
         });
       }
@@ -341,7 +355,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
   Future<void> _loadMyRemoteStatus() async {
     try {
-      final res = await ApiService().get('${AppConstants.attendanceBase}/remote-work-permission/me/');
+      final res = await ApiService()
+          .get('${AppConstants.attendanceBase}/remote-work-permission/me/');
       if (mounted) {
         setState(() {
           _hasRemotePermission = res.data['has_remote_permission'] == true;
@@ -355,8 +370,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   Future<void> _loadRemoteList() async {
     setState(() => _remoteLoading = true);
     try {
-      final res = await ApiService().get('${AppConstants.attendanceBase}/remote-work-permission/list/');
-      final reqRes = await ApiService().get('${AppConstants.attendanceBase}/remote-requests/');
+      final res = await ApiService()
+          .get('${AppConstants.attendanceBase}/remote-work-permission/list/');
+      final reqRes = await ApiService()
+          .get('${AppConstants.attendanceBase}/remote-requests/');
       if (mounted) {
         setState(() {
           _remoteEmployees = res.data is List ? res.data : [];
@@ -380,7 +397,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           'reason': reason,
         },
       );
-      _showSnack('✅ Remote work request submitted successfully!', AppColors.success);
+      _showSnack(
+          '✅ Remote work request submitted successfully!', AppColors.success);
       _loadRemoteList();
     } catch (e) {
       _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
@@ -402,9 +420,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
   Future<void> _loadMyCorrectionRequests() async {
     try {
-      final res = await ApiService().get('${AppConstants.attendanceBase}/correction-requests/');
+      final res = await ApiService()
+          .get('${AppConstants.attendanceBase}/correction-requests/');
       if (mounted) {
-        setState(() => _myCorrectionRequests = res.data is List ? res.data : (res.data['results'] ?? []));
+        setState(() => _myCorrectionRequests =
+            res.data is List ? res.data : (res.data['results'] ?? []));
       }
     } catch (_) {}
   }
@@ -412,10 +432,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   Future<void> _loadPendingCorrections() async {
     setState(() => _correctionLoading = true);
     try {
-      final res = await ApiService().get('${AppConstants.attendanceBase}/correction-requests/?status=pending');
+      final res = await ApiService().get(
+          '${AppConstants.attendanceBase}/correction-requests/?status=pending');
       if (mounted) {
         setState(() {
-          _pendingCorrectionRequests = res.data is List ? res.data : (res.data['results'] ?? []);
+          _pendingCorrectionRequests =
+              res.data is List ? res.data : (res.data['results'] ?? []);
           _correctionLoading = false;
         });
       }
@@ -427,14 +449,17 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   Future<void> _loadGeofenceSettings() async {
     setState(() => _geofenceLoading = true);
     try {
-      final res = await ApiService().get('${AppConstants.organizationBase}/settings/');
+      final res =
+          await ApiService().get('${AppConstants.organizationBase}/settings/');
       final d = res.data;
       if (mounted && d != null) {
         setState(() {
           final lat = d['office_latitude'];
           final lng = d['office_longitude'];
-          _officeLatCtrl.text = (lat != null && lat.toString() != 'null') ? '$lat' : '';
-          _officeLngCtrl.text = (lng != null && lng.toString() != 'null') ? '$lng' : '';
+          _officeLatCtrl.text =
+              (lat != null && lat.toString() != 'null') ? '$lat' : '';
+          _officeLngCtrl.text =
+              (lng != null && lng.toString() != 'null') ? '$lng' : '';
           _officeRadiusCtrl.text = '${d['allowed_attendance_radius'] ?? 100}';
           _enableInOffice = d['enable_in_office_attendance'] ?? true;
           _enableRemote = d['enable_remote_attendance'] ?? true;
@@ -454,7 +479,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         _officeLatCtrl.text = pos.latitude.toStringAsFixed(7);
         _officeLngCtrl.text = pos.longitude.toStringAsFixed(7);
       });
-      _showSnack('📍 Current GPS coordinates detected! Click "Save Geofence & Rules" to apply.', AppColors.success);
+      _showSnack(
+          '📍 Current GPS coordinates detected! Click "Save Geofence & Rules" to apply.',
+          AppColors.success);
     } catch (e) {
       _showSnack('Failed to get location: $e', AppColors.error);
     } finally {
@@ -468,7 +495,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       final payload = {
         'office_latitude': double.tryParse(_officeLatCtrl.text.trim()),
         'office_longitude': double.tryParse(_officeLngCtrl.text.trim()),
-        'allowed_attendance_radius': int.tryParse(_officeRadiusCtrl.text.trim()) ?? 100,
+        'allowed_attendance_radius':
+            int.tryParse(_officeRadiusCtrl.text.trim()) ?? 100,
         'enable_in_office_attendance': _enableInOffice,
         'enable_remote_attendance': _enableRemote,
       };
@@ -516,8 +544,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         '${AppConstants.attendanceBase}/correction-requests/',
         data: {
           'requested_date': date,
-          if (checkIn != null && checkIn.isNotEmpty) 'requested_check_in': checkIn,
-          if (checkOut != null && checkOut.isNotEmpty) 'requested_check_out': checkOut,
+          if (checkIn != null && checkIn.isNotEmpty)
+            'requested_check_in': checkIn,
+          if (checkOut != null && checkOut.isNotEmpty)
+            'requested_check_out': checkOut,
           'reason': reason,
         },
       );
@@ -528,7 +558,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     }
   }
 
-  Future<void> _actionCorrectionRequest(int id, String action, String adminNote) async {
+  Future<void> _actionCorrectionRequest(
+      int id, String action, String adminNote) async {
     try {
       await ApiService().patch(
         '${AppConstants.attendanceBase}/correction-requests/$id/action/',
@@ -541,7 +572,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     }
   }
 
-  void _showCorrectionRequestSheet({String? initialDate, String? initialCheckIn, String? initialCheckOut}) {
+  void _showCorrectionRequestSheet(
+      {String? initialDate, String? initialCheckIn, String? initialCheckOut}) {
     final dateCtrl = TextEditingController(text: initialDate ?? '');
     final checkInCtrl = TextEditingController(text: initialCheckIn ?? '');
     final checkOutCtrl = TextEditingController(text: initialCheckOut ?? '');
@@ -554,7 +586,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       useSafeArea: true,
       constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(
           isMobile ? 18 : 24,
@@ -575,17 +608,23 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       color: AppColors.primary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Iconsax.calendar_edit, color: AppColors.primary, size: 20),
+                    child: const Icon(Iconsax.calendar_edit,
+                        color: AppColors.primary, size: 20),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Request Attendance Correction',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: context.textPrimary),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  IconButton(icon: const Icon(Iconsax.close_circle, size: 20), onPressed: () => Navigator.pop(ctx)),
+                  IconButton(
+                      icon: const Icon(Iconsax.close_circle, size: 20),
+                      onPressed: () => Navigator.pop(ctx)),
                 ],
               ),
               const SizedBox(height: 6),
@@ -672,7 +711,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 maxLines: 3,
                 decoration: const InputDecoration(
                   labelText: 'Reason & Remarks *',
-                  hintText: 'Explain why attendance was missed or requires correction...',
+                  hintText:
+                      'Explain why attendance was missed or requires correction...',
                   prefixIcon: Icon(Iconsax.note_text, size: 18),
                 ),
               ),
@@ -682,14 +722,18 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 46),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 icon: const Icon(Iconsax.send_1, size: 18),
-                label: const Text('Submit Correction Request', style: TextStyle(fontWeight: FontWeight.w800)),
+                label: const Text('Submit Correction Request',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
                 onPressed: () {
                   if (dateCtrl.text.isEmpty || reasonCtrl.text.isEmpty) {
                     ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(content: Text('Date and Reason are required.'), backgroundColor: AppColors.error),
+                      const SnackBar(
+                          content: Text('Date and Reason are required.'),
+                          backgroundColor: AppColors.error),
                     );
                     return;
                   }
@@ -700,9 +744,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   if (inVal.isNotEmpty && outVal.isNotEmpty) {
                     try {
                       final inParts = inVal.split(':').map(int.parse).toList();
-                      final outParts = outVal.split(':').map(int.parse).toList();
-                      if (outParts[0] < inParts[0] && outParts[0] < 12 && inParts[0] >= 8) {
-                        outVal = '${(outParts[0] + 12).toString().padLeft(2, '0')}:${outParts.length > 1 ? outParts[1].toString().padLeft(2, '0') : '00'}:00';
+                      final outParts =
+                          outVal.split(':').map(int.parse).toList();
+                      if (outParts[0] < inParts[0] &&
+                          outParts[0] < 12 &&
+                          inParts[0] >= 8) {
+                        outVal =
+                            '${(outParts[0] + 12).toString().padLeft(2, '0')}:${outParts.length > 1 ? outParts[1].toString().padLeft(2, '0') : '00'}:00';
                       }
                     } catch (_) {}
                   }
@@ -730,10 +778,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     double? initialLng,
   }) async {
     final latCtrl = TextEditingController(
-      text: (initialLat != null && initialLat != 0.0) ? initialLat.toString() : '',
+      text: (initialLat != null && initialLat != 0.0)
+          ? initialLat.toString()
+          : '',
     );
     final lngCtrl = TextEditingController(
-      text: (initialLng != null && initialLng != 0.0) ? initialLng.toString() : '',
+      text: (initialLng != null && initialLng != 0.0)
+          ? initialLng.toString()
+          : '',
     );
     final formKey = GlobalKey<FormState>();
     bool fetchingGps = false;
@@ -743,7 +795,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(
               children: [
                 Container(
@@ -752,7 +805,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Iconsax.location, color: AppColors.primary, size: 20),
+                  child: const Icon(Iconsax.location,
+                      color: AppColors.primary, size: 20),
                 ),
                 const SizedBox(width: 10),
                 const Expanded(
@@ -772,7 +826,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   children: [
                     Text(
                       'Configure approved remote work coordinates for $employeeName. Remote attendance will be strictly verified within a 50m radius of these coordinates.',
-                      style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                      style: const TextStyle(
+                          fontSize: 12.5, color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: 16),
 
@@ -787,7 +842,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                 latCtrl.text = pos.latitude.toString();
                                 lngCtrl.text = pos.longitude.toString();
                               } catch (e) {
-                                _showSnack('❌ ${e.toString().replaceAll('Exception: ', '')}', AppColors.error);
+                                _showSnack(
+                                    '❌ ${e.toString().replaceAll('Exception: ', '')}',
+                                    AppColors.error);
                               } finally {
                                 setDialogState(() => fetchingGps = false);
                               }
@@ -796,15 +853,20 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                           ? const SizedBox(
                               width: 14,
                               height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: AppColors.primary),
                             )
                           : const Icon(Iconsax.gps, size: 16),
-                      label: Text(fetchingGps ? 'Fetching GPS...' : 'Auto-Fill Current Device GPS'),
+                      label: Text(fetchingGps
+                          ? 'Fetching GPS...'
+                          : 'Auto-Fill Current Device GPS'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
                         side: const BorderSide(color: AppColors.primary),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -812,17 +874,23 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     // Latitude Field
                     TextFormField(
                       controller: latCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true, signed: true),
                       decoration: InputDecoration(
                         labelText: 'Latitude *',
                         hintText: 'e.g. 27.717245',
                         prefixIcon: const Icon(Iconsax.location, size: 18),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       validator: (val) {
-                        if (val == null || val.trim().isEmpty) return 'Latitude is required';
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Latitude is required';
+                        }
                         final num = double.tryParse(val.trim());
-                        if (num == null || num < -90 || num > 90) return 'Enter a valid latitude (-90 to 90)';
+                        if (num == null || num < -90 || num > 90) {
+                          return 'Enter a valid latitude (-90 to 90)';
+                        }
                         return null;
                       },
                     ),
@@ -831,17 +899,23 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     // Longitude Field
                     TextFormField(
                       controller: lngCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true, signed: true),
                       decoration: InputDecoration(
                         labelText: 'Longitude *',
                         hintText: 'e.g. 85.324060',
                         prefixIcon: const Icon(Iconsax.location, size: 18),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       validator: (val) {
-                        if (val == null || val.trim().isEmpty) return 'Longitude is required';
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Longitude is required';
+                        }
                         final num = double.tryParse(val.trim());
-                        if (num == null || num < -180 || num > 180) return 'Enter a valid longitude (-180 to 180)';
+                        if (num == null || num < -180 || num > 180) {
+                          return 'Enter a valid longitude (-180 to 180)';
+                        }
                         return null;
                       },
                     ),
@@ -866,18 +940,25 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       '${AppConstants.attendanceBase}/remote-work-permission/set/$employeeId/',
                       data: {'latitude': lat, 'longitude': lng},
                     );
-                    _showSnack('✅ Remote GPS location saved for $employeeName!', AppColors.success);
+                    _showSnack('✅ Remote GPS location saved for $employeeName!',
+                        AppColors.success);
                     _loadRemoteList();
                   } catch (e) {
-                    _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
+                    _showSnack(
+                        '❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
                   }
                 },
-                icon: const Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
-                label: const Text('Save Coordinates', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                icon: const Icon(Iconsax.tick_circle,
+                    size: 16, color: Colors.white),
+                label: const Text('Save Coordinates',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ],
@@ -911,7 +992,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       }
     }
     if (perm == LocationPermission.deniedForever) {
-      throw Exception('Location permission permanently denied. Please enable it in browser/system settings.');
+      throw Exception(
+          'Location permission permanently denied. Please enable it in browser/system settings.');
     }
     return await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
@@ -923,7 +1005,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     // Guard: prevent double-tap or re-entry while a request is in flight
     if (_isLoading || _isCheckedIn) {
       if (_isCheckedIn) {
-        _showSnack('⚠️ You are already checked in. Please check out first.', AppColors.warning);
+        _showSnack('⚠️ You are already checked in. Please check out first.',
+            AppColors.warning);
       }
       return;
     }
@@ -932,9 +1015,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirm Check In'),
-        content: const Text('Ready to capture verification selfie and clock in?'),
+        content:
+            const Text('Ready to capture verification selfie and clock in?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
@@ -962,7 +1048,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       final formData = FormData.fromMap({
         'latitude': pos.latitude.toString(),
         'longitude': pos.longitude.toString(),
-        'photo': MultipartFile.fromBytes(await image.readAsBytes(), filename: 'checkin.jpg'),
+        'photo': MultipartFile.fromBytes(await image.readAsBytes(),
+            filename: 'checkin.jpg'),
       });
 
       final res = await ApiService().uploadFile(AppConstants.checkIn, formData);
@@ -978,12 +1065,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     } catch (e) {
       if (!mounted) return;
       final msg = ApiService.getErrorMessage(e);
-      if (msg.toLowerCase().contains('cannot check in again') || msg.toLowerCase().contains('without checking out')) {
+      if (msg.toLowerCase().contains('cannot check in again') ||
+          msg.toLowerCase().contains('without checking out')) {
         // Server says already checked in — sync the UI state to reflect reality
         setState(() => _isCheckedIn = true);
-        _showSnack('⚠️ You are already checked in. Please check out first.', AppColors.warning);
+        _showSnack('⚠️ You are already checked in. Please check out first.',
+            AppColors.warning);
         await _loadTodayStatus();
-      } else if (msg.toLowerCase().contains('not within the office radius') || msg.toLowerCase().contains('50m radius')) {
+      } else if (msg.toLowerCase().contains('not within the office radius') ||
+          msg.toLowerCase().contains('50m radius')) {
         _showSnack(
           '⚠️ You must be within the office GPS geofence. Request remote permission from your admin if working remotely.',
           AppColors.warning,
@@ -1003,11 +1093,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         title: const Text('Confirm Check Out'),
         content: const Text('Confirm you want to clock out for today?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Check Out', style: TextStyle(color: Colors.white)),
+            child:
+                const Text('Check Out', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1031,10 +1124,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       final formData = FormData.fromMap({
         'latitude': pos.latitude.toString(),
         'longitude': pos.longitude.toString(),
-        'photo': MultipartFile.fromBytes(await image.readAsBytes(), filename: 'checkout.jpg'),
+        'photo': MultipartFile.fromBytes(await image.readAsBytes(),
+            filename: 'checkout.jpg'),
       });
 
-      final res = await ApiService().uploadFile(AppConstants.checkOut, formData);
+      final res =
+          await ApiService().uploadFile(AppConstants.checkOut, formData);
       if (!mounted) return;
       setState(() {
         _isCheckedIn = false;
@@ -1086,11 +1181,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           _officeLngCtrl.text = pos.longitude.toStringAsFixed(7);
         });
       }
-      _showSnack('✅ Office Location geofence configured successfully!', AppColors.success);
+      _showSnack('✅ Office Location geofence configured successfully!',
+          AppColors.success);
       // Reload settings from server to ensure full sync
       await _loadGeofenceSettings();
     } catch (e) {
-      _showSnack('❌ Failed to set office location: ${ApiService.getErrorMessage(e)}', AppColors.error);
+      _showSnack(
+          '❌ Failed to set office location: ${ApiService.getErrorMessage(e)}',
+          AppColors.error);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -1107,7 +1205,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       backgroundColor: context.bg,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 24, vertical: 16),
+          padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 12 : 24, vertical: 16),
           child: SizedBox(
             width: double.infinity,
             child: Column(
@@ -1123,7 +1222,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     border: Border.all(color: context.border),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                        color: Colors.black
+                            .withValues(alpha: isDark ? 0.25 : 0.04),
                         blurRadius: 18,
                         offset: const Offset(0, 4),
                       ),
@@ -1138,18 +1238,22 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                                    color: const Color(0xFF10B981)
+                                        .withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(16),
                                   ),
-                                  child: const Icon(Iconsax.clock, color: Color(0xFF10B981), size: 24),
+                                  child: const Icon(Iconsax.clock,
+                                      color: Color(0xFF10B981), size: 24),
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Wrap(
-                                        crossAxisAlignment: WrapCrossAlignment.center,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
                                         spacing: 8,
                                         runSpacing: 4,
                                         children: [
@@ -1163,17 +1267,26 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                             ),
                                           ),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: (_isCheckedIn ? AppColors.success : const Color(0xFFF59E0B)).withValues(alpha: 0.12),
-                                              borderRadius: BorderRadius.circular(8),
+                                              color: (_isCheckedIn
+                                                      ? AppColors.success
+                                                      : const Color(0xFFF59E0B))
+                                                  .withValues(alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: Text(
-                                              _isCheckedIn ? '● Checked In' : '● Not Checked In',
+                                              _isCheckedIn
+                                                  ? '● Checked In'
+                                                  : '● Not Checked In',
                                               style: TextStyle(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w700,
-                                                color: _isCheckedIn ? AppColors.success : const Color(0xFFF59E0B),
+                                                color: _isCheckedIn
+                                                    ? AppColors.success
+                                                    : const Color(0xFFF59E0B),
                                               ),
                                             ),
                                           ),
@@ -1182,7 +1295,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                       const SizedBox(height: 3),
                                       const Text(
                                         'High-accuracy GPS verification & daily worklogs',
-                                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -1204,16 +1319,22 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                     onTap: () => _showCorrectionRequestSheet(),
                                     borderRadius: BorderRadius.circular(12),
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 8),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(alpha: 0.1),
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: AppColors.primary, width: 1.2),
+                                        border: Border.all(
+                                            color: AppColors.primary,
+                                            width: 1.2),
                                       ),
                                       child: const Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Iconsax.calendar_edit, size: 15, color: AppColors.primary),
+                                          Icon(Iconsax.calendar_edit,
+                                              size: 15,
+                                              color: AppColors.primary),
                                           SizedBox(width: 6),
                                           Text(
                                             'Correction Request',
@@ -1232,16 +1353,21 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                   Material(
                                     color: Colors.transparent,
                                     child: InkWell(
-                                      onTap: _isLoading ? null : _setOfficeLocation,
+                                      onTap: _isLoading
+                                          ? null
+                                          : _setOfficeLocation,
                                       borderRadius: BorderRadius.circular(12),
                                       child: Container(
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
                                           color: context.card,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: context.border),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border:
+                                              Border.all(color: context.border),
                                         ),
-                                        child: const Icon(Iconsax.location_add, size: 18),
+                                        child: const Icon(Iconsax.location_add,
+                                            size: 18),
                                       ),
                                     ),
                                   ),
@@ -1255,9 +1381,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                       decoration: BoxDecoration(
                                         color: context.card,
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: context.border),
+                                        border:
+                                            Border.all(color: context.border),
                                       ),
-                                      child: const Icon(Iconsax.refresh, size: 18),
+                                      child:
+                                          const Icon(Iconsax.refresh, size: 18),
                                     ),
                                   ),
                                 ),
@@ -1270,10 +1398,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                                color: const Color(0xFF10B981)
+                                    .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Icon(Iconsax.clock, color: Color(0xFF10B981), size: 24),
+                              child: const Icon(Iconsax.clock,
+                                  color: Color(0xFF10B981), size: 24),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -1294,17 +1424,26 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                       ),
                                       const SizedBox(width: 8),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: (_isCheckedIn ? AppColors.success : const Color(0xFFF59E0B)).withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: (_isCheckedIn
+                                                  ? AppColors.success
+                                                  : const Color(0xFFF59E0B))
+                                              .withValues(alpha: 0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
                                         child: Text(
-                                          _isCheckedIn ? '● Checked In' : '● Not Checked In',
+                                          _isCheckedIn
+                                              ? '● Checked In'
+                                              : '● Not Checked In',
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w700,
-                                            color: _isCheckedIn ? AppColors.success : const Color(0xFFF59E0B),
+                                            color: _isCheckedIn
+                                                ? AppColors.success
+                                                : const Color(0xFFF59E0B),
                                           ),
                                         ),
                                       ),
@@ -1313,7 +1452,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                   const SizedBox(height: 3),
                                   const Text(
                                     'High-accuracy GPS verification & daily worklogs',
-                                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -1327,16 +1468,20 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                 onTap: () => _showCorrectionRequestSheet(),
                                 borderRadius: BorderRadius.circular(12),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 10),
                                   decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.1),
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: AppColors.primary, width: 1.2),
+                                    border: Border.all(
+                                        color: AppColors.primary, width: 1.2),
                                   ),
                                   child: const Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Iconsax.calendar_edit, size: 16, color: AppColors.primary),
+                                      Icon(Iconsax.calendar_edit,
+                                          size: 16, color: AppColors.primary),
                                       SizedBox(width: 8),
                                       Text(
                                         'Correction Request',
@@ -1360,9 +1505,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                   border: Border.all(color: context.border),
                                 ),
                                 child: IconButton(
-                                  icon: const Icon(Iconsax.location_add, size: 20),
-                                  tooltip: 'Set Office Coordinates to Current GPS',
-                                  onPressed: _isLoading ? null : _setOfficeLocation,
+                                  icon: const Icon(Iconsax.location_add,
+                                      size: 20),
+                                  tooltip:
+                                      'Set Office Coordinates to Current GPS',
+                                  onPressed:
+                                      _isLoading ? null : _setOfficeLocation,
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -1401,22 +1549,32 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       labelColor: AppColors.primary,
                       unselectedLabelColor: AppColors.textSecondary,
                       indicatorWeight: 3,
-                      labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                      labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 13.5),
                       tabs: [
                         const Tab(text: 'My Check-In Hub'),
                         Tab(text: 'Staff Logs (${_employees.length})'),
-                        Tab(text: 'Remote Access (${_pendingRemoteRequests.length} Pending)'),
-                        Tab(text: 'Corrections (${_pendingCorrectionRequests.length})'),
+                        Tab(
+                            text:
+                                'Remote Access (${_pendingRemoteRequests.length} Pending)'),
+                        Tab(
+                            text:
+                                'Corrections (${_pendingCorrectionRequests.length})'),
                         const Tab(text: 'Geofence & Rules'),
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
-                  if (_selectedAdminTab == 0) _buildCheckInUI(isMobile)
-                  else if (_selectedAdminTab == 1) _buildEmployeeGrid()
-                  else if (_selectedAdminTab == 2) _buildRemoteAccessTab()
-                  else if (_selectedAdminTab == 3) _buildAdminCorrectionTab()
-                  else if (_selectedAdminTab == 4) _buildGeofenceSettingsTab(isMobile),
+                  if (_selectedAdminTab == 0)
+                    _buildCheckInUI(isMobile)
+                  else if (_selectedAdminTab == 1)
+                    _buildEmployeeGrid()
+                  else if (_selectedAdminTab == 2)
+                    _buildRemoteAccessTab()
+                  else if (_selectedAdminTab == 3)
+                    _buildAdminCorrectionTab()
+                  else if (_selectedAdminTab == 4)
+                    _buildGeofenceSettingsTab(isMobile),
                 ] else
                   _buildCheckInUI(isMobile),
 
@@ -1485,7 +1643,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: (_isCheckedIn ? const Color(0xFF10B981) : AppColors.primary).withValues(alpha: 0.3),
+                  color: (_isCheckedIn
+                          ? const Color(0xFF10B981)
+                          : AppColors.primary)
+                      .withValues(alpha: 0.3),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -1507,7 +1668,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  _isCheckedIn ? 'Currently Clocked In' : 'Not Clocked In Today',
+                  _isCheckedIn
+                      ? 'Currently Clocked In'
+                      : 'Not Clocked In Today',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -1526,20 +1689,33 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: _isCheckedIn ? const Color(0xFF047857) : AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                    foregroundColor: _isCheckedIn
+                        ? const Color(0xFF047857)
+                        : AppColors.primary,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 28, vertical: 16),
                     elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
-                  onPressed: _isLoading ? null : (_isCheckedIn ? _checkOut : _checkIn),
+                  onPressed:
+                      _isLoading ? null : (_isCheckedIn ? _checkOut : _checkIn),
                   icon: _isLoading
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : Icon(_isCheckedIn ? Iconsax.logout : Iconsax.login, size: 20),
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : Icon(_isCheckedIn ? Iconsax.logout : Iconsax.login,
+                          size: 20),
                   label: _isLoading
-                      ? const Text('Verifying location...', style: TextStyle(fontWeight: FontWeight.bold))
+                      ? const Text('Verifying location...',
+                          style: TextStyle(fontWeight: FontWeight.bold))
                       : Text(
-                          _isCheckedIn ? 'Clock Out Now' : 'Take Selfie & Clock In',
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+                          _isCheckedIn
+                              ? 'Clock Out Now'
+                              : 'Take Selfie & Clock In',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w900, fontSize: 15),
                         ),
                 ),
               ],
@@ -1557,12 +1733,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               ),
               child: Row(
                 children: [
-                  const Icon(Iconsax.info_circle, size: 18, color: AppColors.primary),
+                  const Icon(Iconsax.info_circle,
+                      size: 18, color: AppColors.primary),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       _lastAction!,
-                      style: TextStyle(color: context.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                          color: context.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -1576,10 +1756,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: (_hasRemotePermission! ? AppColors.success : const Color(0xFFF59E0B)).withValues(alpha: 0.1),
+                color: (_hasRemotePermission!
+                        ? AppColors.success
+                        : const Color(0xFFF59E0B))
+                    .withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: (_hasRemotePermission! ? AppColors.success : const Color(0xFFF59E0B)).withValues(alpha: 0.3),
+                  color: (_hasRemotePermission!
+                          ? AppColors.success
+                          : const Color(0xFFF59E0B))
+                      .withValues(alpha: 0.3),
                 ),
               ),
               child: isMobile
@@ -1589,9 +1775,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                         Row(
                           children: [
                             Icon(
-                              _hasRemotePermission! ? Iconsax.location_tick : Iconsax.location_cross,
+                              _hasRemotePermission!
+                                  ? Iconsax.location_tick
+                                  : Iconsax.location_cross,
                               size: 18,
-                              color: _hasRemotePermission! ? AppColors.success : const Color(0xFFF59E0B),
+                              color: _hasRemotePermission!
+                                  ? AppColors.success
+                                  : const Color(0xFFF59E0B),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -1604,7 +1794,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                 style: TextStyle(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w700,
-                                  color: _hasRemotePermission! ? AppColors.success : const Color(0xFFF59E0B),
+                                  color: _hasRemotePermission!
+                                      ? AppColors.success
+                                      : const Color(0xFFF59E0B),
                                 ),
                               ),
                             ),
@@ -1617,7 +1809,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                             TextButton.icon(
                               onPressed: () => _showCorrectionRequestSheet(),
                               icon: const Icon(Iconsax.calendar_edit, size: 14),
-                              label: const Text('Correction', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              label: const Text('Correction',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12)),
                             ),
                             const SizedBox(width: 4),
                             TextButton.icon(
@@ -1626,24 +1821,32 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                 showDialog(
                                   context: context,
                                   builder: (ctx) => AlertDialog(
-                                    title: Text(_hasRemotePermission! ? 'Update Remote Work Location' : 'Request Remote Work Approval'),
+                                    title: Text(_hasRemotePermission!
+                                        ? 'Update Remote Work Location'
+                                        : 'Request Remote Work Approval'),
                                     content: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         const Text(
                                           'This will snapshot your current GPS location and submit a remote work authorization request to your admin.',
-                                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.textSecondary),
                                         ),
                                         const SizedBox(height: 14),
                                         TextField(
                                           controller: ctrl,
-                                          decoration: const InputDecoration(labelText: 'Reason for remote work *'),
+                                          decoration: const InputDecoration(
+                                              labelText:
+                                                  'Reason for remote work *'),
                                           maxLines: 3,
                                         ),
                                       ],
                                     ),
                                     actions: [
-                                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                                      TextButton(
+                                          onPressed: () => Navigator.pop(ctx),
+                                          child: const Text('Cancel')),
                                       ElevatedButton(
                                         onPressed: () {
                                           if (ctrl.text.trim().isEmpty) return;
@@ -1656,8 +1859,18 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                   ),
                                 );
                               },
-                              icon: Icon(_hasRemotePermission! ? Iconsax.location_add : Iconsax.location, size: 14),
-                              label: Text(_hasRemotePermission! ? 'Update WFH' : 'Request WFH', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              icon: Icon(
+                                  _hasRemotePermission!
+                                      ? Iconsax.location_add
+                                      : Iconsax.location,
+                                  size: 14),
+                              label: Text(
+                                  _hasRemotePermission!
+                                      ? 'Update WFH'
+                                      : 'Request WFH',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12)),
                             ),
                           ],
                         ),
@@ -1670,9 +1883,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                           child: Row(
                             children: [
                               Icon(
-                                _hasRemotePermission! ? Iconsax.location_tick : Iconsax.location_cross,
+                                _hasRemotePermission!
+                                    ? Iconsax.location_tick
+                                    : Iconsax.location_cross,
                                 size: 18,
-                                color: _hasRemotePermission! ? AppColors.success : const Color(0xFFF59E0B),
+                                color: _hasRemotePermission!
+                                    ? AppColors.success
+                                    : const Color(0xFFF59E0B),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
@@ -1685,7 +1902,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                   style: TextStyle(
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w700,
-                                    color: _hasRemotePermission! ? AppColors.success : const Color(0xFFF59E0B),
+                                    color: _hasRemotePermission!
+                                        ? AppColors.success
+                                        : const Color(0xFFF59E0B),
                                   ),
                                 ),
                               ),
@@ -1699,7 +1918,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                             TextButton.icon(
                               onPressed: () => _showCorrectionRequestSheet(),
                               icon: const Icon(Iconsax.calendar_edit, size: 14),
-                              label: const Text('Correction', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              label: const Text('Correction',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12)),
                             ),
                             const SizedBox(width: 4),
                             TextButton.icon(
@@ -1708,24 +1930,32 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                 showDialog(
                                   context: context,
                                   builder: (ctx) => AlertDialog(
-                                    title: Text(_hasRemotePermission! ? 'Update Remote Work Location' : 'Request Remote Work Approval'),
+                                    title: Text(_hasRemotePermission!
+                                        ? 'Update Remote Work Location'
+                                        : 'Request Remote Work Approval'),
                                     content: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         const Text(
                                           'This will snapshot your current GPS location and submit a remote work authorization request to your admin.',
-                                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.textSecondary),
                                         ),
                                         const SizedBox(height: 14),
                                         TextField(
                                           controller: ctrl,
-                                          decoration: const InputDecoration(labelText: 'Reason for remote work *'),
+                                          decoration: const InputDecoration(
+                                              labelText:
+                                                  'Reason for remote work *'),
                                           maxLines: 3,
                                         ),
                                       ],
                                     ),
                                     actions: [
-                                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                                      TextButton(
+                                          onPressed: () => Navigator.pop(ctx),
+                                          child: const Text('Cancel')),
                                       ElevatedButton(
                                         onPressed: () {
                                           if (ctrl.text.trim().isEmpty) return;
@@ -1738,8 +1968,18 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                   ),
                                 );
                               },
-                              icon: Icon(_hasRemotePermission! ? Iconsax.location_add : Iconsax.location, size: 14),
-                              label: Text(_hasRemotePermission! ? 'Update WFH' : 'Request WFH', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              icon: Icon(
+                                  _hasRemotePermission!
+                                      ? Iconsax.location_add
+                                      : Iconsax.location,
+                                  size: 14),
+                              label: Text(
+                                  _hasRemotePermission!
+                                      ? 'Update WFH'
+                                      : 'Request WFH',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12)),
                             ),
                           ],
                         ),
@@ -1759,24 +1999,32 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 children: [
                   Text(
                     'Daily Attendance Logs',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: context.textPrimary),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        color: context.textPrimary),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${_dailyHistory.length} Sessions Logged',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ],
               ),
               OutlinedButton.icon(
                 onPressed: () => _showCorrectionRequestSheet(),
                 icon: const Icon(Iconsax.calendar_edit, size: 14),
-                label: const Text('Request Correction', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                label: const Text('Request Correction',
+                    style:
+                        TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   side: const BorderSide(color: AppColors.primary, width: 1.2),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ],
@@ -1792,10 +2040,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: context.border),
               ),
-              child: const Text('No attendance records logged for this period.', style: TextStyle(color: AppColors.textSecondary)),
+              child: const Text('No attendance records logged for this period.',
+                  style: TextStyle(color: AppColors.textSecondary)),
             )
           else
-            ..._dailyHistory.map((log) => _AttendanceLogTile(log: log, onTap: () => _showLogDetails(log))),
+            ..._dailyHistory.map((log) => _AttendanceLogTile(
+                log: log, onTap: () => _showLogDetails(log))),
 
           // My Correction Requests
           if (_myCorrectionRequests.isNotEmpty) ...[
@@ -1805,17 +2055,23 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               children: [
                 Text(
                   'My Correction Requests',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: context.textPrimary),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: context.textPrimary),
                 ),
                 TextButton.icon(
                   onPressed: () => _showCorrectionRequestSheet(),
                   icon: const Icon(Iconsax.add, size: 14),
-                  label: const Text('New Request', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  label: const Text('New Request',
+                      style:
+                          TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            ..._myCorrectionRequests.map((req) => _CorrectionRequestTile(req: req, isAdmin: false, onAction: null)),
+            ..._myCorrectionRequests.map((req) => _CorrectionRequestTile(
+                req: req, isAdmin: false, onAction: null)),
           ] else ...[
             const SizedBox(height: 20),
             Container(
@@ -1833,7 +2089,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Iconsax.calendar_edit, size: 18, color: AppColors.primary),
+                    child: const Icon(Iconsax.calendar_edit,
+                        size: 18, color: AppColors.primary),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1842,18 +2099,24 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       children: [
                         Text(
                           'Missed clock-in or have wrong logs?',
-                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: context.textPrimary),
+                          style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: context.textPrimary),
                         ),
                         const Text(
                           'Submit an attendance correction request to your admin',
-                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          style: TextStyle(
+                              fontSize: 11, color: AppColors.textSecondary),
                         ),
                       ],
                     ),
                   ),
                   TextButton(
                     onPressed: () => _showCorrectionRequestSheet(),
-                    child: const Text('Request', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                    child: const Text('Request',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 12)),
                   ),
                 ],
               ),
@@ -1874,7 +2137,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       useSafeArea: true,
       constraints: const BoxConstraints(maxWidth: 600),
       backgroundColor: context.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(24),
         child: SingleChildScrollView(
@@ -1888,68 +2152,90 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   Expanded(
                     child: Text(
                       'Attendance Log: ${_formatDate(log['date']?.toString())}',
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16.5, color: context.textPrimary),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16.5,
+                          color: context.textPrimary),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Iconsax.close_circle, size: 20)),
+                  IconButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      icon: const Icon(Iconsax.close_circle, size: 20)),
                 ],
               ),
               const SizedBox(height: 12),
               Divider(color: context.border),
               const SizedBox(height: 10),
-
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.success.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       'Check-In: ${formatTime(log['check_in_time']?.toString())}',
-                      style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w800, fontSize: 12),
+                      style: const TextStyle(
+                          color: AppColors.success,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       'Check-Out: ${formatTime(log['check_out_time']?.toString())}',
-                      style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w800, fontSize: 12),
+                      style: const TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 18),
-
-              if (log['history'] != null && (log['history'] as List).isNotEmpty) ...[
-                const Text('Multi-Session Timeline', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+              if (log['history'] != null &&
+                  (log['history'] as List).isNotEmpty) ...[
+                const Text('Multi-Session Timeline',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
                 const SizedBox(height: 8),
                 ...List.generate((log['history'] as List).length, (i) {
                   final h = log['history'][i];
                   return Container(
                     margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(color: context.card, borderRadius: BorderRadius.circular(10)),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                        color: context.card,
+                        borderRadius: BorderRadius.circular(10)),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Session #${i + 1}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
-                        Text('In: ${formatTime(h['in']?.toString())}  →  Out: ${formatTime(h['out']?.toString())}', style: const TextStyle(fontSize: 12)),
+                        Text('Session #${i + 1}',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700, fontSize: 12.5)),
+                        Text(
+                            'In: ${formatTime(h['in']?.toString())}  →  Out: ${formatTime(h['out']?.toString())}',
+                            style: const TextStyle(fontSize: 12)),
                       ],
                     ),
                   );
                 }),
                 const SizedBox(height: 18),
               ],
-
-              const Text('Selfie Verification Photos', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+              const Text('Selfie Verification Photos',
+                  style:
+                      TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -1957,8 +2243,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(14),
                       child: log['check_in_photo'] != null
-                          ? Image.network(log['check_in_photo'], height: 160, fit: BoxFit.cover)
-                          : Container(height: 120, color: context.card, alignment: Alignment.center, child: const Text('No Check-In Photo', style: TextStyle(fontSize: 11))),
+                          ? Image.network(log['check_in_photo'],
+                              height: 160, fit: BoxFit.cover)
+                          : Container(
+                              height: 120,
+                              color: context.card,
+                              alignment: Alignment.center,
+                              child: const Text('No Check-In Photo',
+                                  style: TextStyle(fontSize: 11))),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1966,14 +2258,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(14),
                       child: log['check_out_photo'] != null
-                          ? Image.network(log['check_out_photo'], height: 160, fit: BoxFit.cover)
-                          : Container(height: 120, color: context.card, alignment: Alignment.center, child: const Text('No Check-Out Photo', style: TextStyle(fontSize: 11))),
+                          ? Image.network(log['check_out_photo'],
+                              height: 160, fit: BoxFit.cover)
+                          : Container(
+                              height: 120,
+                              color: context.card,
+                              alignment: Alignment.center,
+                              child: const Text('No Check-Out Photo',
+                                  style: TextStyle(fontSize: 11))),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-
               ElevatedButton.icon(
                 onPressed: () {
                   Navigator.pop(ctx);
@@ -1983,10 +2280,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     try {
                       if (rawDate.contains('T')) {
                         final nd = DateTime.parse(rawDate).toNepaliDateTime();
-                        dateStr = '${nd.year}-${nd.month.toString().padLeft(2, '0')}-${nd.day.toString().padLeft(2, '0')}';
+                        dateStr =
+                            '${nd.year}-${nd.month.toString().padLeft(2, '0')}-${nd.day.toString().padLeft(2, '0')}';
                       } else {
                         final nd = NepaliDateTime.parse(rawDate);
-                        dateStr = '${nd.year}-${nd.month.toString().padLeft(2, '0')}-${nd.day.toString().padLeft(2, '0')}';
+                        dateStr =
+                            '${nd.year}-${nd.month.toString().padLeft(2, '0')}-${nd.day.toString().padLeft(2, '0')}';
                       }
                     } catch (_) {
                       dateStr = rawDate.split('T')[0];
@@ -1994,26 +2293,30 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   }
                   _showCorrectionRequestSheet(
                     initialDate: dateStr,
-                    initialCheckIn: formatTime(log['check_in_time']?.toString()),
-                    initialCheckOut: formatTime(log['check_out_time']?.toString()),
+                    initialCheckIn:
+                        formatTime(log['check_in_time']?.toString()),
+                    initialCheckOut:
+                        formatTime(log['check_out_time']?.toString()),
                   );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 44),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 icon: const Icon(Iconsax.calendar_edit, size: 16),
-                label: const Text('Request Correction for this Date', style: TextStyle(fontWeight: FontWeight.bold)),
+                label: const Text('Request Correction for this Date',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 8),
-
               OutlinedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 44),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text('Close Log Details'),
               ),
@@ -2035,7 +2338,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     }
 
     final filtered = _employees.where((e) {
-      final name = ('${e['user']?['first_name'] ?? ''} ${e['user']?['last_name'] ?? ''}').toLowerCase();
+      final name =
+          ('${e['user']?['first_name'] ?? ''} ${e['user']?['last_name'] ?? ''}')
+              .toLowerCase();
       return name.contains(_employeeSearch.toLowerCase());
     }).toList();
 
@@ -2068,7 +2373,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: context.border),
             ),
-            child: const Text('No matching employees found.', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text('No matching employees found.',
+                style: TextStyle(color: AppColors.textSecondary)),
           )
         else
           ResponsiveGridList(
@@ -2084,9 +2390,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               final user = emp['user'] as Map? ?? {};
               final firstName = user['first_name'] ?? '';
               final lastName = user['last_name'] ?? '';
-              final fullName = '$firstName $lastName'.trim().isEmpty ? 'Employee' : '$firstName $lastName'.trim();
+              final fullName = '$firstName $lastName'.trim().isEmpty
+                  ? 'Employee'
+                  : '$firstName $lastName'.trim();
               final avatar = user['profile_picture'] as String?;
-              final empType = (emp['employee_type'] as String? ?? '').replaceAll('_', ' ');
+              final empType =
+                  (emp['employee_type'] as String? ?? '').replaceAll('_', ' ');
               final empId = emp['id'] as int;
 
               return _EmployeeAttendanceCard(
@@ -2123,7 +2432,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_pendingRemoteRequests.isNotEmpty) ...[
-          Text('Pending Remote Requests', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary)),
+          Text('Pending Remote Requests',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: context.textPrimary)),
           const SizedBox(height: 12),
           ..._pendingRemoteRequests.map((req) {
             final lat = req['latitude'];
@@ -2134,7 +2447,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               decoration: BoxDecoration(
                 color: context.surface,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4), width: 1.5),
+                border: Border.all(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                    width: 1.5),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2142,45 +2457,64 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(req['employee_name'] ?? 'Employee', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: context.textPrimary)),
-                      Text('Requested: ${_formatRemoteDate(req['created_at']?.toString())}', style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
+                      Text(req['employee_name'] ?? 'Employee',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              color: context.textPrimary)),
+                      Text(
+                          'Requested: ${_formatRemoteDate(req['created_at']?.toString())}',
+                          style: const TextStyle(
+                              fontSize: 11.5, color: AppColors.textSecondary)),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text('Reason: "${req['reason']}"', style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
+                  Text('Reason: "${req['reason']}"',
+                      style: const TextStyle(
+                          fontSize: 13, fontStyle: FontStyle.italic)),
                   const SizedBox(height: 10),
                   // Coordinate badge + Map button
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                      border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.2)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Iconsax.location, size: 15, color: AppColors.primary),
+                        const Icon(Iconsax.location,
+                            size: 15, color: AppColors.primary),
                         const SizedBox(width: 6),
                         Text(
                           'GPS: ${lat ?? 'N/A'}, ${lng ?? 'N/A'}',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary),
                         ),
                         if (lat != null && lng != null) ...[
                           const SizedBox(width: 10),
                           InkWell(
                             onTap: () async {
-                              final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+                              final uri = Uri.parse(
+                                  'https://www.google.com/maps/search/?api=1&query=$lat,$lng');
                               if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                await launchUrl(uri,
+                                    mode: LaunchMode.externalApplication);
                               }
                             },
                             child: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Iconsax.map, size: 14, color: AppColors.primary),
+                                  Icon(Iconsax.map,
+                                      size: 14, color: AppColors.primary),
                                   SizedBox(width: 4),
                                   Text(
                                     'View Map',
@@ -2206,19 +2540,24 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          onTap: () => _actionRemoteRequest(req['id'], 'rejected'),
+                          onTap: () =>
+                              _actionRemoteRequest(req['id'], 'rejected'),
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                              color: const Color(0xFFEF4444)
+                                  .withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFFEF4444), width: 1.5),
+                              border: Border.all(
+                                  color: const Color(0xFFEF4444), width: 1.5),
                             ),
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Iconsax.close_circle, size: 16, color: Color(0xFFEF4444)),
+                                Icon(Iconsax.close_circle,
+                                    size: 16, color: Color(0xFFEF4444)),
                                 SizedBox(width: 6),
                                 Text(
                                   'Reject',
@@ -2237,16 +2576,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          onTap: () => _actionRemoteRequest(req['id'], 'approved'),
+                          onTap: () =>
+                              _actionRemoteRequest(req['id'], 'approved'),
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 10),
                             decoration: BoxDecoration(
                               color: const Color(0xFF10B981),
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                                  color: const Color(0xFF10B981)
+                                      .withValues(alpha: 0.35),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -2255,7 +2597,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Iconsax.tick_circle, size: 16, color: Colors.white),
+                                Icon(Iconsax.tick_circle,
+                                    size: 16, color: Colors.white),
                                 SizedBox(width: 6),
                                 Text(
                                   'Approve WFH',
@@ -2278,10 +2621,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           }),
           const SizedBox(height: 20),
         ],
-        Text('All Staff Remote Geofence Status', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary)),
+        Text('All Staff Remote Geofence Status',
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: context.textPrimary)),
         const SizedBox(height: 12),
         if (_remoteEmployees.isEmpty)
-          const Text('No employees found.', style: TextStyle(color: AppColors.textSecondary))
+          const Text('No employees found.',
+              style: TextStyle(color: AppColors.textSecondary))
         else
           ..._remoteEmployees.map((e) {
             final hasPermission = e['has_remote_permission'] == true;
@@ -2303,12 +2651,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: (hasPermission ? AppColors.success : AppColors.textSecondary).withValues(alpha: 0.12),
+                      color: (hasPermission
+                              ? AppColors.success
+                              : AppColors.textSecondary)
+                          .withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      hasPermission ? Iconsax.location_tick : Iconsax.location_cross,
-                      color: hasPermission ? AppColors.success : AppColors.textSecondary,
+                      hasPermission
+                          ? Iconsax.location_tick
+                          : Iconsax.location_cross,
+                      color: hasPermission
+                          ? AppColors.success
+                          : AppColors.textSecondary,
                       size: 18,
                     ),
                   ),
@@ -2319,7 +2674,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       children: [
                         Text(
                           e['employee_name'] ?? 'Staff Member',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: context.textPrimary),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                              color: context.textPrimary),
                         ),
                         const SizedBox(height: 4),
                         if (hasPermission) ...[
@@ -2329,16 +2687,21 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: AppColors.success.withValues(alpha: 0.1),
+                                  color:
+                                      AppColors.success.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                                  border: Border.all(
+                                      color: AppColors.success
+                                          .withValues(alpha: 0.3)),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Iconsax.location_tick, size: 13, color: AppColors.success),
+                                    const Icon(Iconsax.location_tick,
+                                        size: 13, color: AppColors.success),
                                     const SizedBox(width: 4),
                                     Text(
                                       (rLat != null && rLat != 0.0)
@@ -2358,27 +2721,35 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                         ] else ...[
                           const Text(
                             'Standard in-office geofence (50m radius)',
-                            style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                            style: TextStyle(
+                                fontSize: 11.5, color: AppColors.textSecondary),
                           ),
                         ],
                       ],
                     ),
                   ),
-                  if (hasPermission && rLat != null && rLng != null && rLat != 0.0) ...[
+                  if (hasPermission &&
+                      rLat != null &&
+                      rLng != null &&
+                      rLat != 0.0) ...[
                     IconButton(
-                      icon: const Icon(Iconsax.map, color: AppColors.primary, size: 20),
+                      icon: const Icon(Iconsax.map,
+                          color: AppColors.primary, size: 20),
                       tooltip: 'View location on Google Maps',
                       onPressed: () async {
-                        final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$rLat,$rLng');
+                        final uri = Uri.parse(
+                            'https://www.google.com/maps/search/?api=1&query=$rLat,$rLng');
                         if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          await launchUrl(uri,
+                              mode: LaunchMode.externalApplication);
                         }
                       },
                     ),
                   ],
                   if (hasPermission) ...[
                     IconButton(
-                      icon: const Icon(Iconsax.edit, color: AppColors.primary, size: 19),
+                      icon: const Icon(Iconsax.edit,
+                          color: AppColors.primary, size: 19),
                       tooltip: 'Edit remote coordinates',
                       onPressed: () => _showSetRemoteLocationDialog(
                         employeeId,
@@ -2388,13 +2759,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Iconsax.close_circle, color: AppColors.error, size: 20),
+                      icon: const Icon(Iconsax.close_circle,
+                          color: AppColors.error, size: 20),
                       tooltip: 'Revoke remote permission',
                       onPressed: () => _removeRemoteLocation(employeeId),
                     ),
                   ] else ...[
                     IconButton(
-                      icon: const Icon(Iconsax.location_add, color: AppColors.primary, size: 20),
+                      icon: const Icon(Iconsax.location_add,
+                          color: AppColors.primary, size: 20),
                       tooltip: 'Grant & enter remote GPS coordinates',
                       onPressed: () => _showSetRemoteLocationDialog(
                         employeeId,
@@ -2428,7 +2801,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: context.border),
         ),
-        child: const Text('No pending attendance correction requests.', style: TextStyle(color: AppColors.textSecondary)),
+        child: const Text('No pending attendance correction requests.',
+            style: TextStyle(color: AppColors.textSecondary)),
       );
     }
     return Column(
@@ -2436,7 +2810,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       children: [
         Text(
           'Pending Correction Requests (${_pendingCorrectionRequests.length})',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: context.textPrimary),
         ),
         const SizedBox(height: 12),
         ..._pendingCorrectionRequests.map(
@@ -2445,7 +2822,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             child: _CorrectionRequestTile(
               req: req,
               isAdmin: true,
-              onAction: (action, note) => _actionCorrectionRequest(req['id'] as int, action, note),
+              onAction: (action, note) =>
+                  _actionCorrectionRequest(req['id'] as int, action, note),
             ),
           ),
         ),
@@ -2498,7 +2876,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                             color: AppColors.primary.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Iconsax.location, color: AppColors.primary, size: 22),
+                          child: const Icon(Iconsax.location,
+                              color: AppColors.primary, size: 22),
                         ),
                         const SizedBox(width: 12),
                         Column(
@@ -2515,7 +2894,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                             const SizedBox(height: 2),
                             const Text(
                               'Define the physical GPS boundary for on-site staff clock-ins',
-                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              style: TextStyle(
+                                  fontSize: 12, color: AppColors.textSecondary),
                             ),
                           ],
                         ),
@@ -2523,16 +2903,27 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     ),
                     if (!isMobile)
                       OutlinedButton.icon(
-                        onPressed: _detectingOfficeLocation ? null : _detectOfficeLocation,
+                        onPressed: _detectingOfficeLocation
+                            ? null
+                            : _detectOfficeLocation,
                         icon: _detectingOfficeLocation
-                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
-                            : const Icon(Iconsax.gps, size: 16, color: AppColors.primary),
-                        label: const Text('Detect Current GPS', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: AppColors.primary))
+                            : const Icon(Iconsax.gps,
+                                size: 16, color: AppColors.primary),
+                        label: const Text('Detect Current GPS',
+                            style: TextStyle(
+                                fontSize: 12.5, fontWeight: FontWeight.w700)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.primary,
                           side: const BorderSide(color: AppColors.primary),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
                         ),
                       ),
                   ],
@@ -2542,15 +2933,25 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: _detectingOfficeLocation ? null : _detectOfficeLocation,
+                      onPressed: _detectingOfficeLocation
+                          ? null
+                          : _detectOfficeLocation,
                       icon: _detectingOfficeLocation
-                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
-                          : const Icon(Iconsax.gps, size: 16, color: AppColors.primary),
-                      label: const Text('Detect Current GPS Location', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: AppColors.primary))
+                          : const Icon(Iconsax.gps,
+                              size: 16, color: AppColors.primary),
+                      label: const Text('Detect Current GPS Location',
+                          style: TextStyle(
+                              fontSize: 12.5, fontWeight: FontWeight.w700)),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
                         side: const BorderSide(color: AppColors.primary),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                     ),
@@ -2564,7 +2965,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     Expanded(
                       child: TextField(
                         controller: _officeLatCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true, signed: true),
                         decoration: const InputDecoration(
                           labelText: 'Office Latitude *',
                           hintText: 'e.g. 27.717245',
@@ -2576,7 +2978,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     Expanded(
                       child: TextField(
                         controller: _officeLngCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true, signed: true),
                         decoration: const InputDecoration(
                           labelText: 'Office Longitude *',
                           hintText: 'e.g. 85.324056',
@@ -2603,10 +3006,21 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   children: [50, 100, 200, 500].map((r) {
                     final isSel = _officeRadiusCtrl.text == r.toString();
                     return ActionChip(
-                      label: Text('${r}m', style: TextStyle(fontSize: 12, fontWeight: isSel ? FontWeight.w800 : FontWeight.w600, color: isSel ? Colors.white : context.textPrimary)),
+                      label: Text('${r}m',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight:
+                                  isSel ? FontWeight.w800 : FontWeight.w600,
+                              color:
+                                  isSel ? Colors.white : context.textPrimary)),
                       backgroundColor: isSel ? AppColors.primary : context.card,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: isSel ? AppColors.primary : context.border)),
-                      onPressed: () => setState(() => _officeRadiusCtrl.text = r.toString()),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                              color:
+                                  isSel ? AppColors.primary : context.border)),
+                      onPressed: () =>
+                          setState(() => _officeRadiusCtrl.text = r.toString()),
                     );
                   }).toList(),
                 ),
@@ -2623,7 +3037,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               color: context.surface,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: context.border, width: 1),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03), blurRadius: 16, offset: const Offset(0, 4))],
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4))
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2632,16 +3051,27 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-                      child: const Icon(Iconsax.shield_tick, color: Color(0xFF10B981), size: 22),
+                      decoration: BoxDecoration(
+                          color:
+                              const Color(0xFF10B981).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(Iconsax.shield_tick,
+                          color: Color(0xFF10B981), size: 22),
                     ),
                     const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Attendance Enforcement Policies', style: TextStyle(fontSize: isMobile ? 15 : 17, fontWeight: FontWeight.w800, color: context.textPrimary)),
+                        Text('Attendance Enforcement Policies',
+                            style: TextStyle(
+                                fontSize: isMobile ? 15 : 17,
+                                fontWeight: FontWeight.w800,
+                                color: context.textPrimary)),
                         const SizedBox(height: 2),
-                        const Text('Master toggles governing how staff can clock in', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        const Text(
+                            'Master toggles governing how staff can clock in',
+                            style: TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary)),
                       ],
                     ),
                   ],
@@ -2650,8 +3080,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 Divider(color: context.border, height: 1),
                 const SizedBox(height: 8),
                 SwitchListTile(
-                  title: const Text('Enable In-Office Geofenced Attendance', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text('Enforces GPS radius check when clocking in on-site at the office', style: TextStyle(fontSize: 12)),
+                  title: const Text('Enable In-Office Geofenced Attendance',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  subtitle: const Text(
+                      'Enforces GPS radius check when clocking in on-site at the office',
+                      style: TextStyle(fontSize: 12)),
                   value: _enableInOffice,
                   onChanged: (v) => setState(() => _enableInOffice = v),
                   activeThumbColor: AppColors.primary,
@@ -2659,8 +3093,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 ),
                 const Divider(),
                 SwitchListTile(
-                  title: const Text('Enable Remote / WFH Attendance', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text('Master switch allowing staff with approved remote permissions to clock in', style: TextStyle(fontSize: 12)),
+                  title: const Text('Enable Remote / WFH Attendance',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  subtitle: const Text(
+                      'Master switch allowing staff with approved remote permissions to clock in',
+                      style: TextStyle(fontSize: 12)),
                   value: _enableRemote,
                   onChanged: (v) => setState(() => _enableRemote = v),
                   activeThumbColor: AppColors.primary,
@@ -2678,20 +3116,38 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             height: 50,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
-              boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
+              gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.primaryDark]),
+              boxShadow: [
+                BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4))
+              ],
             ),
             child: ElevatedButton(
               onPressed: _geofenceSaving ? null : _saveGeofenceSettings,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16))),
               child: _geofenceSaving
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
                   : const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Iconsax.save_2, size: 18, color: Colors.white),
                         SizedBox(width: 8),
-                        Text('Save Geofence & Rules', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                        Text('Save Geofence & Rules',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15)),
                       ],
                     ),
             ),
@@ -2720,7 +3176,13 @@ class _EmployeeAttendanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initials = name.trim().split(' ').map((w) => w.isNotEmpty ? w[0] : '').take(2).join().toUpperCase();
+    final initials = name
+        .trim()
+        .split(' ')
+        .map((w) => w.isNotEmpty ? w[0] : '')
+        .take(2)
+        .join()
+        .toUpperCase();
 
     return Container(
       decoration: BoxDecoration(
@@ -2741,9 +3203,14 @@ class _EmployeeAttendanceCard extends StatelessWidget {
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                  backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
+                  backgroundImage:
+                      avatarUrl != null ? NetworkImage(avatarUrl!) : null,
                   child: avatarUrl == null
-                      ? Text(initials, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 18))
+                      ? Text(initials,
+                          style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18))
                       : null,
                 ),
                 const SizedBox(height: 12),
@@ -2752,11 +3219,15 @@ class _EmployeeAttendanceCard extends StatelessWidget {
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: context.textPrimary),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: context.textPrimary),
                 ),
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: context.card,
                     borderRadius: BorderRadius.circular(8),
@@ -2764,11 +3235,16 @@ class _EmployeeAttendanceCard extends StatelessWidget {
                   ),
                   child: Text(
                     employeeType.isNotEmpty ? employeeType : 'Full Time',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary),
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary),
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text('Tap to view history →', style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary)),
+                const Text('Tap to view history →',
+                    style: TextStyle(
+                        fontSize: 10.5, color: AppColors.textSecondary)),
               ],
             ),
           ),
@@ -2816,7 +3292,8 @@ class _AttendanceLogTile extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: (checkedIn ? AppColors.success : AppColors.error).withValues(alpha: 0.12),
+                    color: (checkedIn ? AppColors.success : AppColors.error)
+                        .withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
@@ -2832,7 +3309,10 @@ class _AttendanceLogTile extends StatelessWidget {
                     children: [
                       Text(
                         _formatDate(log['date']?.toString()),
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: context.textPrimary),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14.5,
+                            color: context.textPrimary),
                       ),
                       const SizedBox(height: 4),
                       Wrap(
@@ -2841,14 +3321,30 @@ class _AttendanceLogTile extends StatelessWidget {
                         runSpacing: 2,
                         children: [
                           if (checkedIn) ...[
-                            Text('In: ${formatTime(log['check_in_time']?.toString())}', style: const TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w700)),
+                            Text(
+                                'In: ${formatTime(log['check_in_time']?.toString())}',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.success,
+                                    fontWeight: FontWeight.w700)),
                           ],
-                          if (checkedIn && checkedOut) const Text(' → ', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          if (checkedIn && checkedOut)
+                            const Text(' → ',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary)),
                           if (checkedOut) ...[
-                            Text('Out: ${formatTime(log['check_out_time']?.toString())}', style: const TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w700)),
+                            Text(
+                                'Out: ${formatTime(log['check_out_time']?.toString())}',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.w700)),
                           ],
                           if (!checkedIn) ...[
-                            const Text('Missed check-in', style: TextStyle(fontSize: 12, color: AppColors.error)),
+                            const Text('Missed check-in',
+                                style: TextStyle(
+                                    fontSize: 12, color: AppColors.error)),
                           ],
                         ],
                       ),
@@ -2858,16 +3354,24 @@ class _AttendanceLogTile extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('${hours.toStringAsFixed(1)}h', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                    Text('${hours.toStringAsFixed(1)}h',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900, fontSize: 16)),
                     if (isRemote)
                       Container(
                         margin: const EdgeInsets.only(top: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                          color:
+                              const Color(0xFFF59E0B).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text('Remote', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B))),
+                        child: const Text('Remote',
+                            style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFF59E0B))),
                       ),
                   ],
                 ),
@@ -3021,7 +3525,8 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
   @override
   void initState() {
     super.initState();
-    _noteCtrl = TextEditingController(text: widget.req['admin_note']?.toString() ?? '');
+    _noteCtrl =
+        TextEditingController(text: widget.req['admin_note']?.toString() ?? '');
   }
 
   @override
@@ -3059,7 +3564,8 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
         widget.req['employee']?['full_name']?.toString() ??
         widget.req['employee']?['name']?.toString() ??
         '';
-    final employeeName = (rawName.isNotEmpty && rawName != 'null') ? rawName : 'Employee';
+    final employeeName =
+        (rawName.isNotEmpty && rawName != 'null') ? rawName : 'Employee';
     final employeeEmail = widget.req['employee_email']?.toString();
     final requestedDate = widget.req['requested_date']?.toString() ?? '-';
     final checkIn = widget.req['requested_check_in']?.toString();
@@ -3075,7 +3581,9 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
         color: context.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isPending ? const Color(0xFFF59E0B).withValues(alpha: 0.35) : context.border,
+          color: isPending
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.35)
+              : context.border,
           width: isPending ? 1.5 : 1,
         ),
         boxShadow: [
@@ -3102,7 +3610,9 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                 child: Icon(
                   isPending
                       ? Iconsax.clock
-                      : (status == 'approved' ? Iconsax.tick_circle : Iconsax.close_circle),
+                      : (status == 'approved'
+                          ? Iconsax.tick_circle
+                          : Iconsax.close_circle),
                   color: _statusColor(status),
                   size: 20,
                 ),
@@ -3119,13 +3629,19 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                       children: [
                         Text(
                           employeeName,
-                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: context.textPrimary),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15,
+                              color: context.textPrimary),
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (employeeEmail != null && employeeEmail.isNotEmpty && employeeEmail != 'null')
+                        if (employeeEmail != null &&
+                            employeeEmail.isNotEmpty &&
+                            employeeEmail != 'null')
                           Text(
                             '($employeeEmail)',
-                            style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                            style: const TextStyle(
+                                fontSize: 11.5, color: AppColors.textSecondary),
                             overflow: TextOverflow.ellipsis,
                           ),
                       ],
@@ -3134,12 +3650,16 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Iconsax.calendar_1, size: 14, color: AppColors.textSecondary),
+                        const Icon(Iconsax.calendar_1,
+                            size: 14, color: AppColors.textSecondary),
                         const SizedBox(width: 5),
                         Flexible(
                           child: Text(
                             'Target Date: $requestedDate',
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5, color: context.textPrimary),
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12.5,
+                                color: context.textPrimary),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -3150,14 +3670,18 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: _statusColor(status).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   status.toUpperCase(),
-                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: _statusColor(status)),
+                  style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: _statusColor(status)),
                 ),
               ),
             ],
@@ -3184,11 +3708,15 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Iconsax.login, size: 16, color: AppColors.success),
+                        const Icon(Iconsax.login,
+                            size: 16, color: AppColors.success),
                         const SizedBox(width: 8),
                         Text(
                           'In: $checkIn',
-                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: context.textPrimary),
+                          style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: context.textPrimary),
                         ),
                       ],
                     ),
@@ -3196,11 +3724,15 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Iconsax.logout, size: 16, color: AppColors.primary),
+                        const Icon(Iconsax.logout,
+                            size: 16, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(
                           'Out: $checkOut',
-                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: context.textPrimary),
+                          style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: context.textPrimary),
                         ),
                       ],
                     ),
@@ -3222,7 +3754,8 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Iconsax.note_text, size: 16, color: AppColors.textSecondary),
+                const Icon(Iconsax.note_text,
+                    size: 16, color: AppColors.textSecondary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -3243,12 +3776,14 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
             const SizedBox(height: 10),
             Row(
               children: [
-                const Icon(Iconsax.info_circle, size: 14, color: AppColors.textSecondary),
+                const Icon(Iconsax.info_circle,
+                    size: 14, color: AppColors.textSecondary),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     'Admin note: $adminNote',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ),
               ],
@@ -3270,7 +3805,8 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                 filled: true,
                 fillColor: context.card,
                 prefixIcon: const Icon(Iconsax.edit_2, size: 16),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 14),
@@ -3283,19 +3819,23 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: _isProcessing ? null : () => _handleAction('rejected'),
+                    onTap:
+                        _isProcessing ? null : () => _handleAction('rejected'),
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 12),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEF4444).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFEF4444), width: 1.5),
+                        border: Border.all(
+                            color: const Color(0xFFEF4444), width: 1.5),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Iconsax.close_circle, size: 18, color: Color(0xFFEF4444)),
+                          Icon(Iconsax.close_circle,
+                              size: 18, color: Color(0xFFEF4444)),
                           SizedBox(width: 8),
                           Text(
                             'Reject Request',
@@ -3313,16 +3853,19 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: _isProcessing ? null : () => _handleAction('approved'),
+                    onTap:
+                        _isProcessing ? null : () => _handleAction('approved'),
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 22, vertical: 12),
                       decoration: BoxDecoration(
                         color: const Color(0xFF10B981),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                            color:
+                                const Color(0xFF10B981).withValues(alpha: 0.35),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -3335,13 +3878,17 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                             const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2.2, color: Colors.white),
                             )
                           else
-                            const Icon(Iconsax.tick_circle, size: 18, color: Colors.white),
+                            const Icon(Iconsax.tick_circle,
+                                size: 18, color: Colors.white),
                           const SizedBox(width: 8),
                           Text(
-                            _isProcessing ? 'Processing...' : 'Approve & Update Attendance',
+                            _isProcessing
+                                ? 'Processing...'
+                                : 'Approve & Update Attendance',
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w900,

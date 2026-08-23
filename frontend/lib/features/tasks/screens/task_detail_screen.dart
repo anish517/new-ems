@@ -9,8 +9,6 @@ import '../../../shared/utils/document_viewer_util.dart';
 import 'package:nepali_utils/nepali_utils.dart';
 import '../../auth/providers/auth_provider.dart';
 
-
-
 class TaskDetailScreen extends ConsumerStatefulWidget {
   final Map task;
   const TaskDetailScreen({super.key, required this.task});
@@ -36,15 +34,20 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       context: context,
       builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Delete Report", style: TextStyle(fontWeight: FontWeight.w800)),
-        content: const Text("Are you sure you want to permanently remove this progress log?"),
+        title: const Text("Delete Report",
+            style: TextStyle(fontWeight: FontWeight.w800)),
+        content: const Text(
+            "Are you sure you want to permanently remove this progress log?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text("Cancel")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.pop(dialogCtx, true),
             child: const Text("Delete"),
@@ -55,7 +58,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     if (confirm != true) return;
 
     try {
-      await ApiService().delete("${AppConstants.progressEndpoint}/${report["id"]}/");
+      await ApiService()
+          .delete("${AppConstants.progressEndpoint}/${report["id"]}/");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -87,7 +91,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           children: [
             Icon(Iconsax.trash, color: AppColors.error, size: 20),
             SizedBox(width: 8),
-            Text("Request Deletion", style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+            Text("Request Deletion",
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
           ],
         ),
         content: Form(
@@ -98,7 +103,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             children: [
               const Text(
                 "As an employee, deleting a progress report requires Super Admin approval. Please provide a mandatory reason for deletion:",
-                style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                style:
+                    TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 14),
               TextFormField(
@@ -106,8 +112,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 maxLines: 3,
                 decoration: InputDecoration(
                   labelText: "Reason for Deletion *",
-                  hintText: "e.g., Logged on incorrect date / duplicate entry...",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  hintText:
+                      "e.g., Logged on incorrect date / duplicate entry...",
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   alignLabelWithHint: true,
                 ),
                 validator: (v) {
@@ -129,7 +137,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () {
               if (formKey.currentState?.validate() == true) {
@@ -152,7 +161,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Deletion request submitted to Super Admin for approval."),
+            content:
+                Text("Deletion request submitted to Super Admin for approval."),
             backgroundColor: AppColors.success,
           ),
         );
@@ -173,17 +183,21 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       context: context,
       builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Approve Deletion", style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text("Approve Deletion",
+            style: TextStyle(fontWeight: FontWeight.w800)),
         content: Text(
           "Are you sure you want to approve this deletion request? The progress log will be permanently deleted.\n\nReason: \"${report["deletion_reason"] ?? ""}\"",
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text("Cancel")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.pop(dialogCtx, true),
             child: const Text("Approve & Delete"),
@@ -193,9 +207,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     );
     if (confirm != true) return;
 
-
     try {
-      await ApiService().post("${AppConstants.progressEndpoint}/${report["id"]}/approve-deletion/");
+      await ApiService().post(
+          "${AppConstants.progressEndpoint}/${report["id"]}/approve-deletion/");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -234,13 +248,16 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               controller: reasonCtrl,
               decoration: InputDecoration(
                 labelText: "Optional Note for Employee",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("Cancel")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -287,7 +304,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       );
       if (mounted) {
         setState(() {
-          _reports = (res.data is List ? res.data : (res.data["results"] ?? [])) as List;
+          _reports = (res.data is List ? res.data : (res.data["results"] ?? []))
+              as List;
         });
       }
     } catch (_) {
@@ -310,12 +328,14 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               children: [
                 const Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
                 const SizedBox(width: 10),
-                Text('Task status updated to ${newStatus.replaceAll('-', ' ').toUpperCase()}'),
+                Text(
+                    'Task status updated to ${newStatus.replaceAll('-', ' ').toUpperCase()}'),
               ],
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -387,11 +407,16 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             : const Color(0xFF10B981);
 
     final assignedTo = _task["assigned_to"];
-    final assignedName = (assignedTo is Map) ? (assignedTo["name"] ?? "Unassigned") : "Unassigned";
+    final assignedName = (assignedTo is Map)
+        ? (assignedTo["name"] ?? "Unassigned")
+        : "Unassigned";
     final proj = _task["project"];
-    final projName = proj is Map ? (proj["name"] ?? proj["title"] ?? "Project") : "General Project";
+    final projName = proj is Map
+        ? (proj["name"] ?? proj["title"] ?? "Project")
+        : "General Project";
     final rating = _task["rating"];
-    final hasPdf = _task["description_pdf"] != null && _task["description_pdf"].toString().isNotEmpty;
+    final hasPdf = _task["description_pdf"] != null &&
+        _task["description_pdf"].toString().isNotEmpty;
 
     return Scaffold(
       backgroundColor: context.bg,
@@ -404,10 +429,12 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           PopupMenuButton<String>(
             onSelected: _updateTaskStatus,
             icon: const Icon(Iconsax.edit_2, size: 20),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             itemBuilder: (_) => [
               const PopupMenuItem(value: "to-do", child: Text("Mark as To-Do")),
-              const PopupMenuItem(value: "in-progress", child: Text("Mark as In-Progress")),
+              const PopupMenuItem(
+                  value: "in-progress", child: Text("Mark as In-Progress")),
               const PopupMenuItem(value: "done", child: Text("Mark as Done")),
             ],
           ),
@@ -443,7 +470,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                       border: Border.all(color: context.border, width: 1),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: context.isDark ? 0.25 : 0.04),
+                          color: Colors.black
+                              .withValues(alpha: context.isDark ? 0.25 : 0.04),
                           blurRadius: 18,
                           offset: const Offset(0, 4),
                         ),
@@ -459,7 +487,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                 color: priorityColor.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8),
@@ -479,24 +508,32 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                                   const SizedBox(width: 5),
                                   Text(
                                     '${priority.toUpperCase()} PRIORITY',
-                                    style: TextStyle(color: priorityColor, fontSize: 11, fontWeight: FontWeight.w800),
+                                    style: TextStyle(
+                                        color: priorityColor,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800),
                                   ),
                                 ],
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                 color: AppColors.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 projName,
-                                style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w700),
+                                style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700),
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: context.card,
                                 borderRadius: BorderRadius.circular(8),
@@ -512,9 +549,11 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: _statusColor(taskStatus).withValues(alpha: 0.12),
+                                color: _statusColor(taskStatus)
+                                    .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -554,9 +593,15 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                           ),
                           child: Row(
                             children: [
-                              _buildStatusTab("To Do", "to-do", taskStatus == "to-do", AppColors.primary),
-                              _buildStatusTab("In Progress", "in-progress", taskStatus == "in-progress", AppColors.warning),
-                              _buildStatusTab("Completed", "done", taskStatus == "done", AppColors.success),
+                              _buildStatusTab("To Do", "to-do",
+                                  taskStatus == "to-do", AppColors.primary),
+                              _buildStatusTab(
+                                  "In Progress",
+                                  "in-progress",
+                                  taskStatus == "in-progress",
+                                  AppColors.warning),
+                              _buildStatusTab("Completed", "done",
+                                  taskStatus == "done", AppColors.success),
                             ],
                           ),
                         ),
@@ -575,8 +620,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 20,
-                                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                                child: const Icon(Iconsax.user, color: AppColors.primary, size: 20),
+                                backgroundColor:
+                                    AppColors.primary.withValues(alpha: 0.12),
+                                child: const Icon(Iconsax.user,
+                                    color: AppColors.primary, size: 20),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
@@ -585,30 +632,41 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                                   children: [
                                     const Text(
                                       "Assigned Employee",
-                                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textSecondary,
+                                          fontWeight: FontWeight.w600),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       assignedName,
-                                      style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: context.textPrimary),
+                                      style: TextStyle(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: context.textPrimary),
                                     ),
                                   ],
                                 ),
                               ),
                               if (isAdmin && rating != null) ...[
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: Colors.amber.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
                                     children: [
-                                      const Icon(Iconsax.star1, size: 14, color: Colors.amber),
+                                      const Icon(Iconsax.star1,
+                                          size: 14, color: Colors.amber),
                                       const SizedBox(width: 4),
                                       Text(
                                         "$rating/10 Score",
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.amber),
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.amber),
                                       ),
                                     ],
                                   ),
@@ -619,11 +677,15 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                         ),
 
                         // Description
-                        if (_task["description"] != null && (_task["description"] as String).isNotEmpty) ...[
+                        if (_task["description"] != null &&
+                            (_task["description"] as String).isNotEmpty) ...[
                           const SizedBox(height: 16),
                           Text(
                             "Description & Deliverable Scope",
-                            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: context.textPrimary),
+                            style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: context.textPrimary),
                           ),
                           const SizedBox(height: 8),
                           Container(
@@ -635,8 +697,13 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                               border: Border.all(color: context.border),
                             ),
                             child: Text(
-                              _task["description"].toString().replaceAll(RegExp(r"<[^>]*>"), ""),
-                              style: TextStyle(fontSize: 13.5, color: context.textPrimary, height: 1.5),
+                              _task["description"]
+                                  .toString()
+                                  .replaceAll(RegExp(r"<[^>]*>"), ""),
+                              style: TextStyle(
+                                  fontSize: 13.5,
+                                  color: context.textPrimary,
+                                  height: 1.5),
                             ),
                           ),
                         ],
@@ -652,11 +719,14 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                                 title: "Task Specification Document",
                               );
                             },
-                            icon: const Icon(Iconsax.document_download, size: 18, color: AppColors.primary),
-                            label: const Text("View Attached Specification Document"),
+                            icon: const Icon(Iconsax.document_download,
+                                size: 18, color: AppColors.primary),
+                            label: const Text(
+                                "View Attached Specification Document"),
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size(double.infinity, 46),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14)),
                             ),
                           ),
                         ],
@@ -678,17 +748,24 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                               color: AppColors.primary.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Iconsax.clock, color: AppColors.primary, size: 18),
+                            child: const Icon(Iconsax.clock,
+                                color: AppColors.primary, size: 18),
                           ),
                           const SizedBox(width: 10),
                           Text(
                             "Progress Reports (${_reports.length})",
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: context.textPrimary),
                           ),
                         ],
                       ),
                       if (_loadingReports)
-                        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                        const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2)),
                     ],
                   ),
 
@@ -705,16 +782,21 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                       ),
                       child: Column(
                         children: [
-                          const Icon(Iconsax.document_text, size: 44, color: AppColors.textSecondary),
+                          const Icon(Iconsax.document_text,
+                              size: 44, color: AppColors.textSecondary),
                           const SizedBox(height: 10),
                           Text(
                             "No progress reports logged yet",
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary),
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: context.textPrimary),
                           ),
                           const SizedBox(height: 4),
                           const Text(
                             "Submit your daily or hourly progress update below.",
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            style: TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -739,7 +821,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     );
   }
 
-  Widget _buildStatusTab(String label, String value, bool isSelected, Color color) {
+  Widget _buildStatusTab(
+      String label, String value, bool isSelected, Color color) {
     return Expanded(
       child: GestureDetector(
         onTap: () => _updateTaskStatus(value),
@@ -784,12 +867,14 @@ class _ProgressReportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasAttachment = report["attachment_url"] != null && (report["attachment_url"] as String).isNotEmpty;
+    final hasAttachment = report["attachment_url"] != null &&
+        (report["attachment_url"] as String).isNotEmpty;
     final submitterName = report["submitted_by_name"] ?? "Staff Member";
     final date = report["date"] ?? "";
     final isDeletionRequested = report["is_deletion_requested"] == true;
     final deletionReason = report["deletion_reason"]?.toString();
-    final requestedByName = report["deletion_requested_by_name"]?.toString() ?? submitterName;
+    final requestedByName =
+        report["deletion_requested_by_name"]?.toString() ?? submitterName;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -813,8 +898,13 @@ class _ProgressReportCard extends StatelessWidget {
                 radius: 14,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.12),
                 child: Text(
-                  submitterName.isNotEmpty ? submitterName[0].toUpperCase() : "U",
-                  style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold),
+                  submitterName.isNotEmpty
+                      ? submitterName[0].toUpperCase()
+                      : "U",
+                  style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(width: 10),
@@ -824,10 +914,15 @@ class _ProgressReportCard extends StatelessWidget {
                   children: [
                     Text(
                       submitterName,
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: context.textPrimary),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          color: context.textPrimary),
                     ),
                     if (date.isNotEmpty)
-                      Text(date, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      Text(date,
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.textSecondary)),
                   ],
                 ),
               ),
@@ -840,32 +935,44 @@ class _ProgressReportCard extends StatelessWidget {
                     children: [
                       ElevatedButton.icon(
                         onPressed: onApproveDeletion,
-                        icon: const Icon(Iconsax.trash, size: 12, color: Colors.white),
-                        label: const Text("Approve", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
+                        icon: const Icon(Iconsax.trash,
+                            size: 12, color: Colors.white),
+                        label: const Text("Approve",
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.error,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                       const SizedBox(width: 6),
                       OutlinedButton(
                         onPressed: onRejectDeletion,
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: const Text("Reject", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                        child: const Text("Reject",
+                            style: TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
                 ] else ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
@@ -873,11 +980,15 @@ class _ProgressReportCard extends StatelessWidget {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Iconsax.timer_1, size: 12, color: Color(0xFFF59E0B)),
+                        Icon(Iconsax.timer_1,
+                            size: 12, color: Color(0xFFF59E0B)),
                         SizedBox(width: 4),
                         Text(
                           "Deletion Pending",
-                          style: TextStyle(color: Color(0xFFF59E0B), fontSize: 11, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                              color: Color(0xFFF59E0B),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
@@ -885,8 +996,10 @@ class _ProgressReportCard extends StatelessWidget {
                 ],
               ] else ...[
                 IconButton(
-                  icon: const Icon(Iconsax.trash, size: 16, color: AppColors.error),
-                  tooltip: isAdmin ? "Delete Report" : "Request Report Deletion",
+                  icon: const Icon(Iconsax.trash,
+                      size: 16, color: AppColors.error),
+                  tooltip:
+                      isAdmin ? "Delete Report" : "Request Report Deletion",
                   onPressed: isAdmin ? onDirectDelete : onRequestDeletion,
                 ),
               ],
@@ -902,14 +1015,16 @@ class _ProgressReportCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+                border: Border.all(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const Icon(Iconsax.info_circle, color: Color(0xFFF59E0B), size: 15),
+                      const Icon(Iconsax.info_circle,
+                          color: Color(0xFFF59E0B), size: 15),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
@@ -929,7 +1044,10 @@ class _ProgressReportCard extends StatelessWidget {
                     const SizedBox(height: 5),
                     Text(
                       'Reason: "$deletionReason"',
-                      style: TextStyle(fontSize: 12.5, color: context.textPrimary, height: 1.3),
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          color: context.textPrimary,
+                          height: 1.3),
                     ),
                   ],
                 ],
@@ -941,48 +1059,63 @@ class _ProgressReportCard extends StatelessWidget {
 
           Text(
             report["description"] ?? "",
-            style: TextStyle(fontSize: 13, color: context.textPrimary, height: 1.4),
+            style: TextStyle(
+                fontSize: 13, color: context.textPrimary, height: 1.4),
           ),
 
-          if (report["hours_worked"] != null || report["days_worked"] != null || report["earned_amount"] != null) ...[
+          if (report["hours_worked"] != null ||
+              report["days_worked"] != null ||
+              report["earned_amount"] != null) ...[
             const SizedBox(height: 10),
             Row(
               children: [
                 if (report["hours_worked"] != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       "${report["hours_worked"]} hrs",
-                      style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700),
                     ),
                   ),
                 if (report["days_worked"] != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       "${report["days_worked"]} days",
-                      style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700),
                     ),
                   ),
                 if (report["earned_amount"] != null) ...[
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: AppColors.success.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       "+ NPR ${report["earned_amount"]}",
-                      style: const TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                          color: AppColors.success,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800),
                     ),
                   ),
                 ],
@@ -1002,11 +1135,16 @@ class _ProgressReportCard extends StatelessWidget {
               },
               child: const Row(
                 children: [
-                  Icon(Iconsax.document_download, size: 16, color: AppColors.primary),
+                  Icon(Iconsax.document_download,
+                      size: 16, color: AppColors.primary),
                   SizedBox(width: 6),
                   Text(
                     "View Attached Document",
-                    style: TextStyle(color: AppColors.primary, decoration: TextDecoration.underline, fontSize: 12, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                        color: AppColors.primary,
+                        decoration: TextDecoration.underline,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1018,17 +1156,18 @@ class _ProgressReportCard extends StatelessWidget {
   }
 }
 
-
 // ─── Add Progress Report Dialog ───────────────────────────────────────────────
 class _AddProgressReportDialog extends ConsumerStatefulWidget {
   final Map task;
   const _AddProgressReportDialog({required this.task});
 
   @override
-  ConsumerState<_AddProgressReportDialog> createState() => _AddProgressReportDialogState();
+  ConsumerState<_AddProgressReportDialog> createState() =>
+      _AddProgressReportDialogState();
 }
 
-class _AddProgressReportDialogState extends ConsumerState<_AddProgressReportDialog> {
+class _AddProgressReportDialogState
+    extends ConsumerState<_AddProgressReportDialog> {
   final _descCtrl = TextEditingController();
   final _dateCtrl = TextEditingController();
   final _timeCtrl = TextEditingController();
@@ -1039,7 +1178,8 @@ class _AddProgressReportDialogState extends ConsumerState<_AddProgressReportDial
   void initState() {
     super.initState();
     final now = NepaliDateTime.now();
-    _dateCtrl.text = "${now.year}-${now.month.toString().padLeft(2, "0")}-${now.day.toString().padLeft(2, "0")}";
+    _dateCtrl.text =
+        "${now.year}-${now.month.toString().padLeft(2, "0")}-${now.day.toString().padLeft(2, "0")}";
   }
 
   @override
@@ -1060,7 +1200,8 @@ class _AddProgressReportDialogState extends ConsumerState<_AddProgressReportDial
   Future<void> _submit() async {
     if (_descCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter a description of work performed")),
+        const SnackBar(
+            content: Text("Please enter a description of work performed")),
       );
       return;
     }
@@ -1114,7 +1255,8 @@ class _AddProgressReportDialogState extends ConsumerState<_AddProgressReportDial
         color: context.surface,
         borderRadius: BorderRadius.circular(28),
       ),
-      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+          24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1132,7 +1274,8 @@ class _AddProgressReportDialogState extends ConsumerState<_AddProgressReportDial
                           color: AppColors.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Iconsax.clock, color: AppColors.primary, size: 22),
+                        child: const Icon(Iconsax.clock,
+                            color: AppColors.primary, size: 22),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -1141,13 +1284,18 @@ class _AddProgressReportDialogState extends ConsumerState<_AddProgressReportDial
                           children: [
                             Text(
                               'Log Task Progress',
-                              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: context.textPrimary),
+                              style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.textPrimary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const Text(
                               'Record effort, billable time & proof',
-                              style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                              style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: AppColors.textSecondary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1168,7 +1316,6 @@ class _AddProgressReportDialogState extends ConsumerState<_AddProgressReportDial
             const SizedBox(height: 16),
             Divider(color: context.border),
             const SizedBox(height: 16),
-
             TextFormField(
               controller: _dateCtrl,
               decoration: const InputDecoration(
@@ -1177,60 +1324,72 @@ class _AddProgressReportDialogState extends ConsumerState<_AddProgressReportDial
               ),
             ),
             const SizedBox(height: 12),
-
             TextFormField(
               controller: _descCtrl,
               decoration: const InputDecoration(
                 labelText: "What did you accomplish? *",
-                hintText: "Summary of activities, merged PRs, or client updates...",
+                hintText:
+                    "Summary of activities, merged PRs, or client updates...",
                 alignLabelWithHint: true,
               ),
               maxLines: 4,
             ),
             const SizedBox(height: 12),
-
             TextFormField(
               controller: _timeCtrl,
               decoration: InputDecoration(
-                labelText: (widget.task['task_type'] == 'hourly') ? "Hours Worked" : "Days Worked",
+                labelText: (widget.task['task_type'] == 'hourly')
+                    ? "Hours Worked"
+                    : "Days Worked",
                 prefixIcon: const Icon(Iconsax.timer, size: 18),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
             ),
             const SizedBox(height: 12),
-
             OutlinedButton.icon(
               onPressed: _pickFile,
               icon: const Icon(Iconsax.document_upload, size: 18),
-              label: Text(_attachment == null ? "Attach Document / Screenshots" : _attachment!.name),
+              label: Text(_attachment == null
+                  ? "Attach Document / Screenshots"
+                  : _attachment!.name),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 44),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 20),
-
             Container(
               height: 48,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
+                gradient: const LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryDark]),
               ),
               child: ElevatedButton(
                 onPressed: _saving ? null : _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
                 child: _saving
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
                     : const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Iconsax.send_1, size: 16, color: Colors.white),
                           SizedBox(width: 8),
-                          Text('Submit Progress Log', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                          Text('Submit Progress Log',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800)),
                         ],
                       ),
               ),

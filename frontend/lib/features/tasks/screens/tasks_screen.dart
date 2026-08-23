@@ -81,7 +81,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
       final res = await ApiService().get('${AppConstants.taskBase}/tasks/');
       if (!mounted) return;
       setState(() {
-        _tasks = res.data is List ? res.data : (res.data['results'] ?? res.data);
+        _tasks =
+            res.data is List ? res.data : (res.data['results'] ?? res.data);
         _loading = false;
       });
     } catch (_) {
@@ -102,12 +103,14 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
               children: [
                 const Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
                 const SizedBox(width: 10),
-                Text('Task status updated to ${newStatus.replaceAll('-', ' ').toUpperCase()}'),
+                Text(
+                    'Task status updated to ${newStatus.replaceAll('-', ' ').toUpperCase()}'),
               ],
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -152,9 +155,14 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
             ? (t['assigned_to']['name'] ?? '').toString().toLowerCase()
             : '';
         final projName = t['project'] is Map
-            ? (t['project']['name'] ?? t['project']['title'] ?? '').toString().toLowerCase()
+            ? (t['project']['name'] ?? t['project']['title'] ?? '')
+                .toString()
+                .toLowerCase()
             : '';
-        return title.contains(q) || desc.contains(q) || assigned.contains(q) || projName.contains(q);
+        return title.contains(q) ||
+            desc.contains(q) ||
+            assigned.contains(q) ||
+            projName.contains(q);
       }
 
       return true;
@@ -243,10 +251,14 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
     final isDark = context.isDark;
 
-    final todoCount = _tasks.where((t) => (t['status'] ?? 'to-do') == 'to-do').length;
-    final inProgressCount = _tasks.where((t) => (t['status'] ?? 'to-do') == 'in-progress').length;
-    final doneCount = _tasks.where((t) => (t['status'] ?? 'to-do') == 'done').length;
-    final highPrioCount = _tasks.where((t) => (t['priority'] ?? 'low') == 'high').length;
+    final todoCount =
+        _tasks.where((t) => (t['status'] ?? 'to-do') == 'to-do').length;
+    final inProgressCount =
+        _tasks.where((t) => (t['status'] ?? 'to-do') == 'in-progress').length;
+    final doneCount =
+        _tasks.where((t) => (t['status'] ?? 'to-do') == 'done').length;
+    final highPrioCount =
+        _tasks.where((t) => (t['priority'] ?? 'low') == 'high').length;
 
     return Scaffold(
       backgroundColor: context.bg,
@@ -255,10 +267,12 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
               onPressed: _showCreateTaskSheet,
               backgroundColor: AppColors.primary,
               elevation: 6,
-              icon: const Icon(Iconsax.task_square, color: Colors.white, size: 20),
+              icon: const Icon(Iconsax.task_square,
+                  color: Colors.white, size: 20),
               label: const Text(
                 'Assign Task',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
               ),
             )
           : null,
@@ -280,7 +294,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                       border: Border.all(color: context.border, width: 1),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                          color: Colors.black
+                              .withValues(alpha: isDark ? 0.25 : 0.04),
                           blurRadius: 18,
                           offset: const Offset(0, 4),
                         ),
@@ -288,7 +303,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                     ),
                     child: Flex(
                       direction: isMobile ? Axis.vertical : Axis.horizontal,
-                      crossAxisAlignment: isMobile ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+                      crossAxisAlignment: isMobile
+                          ? CrossAxisAlignment.start
+                          : CrossAxisAlignment.center,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(
@@ -296,10 +313,12 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Icon(Iconsax.task_square, color: AppColors.primary, size: 24),
+                              child: const Icon(Iconsax.task_square,
+                                  color: AppColors.primary, size: 24),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -307,7 +326,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Wrap(
-                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
                                     spacing: 8,
                                     runSpacing: 4,
                                     children: [
@@ -321,10 +341,13 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                                         ),
                                       ),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
                                         child: Text(
                                           '${_tasks.length} Total',
@@ -340,7 +363,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                                   const SizedBox(height: 3),
                                   const Text(
                                     'Track deliverables & project milestones',
-                                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -351,12 +376,21 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                         ),
                         if (isMobile) const SizedBox(height: 14),
                         Row(
-                          mainAxisAlignment: isMobile ? MainAxisAlignment.end : MainAxisAlignment.start,
+                          mainAxisAlignment: isMobile
+                              ? MainAxisAlignment.end
+                              : MainAxisAlignment.start,
                           children: [
                             IconButton(
-                              icon: Icon(_isKanbanView ? Iconsax.row_vertical : Iconsax.kanban, size: 20),
-                              tooltip: _isKanbanView ? 'Switch to List View' : 'Switch to Board View',
-                              onPressed: () => setState(() => _isKanbanView = !_isKanbanView),
+                              icon: Icon(
+                                  _isKanbanView
+                                      ? Iconsax.row_vertical
+                                      : Iconsax.kanban,
+                                  size: 20),
+                              tooltip: _isKanbanView
+                                  ? 'Switch to List View'
+                                  : 'Switch to Board View',
+                              onPressed: () => setState(
+                                  () => _isKanbanView = !_isKanbanView),
                               style: IconButton.styleFrom(
                                 backgroundColor: context.card,
                                 side: BorderSide(color: context.border),
@@ -376,12 +410,18 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                               const SizedBox(width: 8),
                               ElevatedButton.icon(
                                 onPressed: _showCreateTaskSheet,
-                                icon: const Icon(Iconsax.add_circle, size: 18, color: Colors.white),
-                                label: const Text('New Task', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                icon: const Icon(Iconsax.add_circle,
+                                    size: 18, color: Colors.white),
+                                label: const Text('New Task',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold)),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 11),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
                                 ),
                               ),
                             ],
@@ -403,19 +443,23 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                   return Row(
                     children: [
                       Expanded(
-                        child: _buildKpiCard('To Do', '$todoCount', Iconsax.clipboard_text, AppColors.primary, isTight),
+                        child: _buildKpiCard('To Do', '$todoCount',
+                            Iconsax.clipboard_text, AppColors.primary, isTight),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: _buildKpiCard('In Progress', '$inProgressCount', Iconsax.timer_1, AppColors.warning, isTight),
+                        child: _buildKpiCard('In Progress', '$inProgressCount',
+                            Iconsax.timer_1, AppColors.warning, isTight),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: _buildKpiCard('Completed', '$doneCount', Iconsax.tick_circle, AppColors.success, isTight),
+                        child: _buildKpiCard('Completed', '$doneCount',
+                            Iconsax.tick_circle, AppColors.success, isTight),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: _buildKpiCard('Urgent', '$highPrioCount', Iconsax.danger, AppColors.error, isTight),
+                        child: _buildKpiCard('Urgent', '$highPrioCount',
+                            Iconsax.danger, AppColors.error, isTight),
                       ),
                     ],
                   );
@@ -437,11 +481,13 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                     TextField(
                       controller: _searchController,
                       decoration: InputDecoration(
-                        hintText: 'Search tasks by title, project, assignee or description...',
+                        hintText:
+                            'Search tasks by title, project, assignee or description...',
                         prefixIcon: const Icon(Iconsax.search_normal, size: 20),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Iconsax.close_circle, size: 18),
+                                icon:
+                                    const Icon(Iconsax.close_circle, size: 18),
                                 onPressed: () {
                                   _searchController.clear();
                                   setState(() => _searchQuery = '');
@@ -460,19 +506,28 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                         children: [
                           const Text(
                             'Filter by:',
-                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.textSecondary),
+                            style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textSecondary),
                           ),
                           const SizedBox(width: 10),
-                          _buildPriorityFilterChip('all', 'All', AppColors.primary, Iconsax.category),
-                          _buildPriorityFilterChip('high', 'High', AppColors.error, Iconsax.danger),
-                          _buildPriorityFilterChip('medium', 'Medium', AppColors.warning, Iconsax.flash),
-                          _buildPriorityFilterChip('low', 'Low', const Color(0xFF10B981), Iconsax.tick_circle),
+                          _buildPriorityFilterChip('all', 'All',
+                              AppColors.primary, Iconsax.category),
+                          _buildPriorityFilterChip(
+                              'high', 'High', AppColors.error, Iconsax.danger),
+                          _buildPriorityFilterChip('medium', 'Medium',
+                              AppColors.warning, Iconsax.flash),
+                          _buildPriorityFilterChip('low', 'Low',
+                              const Color(0xFF10B981), Iconsax.tick_circle),
                           if (_projects.isNotEmpty) ...[
                             const SizedBox(width: 12),
-                            Container(height: 24, width: 1, color: context.border),
+                            Container(
+                                height: 24, width: 1, color: context.border),
                             const SizedBox(width: 12),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 2),
                               decoration: BoxDecoration(
                                 color: context.card,
                                 borderRadius: BorderRadius.circular(12),
@@ -480,20 +535,32 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                               ),
                               child: DropdownButton<int?>(
                                 value: _projectFilter,
-                                hint: const Text('All Projects', style: TextStyle(fontSize: 12.5)),
+                                hint: const Text('All Projects',
+                                    style: TextStyle(fontSize: 12.5)),
                                 underline: const SizedBox(),
-                                icon: const Icon(Icons.arrow_drop_down, size: 20),
+                                icon:
+                                    const Icon(Icons.arrow_drop_down, size: 20),
                                 items: [
                                   const DropdownMenuItem<int?>(
                                     value: null,
-                                    child: Text('All Projects', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                                    child: Text('All Projects',
+                                        style: TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.bold)),
                                   ),
-                                  ..._projects.map((p) => DropdownMenuItem<int?>(
-                                        value: p['id'] as int,
-                                        child: Text(p['title'] ?? p['name'] ?? 'Project', style: const TextStyle(fontSize: 12.5)),
-                                      )),
+                                  ..._projects
+                                      .map((p) => DropdownMenuItem<int?>(
+                                            value: p['id'] as int,
+                                            child: Text(
+                                                p['title'] ??
+                                                    p['name'] ??
+                                                    'Project',
+                                                style: const TextStyle(
+                                                    fontSize: 12.5)),
+                                          )),
                                 ],
-                                onChanged: (v) => setState(() => _projectFilter = v),
+                                onChanged: (v) =>
+                                    setState(() => _projectFilter = v),
                               ),
                             ),
                           ],
@@ -510,7 +577,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
               if (_loading)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 60),
-                  child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                  child: Center(
+                      child:
+                          CircularProgressIndicator(color: AppColors.primary)),
                 )
               else if (_isKanbanView)
                 _buildKanbanBoard()
@@ -537,7 +606,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                           children: [
                             const Icon(Iconsax.clipboard_text, size: 16),
                             const SizedBox(width: 6),
-                            Text('To Do (${_filterTasks('to-do').length})', style: const TextStyle(fontWeight: FontWeight.w700)),
+                            Text('To Do (${_filterTasks('to-do').length})',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700)),
                           ],
                         ),
                       ),
@@ -547,7 +618,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                           children: [
                             const Icon(Iconsax.timer_1, size: 16),
                             const SizedBox(width: 6),
-                            Text('In Progress (${_filterTasks('in-progress').length})', style: const TextStyle(fontWeight: FontWeight.w700)),
+                            Text(
+                                'In Progress (${_filterTasks('in-progress').length})',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700)),
                           ],
                         ),
                       ),
@@ -557,7 +631,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                           children: [
                             const Icon(Iconsax.tick_circle, size: 16),
                             const SizedBox(width: 6),
-                            Text('Done (${_filterTasks('done').length})', style: const TextStyle(fontWeight: FontWeight.w700)),
+                            Text('Done (${_filterTasks('done').length})',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700)),
                           ],
                         ),
                       ),
@@ -571,7 +647,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                     controller: _tabs,
                     children: [
                       _buildTaskList(_filterTasks('to-do'), AppColors.primary),
-                      _buildTaskList(_filterTasks('in-progress'), AppColors.warning),
+                      _buildTaskList(
+                          _filterTasks('in-progress'), AppColors.warning),
                       _buildTaskList(_filterTasks('done'), AppColors.success),
                     ],
                   ),
@@ -584,7 +661,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     );
   }
 
-  Widget _buildPriorityFilterChip(String key, String label, Color color, IconData icon) {
+  Widget _buildPriorityFilterChip(
+      String key, String label, Color color, IconData icon) {
     final isSelected = _priorityFilter == key;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
@@ -607,7 +685,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 14, color: isSelected ? color : AppColors.textSecondary),
+                Icon(icon,
+                    size: 14,
+                    color: isSelected ? color : AppColors.textSecondary),
                 const SizedBox(width: 6),
                 Text(
                   label,
@@ -625,7 +705,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     );
   }
 
-  Widget _buildKpiCard(String title, String count, IconData icon, Color color, bool isTight) {
+  Widget _buildKpiCard(
+      String title, String count, IconData icon, Color color, bool isTight) {
     if (isTight) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
@@ -635,7 +716,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
           border: Border.all(color: context.border, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.03),
+              color:
+                  Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.03),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -754,21 +836,30 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _buildKanbanColumn('To Do', 'to-do', AppColors.primary, Iconsax.clipboard_text)),
+              Expanded(
+                  child: _buildKanbanColumn('To Do', 'to-do', AppColors.primary,
+                      Iconsax.clipboard_text)),
               const SizedBox(width: 16),
-              Expanded(child: _buildKanbanColumn('In Progress', 'in-progress', AppColors.warning, Iconsax.timer_1)),
+              Expanded(
+                  child: _buildKanbanColumn('In Progress', 'in-progress',
+                      AppColors.warning, Iconsax.timer_1)),
               const SizedBox(width: 16),
-              Expanded(child: _buildKanbanColumn('Completed', 'done', AppColors.success, Iconsax.tick_circle)),
+              Expanded(
+                  child: _buildKanbanColumn('Completed', 'done',
+                      AppColors.success, Iconsax.tick_circle)),
             ],
           );
         } else {
           return Column(
             children: [
-              _buildKanbanColumn('To Do', 'to-do', AppColors.primary, Iconsax.clipboard_text),
+              _buildKanbanColumn(
+                  'To Do', 'to-do', AppColors.primary, Iconsax.clipboard_text),
               const SizedBox(height: 16),
-              _buildKanbanColumn('In Progress', 'in-progress', AppColors.warning, Iconsax.timer_1),
+              _buildKanbanColumn('In Progress', 'in-progress',
+                  AppColors.warning, Iconsax.timer_1),
               const SizedBox(height: 16),
-              _buildKanbanColumn('Completed', 'done', AppColors.success, Iconsax.tick_circle),
+              _buildKanbanColumn(
+                  'Completed', 'done', AppColors.success, Iconsax.tick_circle),
             ],
           );
         }
@@ -776,7 +867,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     );
   }
 
-  Widget _buildKanbanColumn(String title, String status, Color color, IconData icon) {
+  Widget _buildKanbanColumn(
+      String title, String status, Color color, IconData icon) {
     final tasks = _filterTasks(status);
 
     return Container(
@@ -814,7 +906,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                 ),
                 child: Text(
                   '${tasks.length}',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color),
+                  style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w800, color: color),
                 ),
               ),
             ],
@@ -828,7 +921,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
               alignment: Alignment.center,
               child: Text(
                 'No tasks in $title',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary),
               ),
             )
           else
@@ -858,13 +952,17 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Iconsax.task, size: 40, color: AppColors.textSecondary),
+              const Icon(Iconsax.task,
+                  size: 40, color: AppColors.textSecondary),
               const SizedBox(height: 12),
               Text(
                 _searchQuery.isNotEmpty
                     ? 'No tasks match "$_searchQuery"'
                     : 'No tasks found in this section.',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: context.textPrimary),
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: context.textPrimary),
               ),
             ],
           ),
@@ -896,14 +994,15 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
             : AppColors.primary;
 
     final assignedTo = t['assigned_to'];
-    final assignedName = assignedTo is Map
-        ? (assignedTo['name'] ?? 'Unassigned')
-        : 'Unassigned';
+    final assignedName =
+        assignedTo is Map ? (assignedTo['name'] ?? 'Unassigned') : 'Unassigned';
 
     final proj = t['project'];
-    final projName = proj is Map ? (proj['name'] ?? proj['title'] ?? 'Project') : null;
+    final projName =
+        proj is Map ? (proj['name'] ?? proj['title'] ?? 'Project') : null;
     final rating = t['rating'];
-    final hasPdf = t['description_pdf'] != null && t['description_pdf'].toString().isNotEmpty;
+    final hasPdf = t['description_pdf'] != null &&
+        t['description_pdf'].toString().isNotEmpty;
     final isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
 
     return Material(
@@ -919,7 +1018,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
             border: Border.all(color: context.border),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.02),
+                color:
+                    Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.02),
                 blurRadius: 10,
                 offset: const Offset(0, 3),
               ),
@@ -941,7 +1041,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: priorityColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
@@ -958,7 +1059,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                       if (projName != null)
                         Container(
                           constraints: const BoxConstraints(maxWidth: 180),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(6),
@@ -977,7 +1079,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                     ],
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
@@ -1007,13 +1110,17 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                 ),
               ),
 
-              if (t['description'] != null && (t['description'] as String).isNotEmpty) ...[
+              if (t['description'] != null &&
+                  (t['description'] as String).isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(
                   t['description'],
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.3),
+                  style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.textSecondary,
+                      height: 1.3),
                 ),
               ],
 
@@ -1029,8 +1136,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                     children: [
                       CircleAvatar(
                         radius: 10,
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                        child: const Icon(Iconsax.user, size: 10, color: AppColors.primary),
+                        backgroundColor:
+                            AppColors.primary.withValues(alpha: 0.12),
+                        child: const Icon(Iconsax.user,
+                            size: 10, color: AppColors.primary),
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -1046,21 +1155,28 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                   Row(
                     children: [
                       if (hasPdf) ...[
-                        const Icon(Iconsax.document_1, size: 14, color: AppColors.primary),
+                        const Icon(Iconsax.document_1,
+                            size: 14, color: AppColors.primary),
                         const SizedBox(width: 6),
                       ],
                       if (isAdmin && rating != null) ...[
-                        const Icon(Iconsax.star1, size: 13, color: Colors.amber),
+                        const Icon(Iconsax.star1,
+                            size: 13, color: Colors.amber),
                         const SizedBox(width: 2),
                         Text(
                           '$rating/10',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber),
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber),
                         ),
                         const SizedBox(width: 6),
                       ],
                       Text(
-                        _fmtDate(t['planned_end_date']?.toString(), fallback: t['created_at']?.toString()),
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        _fmtDate(t['planned_end_date']?.toString(),
+                            fallback: t['created_at']?.toString()),
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
@@ -1092,9 +1208,12 @@ class _TaskDetailSheet extends ConsumerWidget {
 
     final status = (task['status'] ?? 'to-do').toString().toLowerCase();
     final assignedTo = task['assigned_to'];
-    final assignedName = assignedTo is Map ? (assignedTo['name'] ?? 'Unassigned') : 'Unassigned';
+    final assignedName =
+        assignedTo is Map ? (assignedTo['name'] ?? 'Unassigned') : 'Unassigned';
     final proj = task['project'];
-    final projName = proj is Map ? (proj['name'] ?? proj['title'] ?? 'General Project') : 'General Project';
+    final projName = proj is Map
+        ? (proj['name'] ?? proj['title'] ?? 'General Project')
+        : 'General Project';
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 620),
@@ -1114,25 +1233,33 @@ class _TaskDetailSheet extends ConsumerWidget {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: priorityColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           '${priority.toUpperCase()} PRIORITY',
-                          style: TextStyle(color: priorityColor, fontSize: 11, fontWeight: FontWeight.w800),
+                          style: TextStyle(
+                              color: priorityColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800),
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           projName,
-                          style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w700),
+                          style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700),
                         ),
                       ),
                     ],
@@ -1171,9 +1298,12 @@ class _TaskDetailSheet extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  _buildStatusChoice('To Do', 'to-do', status == 'to-do', AppColors.primary),
-                  _buildStatusChoice('In Progress', 'in-progress', status == 'in-progress', AppColors.warning),
-                  _buildStatusChoice('Done', 'done', status == 'done', AppColors.success),
+                  _buildStatusChoice(
+                      'To Do', 'to-do', status == 'to-do', AppColors.primary),
+                  _buildStatusChoice('In Progress', 'in-progress',
+                      status == 'in-progress', AppColors.warning),
+                  _buildStatusChoice(
+                      'Done', 'done', status == 'done', AppColors.success),
                 ],
               ),
             ),
@@ -1190,32 +1320,40 @@ class _TaskDetailSheet extends ConsumerWidget {
               ),
               child: Column(
                 children: [
-                  _buildDetailRow(Iconsax.user, 'Assigned Employee', assignedName),
+                  _buildDetailRow(
+                      Iconsax.user, 'Assigned Employee', assignedName),
                   const Divider(height: 20),
                   _buildDetailRow(
                     Iconsax.calendar,
                     'Planned Start Date',
-                    _fmtDate(task['planned_start_date']?.toString(), fallback: task['created_at']?.toString()),
+                    _fmtDate(task['planned_start_date']?.toString(),
+                        fallback: task['created_at']?.toString()),
                   ),
                   const Divider(height: 20),
                   _buildDetailRow(
                     Iconsax.calendar_tick,
                     'Due Date',
-                    _fmtDate(task['planned_end_date']?.toString(), fallback: task['created_at']?.toString()),
+                    _fmtDate(task['planned_end_date']?.toString(),
+                        fallback: task['created_at']?.toString()),
                   ),
                   if (isAdmin && task['rating'] != null) ...[
                     const Divider(height: 20),
-                    _buildDetailRow(Iconsax.star1, 'Quality Score', '${task['rating']}/10'),
+                    _buildDetailRow(
+                        Iconsax.star1, 'Quality Score', '${task['rating']}/10'),
                   ],
                 ],
               ),
             ),
 
-            if (task['description'] != null && (task['description'] as String).isNotEmpty) ...[
+            if (task['description'] != null &&
+                (task['description'] as String).isNotEmpty) ...[
               const SizedBox(height: 16),
               Text(
                 'Description & Instructions',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: context.textPrimary),
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary),
               ),
               const SizedBox(height: 8),
               Container(
@@ -1228,12 +1366,14 @@ class _TaskDetailSheet extends ConsumerWidget {
                 ),
                 child: Text(
                   task['description'],
-                  style: TextStyle(fontSize: 13.5, color: context.textPrimary, height: 1.5),
+                  style: TextStyle(
+                      fontSize: 13.5, color: context.textPrimary, height: 1.5),
                 ),
               ),
             ],
 
-            if (task['description_pdf'] != null && task['description_pdf'].toString().isNotEmpty) ...[
+            if (task['description_pdf'] != null &&
+                task['description_pdf'].toString().isNotEmpty) ...[
               const SizedBox(height: 16),
               OutlinedButton.icon(
                 onPressed: () {
@@ -1247,7 +1387,8 @@ class _TaskDetailSheet extends ConsumerWidget {
                 label: const Text('View Attached Specification Document'),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 44),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ],
@@ -1257,7 +1398,8 @@ class _TaskDetailSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatusChoice(String label, String value, bool isSelected, Color color) {
+  Widget _buildStatusChoice(
+      String label, String value, bool isSelected, Color color) {
     return Expanded(
       child: GestureDetector(
         onTap: () => onStatusChange(value),
@@ -1286,9 +1428,12 @@ class _TaskDetailSheet extends ConsumerWidget {
       children: [
         Icon(icon, size: 16, color: AppColors.primary),
         const SizedBox(width: 10),
-        Text(label, style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 12.5, color: AppColors.textSecondary)),
         const Spacer(),
-        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+        Text(value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
       ],
     );
   }
@@ -1340,8 +1485,10 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
       final eRes = await ApiService().get('/api/organization/employees/');
       if (!mounted) return;
       setState(() {
-        _projects = pRes.data is List ? pRes.data : (pRes.data['results'] ?? []);
-        _employees = eRes.data is List ? eRes.data : (eRes.data['results'] ?? []);
+        _projects =
+            pRes.data is List ? pRes.data : (pRes.data['results'] ?? []);
+        _employees =
+            eRes.data is List ? eRes.data : (eRes.data['results'] ?? []);
         _loading = false;
       });
     } catch (_) {
@@ -1351,9 +1498,11 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
 
   List _getProjectEmployees() {
     if (_selProject == null) return _employees;
-    final proj = _projects.firstWhere((p) => p['id'] == _selProject, orElse: () => null);
+    final proj =
+        _projects.firstWhere((p) => p['id'] == _selProject, orElse: () => null);
     if (proj == null || proj['assignments'] == null) return _employees;
-    final assignedIds = (proj['assignments'] as List).map((a) => a['employee_id']).toSet();
+    final assignedIds =
+        (proj['assignments'] as List).map((a) => a['employee_id']).toSet();
     return _employees.where((e) => assignedIds.contains(e['id'])).toList();
   }
 
@@ -1388,9 +1537,12 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
   }
 
   Future<void> _save() async {
-    if (_titleCtrl.text.trim().isEmpty || _selProject == null || _selEmployee == null) {
+    if (_titleCtrl.text.trim().isEmpty ||
+        _selProject == null ||
+        _selEmployee == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please enter a task title and select both a Project and Assignee.'),
+        content: Text(
+            'Please enter a task title and select both a Project and Assignee.'),
         backgroundColor: AppColors.error,
       ));
       return;
@@ -1433,13 +1585,16 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
           ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${ApiService.getErrorMessage(e)}'), backgroundColor: AppColors.error),
+          SnackBar(
+              content: Text('Error: ${ApiService.getErrorMessage(e)}'),
+              backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -1450,11 +1605,13 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const SizedBox(height: 240, child: Center(child: CircularProgressIndicator()));
+      return const SizedBox(
+          height: 240, child: Center(child: CircularProgressIndicator()));
     }
     return Container(
       constraints: const BoxConstraints(maxWidth: 600),
-      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+          24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1471,7 +1628,8 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                           color: AppColors.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Iconsax.task_square, color: AppColors.primary, size: 22),
+                        child: const Icon(Iconsax.task_square,
+                            color: AppColors.primary, size: 22),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -1480,11 +1638,16 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                           children: [
                             Text(
                               'Assign New Task',
-                              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: context.textPrimary),
+                              style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.textPrimary),
                             ),
                             const Text(
                               'Delegate deliverables with deadlines and files',
-                              style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                              style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: AppColors.textSecondary),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ],
@@ -1521,7 +1684,8 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
               maxLines: 3,
               decoration: const InputDecoration(
                 labelText: 'Description & Scope (optional)',
-                hintText: 'Detailed task goals, acceptance criteria, or links...',
+                hintText:
+                    'Detailed task goals, acceptance criteria, or links...',
                 alignLabelWithHint: true,
               ),
             ),
@@ -1562,7 +1726,9 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                 final user = e['user'] ?? {};
                 return DropdownMenuItem<int>(
                   value: e['id'] as int,
-                  child: Text('${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim()),
+                  child: Text(
+                      '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'
+                          .trim()),
                 );
               }).toList(),
               onChanged: (v) => setState(() => _selEmployee = v),
@@ -1608,7 +1774,8 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                     decoration: const InputDecoration(labelText: 'Priority'),
                     items: const [
                       DropdownMenuItem(value: 'low', child: Text('🌱 Low')),
-                      DropdownMenuItem(value: 'medium', child: Text('⚡ Medium')),
+                      DropdownMenuItem(
+                          value: 'medium', child: Text('⚡ Medium')),
                       DropdownMenuItem(value: 'high', child: Text('🔥 High')),
                     ],
                     onChanged: (v) => setState(() => _priority = v!),
@@ -1620,8 +1787,10 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                     initialValue: _taskType,
                     decoration: const InputDecoration(labelText: 'Type'),
                     items: const [
-                      DropdownMenuItem(value: 'daily', child: Text('Daily Task')),
-                      DropdownMenuItem(value: 'hourly', child: Text('Hourly Task')),
+                      DropdownMenuItem(
+                          value: 'daily', child: Text('Daily Task')),
+                      DropdownMenuItem(
+                          value: 'hourly', child: Text('Hourly Task')),
                     ],
                     onChanged: (v) => setState(() => _taskType = v!),
                   ),
@@ -1634,10 +1803,13 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
             OutlinedButton.icon(
               onPressed: _pickFile,
               icon: const Icon(Iconsax.document_upload, size: 18),
-              label: Text(_attachment == null ? 'Attach Document / Specification' : _attachment!.name),
+              label: Text(_attachment == null
+                  ? 'Attach Document / Specification'
+                  : _attachment!.name),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 44),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
@@ -1648,7 +1820,8 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
               children: [
                 Text(
                   'Task Difficulty / Score Weight: ${_rating.toInt()}/10',
-                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                      fontSize: 12.5, fontWeight: FontWeight.w700),
                 ),
                 Slider(
                   value: _rating,
@@ -1668,23 +1841,32 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
               height: 48,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
+                gradient: const LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryDark]),
               ),
               child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
                 child: _saving
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
                     : const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Iconsax.send_1, size: 16, color: Colors.white),
                           SizedBox(width: 8),
-                          Text('Assign Task', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                          Text('Assign Task',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800)),
                         ],
                       ),
               ),
