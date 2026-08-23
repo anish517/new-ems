@@ -39,6 +39,9 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
   void initState() {
     super.initState();
     _adminTabs = TabController(length: 3, vsync: this);
+    _adminTabs.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadData();
   }
 
@@ -472,6 +475,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                             ),
                             child: TabBar(
                               controller: _adminTabs,
+                              onTap: (idx) => setState(() {}),
                               isScrollable: true,
                               tabAlignment: TabAlignment.start,
                               labelColor: AppColors.primary,
@@ -515,18 +519,19 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
 
                           const SizedBox(height: 16),
 
-                          // Tabs Content
-                          SizedBox(
-                            height: 750,
-                            child: TabBarView(
-                              controller: _adminTabs,
-                              children: [
-                                _buildAdminSalariesTab(),
-                                _buildAdminTransactionsTab(),
-                                _buildAnalyticsTab(),
-                              ],
-                            ),
+                          Builder(
+                            builder: (context) {
+                              final idx = _adminTabs.index;
+                              if (idx == 1) {
+                                return _buildAdminTransactionsTab();
+                              } else if (idx == 2) {
+                                return _buildAnalyticsTab();
+                              } else {
+                                return _buildAdminSalariesTab();
+                              }
+                            },
                           ),
+                          const SizedBox(height: 80),
                         ] else ...[
                           _buildEmployeeView(),
                         ],
@@ -950,6 +955,8 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
       );
     }
     return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: _allTransactions.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (ctx, i) {
@@ -1000,10 +1007,9 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
     final sumOther = sumTotalExpense - (sumNet + sumTds + sumSsf + sumEpf);
     final pieDataReady = sumTotalExpense > 0;
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1257,8 +1263,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                 )),
           ],
         ],
-      ),
-    );
+      );
   }
 
   // ── Employee Self-Service View ────────────────────────────────────────────

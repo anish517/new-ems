@@ -494,9 +494,15 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
       if (_tabs.length != tabLength) {
         _tabs.dispose();
         _tabs = TabController(length: tabLength, vsync: this);
+        _tabs.addListener(() {
+          if (mounted) setState(() {});
+        });
       }
     } catch (_) {
       _tabs = TabController(length: tabLength, vsync: this);
+      _tabs.addListener(() {
+        if (mounted) setState(() {});
+      });
     }
 
     // Filter requests
@@ -555,11 +561,15 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                       color: Colors.white, fontWeight: FontWeight.w800)),
             ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: RefreshIndicator(
+          onRefresh: _loadLeaves,
+          color: AppColors.primary,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // ── Top Header Card ──────────────────────────────────────────
               LayoutBuilder(
                 builder: (context, constraints) {
@@ -760,6 +770,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                 ),
                 child: TabBar(
                   controller: _tabs,
+                  onTap: (idx) => setState(() {}),
                   isScrollable: false,
                   indicatorSize: TabBarIndicatorSize.tab,
                   indicator: BoxDecoration(
@@ -815,29 +826,33 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                   ? const Center(
                       child: Padding(
                           padding: EdgeInsets.all(40),
-                          child: CircularProgressIndicator()))
-                  : SizedBox(
-                      height: 600,
-                      child: TabBarView(
-                        controller: _tabs,
-                        children: [
-                          _buildRequestsListTab(filtered, isAdmin),
-                          if (isAdmin) _buildPendingApprovalsTab(),
-                          isAdmin
+                          child: CircularProgressIndicator(
+                              color: AppColors.primary)))
+                  : Builder(
+                      builder: (context) {
+                        final idx = _tabs.index;
+                        if (idx == 0) {
+                          return _buildRequestsListTab(filtered, isAdmin);
+                        } else if (isAdmin && idx == 1) {
+                          return _buildPendingApprovalsTab();
+                        } else {
+                          return isAdmin
                               ? _buildAdminBalancesTab()
                               : _LeaveBalanceTab(
                                   balance: _balance,
                                   existingRequests: _requests,
-                                ),
-                        ],
-                      ),
+                                );
+                        }
+                      },
                     ),
+              const SizedBox(height: 80),
             ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildRequestsListTab(List<dynamic> filtered, bool isAdmin) {
     return Column(
@@ -892,26 +907,27 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
         ),
         const SizedBox(height: 14),
 
-        Expanded(
-          child: filtered.isEmpty
-              ? Container(
-                  padding: const EdgeInsets.all(32),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: context.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: context.border),
-                  ),
-                  child: const Text('No matching leave requests found.',
-                      style: TextStyle(color: AppColors.textSecondary)),
-                )
-              : ListView.separated(
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) => _LeaveCard(filtered[i],
-                      isAdmin: isAdmin, onRefresh: _loadLeaves),
+        filtered.isEmpty
+            ? Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(32),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: context.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: context.border),
                 ),
-        ),
+                child: const Text('No matching leave requests found.',
+                    style: TextStyle(color: AppColors.textSecondary)),
+              )
+            : ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: filtered.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (_, i) => _LeaveCard(filtered[i],
+                    isAdmin: isAdmin, onRefresh: _loadLeaves),
+              ),
       ],
     );
   }
@@ -919,6 +935,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
   Widget _buildPendingApprovalsTab() {
     return _pending.isEmpty
         ? Container(
+            width: double.infinity,
             padding: const EdgeInsets.all(40),
             alignment: Alignment.center,
             decoration: BoxDecoration(
@@ -956,6 +973,8 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
             ),
           )
         : ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: _pending.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (_, i) => _AdminLeaveCard(
@@ -975,6 +994,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
   Widget _buildAdminBalancesTab() {
     return _adminBalances.isEmpty
         ? Container(
+            width: double.infinity,
             padding: const EdgeInsets.all(32),
             alignment: Alignment.center,
             decoration: BoxDecoration(
@@ -986,6 +1006,8 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                 style: TextStyle(color: AppColors.textSecondary)),
           )
         : ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: _adminBalances.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (_, i) => _AdminEmployeeBalanceCard(
@@ -1696,83 +1718,81 @@ class _LeaveBalanceTab extends StatelessWidget {
     final pendingDays = pendingRequests.fold<double>(
         0, (sum, r) => sum + ((r['no_days'] as num?)?.toDouble() ?? 0.0));
 
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          // Summary card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.primaryDark]),
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                const Text('Annual Leave Entitlement',
-                    style: TextStyle(color: Colors.white70, fontSize: 13)),
-                const SizedBox(height: 6),
-                Text(
-                  '${remaining.toStringAsFixed(1)} Days Left',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${totalTaken.toStringAsFixed(1)} Days Taken / ${totalQuota.toStringAsFixed(0)} Total Quota'
-                  '${pendingDays > 0 ? ' • ${pendingDays.toStringAsFixed(1)}d in pending requests' : ''}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-              ],
+    return Column(
+      children: [
+        // Summary card
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryDark]),
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              const Text('Annual Leave Entitlement',
+                  style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const SizedBox(height: 6),
+              Text(
+                '${remaining.toStringAsFixed(1)} Days Left',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${totalTaken.toStringAsFixed(1)} Days Taken / ${totalQuota.toStringAsFixed(0)} Total Quota'
+                '${pendingDays > 0 ? ' • ${pendingDays.toStringAsFixed(1)}d in pending requests' : ''}',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        if (leaveBalances.isNotEmpty) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Breakdown by Leave Type',
+              style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  color: context.textPrimary),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isTwoCol = constraints.maxWidth >= 550;
+              final itemWidth = isTwoCol
+                  ? (constraints.maxWidth - 12) / 2
+                  : constraints.maxWidth;
 
-          if (leaveBalances.isNotEmpty) ...[
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Breakdown by Leave Type',
-                style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: context.textPrimary),
-              ),
-            ),
-            const SizedBox(height: 12),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isTwoCol = constraints.maxWidth >= 550;
-                final itemWidth = isTwoCol
-                    ? (constraints.maxWidth - 12) / 2
-                    : constraints.maxWidth;
-
-                return Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: leaveBalances.map((lb) {
-                    return SizedBox(
-                      width: itemWidth,
-                      child:
-                          _LeaveTypeTile(lb, pendingRequests: pendingRequests),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
-          ],
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: leaveBalances.map((lb) {
+                  return SizedBox(
+                    width: itemWidth,
+                    child:
+                        _LeaveTypeTile(lb, pendingRequests: pendingRequests),
+                  );
+                }).toList(),
+              );
+            },
+          ),
         ],
-      ),
+      ],
     );
   }
 }

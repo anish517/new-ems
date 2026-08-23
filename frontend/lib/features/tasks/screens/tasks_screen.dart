@@ -54,6 +54,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
   void initState() {
     super.initState();
     _tabs = TabController(length: 3, vsync: this);
+    _tabs.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadTasks();
     _loadProjects();
   }
@@ -277,11 +280,15 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
             )
           : null,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: RefreshIndicator(
+          onRefresh: _loadTasks,
+          color: AppColors.primary,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // ── Top Header Card ──────────────────────────────────────────
               LayoutBuilder(
                 builder: (context, constraints) {
@@ -592,6 +599,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                   ),
                   child: TabBar(
                     controller: _tabs,
+                    onTap: (idx) => setState(() {}),
                     isScrollable: true,
                     tabAlignment: TabAlignment.start,
                     labelColor: AppColors.primary,
@@ -641,25 +649,30 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                   ),
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
-                  height: 650,
-                  child: TabBarView(
-                    controller: _tabs,
-                    children: [
-                      _buildTaskList(_filterTasks('to-do'), AppColors.primary),
-                      _buildTaskList(
-                          _filterTasks('in-progress'), AppColors.warning),
-                      _buildTaskList(_filterTasks('done'), AppColors.success),
-                    ],
-                  ),
+                Builder(
+                  builder: (context) {
+                    final idx = _tabs.index;
+                    if (idx == 1) {
+                      return _buildTaskList(
+                          _filterTasks('in-progress'), AppColors.warning);
+                    } else if (idx == 2) {
+                      return _buildTaskList(
+                          _filterTasks('done'), AppColors.success);
+                    } else {
+                      return _buildTaskList(
+                          _filterTasks('to-do'), AppColors.primary);
+                    }
+                  },
                 ),
               ],
+              const SizedBox(height: 80),
             ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildPriorityFilterChip(
       String key, String label, Color color, IconData icon) {
@@ -943,6 +956,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     if (list.isEmpty) {
       return Center(
         child: Container(
+          width: double.infinity,
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
             color: context.surface,
@@ -963,6 +977,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: context.textPrimary),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -971,6 +986,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     }
 
     return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: list.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, i) => _buildTaskCard(list[i]),

@@ -33,6 +33,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
   void initState() {
     super.initState();
     _tabs = TabController(length: 3, vsync: this);
+    _tabs.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadProjects();
   }
 
@@ -151,12 +154,16 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
             )
           : null,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 14 : 24, vertical: isMobile ? 14 : 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: RefreshIndicator(
+          onRefresh: _loadProjects,
+          color: AppColors.primary,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 14 : 24, vertical: isMobile ? 14 : 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // ── Top Header Card ──────────────────────────────────────────
               Container(
                 width: double.infinity,
@@ -523,6 +530,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                 ),
                 child: TabBar(
                   controller: _tabs,
+                  onTap: (idx) => setState(() {}),
                   isScrollable: isMobile,
                   tabAlignment:
                       isMobile ? TabAlignment.start : TabAlignment.fill,
@@ -589,67 +597,72 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                           CircularProgressIndicator(color: AppColors.primary)),
                 )
               else
-                SizedBox(
-                  height: 650,
-                  child: TabBarView(
-                    controller: _tabs,
-                    children: _statuses.asMap().entries.map((e) {
-                      final list = _byStatus(e.value);
-                      if (list.isEmpty) {
-                        return Center(
-                          child: Container(
-                            padding: const EdgeInsets.all(32),
-                            decoration: BoxDecoration(
-                              color: context.surface,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: context.border),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Iconsax.folder_open,
-                                    size: 48, color: context.textSecondary),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _searchQuery.isNotEmpty
-                                      ? 'No ${_statusLabels[e.key].toLowerCase()} projects match "$_searchQuery"'
-                                      : 'No ${_statusLabels[e.key].toLowerCase()} projects found.',
-                                  style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: context.textPrimary),
-                                ),
-                              ],
-                            ),
+                Builder(
+                  builder: (context) {
+                    final index = _tabs.index.clamp(0, _statuses.length - 1);
+                    final status = _statuses[index];
+                    final statusLabel = _statusLabels[index];
+                    final list = _byStatus(status);
+                    if (list.isEmpty) {
+                      return Center(
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: context.border),
                           ),
-                        );
-                      }
-                      return ListView.separated(
-                        itemCount: list.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (ctx, i) => _ProjectCard(
-                          project: list[i],
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ProjectDetailScreen(project: list[i]),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Iconsax.folder_open,
+                                  size: 48, color: context.textSecondary),
+                              const SizedBox(height: 12),
+                              Text(
+                                _searchQuery.isNotEmpty
+                                    ? 'No ${statusLabel.toLowerCase()} projects match "$_searchQuery"'
+                                    : 'No ${statusLabel.toLowerCase()} projects found.',
+                                style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: context.textPrimary),
+                                textAlign: TextAlign.center,
                               ),
-                            );
-                            _loadProjects();
-                          },
+                            ],
+                          ),
                         ),
                       );
-                    }).toList(),
-                  ),
+                    }
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: list.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (ctx, i) => _ProjectCard(
+                        project: list[i],
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ProjectDetailScreen(project: list[i]),
+                            ),
+                          );
+                          _loadProjects();
+                        },
+                      ),
+                    );
+                  },
                 ),
+              const SizedBox(height: 80),
             ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTypeFilterChip(
       String key, String label, Color color, IconData icon) {

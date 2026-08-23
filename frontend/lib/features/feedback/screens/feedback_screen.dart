@@ -27,6 +27,9 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadComplaints();
     _loadCategories();
   }
@@ -401,14 +404,18 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isTight = constraints.maxWidth < 650;
-            return SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: isTight ? 14 : 24,
-                vertical: isTight ? 16 : 24,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            return RefreshIndicator(
+              onRefresh: _loadComplaints,
+              color: AppColors.primary,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTight ? 14 : 24,
+                  vertical: isTight ? 16 : 24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                   // ── Header Bar ───────────────────────────────────────────────
                   Container(
                     padding: EdgeInsets.all(isTight ? 14 : 20),
@@ -650,6 +657,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                           controller: _tabController,
                           isScrollable: true,
                           tabAlignment: TabAlignment.start,
+                          onTap: (idx) => setState(() {}),
                           labelColor: AppColors.primary,
                           unselectedLabelColor: AppColors.textSecondary,
                           indicatorColor: AppColors.primary,
@@ -709,25 +717,24 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                       ),
                     )
                   else
-                    SizedBox(
-                      height: 650,
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildComplaintListView(
-                              _getFilteredList('all'), isAdmin),
-                          _buildComplaintListView(
-                              _getFilteredList('pending'), isAdmin),
-                          _buildComplaintListView(
-                              _getFilteredList('reviewed'), isAdmin),
-                        ],
-                      ),
+                    Builder(
+                      builder: (context) {
+                        final status = _tabController.index == 1
+                            ? 'pending'
+                            : _tabController.index == 2
+                                ? 'reviewed'
+                                : 'all';
+                        return _buildComplaintListView(
+                            _getFilteredList(status), isAdmin);
+                      },
                     ),
+                  const SizedBox(height: 80),
                 ],
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
+      ),
       ),
     );
   }
@@ -857,6 +864,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
     if (list.isEmpty) {
       return Center(
         child: Container(
+          width: double.infinity,
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
             color: context.surface,
@@ -878,6 +886,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                   fontWeight: FontWeight.w700,
                   color: context.textPrimary,
                 ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
@@ -901,13 +910,12 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadComplaints,
-      color: AppColors.primary,
-      child: ListView.separated(
-        itemCount: list.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, i) {
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: list.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, i) {
           final c = list[i];
           final status = (c['status'] ?? 'pending').toString().toLowerCase();
           final isResolved = status == 'resolved' || status == 'reviewed';
@@ -1253,8 +1261,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
             ),
           );
         },
-      ),
-    );
+      );
   }
 }
 
@@ -2033,30 +2040,31 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
             ),
             const SizedBox(height: 12),
 
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 220),
-              child: replies.isEmpty
-                  ? Container(
-                      padding: const EdgeInsets.all(20),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: context.card,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: context.border),
+            replies.isEmpty
+                ? Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: context.card,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: context.border),
+                    ),
+                    child: const Text(
+                      'No responses yet. Administration or employee can write below.',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.textSecondary,
                       ),
-                      child: const Text(
-                        'No responses yet. Administration or employee can write below.',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: replies.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: replies.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
                         final reply = replies[index];
                         final name = reply['employee_name'] ?? 'Administration';
                         final content = reply['content'] ?? '';
@@ -2122,7 +2130,6 @@ class _ComplaintDetailsSheetState extends State<_ComplaintDetailsSheet> {
                         );
                       },
                     ),
-            ),
 
             const SizedBox(height: 16),
 
