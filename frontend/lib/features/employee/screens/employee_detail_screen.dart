@@ -11,6 +11,7 @@ import 'package:universal_html/html.dart' as html;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/providers/date_provider.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/constants/app_constants.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1256,13 +1257,14 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     physics: const NeverScrollableScrollPhysics(),
                     childAspectRatio: width < 600 ? 1.35 : 1.25,
                     children: [
-                      _buildKpiCard(
-                        'Performance',
-                        _avgPerformance.toStringAsFixed(0),
-                        'Points',
-                        Iconsax.star1,
-                        AppColors.primary,
-                      ),
+                      if (ref.watch(orgSettingsProvider).enableDailyPerformance)
+                        _buildKpiCard(
+                          'Performance',
+                          _avgPerformance.toStringAsFixed(0),
+                          'Points',
+                          Iconsax.star1,
+                          AppColors.primary,
+                        ),
                       GestureDetector(
                         onTap: _showAttendanceLogs,
                         child: _buildKpiCard(

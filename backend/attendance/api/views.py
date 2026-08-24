@@ -25,6 +25,22 @@ class IsOrgAdmin(BasePermission):
             return False
 
 
+def is_admin_user(user):
+    """Returns True if the user has administrative/managerial privileges."""
+    try:
+        if user.is_superuser or user.organization.exists():
+            return True
+        if hasattr(user, 'employee'):
+            emp = user.employee
+            if getattr(emp, 'canManage', False):
+                return True
+            if emp.organization and user in emp.organization.admin_users.all():
+                return True
+        return False
+    except Exception:
+        return False
+
+
 class AttendanceDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
     queryset = Attendance.objects.all()
@@ -159,6 +175,11 @@ class CheckIn(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        # Admin restriction: Admins cannot clock in (employee-only action)
+        if is_admin_user(request.user):
+            return Response({"error": "Attendance clock-in is reserved for employee staff members only."},
+                            status=status.HTTP_403_FORBIDDEN)
+
         user_lat = request.data.get("latitude")
         user_lng = request.data.get("longitude")
 
@@ -258,6 +279,11 @@ class CheckOut(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        # Admin restriction: Admins cannot clock out (employee-only action)
+        if is_admin_user(request.user):
+            return Response({"error": "Attendance clock-out is reserved for employee staff members only."},
+                            status=status.HTTP_403_FORBIDDEN)
+
         user_lat = request.data.get("latitude")
         user_lng = request.data.get("longitude")
 
@@ -909,6 +935,10 @@ class RemoteWorkRequestListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
+        if is_admin_user(request.user):
+            return Response({"error": "Remote work requests are reserved for employee staff members only."},
+                            status=status.HTTP_403_FORBIDDEN)
+
         try:
             employee = request.user.employee
         except Exception:
@@ -1000,6 +1030,10 @@ class CorrectionRequestListCreateAPIView(generics.ListCreateAPIView):
             return AttendanceCorrectionRequest.objects.none()
 
     def perform_create(self, serializer):
+        if is_admin_user(self.request.user):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Attendance correction requests are reserved for employee staff members only.')
+
         try:
             employee = Employee.objects.get(user=self.request.user)
         except Employee.DoesNotExist:

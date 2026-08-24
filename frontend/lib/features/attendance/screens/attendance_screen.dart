@@ -12,6 +12,7 @@ import '../../auth/providers/auth_provider.dart';
 import 'package:nepali_utils/nepali_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/providers/date_provider.dart';
+import '../../../core/providers/settings_provider.dart';
 import 'employee_attendance_logs_screen.dart';
 import '../../../shared/widgets/responsive_grid_list.dart';
 import '../../../shared/widgets/nepali_date_picker.dart';
@@ -78,6 +79,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   // Attendance correction requests
   List _myCorrectionRequests = [];
   List _pendingCorrectionRequests = [];
+  String _adminCorrectionStatus = 'pending';
+  List _adminCorrectionRequests = [];
   bool _correctionLoading = false;
 
   // Geofence & Governance Settings state
@@ -86,6 +89,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   final _officeRadiusCtrl = TextEditingController(text: '100');
   bool _enableInOffice = true;
   bool _enableRemote = true;
+  bool _enableDailyPerformance = true;
   bool _geofenceLoading = false;
   bool _geofenceSaving = false;
   bool _detectingOfficeLocation = false;
@@ -99,12 +103,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   @override
   void initState() {
     super.initState();
-    _adminTabs = TabController(length: 5, vsync: this);
+    _adminTabs = TabController(length: 4, vsync: this);
     _adminTabs.addListener(() {
       if (_adminTabs.indexIsChanging || _adminTabs.index != _selectedAdminTab) {
         if (mounted) {
           setState(() => _selectedAdminTab = _adminTabs.index);
-          if (_adminTabs.index == 4) {
+          if (_adminTabs.index == 3) {
             _loadGeofenceSettings();
           }
         }
@@ -280,19 +284,22 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
   Future<void> _loadAll() async {
     setState(() => _isLoading = true);
-    await Future.wait([
-      _loadTodayStatus(),
-      _loadStats(),
-      _loadDailyHistory(),
-      _loadMyRemoteStatus(),
-      _loadMyCorrectionRequests(),
-    ]);
     final isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
-    if (isAdmin) {
-      _loadEmployees();
-      _loadRemoteList();
-      _loadPendingCorrections();
-      _loadGeofenceSettings();
+    if (!isAdmin) {
+      await Future.wait([
+        _loadTodayStatus(),
+        _loadStats(),
+        _loadDailyHistory(),
+        _loadMyRemoteStatus(),
+        _loadMyCorrectionRequests(),
+      ]);
+    } else {
+      await Future.wait([
+        _loadEmployees(),
+        _loadRemoteList(),
+        _loadPendingCorrections(),
+        _loadGeofenceSettings(),
+      ]);
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -429,15 +436,26 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     } catch (_) {}
   }
 
-  Future<void> _loadPendingCorrections() async {
+  Future<void> _loadPendingCorrections({String? status}) async {
+    if (status != null) _adminCorrectionStatus = status;
     setState(() => _correctionLoading = true);
     try {
-      final res = await ApiService().get(
+      final url = _adminCorrectionStatus == 'all'
+          ? '${AppConstants.attendanceBase}/correction-requests/'
+          : '${AppConstants.attendanceBase}/correction-requests/?status=$_adminCorrectionStatus';
+      final res = await ApiService().get(url);
+
+      final pendingRes = await ApiService().get(
           '${AppConstants.attendanceBase}/correction-requests/?status=pending');
+      final pendingList = pendingRes.data is List
+          ? pendingRes.data
+          : (pendingRes.data['results'] ?? []);
+
       if (mounted) {
         setState(() {
-          _pendingCorrectionRequests =
+          _adminCorrectionRequests =
               res.data is List ? res.data : (res.data['results'] ?? []);
+          _pendingCorrectionRequests = pendingList;
           _correctionLoading = false;
         });
       }
@@ -463,6 +481,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           _officeRadiusCtrl.text = '${d['allowed_attendance_radius'] ?? 100}';
           _enableInOffice = d['enable_in_office_attendance'] ?? true;
           _enableRemote = d['enable_remote_attendance'] ?? true;
+          _enableDailyPerformance = d['enable_daily_performance'] ?? true;
           _geofenceLoading = false;
         });
       }
@@ -499,11 +518,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             int.tryParse(_officeRadiusCtrl.text.trim()) ?? 100,
         'enable_in_office_attendance': _enableInOffice,
         'enable_remote_attendance': _enableRemote,
+        'enable_daily_performance': _enableDailyPerformance,
       };
       await ApiService().patch(
         '${AppConstants.organizationBase}/settings/',
         data: payload,
       );
+      ref.read(orgSettingsProvider.notifier).loadSettings();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1270,23 +1291,29 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                             padding: const EdgeInsets.symmetric(
                                                 horizontal: 8, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: (_isCheckedIn
-                                                      ? AppColors.success
-                                                      : const Color(0xFFF59E0B))
+                                              color: (isAdmin
+                                                      ? AppColors.primary
+                                                      : (_isCheckedIn
+                                                          ? AppColors.success
+                                                          : const Color(0xFFF59E0B)))
                                                   .withValues(alpha: 0.12),
                                               borderRadius:
                                                   BorderRadius.circular(8),
                                             ),
                                             child: Text(
-                                              _isCheckedIn
-                                                  ? '● Checked In'
-                                                  : '● Not Checked In',
+                                              isAdmin
+                                                  ? '● Admin Console'
+                                                  : (_isCheckedIn
+                                                      ? '● Checked In'
+                                                      : '● Not Checked In'),
                                               style: TextStyle(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w700,
-                                                color: _isCheckedIn
-                                                    ? AppColors.success
-                                                    : const Color(0xFFF59E0B),
+                                                color: isAdmin
+                                                    ? AppColors.primary
+                                                    : (_isCheckedIn
+                                                        ? AppColors.success
+                                                        : const Color(0xFFF59E0B)),
                                               ),
                                             ),
                                           ),
@@ -1313,42 +1340,43 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                               spacing: 8,
                               runSpacing: 8,
                               children: [
-                                Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () => _showCorrectionRequestSheet(),
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary
-                                            .withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                            color: AppColors.primary,
-                                            width: 1.2),
-                                      ),
-                                      child: const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Iconsax.calendar_edit,
-                                              size: 15,
-                                              color: AppColors.primary),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            'Correction Request',
-                                            style: TextStyle(
+                                if (!isAdmin)
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () => _showCorrectionRequestSheet(),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
                                               color: AppColors.primary,
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 12,
+                                              width: 1.2),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Iconsax.calendar_edit,
+                                                size: 15,
+                                                color: AppColors.primary),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              'Correction Request',
+                                              style: TextStyle(
+                                                color: AppColors.primary,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 12,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
                                 if (isAdmin)
                                   Material(
                                     color: Colors.transparent,
@@ -1427,23 +1455,29 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: (_isCheckedIn
-                                                  ? AppColors.success
-                                                  : const Color(0xFFF59E0B))
+                                          color: (isAdmin
+                                                  ? AppColors.primary
+                                                  : (_isCheckedIn
+                                                      ? AppColors.success
+                                                      : const Color(0xFFF59E0B)))
                                               .withValues(alpha: 0.12),
                                           borderRadius:
                                               BorderRadius.circular(8),
                                         ),
                                         child: Text(
-                                          _isCheckedIn
-                                              ? '● Checked In'
-                                              : '● Not Checked In',
+                                          isAdmin
+                                              ? '● Admin Console'
+                                              : (_isCheckedIn
+                                                  ? '● Checked In'
+                                                  : '● Not Checked In'),
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w700,
-                                            color: _isCheckedIn
-                                                ? AppColors.success
-                                                : const Color(0xFFF59E0B),
+                                            color: isAdmin
+                                                ? AppColors.primary
+                                                : (_isCheckedIn
+                                                    ? AppColors.success
+                                                    : const Color(0xFFF59E0B)),
                                           ),
                                         ),
                                       ),
@@ -1462,41 +1496,43 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                               ),
                             ),
                             const SizedBox(width: 16),
-                            Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () => _showCorrectionRequestSheet(),
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                        color: AppColors.primary, width: 1.2),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Iconsax.calendar_edit,
-                                          size: 16, color: AppColors.primary),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        'Correction Request',
-                                        style: TextStyle(
-                                          color: AppColors.primary,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 13,
+                            if (!isAdmin) ...[
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => _showCorrectionRequestSheet(),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: AppColors.primary, width: 1.2),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Iconsax.calendar_edit,
+                                            size: 16, color: AppColors.primary),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Correction Request',
+                                          style: TextStyle(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 13,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
+                              const SizedBox(width: 8),
+                            ],
                             if (isAdmin) ...[
                               Container(
                                 decoration: BoxDecoration(
@@ -1552,7 +1588,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       labelStyle: const TextStyle(
                           fontWeight: FontWeight.w800, fontSize: 13.5),
                       tabs: [
-                        const Tab(text: 'My Check-In Hub'),
                         Tab(text: 'Staff Logs (${_employees.length})'),
                         Tab(
                             text:
@@ -1566,14 +1601,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   ),
                   const SizedBox(height: 20),
                   if (_selectedAdminTab == 0)
-                    _buildCheckInUI(isMobile)
-                  else if (_selectedAdminTab == 1)
                     _buildEmployeeGrid()
-                  else if (_selectedAdminTab == 2)
+                  else if (_selectedAdminTab == 1)
                     _buildRemoteAccessTab()
-                  else if (_selectedAdminTab == 3)
+                  else if (_selectedAdminTab == 2)
                     _buildAdminCorrectionTab()
-                  else if (_selectedAdminTab == 4)
+                  else if (_selectedAdminTab == 3)
                     _buildGeofenceSettingsTab(isMobile),
                 ] else
                   _buildCheckInUI(isMobile),
@@ -2126,6 +2159,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       );
 
   void _showLogDetails(Map log) {
+    final isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
     String formatTime(String? t) {
       if (t == null || t.isEmpty) return '-';
       return t.split('.')[0];
@@ -2270,47 +2304,50 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  final rawDate = log['date']?.toString();
-                  String? dateStr;
-                  if (rawDate != null) {
-                    try {
-                      if (rawDate.contains('T')) {
-                        final nd = DateTime.parse(rawDate).toNepaliDateTime();
-                        dateStr =
-                            '${nd.year}-${nd.month.toString().padLeft(2, '0')}-${nd.day.toString().padLeft(2, '0')}';
-                      } else {
-                        final nd = NepaliDateTime.parse(rawDate);
-                        dateStr =
-                            '${nd.year}-${nd.month.toString().padLeft(2, '0')}-${nd.day.toString().padLeft(2, '0')}';
+              if (!isAdmin) ...[
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    final rawDate = log['date']?.toString();
+                    String? dateStr;
+                    if (rawDate != null) {
+                      try {
+                        if (rawDate.contains('T')) {
+                          final nd = DateTime.parse(rawDate).toNepaliDateTime();
+                          dateStr =
+                              '${nd.year}-${nd.month.toString().padLeft(2, '0')}-${nd.day.toString().padLeft(2, '0')}';
+                        } else {
+                          final nd = NepaliDateTime.parse(rawDate);
+                          dateStr =
+                              '${nd.year}-${nd.month.toString().padLeft(2, '0')}-${nd.day.toString().padLeft(2, '0')}';
+                        }
+                      } catch (_) {
+                        dateStr = rawDate.split('T')[0];
                       }
-                    } catch (_) {
-                      dateStr = rawDate.split('T')[0];
                     }
-                  }
-                  _showCorrectionRequestSheet(
-                    initialDate: dateStr,
-                    initialCheckIn:
-                        formatTime(log['check_in_time']?.toString()),
-                    initialCheckOut:
-                        formatTime(log['check_out_time']?.toString()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 44),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    _showCorrectionRequestSheet(
+                      initialDate: dateStr,
+                      initialCheckIn:
+                          formatTime(log['check_in_time']?.toString()),
+                      initialCheckOut:
+                          formatTime(log['check_out_time']?.toString()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 44),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Iconsax.calendar_edit, size: 16),
+                  label: const Text('Request Correction for this Date',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                icon: const Icon(Iconsax.calendar_edit, size: 16),
-                label: const Text('Request Correction for this Date',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(height: 8),
+                const SizedBox(height: 8),
+              ] else
+                const SizedBox(height: 20),
               OutlinedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: OutlinedButton.styleFrom(
@@ -2784,49 +2821,95 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   }
 
   Widget _buildAdminCorrectionTab() {
-    if (_correctionLoading) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(40),
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
-      );
-    }
-    if (_pendingCorrectionRequests.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(32),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: context.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: context.border),
-        ),
-        child: const Text('No pending attendance correction requests.',
-            style: TextStyle(color: AppColors.textSecondary)),
-      );
-    }
+    final filters = [
+      {'id': 'pending', 'label': 'Pending', 'count': _pendingCorrectionRequests.length},
+      {'id': 'approved', 'label': 'Approved History'},
+      {'id': 'rejected', 'label': 'Rejected History'},
+      {'id': 'all', 'label': 'All Records'},
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Pending Correction Requests (${_pendingCorrectionRequests.length})',
-          style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: context.textPrimary),
-        ),
-        const SizedBox(height: 12),
-        ..._pendingCorrectionRequests.map(
-          (req) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _CorrectionRequestTile(
-              req: req,
-              isAdmin: true,
-              onAction: (action, note) =>
-                  _actionCorrectionRequest(req['id'] as int, action, note),
-            ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: filters.map((f) {
+              final id = f['id'] as String;
+              final isSelected = _adminCorrectionStatus == id;
+              final count = f['count'] as int?;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
+                  label: Text(
+                    count != null ? '${f['label']} ($count)' : '${f['label']}',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                      color: isSelected ? Colors.white : context.textPrimary,
+                    ),
+                  ),
+                  selected: isSelected,
+                  selectedColor: AppColors.primary,
+                  backgroundColor: context.surface,
+                  checkmarkColor: Colors.white,
+                  showCheckmark: false,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: isSelected ? AppColors.primary : context.border,
+                    ),
+                  ),
+                  onSelected: (val) {
+                    if (val) {
+                      _loadPendingCorrections(status: id);
+                    }
+                  },
+                ),
+              );
+            }).toList(),
           ),
         ),
+        const SizedBox(height: 16),
+        if (_correctionLoading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(40),
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          )
+        else if (_adminCorrectionRequests.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(32),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: context.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: context.border),
+            ),
+            child: Text(
+              _adminCorrectionStatus == 'approved'
+                  ? 'No approved attendance corrections found.'
+                  : (_adminCorrectionStatus == 'rejected'
+                      ? 'No rejected attendance corrections found.'
+                      : (_adminCorrectionStatus == 'pending'
+                          ? 'No pending attendance correction requests.'
+                          : 'No attendance correction records found.')),
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          )
+        else
+          ..._adminCorrectionRequests.map(
+            (req) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _CorrectionRequestTile(
+                req: req,
+                isAdmin: true,
+                onAction: (action, note) =>
+                    _actionCorrectionRequest(req['id'] as int, action, note),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -3101,6 +3184,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       style: TextStyle(fontSize: 12)),
                   value: _enableRemote,
                   onChanged: (v) => setState(() => _enableRemote = v),
+                  activeThumbColor: AppColors.primary,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const Divider(),
+                SwitchListTile(
+                  title: const Text('Enable Daily Performance',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  subtitle: const Text(
+                      'Master switch allowing managers and staff to view performance evaluations and score cards',
+                      style: TextStyle(fontSize: 12)),
+                  value: _enableDailyPerformance,
+                  onChanged: (v) => setState(() => _enableDailyPerformance = v),
                   activeThumbColor: AppColors.primary,
                   contentPadding: EdgeInsets.zero,
                 ),

@@ -469,6 +469,9 @@ class OrganizationSettings(models.Model):
     enable_in_office_attendance = models.BooleanField(default=True)
     enable_remote_attendance = models.BooleanField(default=True)
 
+    # Performance feature toggle
+    enable_daily_performance = models.BooleanField(default=True, verbose_name="Enable Daily Performance")
+
     def __str__(self):
         return f"Settings for {self.organization.name}"
 

@@ -386,20 +386,22 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
 
     return Scaffold(
       backgroundColor: context.bg,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showSubmitDialog,
-        backgroundColor: AppColors.primary,
-        elevation: 6,
-        icon: const Icon(Iconsax.message_add_1, color: Colors.white, size: 20),
-        label: const Text(
-          'New Complaint',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.2,
-          ),
-        ),
-      ),
+      floatingActionButton: isAdmin
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _showSubmitDialog,
+              backgroundColor: AppColors.primary,
+              elevation: 6,
+              icon: const Icon(Iconsax.message_add_1, color: Colors.white, size: 20),
+              label: const Text(
+                'New Complaint',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -495,7 +497,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen>
                                 padding: const EdgeInsets.all(8),
                               ),
                             ),
-                            if (!isTight) ...[
+                            if (!isTight && !isAdmin) ...[
                               const SizedBox(width: 10),
                               ElevatedButton.icon(
                                 onPressed: _showSubmitDialog,

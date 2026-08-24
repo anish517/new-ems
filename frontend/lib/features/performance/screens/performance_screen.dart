@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/providers/date_provider.dart';
+import '../../../core/providers/settings_provider.dart';
 import 'package:nepali_utils/nepali_utils.dart';
 import 'package:intl/intl.dart';
 
@@ -360,8 +362,54 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   Widget build(BuildContext context) {
     ref.listen(nepaliDateProvider, (_, __) => _loadAll());
     final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
+    final orgSettings = ref.watch(orgSettingsProvider);
     final isDark = context.isDark;
     final isTight = MediaQuery.of(context).size.width < 650;
+
+    if (!orgSettings.enableDailyPerformance) {
+      return Scaffold(
+        backgroundColor: context.bg,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Iconsax.star_slash, size: 48, color: AppColors.primary),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Daily Performance Disabled',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'This feature has been turned off by your administrator in Global Settings.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => context.go('/'),
+                  icon: const Icon(Iconsax.home, size: 18),
+                  label: const Text('Back to Home'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: context.bg,

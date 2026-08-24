@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/notifications/providers/notification_provider.dart';
+import '../../core/providers/settings_provider.dart';
 import '../../core/theme/app_theme.dart';
 import 'common_widgets.dart';
 
@@ -19,6 +20,7 @@ class AppShell extends ConsumerWidget {
     final unreadCount = ref.watch(unreadCountProvider);
     final location = GoRouterState.of(context).matchedLocation;
     final isAdmin = user?.canManage ?? false;
+    final orgSettings = ref.watch(orgSettingsProvider);
 
     final employeeNav = [
       _NavItem('/', Iconsax.home_2, 'Home'),
@@ -27,6 +29,8 @@ class AppShell extends ConsumerWidget {
       _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
       _NavItem('/projects', Iconsax.folder_open, 'Projects'),
       _NavItem('/salary', Iconsax.wallet_3, 'Payslips'),
+      if (orgSettings.enableDailyPerformance)
+        _NavItem('/performance', Iconsax.star1, 'Performance'),
       _NavItem('/noticeboard', Iconsax.message_text, 'Notices'),
       _NavItem('/policy', Iconsax.document_text, 'Policy'),
       _NavItem('/calendar', Iconsax.calendar, 'Calendar'),
@@ -42,7 +46,8 @@ class AppShell extends ConsumerWidget {
       _NavItem('/salary', Iconsax.wallet_3, 'Accounts'),
       _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
       _NavItem('/projects', Iconsax.folder_open, 'Projects'),
-      _NavItem('/performance', Iconsax.star1, 'Performance'),
+      if (orgSettings.enableDailyPerformance)
+        _NavItem('/performance', Iconsax.star1, 'Performance'),
       _NavItem('/noticeboard', Iconsax.message_text, 'Notices'),
       _NavItem('/policy', Iconsax.document_text, 'Policy'),
       _NavItem('/calendar', Iconsax.calendar, 'Calendar'),

@@ -252,6 +252,7 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
             "allowed_attendance_radius",
             "enable_in_office_attendance",
             "enable_remote_attendance",
+            "enable_daily_performance",
         ]
 
 

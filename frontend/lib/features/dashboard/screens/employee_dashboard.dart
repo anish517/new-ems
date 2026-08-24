@@ -10,6 +10,7 @@ import '../../../shared/widgets/common_widgets.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../../core/providers/date_provider.dart';
+import '../../../core/providers/settings_provider.dart';
 
 class EmployeeDashboard extends ConsumerStatefulWidget {
   const EmployeeDashboard({super.key});
@@ -439,13 +440,14 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
         color: const Color(0xFF3B82F6),
         onTap: () => context.go('/calendar'),
       ),
-      _QuickCard(
-        label: 'Performance',
-        subtitle: 'Scores & appraisal metrics',
-        icon: Iconsax.star1,
-        color: const Color(0xFFF43F5E),
-        onTap: () => context.go('/performance'),
-      ),
+      if (ref.watch(orgSettingsProvider).enableDailyPerformance)
+        _QuickCard(
+          label: 'Performance',
+          subtitle: 'Scores & appraisal metrics',
+          icon: Iconsax.star1,
+          color: const Color(0xFFF43F5E),
+          onTap: () => context.go('/performance'),
+        ),
       _QuickCard(
         label: 'Policy',
         subtitle: 'Workplace code & terms',

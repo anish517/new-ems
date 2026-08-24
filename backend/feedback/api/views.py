@@ -54,20 +54,25 @@ class ComplainListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         user = self.request.user
         employee = self._get_employee()
+        
+        # Admin restriction: Admins cannot submit complaints (employee-only action)
+        is_admin = (
+            user.is_superuser or 
+            user.organization.exists() or 
+            (employee and getattr(employee, 'canManage', False)) or 
+            (employee and employee.organization and user in employee.organization.admin_users.all())
+        )
+        if is_admin or not employee:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Administrators cannot submit feedback complaints.")
+
         today = nepali_datetime.date.today()
-        if employee:
-            serializer.save(
-                owner=employee,
-                organization=employee.organization,
-                created_at=today,
-                updated_at=today,
-            )
-        else:
-            orgs = user.organization.all()
-            if orgs.exists():
-                serializer.save(organization=orgs.first(), created_at=today, updated_at=today)
-            else:
-                serializer.save(created_at=today, updated_at=today)
+        serializer.save(
+            owner=employee,
+            organization=employee.organization,
+            created_at=today,
+            updated_at=today,
+        )
 
 
 class ComplainDetailView(generics.RetrieveUpdateDestroyAPIView):

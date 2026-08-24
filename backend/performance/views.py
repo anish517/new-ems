@@ -5,9 +5,31 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
 from notification.models import Notification
-from organization.models import Employee
+from organization.models import Employee, OrganizationSettings, Organization
 from performance.models import PerformanceReview, PerformanceCategory
 from performance.serializers import PerformanceReviewSerializer, PerformanceCategorySerializer
+from rest_framework.exceptions import PermissionDenied
+
+
+def check_performance_enabled(user):
+    """Verifies that Daily Performance is enabled in OrganizationSettings."""
+    try:
+        org = None
+        if user.organization.exists():
+            org = user.organization.first()
+        elif hasattr(user, 'employee') and user.employee.organization:
+            org = user.employee.organization
+        elif user.is_superuser or getattr(user, 'is_hr', False):
+            org = Organization.objects.first()
+
+        if org:
+            settings_obj = OrganizationSettings.objects.filter(organization=org).first()
+            if settings_obj and not settings_obj.enable_daily_performance:
+                raise PermissionDenied("Daily Performance feature is currently disabled by your administrator.")
+    except PermissionDenied:
+        raise
+    except Exception:
+        pass
 
 
 class PerformanceCategoryViewSet(viewsets.ModelViewSet):
@@ -19,6 +41,7 @@ class PerformanceCategoryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        check_performance_enabled(user)
         try:
             org = user.organization.first()
             if not org and hasattr(user, 'employee'):
@@ -71,6 +94,7 @@ class PerformanceReviewListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        check_performance_enabled(user)
         employee_id = self.request.GET.get('employee')
 
         # Admin: see all reviews (optionally filtered by employee)
@@ -100,6 +124,7 @@ class PerformanceReviewListCreateView(generics.ListCreateAPIView):
             return PerformanceReview.objects.none()
 
     def perform_create(self, serializer):
+        check_performance_enabled(self.request.user)
         review = serializer.save(reviewer=self.request.user)
         # Notify the employee
         if review.employee and review.employee.user:
@@ -117,6 +142,7 @@ class PerformanceReviewRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyA
     
     def get_queryset(self):
         user = self.request.user
+        check_performance_enabled(user)
         is_admin = user.organization.exists() or user.is_superuser or getattr(user, 'is_hr', False)
         if is_admin:
             try:
@@ -143,6 +169,7 @@ class PerformanceReviewReplyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, pk):
+        check_performance_enabled(request.user)
         try:
             review = PerformanceReview.objects.get(pk=pk)
         except PerformanceReview.DoesNotExist:
