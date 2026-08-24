@@ -11,8 +11,17 @@ class ComplainCategoryListView(generics.ListAPIView):
     serializer_class = ComplainCategorySerializer
 
     def get_queryset(self):
-        org = self.request.user.employee.organization
-        return ComplainCategory.objects.filter(organization=org)
+        user = self.request.user
+        try:
+            org = user.employee.organization
+            return ComplainCategory.objects.filter(organization=org)
+        except Exception:
+            orgs = user.organization.all()
+            if orgs.exists():
+                return ComplainCategory.objects.filter(organization__in=orgs)
+            if user.is_superuser:
+                return ComplainCategory.objects.all()
+            return ComplainCategory.objects.none()
 
 
 class ComplainListCreateView(generics.ListCreateAPIView):

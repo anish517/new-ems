@@ -98,18 +98,16 @@ class UpdateLeaveRequestApiView(generics.RetrieveUpdateDestroyAPIView):
             instance.save(update_fields=['is_approved', 'is_reviewed', 'is_initial_approved', 'initial_approved_by', 'initial_approved_at', 'rejection_reason'])
             return Response(LeaveRequestSerializer(instance, context={'request': request}).data, status=status.HTTP_200_OK)
 
-        # 3. Rejection (Mandatory Reason Required)
+        # 3. Rejection
         if action == 'reject' or (is_reviewed is True and (is_approved is False or is_approved == 'false')):
             reason_str = str(rejection_reason or '').strip()
             if not reason_str:
-                return Response(
-                    {'error': 'A reason for rejection is required.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                reason_str = 'Rejected by administrator'
             instance.is_approved = False
             instance.is_reviewed = True
             instance.rejection_reason = reason_str
             instance.save(update_fields=['is_approved', 'is_reviewed', 'rejection_reason'])
+            return Response(LeaveRequestSerializer(instance, context={'request': request}).data, status=status.HTTP_200_OK)
         # 4. Upload / Update Supporting Document
         if 'document' in request.FILES:
             instance.document = request.FILES['document']
