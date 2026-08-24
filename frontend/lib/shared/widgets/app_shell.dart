@@ -73,13 +73,20 @@ class AppShell extends ConsumerWidget {
                     height: 38,
                     fit: BoxFit.contain,
                     filterQuality: FilterQuality.high,
+                    color: context.isDark ? Colors.white : null,
+                    colorBlendMode:
+                        context.isDark ? BlendMode.srcIn : null,
                     errorBuilder: (context, error, stackTrace) => Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Iconsax.box, color: AppColors.primary, size: 24),
+                      child: Icon(Iconsax.box,
+                          color: context.isDark
+                              ? Colors.white
+                              : AppColors.primary,
+                          size: 24),
                     ),
                   ),
                 ],
@@ -343,13 +350,20 @@ class AppShell extends ConsumerWidget {
                 height: 30,
                 fit: BoxFit.contain,
                 filterQuality: FilterQuality.high,
+                color: context.isDark ? Colors.white : null,
+                colorBlendMode:
+                    context.isDark ? BlendMode.srcIn : null,
                 errorBuilder: (context, error, stackTrace) => Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Iconsax.box, color: AppColors.primary, size: 18),
+                  child: Icon(Iconsax.box,
+                      color: context.isDark
+                          ? Colors.white
+                          : AppColors.primary,
+                      size: 18),
                 ),
               ),
             ],

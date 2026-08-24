@@ -141,25 +141,107 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     position: _slideAnim,
                     child: Center(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 460),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 36, vertical: 38),
-                          decoration: BoxDecoration(
-                            color: context.surface,
-                            borderRadius: BorderRadius.circular(28),
-                            border:
-                                Border.all(color: context.border, width: 1.2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black
-                                    .withValues(alpha: isDark ? 0.35 : 0.06),
-                                blurRadius: 36,
-                                offset: const Offset(0, 16),
+                        constraints: const BoxConstraints(maxWidth: 440),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // ── Logo + Brand Header (Moved Above White Box) ──
+                            Image.asset(
+                              'assets/images/logo.png',
+                              height: 52,
+                              fit: BoxFit.contain,
+                              filterQuality: FilterQuality.high,
+                              color: isDark ? Colors.white : null,
+                              colorBlendMode:
+                                  isDark ? BlendMode.srcIn : null,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Icon(Iconsax.box,
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppColors.primary,
+                                    size: 32),
                               ),
-                            ],
-                          ),
-                          child: _buildFormContent(context, authState),
+                            ),
+                            const SizedBox(height: 24),
+
+                            // ── White Box (Contains Email, Password & CTA) ──
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 32, vertical: 34),
+                              decoration: BoxDecoration(
+                                color: context.surface,
+                                borderRadius: BorderRadius.circular(28),
+                                border: Border.all(
+                                    color: context.border, width: 1.2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(
+                                        alpha: isDark ? 0.35 : 0.06),
+                                    blurRadius: 36,
+                                    offset: const Offset(0, 16),
+                                  ),
+                                ],
+                              ),
+                              child: _buildFormContent(context, authState),
+                            ),
+                            const SizedBox(height: 20),
+
+                            // ── Below White Box: Version & Footer ──
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary
+                                    .withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: AppColors.primary
+                                      .withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.success,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    'Version 2.0 Live',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Center(
+                              child: Text(
+                                'Protected by OmWay Enterprise Authentication',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: context.textSecondary
+                                      .withValues(alpha: 0.8),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -183,72 +265,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Centered Brand & Version Header
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _buildLogoBadge(size: 56, iconSize: 28),
-                const SizedBox(height: 12),
-                Text(
-                  'OmWay Technologies',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                    color: context.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Enterprise Workforce Suite',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: context.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          color: AppColors.success,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'Version 2.0 Live',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
 
           // Session Expired Banner (if redirected due to inactivity / off-hours)
           Builder(
@@ -482,59 +498,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     ),
             ),
           ),
-          const SizedBox(height: 20),
-
-          // Footer Security Note
-          Center(
-            child: Text(
-              'Protected by OmWay Enterprise Authentication',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: context.textSecondary.withValues(alpha: 0.8),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Helper Widgets
-  // ─────────────────────────────────────────────────────────────────────────────
-  Widget _buildLogoBadge({required double size, required double iconSize}) {
-    return Image.asset(
-      'assets/images/logo.png',
-      height: size,
-      fit: BoxFit.contain,
-      filterQuality: FilterQuality.high,
-      errorBuilder: (context, error, stackTrace) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppColors.primary, AppColors.accent],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(size * 0.28),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.35),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Icon(
-          Iconsax.building_4,
-          color: Colors.white,
-          size: iconSize,
-        ),
-      ),
-    );
-  }
+
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Adaptive Forgot Password (Modal on Desktop / BottomSheet on Mobile)

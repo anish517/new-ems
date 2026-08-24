@@ -132,61 +132,60 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
                                   color: context.textPrimary,
                                 ),
                               ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Iconsax.calendar_1,
-                                  size: 14, color: AppColors.textSecondary),
-                              const SizedBox(width: 6),
-                              Text(
-                                _formatNepaliHeaderDate(nowNepali),
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.textSecondary,
-                                ),
+                              Row(
+                                children: [
+                                  const Icon(Iconsax.calendar_1,
+                                      size: 14, color: AppColors.textSecondary),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _formatNepaliHeaderDate(nowNepali),
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        const ThemeToggleBtn(),
-                        const SizedBox(width: 8),
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Iconsax.notification, size: 20),
-                              tooltip: 'Notifications',
-                              onPressed: () => context.go('/notifications'),
-                              style: IconButton.styleFrom(
-                                backgroundColor: context.surface,
-                                padding: const EdgeInsets.all(10),
-                                side: BorderSide(color: context.border, width: 1),
-                              ),
+                        ),
+                    if (!isTight) ...[
+                      const ThemeToggleBtn(),
+                      const SizedBox(width: 8),
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Iconsax.notification, size: 20),
+                            tooltip: 'Notifications',
+                            onPressed: () => context.go('/notifications'),
+                            style: IconButton.styleFrom(
+                              backgroundColor: context.surface,
+                              padding: const EdgeInsets.all(10),
+                              side: BorderSide(color: context.border, width: 1),
                             ),
-                            if (unreadCount > 0)
-                              Positioned(
-                                top: 4,
-                                right: 4,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.error,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  constraints: const BoxConstraints(
-                                    minWidth: 8,
-                                    minHeight: 8,
-                                  ),
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.error,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 8,
+                                  minHeight: 8,
                                 ),
                               ),
-                          ],
-                        ),
-                        const SizedBox(width: 12),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                    ],
                         GestureDetector(
                           onTap: () => context.go('/profile'),
                           child: Container(
@@ -226,10 +225,7 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
                         ),
                       ],
                     ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
                 // ── Responsive Layout Builder ────────────────────────────────
                 LayoutBuilder(

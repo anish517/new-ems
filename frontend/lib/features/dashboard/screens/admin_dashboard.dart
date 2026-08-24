@@ -2418,19 +2418,21 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     ),
                     Row(
                       children: [
-                        const ThemeToggleBtn(),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Iconsax.notification, size: 20),
-                          tooltip: 'Notifications',
-                          onPressed: () => context.go('/notifications'),
-                          style: IconButton.styleFrom(
-                            backgroundColor: context.surface,
-                            padding: const EdgeInsets.all(10),
-                            side: BorderSide(color: context.border, width: 1),
+                        if (!isTight) ...[
+                          const ThemeToggleBtn(),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Iconsax.notification, size: 20),
+                            tooltip: 'Notifications',
+                            onPressed: () => context.go('/notifications'),
+                            style: IconButton.styleFrom(
+                              backgroundColor: context.surface,
+                              padding: const EdgeInsets.all(10),
+                              side: BorderSide(color: context.border, width: 1),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
+                          const SizedBox(width: 12),
+                        ],
                         GestureDetector(
                           onTap: () => context.go('/profile'),
                           child: Container(
