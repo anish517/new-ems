@@ -70,7 +70,7 @@ void main() {
         '/salary',
         '/tasks',
         '/projects',
-        if (enablePerformance) '/performance',
+        '/performance',
         '/noticeboard',
         '/policy',
         '/calendar',
@@ -81,16 +81,13 @@ void main() {
       return isAdmin ? adminNav : employeeNav;
     }
 
-    test('Admin navigation includes /performance when enable_daily_performance is true', () {
-      final routes = getNavRoutes(isAdmin: true, enablePerformance: true);
-      expect(routes.contains('/performance'), isTrue);
-      expect(routes.contains('/employees'), isTrue);
-    });
+    test('Admin navigation always includes /performance even when enable_daily_performance is false', () {
+      final routesTrue = getNavRoutes(isAdmin: true, enablePerformance: true);
+      expect(routesTrue.contains('/performance'), isTrue);
 
-    test('Admin navigation hides /performance when enable_daily_performance is false', () {
-      final routes = getNavRoutes(isAdmin: true, enablePerformance: false);
-      expect(routes.contains('/performance'), isFalse);
-      expect(routes.contains('/employees'), isTrue);
+      final routesFalse = getNavRoutes(isAdmin: true, enablePerformance: false);
+      expect(routesFalse.contains('/performance'), isTrue);
+      expect(routesFalse.contains('/employees'), isTrue);
     });
 
     test('Employee navigation includes /performance when enable_daily_performance is true', () {

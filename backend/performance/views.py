@@ -12,15 +12,15 @@ from rest_framework.exceptions import PermissionDenied
 
 
 def check_performance_enabled(user):
-    """Verifies that Daily Performance is enabled in OrganizationSettings."""
+    """Verifies that Daily Performance is enabled in OrganizationSettings for employees.
+    Admins, Superusers, and HR users always retain access to view and conduct appraisals."""
+    if user.is_superuser or user.organization.exists() or getattr(user, 'is_hr', False):
+        return
+
     try:
         org = None
-        if user.organization.exists():
-            org = user.organization.first()
-        elif hasattr(user, 'employee') and user.employee.organization:
+        if hasattr(user, 'employee') and user.employee.organization:
             org = user.employee.organization
-        elif user.is_superuser or getattr(user, 'is_hr', False):
-            org = Organization.objects.first()
 
         if org:
             settings_obj = OrganizationSettings.objects.filter(organization=org).first()

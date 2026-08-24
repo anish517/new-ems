@@ -3177,7 +3177,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       style:
                           TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                   subtitle: const Text(
-                      'Master switch allowing managers and staff to view performance evaluations and score cards',
+                      'Controls employee performance & appraisal visibility. Administrators always retain full access.',
                       style: TextStyle(fontSize: 12)),
                   value: _enableDailyPerformance,
                   onChanged: (v) => setState(() => _enableDailyPerformance = v),

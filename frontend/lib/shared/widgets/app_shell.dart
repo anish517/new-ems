@@ -46,8 +46,7 @@ class AppShell extends ConsumerWidget {
       _NavItem('/salary', Iconsax.wallet_3, 'Accounts'),
       _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
       _NavItem('/projects', Iconsax.folder_open, 'Projects'),
-      if (orgSettings.enableDailyPerformance)
-        _NavItem('/performance', Iconsax.star1, 'Performance'),
+      _NavItem('/performance', Iconsax.star1, 'Performance'),
       _NavItem('/noticeboard', Iconsax.message_text, 'Notices'),
       _NavItem('/policy', Iconsax.document_text, 'Policy'),
       _NavItem('/calendar', Iconsax.calendar, 'Calendar'),

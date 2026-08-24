@@ -366,7 +366,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
     final isDark = context.isDark;
     final isTight = MediaQuery.of(context).size.width < 650;
 
-    if (!orgSettings.enableDailyPerformance) {
+    if (!isAdmin && !orgSettings.enableDailyPerformance) {
       return Scaffold(
         backgroundColor: context.bg,
         body: Center(

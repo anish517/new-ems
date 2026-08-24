@@ -126,7 +126,7 @@ class PerformanceSettingTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 
     def test_performance_disabled_blocks_all_access(self):
-        """When enable_daily_performance is False, reviews and categories return 403 Forbidden."""
+        """When enable_daily_performance is False, employee is blocked with 403, but Admin retains access."""
         self.settings.enable_daily_performance = False
         self.settings.save()
 
@@ -138,6 +138,13 @@ class PerformanceSettingTests(TestCase):
 
         res_cat = self.client.get('/api/performance/categories/')
         self.assertEqual(res_cat.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Admin retains access
+        self.client.force_authenticate(user=self.admin_user)
+        res_admin = self.client.get('/api/performance/reviews/')
+        self.assertEqual(res_admin.status_code, status.HTTP_200_OK)
+        res_admin_cat = self.client.get('/api/performance/categories/')
+        self.assertEqual(res_admin_cat.status_code, status.HTTP_200_OK)
 
     def test_performance_toggle_re_enabling_restores_access(self):
         """Toggling setting back to True immediately restores access."""
