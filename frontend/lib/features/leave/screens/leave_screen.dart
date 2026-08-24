@@ -757,18 +757,43 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
               // ── Top Header Card ──────────────────────────────────────────
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isNarrow = constraints.maxWidth < 800;
-
-                  Widget buildInfoColumn() => Column(
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: context.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: context.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black
+                          .withValues(alpha: isDark ? 0.25 : 0.04),
+                      blurRadius: 18,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B)
+                            .withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(Iconsax.calendar_remove,
+                          color: Color(0xFFF59E0B), size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Wrap(
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            spacing: 8,
-                            runSpacing: 4,
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 'Leave & Attendance Portal',
@@ -779,6 +804,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                                   color: context.textPrimary,
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 2),
@@ -808,113 +834,54 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                                 color: AppColors.textSecondary),
                           ),
                         ],
-                      );
-
-                  Widget buildIconBadge() => Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF59E0B)
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Icon(Iconsax.calendar_remove,
-                            color: Color(0xFFF59E0B), size: 24),
-                      );
-
-                  final actionsWidget = Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      IconButton(
-                        onPressed: _loadLeaves,
-                        icon: const Icon(Iconsax.refresh, size: 20),
-                        tooltip: 'Refresh Leaves',
                       ),
-                      if (isAdmin) ...[
-                        OutlinedButton.icon(
-                          onPressed: () => _showLeaveSettingsDialog(context),
-                          icon: const Icon(Iconsax.setting_2,
-                              size: 16, color: AppColors.primary),
-                          label: const Text('Leave Policy',
-                              style: TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w700)),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                                color: AppColors.primary
-                                    .withValues(alpha: 0.4)),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: () => _showApplyLeaveDialog(context),
-                          icon: const Icon(Iconsax.add,
-                              size: 16, color: Colors.white),
-                          label: const Text('New Leave',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                          ),
-                        ),
-                      ],
-                    ],
-                  );
-
-                  return Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: context.surface,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: context.border),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black
-                              .withValues(alpha: isDark ? 0.25 : 0.04),
-                          blurRadius: 18,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
                     ),
-                    child: isNarrow
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  buildIconBadge(),
-                                  const SizedBox(width: 14),
-                                  Expanded(child: buildInfoColumn()),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              actionsWidget,
-                            ],
-                          )
-                        : Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              buildIconBadge(),
-                              const SizedBox(width: 14),
-                              Expanded(child: buildInfoColumn()),
-                              const SizedBox(width: 16),
-                              actionsWidget,
-                            ],
-                          ),
-                  );
-                },
+                    const SizedBox(width: 12),
+                    IconButton(
+                      onPressed: _loadLeaves,
+                      icon: const Icon(Iconsax.refresh, size: 20),
+                      tooltip: 'Refresh Leaves',
+                    ),
+                    if (isAdmin) ...[
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: () => _showLeaveSettingsDialog(context),
+                        icon: const Icon(Iconsax.setting_2,
+                            size: 16, color: AppColors.primary),
+                        label: const Text('Leave Policy',
+                            style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700)),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                              color: AppColors.primary
+                                  .withValues(alpha: 0.4)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () => _showApplyLeaveDialog(context),
+                        icon: const Icon(Iconsax.add,
+                            size: 16, color: Colors.white),
+                        label: const Text('New Leave',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
               const SizedBox(height: 20),
 
