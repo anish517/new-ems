@@ -132,6 +132,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "official_email",
             "personal_email",
             "is_active",
+            "is_in_provision",
             "employee_type",
             "department_name",
             "designation_title",

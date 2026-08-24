@@ -22,33 +22,30 @@ def increment_leave_balance(sender, instance, created, **kwargs):
     if not employee:
         return
 
-    # Determine which leave type name matches
-    leave_type_name = 'Paid Leave' if instance.is_paid else 'Unpaid Leave'
-
-    try:
-        lb = LeaveBalance.objects.get(
-            employee=employee,
-            leave_type__name=leave_type_name
-        )
-    except LeaveBalance.DoesNotExist:
-        return  # No balance record — skip silently
-    except LeaveBalance.MultipleObjectsReturned:
+    target_type = instance.type
+    if target_type:
+        lb = LeaveBalance.objects.filter(employee=employee, leave_type=target_type).first()
+    else:
+        leave_type_name = 'Casual Leave' if instance.is_paid else 'Unpaid Leave'
         lb = LeaveBalance.objects.filter(
             employee=employee,
-            leave_type__name=leave_type_name
+            leave_type__name__icontains=leave_type_name
         ).first()
 
-    # Recompute total from all approved leaves of this type for this employee
+    if not lb:
+        return
+
+    # Recompute total from all approved paid leaves of this type for this employee
     approved_requests = LeaveRequest.objects.filter(
         employee=employee,
         is_approved=True,
         is_reviewed=True,
-        is_paid=instance.is_paid,
-    ).exclude(pk=instance.pk)  # exclude self, will add below if approved
+        is_paid=True,
+    )
+    if target_type:
+        approved_requests = approved_requests.filter(type=target_type)
 
     total_taken = sum(lr.no_days for lr in approved_requests)
-    if instance.is_approved and instance.is_reviewed:
-        total_taken += instance.no_days
 
     lb.leaves_taken = total_taken
     lb.save(update_fields=['leaves_taken'])

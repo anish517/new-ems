@@ -101,12 +101,15 @@ class MeSerializer(serializers.ModelSerializer):
     organization_id = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     has_approved_policy = serializers.SerializerMethodField()
+    employee_type = serializers.SerializerMethodField()
+    is_in_provision = serializers.SerializerMethodField()
 
     class Meta:
         model = Account
         fields = ['id', 'email', 'first_name', 'last_name', 'full_name',
                   'profile_picture', 'is_staff', 'is_superuser',
-                  'role', 'employee_id', 'organization_id', 'has_approved_policy']
+                  'role', 'employee_id', 'organization_id', 'has_approved_policy',
+                  'employee_type', 'is_in_provision']
 
     def get_full_name(self, obj):
         return obj.full_name
@@ -135,6 +138,18 @@ class MeSerializer(serializers.ModelSerializer):
             return obj.employee.organization.id if obj.employee.organization else None
         except Exception:
             return None
+
+    def get_employee_type(self, obj):
+        try:
+            return obj.employee.employee_type
+        except Exception:
+            return None
+
+    def get_is_in_provision(self, obj):
+        try:
+            return getattr(obj.employee, 'is_in_provision', False)
+        except Exception:
+            return False
 
     def get_has_approved_policy(self, obj):
         if obj.is_superuser:

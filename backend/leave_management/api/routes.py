@@ -27,5 +27,8 @@ urlpatterns = [
 
     # Admin: summary of ALL employees' balances
     path('leave-summary/', views.AllEmployeeLeaveSummaryView.as_view()),
+
+    # Organization Leave Settings (Provision & Intern policies)
+    path('settings/', views.LeaveSettingAPIView.as_view()),
 ]
 

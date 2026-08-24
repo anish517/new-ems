@@ -35,6 +35,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
   String _customEmployeeId = '';
   final _employeeIdCtrl = TextEditingController();
   bool _isActive = true;
+  bool _isInProvision = false;
   NepaliDateTime _dob = NepaliDateTime(2055, 1, 1);
   final _dobCtrl = TextEditingController();
   bool _isLoading = false;
@@ -83,6 +84,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
       _maritalStatus = widget.employee!['marital_status'] ?? 'single';
       _employeeType = widget.employee!['employee_type'] ?? 'full_time';
       _isActive = widget.employee!['is_active'] ?? true;
+      _isInProvision = widget.employee!['is_in_provision'] ?? false;
       _customEmployeeId = widget.employee!['id_prefix']?.toString() ??
           widget.employee!['employee_code']?.toString() ??
           '';
@@ -696,6 +698,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
         },
         'id_prefix': _customEmployeeId.isNotEmpty ? _customEmployeeId : null,
         'is_active': _isActive,
+        'is_in_provision': _isInProvision,
         'post': postId,
         'gender': _gender,
         'marital_status': _maritalStatus,
@@ -1060,6 +1063,79 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                             activeThumbColor: AppColors.success,
                             onChanged: (val) =>
                                 setState(() => _isActive = val),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // ── Provision / Probation Period Toggle ─────────────
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: context.card,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _isInProvision
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.4)
+                              : context.border,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: _isInProvision
+                                      ? const Color(0xFFF59E0B)
+                                          .withValues(alpha: 0.12)
+                                      : AppColors.primary
+                                          .withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  Iconsax.timer_1,
+                                  size: 18,
+                                  color: _isInProvision
+                                      ? const Color(0xFFF59E0B)
+                                      : AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Provision / Probation Period',
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: context.textPrimary,
+                                    ),
+                                  ),
+                                  Text(
+                                    _isInProvision
+                                        ? 'Staff is currently serving probation period'
+                                        : 'Regular permanent staff status',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Switch(
+                            value: _isInProvision,
+                            activeThumbColor: const Color(0xFFF59E0B),
+                            onChanged: (val) =>
+                                setState(() => _isInProvision = val),
                           ),
                         ],
                       ),

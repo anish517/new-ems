@@ -10,6 +10,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/models/user_model.dart';
 import '../../../core/providers/date_provider.dart';
 import '../../../shared/widgets/nepali_date_picker.dart';
 
@@ -199,6 +200,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
   late TabController _tabs;
   List<dynamic> _requests = [];
   Map<String, dynamic>? _balance;
+  Map<String, dynamic>? _leaveSetting;
   List<dynamic> _pending = [];
   List<dynamic> _adminBalances = [];
   bool _isLoading = true;
@@ -225,6 +227,16 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
     try {
       final user = ref.read(currentUserProvider);
       final isAdmin = user?.canManage ?? false;
+      final nepaliDate = ref.read(nepaliDateProvider);
+
+      // Fetch organization leave settings (Provision & Intern rules)
+      try {
+        final settingRes =
+            await ApiService().get('${AppConstants.leaveBase}/settings/');
+        if (mounted && settingRes.data is Map) {
+          _leaveSetting = Map<String, dynamic>.from(settingRes.data);
+        }
+      } catch (_) {}
 
       // My leave requests (admins get all org requests, employees get only theirs)
       final res =
@@ -246,8 +258,9 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
 
       if (isAdmin) {
         try {
-          final summaryRes = await ApiService()
-              .get('${AppConstants.leaveBase}/leave-summary/');
+          final summaryRes = await ApiService().get(
+            '${AppConstants.leaveBase}/leave-summary/?nepali_year=${nepaliDate.year}&nepali_month=${nepaliDate.month}',
+          );
           if (mounted) {
             setState(() => _adminBalances =
                 summaryRes.data is List ? summaryRes.data as List : []);
@@ -259,7 +272,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
       if (user?.employeeId != null) {
         try {
           final balRes = await ApiService().get(
-            '${AppConstants.leaveBase}/leave-balance/${user!.employeeId}/',
+            '${AppConstants.leaveBase}/leave-balance/${user!.employeeId}/?nepali_year=${nepaliDate.year}&nepali_month=${nepaliDate.month}',
           );
           if (mounted) {
             setState(() => _balance = balRes.data as Map<String, dynamic>?);
@@ -268,6 +281,174 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
       }
     } catch (_) {}
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  void _showLeaveSettingsDialog(BuildContext context) {
+    bool paidInProvision =
+        _leaveSetting?['paid_leave_during_provision'] ?? false;
+    bool allowIntern = _leaveSetting?['allow_intern_leave'] ?? true;
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Iconsax.setting_2,
+                    color: AppColors.primary, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Leave Policy Settings',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 16)),
+                    Text('Configure organization leave rules',
+                        style: TextStyle(
+                            fontSize: 11.5, color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: ctx.card,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: ctx.border),
+                  ),
+                  child: SwitchListTile(
+                    title: const Text('Paid Leave in Provision Period',
+                        style: TextStyle(
+                            fontSize: 13.5, fontWeight: FontWeight.w700)),
+                    subtitle: const Text(
+                      'If ON, staff in probation can take paid Casual & Sick leave. If OFF, only unpaid leave is permitted.',
+                      style: TextStyle(
+                          fontSize: 11, color: AppColors.textSecondary),
+                    ),
+                    value: paidInProvision,
+                    activeThumbColor: AppColors.primary,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (val) =>
+                        setModalState(() => paidInProvision = val),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: ctx.card,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: ctx.border),
+                  ),
+                  child: SwitchListTile(
+                    title: const Text('Allow Intern Leave',
+                        style: TextStyle(
+                            fontSize: 13.5, fontWeight: FontWeight.w700)),
+                    subtitle: const Text(
+                      'If ON, intern employees can submit leave applications. If OFF, intern leave requests are blocked.',
+                      style: TextStyle(
+                          fontSize: 11, color: AppColors.textSecondary),
+                    ),
+                    value: allowIntern,
+                    activeThumbColor: AppColors.primary,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (val) => setModalState(() => allowIntern = val),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      setModalState(() => isSaving = true);
+                      final messenger = ScaffoldMessenger.of(context);
+                      try {
+                        final res = await ApiService().patch(
+                          '${AppConstants.leaveBase}/settings/',
+                          data: {
+                            'paid_leave_during_provision': paidInProvision,
+                            'allow_intern_leave': allowIntern,
+                          },
+                        );
+                        if (mounted) {
+                          setState(() {
+                            _leaveSetting =
+                                Map<String, dynamic>.from(res.data);
+                          });
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Row(
+                                children: [
+                                  Icon(Iconsax.tick_circle,
+                                      color: Colors.white, size: 18),
+                                  SizedBox(width: 10),
+                                  Text(
+                                      'Leave policy settings saved successfully!'),
+                                ],
+                              ),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  'Failed to save settings: ${ApiService.getErrorMessage(e)}'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (ctx.mounted) setModalState(() => isSaving = false);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: isSaving
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : const Text('Save Policy',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _handleLeaveApproval(int leaveId, String action,
@@ -440,6 +621,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
 
   void _showApplyLeaveDialog(BuildContext context) async {
     final isDesktop = MediaQuery.of(context).size.width >= 768;
+    final user = ref.read(currentUserProvider);
 
     if (isDesktop) {
       final res = await showDialog<bool>(
@@ -457,6 +639,8 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                 onSuccess: _loadLeaves,
                 balance: _balance,
                 existingRequests: _requests,
+                leaveSetting: _leaveSetting,
+                currentUser: user,
               ),
             ),
           ),
@@ -475,6 +659,8 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
           onSuccess: _loadLeaves,
           balance: _balance,
           existingRequests: _requests,
+          leaveSetting: _leaveSetting,
+          currentUser: user,
         ),
       );
       if (res == true) _loadLeaves();
@@ -673,6 +859,26 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                               tooltip: 'Refresh Leaves',
                             ),
                             if (isAdmin) ...[
+                              const SizedBox(width: 8),
+                              OutlinedButton.icon(
+                                onPressed: () =>
+                                    _showLeaveSettingsDialog(context),
+                                icon: const Icon(Iconsax.setting_2,
+                                    size: 16, color: AppColors.primary),
+                                label: const Text('Leave Policy',
+                                    style: TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w700)),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.4)),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 10),
+                                ),
+                              ),
                               const SizedBox(width: 8),
                               ElevatedButton.icon(
                                 onPressed: () => _showApplyLeaveDialog(context),
@@ -1698,15 +1904,17 @@ class _LeaveBalanceTab extends StatelessWidget {
     }
     final leaveBalances = (balance!['leave_balances'] as List?) ?? [];
 
-    // Compute totals for paid leave types (Casual, Sick, Paid Leave)
+    // Compute totals for paid leave types (Casual, Sick)
     double totalTaken = 0;
     double totalQuota = 0;
+    double totalAvailableThisMonth = 0;
     for (final lb in leaveBalances) {
       final typeName =
           lb['leave_type']?['name']?.toString().toLowerCase() ?? '';
       if (!typeName.contains('unpaid')) {
-        totalTaken += (lb['leaves_taken'] as num? ?? 0).toDouble();
+        totalTaken += (lb['paid_taken'] as num? ?? lb['leaves_taken'] as num? ?? 0).toDouble();
         totalQuota += (lb['quota'] as num? ?? 0).toDouble();
+        totalAvailableThisMonth += (lb['available_this_month'] as num? ?? (totalQuota - totalTaken)).toDouble();
       }
     }
     final remaining = (totalQuota - totalTaken).clamp(0, totalQuota);
@@ -1720,7 +1928,7 @@ class _LeaveBalanceTab extends StatelessWidget {
 
     return Column(
       children: [
-        // Summary card
+        // Summary Hero Card
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(22),
@@ -1738,21 +1946,29 @@ class _LeaveBalanceTab extends StatelessWidget {
           ),
           child: Column(
             children: [
-              const Text('Annual Leave Entitlement',
-                  style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Iconsax.calendar_tick, color: Colors.white70, size: 16),
+                  SizedBox(width: 6),
+                  Text('Available Leave This Month',
+                      style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                ],
+              ),
               const SizedBox(height: 6),
               Text(
-                '${remaining.toStringAsFixed(1)} Days Left',
+                '${totalAvailableThisMonth.toStringAsFixed(1)} Days Available',
                 style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 30,
+                    fontSize: 28,
                     fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 4),
               Text(
-                '${totalTaken.toStringAsFixed(1)} Days Taken / ${totalQuota.toStringAsFixed(0)} Total Quota'
+                '${totalTaken.toStringAsFixed(1)}d Taken / ${totalQuota.toStringAsFixed(0)}d Annual Total (${remaining.toStringAsFixed(1)}d Remaining in Year)'
                 '${pendingDays > 0 ? ' • ${pendingDays.toStringAsFixed(1)}d in pending requests' : ''}',
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -1763,7 +1979,7 @@ class _LeaveBalanceTab extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Breakdown by Leave Type',
+              'Leave Quotas & Monthly Accrual Breakdown',
               style: TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
@@ -1805,28 +2021,43 @@ class _LeaveTypeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final typeName = lb['leave_type']?['name'] ?? 'Leave';
-    final isPaid = typeName == 'Paid Leave' || typeName == 'Casual Leave';
-    final used = (lb['leaves_taken'] as num? ?? 0).toDouble();
+    final isSick = typeName.toString().toLowerCase().contains('sick');
+    final isCasual = typeName.toString().toLowerCase().contains('casual');
+    final isPaid = typeName == 'Paid Leave' || isCasual || isSick;
+
     final total = (lb['quota'] as num? ?? 1).toDouble();
-    final remaining = (total - used).clamp(0, total);
-    final pct = total > 0 ? (used / total).clamp(0.0, 1.0).toDouble() : 0.0;
+    final paidTaken = (lb['paid_taken'] as num? ?? lb['leaves_taken'] as num? ?? 0).toDouble();
+    final unpaidTaken = (lb['unpaid_taken'] as num? ?? 0).toDouble();
+    final halfDayCount = (lb['half_day_count'] as num? ?? 0).toInt();
+    final halfDayDays = (lb['half_day_days'] as num? ?? 0).toDouble();
+    final accruedToDate = (lb['accrued_to_date'] as num? ?? total).toDouble();
+    final availableThisMonth = (lb['available_this_month'] as num? ?? (total - paidTaken)).toDouble();
+    final remainingAnnual = (lb['remaining_annual'] as num? ?? (total - paidTaken)).toDouble();
+    final pct = total > 0 ? (paidTaken / total).clamp(0.0, 1.0).toDouble() : 0.0;
 
     // Filter pending for this specific type
     final typePending = pendingRequests
         .where((r) =>
             (r['leave_type_name'] ??
-                (r['is_paid'] == true ? 'Paid Leave' : 'Unpaid Leave')) ==
+                (r['is_paid'] == true ? 'Casual Leave' : 'Unpaid Leave')) ==
             typeName)
         .fold<double>(
             0, (sum, r) => sum + ((r['no_days'] as num?)?.toDouble() ?? 0.0));
-    final netAvailable = (remaining - typePending).clamp(0, total);
+    final netAvailable = (availableThisMonth - typePending).clamp(0, total);
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: context.border),
+        border: Border.all(
+          color: (isSick
+                  ? const Color(0xFF6366F1)
+                  : isCasual
+                      ? AppColors.primary
+                      : (isPaid ? AppColors.success : const Color(0xFFF59E0B)))
+              .withValues(alpha: 0.25),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1839,71 +2070,175 @@ class _LeaveTypeTile extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color:
-                          (isPaid ? AppColors.success : const Color(0xFFF59E0B))
-                              .withValues(alpha: 0.12),
+                      color: (isSick
+                              ? const Color(0xFF6366F1)
+                              : isCasual
+                                  ? AppColors.primary
+                                  : (isPaid ? AppColors.success : const Color(0xFFF59E0B)))
+                          .withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
-                      typeName.toString().toLowerCase().contains('sick')
+                      isSick
                           ? Iconsax.health
-                          : typeName.toString().toLowerCase().contains('casual')
+                          : isCasual
                               ? Iconsax.sun_1
-                              : (isPaid
-                                  ? Iconsax.wallet_3
-                                  : Iconsax.calendar_remove),
-                      color:
-                          isPaid ? AppColors.success : const Color(0xFFF59E0B),
+                              : (isPaid ? Iconsax.wallet_3 : Iconsax.calendar_remove),
+                      color: isSick
+                          ? const Color(0xFF6366F1)
+                          : isCasual
+                              ? AppColors.primary
+                              : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
                       size: 18,
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Text(
-                    typeName,
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14.5,
-                        color: context.textPrimary),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        typeName,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14.5,
+                            color: context.textPrimary),
+                      ),
+                      Text(
+                        'Annual: ${total.toStringAsFixed(0)}d • Accrued: ${accruedToDate.toStringAsFixed(1)}d',
+                        style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              Text(
-                '${netAvailable.toStringAsFixed(1)}d Net Available',
-                style: TextStyle(
-                  color: isPaid ? AppColors.success : const Color(0xFFF59E0B),
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${netAvailable.toStringAsFixed(1)}d Available',
+                    style: TextStyle(
+                      color: isSick
+                          ? const Color(0xFF6366F1)
+                          : isCasual
+                              ? AppColors.primary
+                              : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    'This Month',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: isSick
+                          ? const Color(0xFF6366F1)
+                          : isCasual
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 12),
+
+          // Multi-metric chips
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'Paid: ${paidTaken.toStringAsFixed(1)}d',
+                  style: const TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.success),
+                ),
+              ),
+              if (unpaidTaken > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Unpaid: ${unpaidTaken.toStringAsFixed(1)}d',
+                    style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFF59E0B)),
+                  ),
+                ),
+              if (halfDayCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Half-Day: $halfDayCount (${halfDayDays.toStringAsFixed(1)}d)',
+                    style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF6366F1)),
+                  ),
+                ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: context.card,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: context.border),
+                ),
+                child: Text(
+                  'Year Left: ${remainingAnnual.toStringAsFixed(1)}d',
+                  style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: context.textPrimary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
           LinearProgressIndicator(
             value: pct,
             backgroundColor: context.card,
-            color: pct > 0.8 ? AppColors.error : AppColors.primary,
+            color: pct > 0.85
+                ? AppColors.error
+                : (isSick
+                    ? const Color(0xFF6366F1)
+                    : (isPaid ? AppColors.success : const Color(0xFFF59E0B))),
             borderRadius: BorderRadius.circular(6),
-            minHeight: 6,
+            minHeight: 5.5,
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Used: ${used.toStringAsFixed(1)}d • Quota: ${total.toStringAsFixed(0)}d',
+          if (typePending > 0) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '${typePending.toStringAsFixed(1)}d Pending Approval',
                 style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 11.5),
+                    color: Color(0xFFF59E0B),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700),
               ),
-              if (typePending > 0)
-                Text(
-                  '${typePending.toStringAsFixed(1)}d Pending Approval',
-                  style: const TextStyle(
-                      color: Color(0xFFF59E0B),
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700),
-                ),
-            ],
-          ),
+            ),
+          ],
         ],
       ),
     );
@@ -1915,10 +2250,15 @@ class _ApplyLeaveSheet extends StatefulWidget {
   final VoidCallback onSuccess;
   final Map<String, dynamic>? balance;
   final List<dynamic> existingRequests;
-  const _ApplyLeaveSheet(
-      {required this.onSuccess,
-      required this.balance,
-      required this.existingRequests});
+  final Map<String, dynamic>? leaveSetting;
+  final UserProfile? currentUser;
+  const _ApplyLeaveSheet({
+    required this.onSuccess,
+    required this.balance,
+    required this.existingRequests,
+    this.leaveSetting,
+    this.currentUser,
+  });
 
   @override
   State<_ApplyLeaveSheet> createState() => _ApplyLeaveSheetState();
@@ -1941,9 +2281,25 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
   PlatformFile? _selectedFile;
   int _excludedSaturdays = 0;
 
+  bool get _isInternBlocked {
+    final isIntern = widget.currentUser?.employeeType == 'intern';
+    final allowIntern = widget.leaveSetting?['allow_intern_leave'] ?? true;
+    return isIntern && !allowIntern;
+  }
+
+  bool get _isProvisionRestricted {
+    final inProvision = widget.currentUser?.isInProvision ?? false;
+    final allowPaidInProvision =
+        widget.leaveSetting?['paid_leave_during_provision'] ?? false;
+    return inProvision && !allowPaidInProvision;
+  }
+
   @override
   void initState() {
     super.initState();
+    if (_isProvisionRestricted) {
+      _isPaid = false;
+    }
     _fetchLeaveTypes();
   }
 
@@ -1959,9 +2315,14 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
       final res =
           await ApiService().get('${AppConstants.leaveBase}/leave-types/');
       if (mounted) {
-        final list = res.data is List
+        final rawList = res.data is List
             ? res.data as List
             : ((res.data['results'] ?? []) as List);
+        final list = rawList.where((t) {
+          final name = t['name']?.toString().toLowerCase() ?? '';
+          return name.contains('casual') || name.contains('sick');
+        }).toList();
+
         setState(() {
           _leaveTypes = list;
           if (list.isNotEmpty) {
@@ -2065,6 +2426,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
   }
 
   double _calculateAvailableQuota() {
+    if (!_isPaid) return 999.0; // Unpaid leave is unrestricted by quota
     if (widget.balance == null) return 999.0;
     final leaveBalances = (widget.balance!['leave_balances'] as List?) ?? [];
 
@@ -2077,39 +2439,38 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
         targetBalance = lb;
         break;
       }
-      if (typeName == _selectedCategoryName.toLowerCase()) {
+      if (typeName.contains(_selectedCategoryName.toLowerCase()) ||
+          _selectedCategoryName.toLowerCase().contains(typeName)) {
         targetBalance = lb;
         break;
       }
     }
 
-    if (targetBalance == null) {
-      final fallbackName = _isPaid ? 'Paid Leave' : 'Unpaid Leave';
-      for (final lb in leaveBalances) {
-        if (lb['leave_type']?['name']?.toString().toLowerCase() ==
-            fallbackName.toLowerCase()) {
-          targetBalance = lb;
-          break;
-        }
-      }
+    if (targetBalance == null && leaveBalances.isNotEmpty) {
+      targetBalance = leaveBalances.first;
     }
 
     if (targetBalance == null) return 999.0;
 
-    final quota = (targetBalance['quota'] as num? ?? 0).toDouble();
-    final taken = (targetBalance['leaves_taken'] as num? ?? 0).toDouble();
-    final approvedRemaining = (quota - taken).clamp(0.0, quota);
+    final availableThisMonth = (targetBalance['available_this_month'] as num?)
+            ?.toDouble() ??
+        ((targetBalance['quota'] as num? ?? 0).toDouble() -
+            (targetBalance['leaves_taken'] as num? ?? 0).toDouble());
 
     final pendingOfThisType = widget.existingRequests
         .where((r) =>
             r['is_approved'] != true &&
             r['is_reviewed'] != true &&
+            r['is_paid'] == true &&
             (r['leave_type_name'] == _selectedCategoryName ||
-                r['is_paid'] == _isPaid))
+                (r['leave_type_name'] ?? '')
+                    .toString()
+                    .toLowerCase()
+                    .contains(_selectedCategoryName.toLowerCase())))
         .fold<double>(
             0.0, (sum, r) => sum + ((r['no_days'] as num?)?.toDouble() ?? 0.0));
 
-    return (approvedRemaining - pendingOfThisType).clamp(0.0, quota);
+    return (availableThisMonth - pendingOfThisType).clamp(0.0, 999.0);
   }
 
   bool get _isSickLeaveSelected {
@@ -2117,6 +2478,17 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
   }
 
   Future<void> _submit() async {
+    if (_isInternBlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Interns are not permitted to submit leave requests per company policy.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
     if (_fromDate.isEmpty || _tillDate.isEmpty) {
@@ -2141,11 +2513,11 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
     }
 
     final available = _calculateAvailableQuota();
-    if (reqDays > available) {
+    if (_isPaid && reqDays > available) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              'Quota exceeded for $_selectedCategoryName. You requested $reqDays day(s), but only have $available day(s) available.'),
+              'Monthly quota exceeded for $_selectedCategoryName. You requested $reqDays day(s), but only have $available day(s) available this month.'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -2221,7 +2593,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
   Widget build(BuildContext context) {
     final requestedDays = _calculateRequestedDays();
     final availableQuota = _calculateAvailableQuota();
-    final isExceeded = requestedDays > availableQuota;
+    final isExceeded = _isPaid && (requestedDays > availableQuota);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -2290,25 +2662,93 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
               Divider(color: context.border),
               const SizedBox(height: 14),
 
+              // ── Policy Warning Banners ──
+              if (_isInternBlocked) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Iconsax.warning_2, color: AppColors.error, size: 20),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Intern Policy: Leave applications are currently disabled for interns by company policy.',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              if (_isProvisionRestricted) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Iconsax.info_circle,
+                          color: Color(0xFFF59E0B), size: 20),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Provision Period: Staff serving probation are eligible only for Unpaid Leave.',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFF59E0B),
+                              fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
               // Live Quota & Saturday Indicator Card
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: isExceeded
                       ? AppColors.error.withValues(alpha: 0.08)
-                      : AppColors.primary.withValues(alpha: 0.06),
+                      : (_isPaid
+                          ? AppColors.primary.withValues(alpha: 0.06)
+                          : const Color(0xFFF59E0B).withValues(alpha: 0.06)),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: isExceeded
                         ? AppColors.error
-                        : AppColors.primary.withValues(alpha: 0.3),
+                        : (_isPaid
+                            ? AppColors.primary.withValues(alpha: 0.3)
+                            : const Color(0xFFF59E0B).withValues(alpha: 0.3)),
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(
-                      isExceeded ? Iconsax.warning_2 : Iconsax.info_circle,
-                      color: isExceeded ? AppColors.error : AppColors.primary,
+                      isExceeded
+                          ? Iconsax.warning_2
+                          : (_isPaid ? Iconsax.info_circle : Iconsax.wallet_3),
+                      color: isExceeded
+                          ? AppColors.error
+                          : (_isPaid
+                              ? AppColors.primary
+                              : const Color(0xFFF59E0B)),
                       size: 20,
                     ),
                     const SizedBox(width: 10),
@@ -2317,7 +2757,9 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Available Quota ($_selectedCategoryName): ${availableQuota.toStringAsFixed(1)} Days',
+                            _isPaid
+                                ? 'Available This Month ($_selectedCategoryName): ${availableQuota.toStringAsFixed(1)} Days'
+                                : 'Unpaid Leave (No Quota Limit • Deducted in Payroll)',
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w800,
@@ -2331,7 +2773,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                             requestedDays > 0
                                 ? 'Duration: ${requestedDays.toStringAsFixed(1)} working day(s)'
                                     '${_excludedSaturdays > 0 ? ' ($_excludedSaturdays Saturday(s) excluded)' : ''}'
-                                : 'Select dates to calculate working duration & verify quota',
+                                : 'Select dates to calculate working duration & verify monthly quota',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -2356,17 +2798,17 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                 ),
                 // ignore: deprecated_member_use
                 value: _selectedCategoryName,
-
                 items: (_leaveTypes.isNotEmpty
                         ? _leaveTypes
                             .map((t) => t['name']?.toString() ?? 'Leave')
+                            .where((name) =>
+                                name.toLowerCase().contains('casual') ||
+                                name.toLowerCase().contains('sick'))
                             .toSet()
                             .toList()
                         : [
                             'Casual Leave',
                             'Sick Leave',
-                            'Paid Leave',
-                            'Unpaid Leave'
                           ])
                     .map((cat) => DropdownMenuItem(
                           value: cat,
@@ -2393,7 +2835,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
               TextFormField(
                 decoration: const InputDecoration(
                   labelText: 'Subject / Purpose *',
-                  hintText: 'e.g. Medical checkup, Family event',
+                  hintText: 'e.g. Medical checkup, Personal emergency',
                   prefixIcon: Icon(Iconsax.document_text, size: 18),
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty)
@@ -2450,7 +2892,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
               ),
               const SizedBox(height: 12),
 
-              // ── Supporting Document Upload (Highlighted for Sick Leave) ───
+              // Supporting Document Upload (Highlighted for Sick Leave)
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -2480,7 +2922,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                         Expanded(
                           child: Text(
                             _isSickLeaveSelected
-                                ? 'Supporting Medical Certificate (Required for Sick Leave)'
+                                ? 'Medical Certificate (Recommended for Sick Leave)'
                                 : 'Supporting Document (Optional)',
                             style: TextStyle(
                               fontSize: 12,
@@ -2547,11 +2989,16 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                                   style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700)),
-                              subtitle: const Text(
-                                  'Toggle for unpaid leave days',
-                                  style: TextStyle(fontSize: 11)),
+                              subtitle: Text(
+                                _isProvisionRestricted
+                                    ? 'Locked: Only unpaid leave allowed in provision period'
+                                    : 'Toggle for paid vs unpaid leave',
+                                style: const TextStyle(fontSize: 11),
+                              ),
                               value: _isPaid,
-                              onChanged: (v) => setState(() => _isPaid = v),
+                              onChanged: _isProvisionRestricted
+                                  ? null
+                                  : (v) => setState(() => _isPaid = v),
                               activeThumbColor: AppColors.primary,
                               contentPadding: EdgeInsets.zero,
                             )
@@ -2561,11 +3008,16 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                                     style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700)),
-                                subtitle: const Text(
-                                    'Toggle for unpaid leave days',
-                                    style: TextStyle(fontSize: 11)),
+                                subtitle: Text(
+                                  _isProvisionRestricted
+                                      ? 'Locked: Unpaid only in provision'
+                                      : 'Toggle for paid vs unpaid',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
                                 value: _isPaid,
-                                onChanged: (v) => setState(() => _isPaid = v),
+                                onChanged: _isProvisionRestricted
+                                    ? null
+                                    : (v) => setState(() => _isPaid = v),
                                 activeThumbColor: AppColors.primary,
                                 contentPadding: EdgeInsets.zero,
                               ),
@@ -2622,7 +3074,8 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                     labelText: 'Half Day Period',
                     prefixIcon: Icon(Iconsax.clock, size: 18),
                   ),
-                  initialValue: _halfDayPeriod,
+                  // ignore: deprecated_member_use
+                  value: _halfDayPeriod,
                   items: const [
                     DropdownMenuItem(
                         value: 'First Half',
@@ -2641,14 +3094,16 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                 height: 48,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
-                  gradient: isExceeded
+                  gradient: (isExceeded || _isInternBlocked)
                       ? null
                       : const LinearGradient(
                           colors: [AppColors.primary, AppColors.primaryDark]),
-                  color: isExceeded ? Colors.grey : null,
+                  color: (isExceeded || _isInternBlocked) ? Colors.grey : null,
                 ),
                 child: ElevatedButton(
-                  onPressed: (_isLoading || isExceeded) ? null : _submit,
+                  onPressed: (_isLoading || isExceeded || _isInternBlocked)
+                      ? null
+                      : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
@@ -2668,9 +3123,11 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                                 size: 16, color: Colors.white),
                             const SizedBox(width: 8),
                             Text(
-                              isExceeded
-                                  ? 'Quota Exceeded'
-                                  : 'Submit Leave Request',
+                              _isInternBlocked
+                                  ? 'Intern Leave Disabled'
+                                  : isExceeded
+                                      ? 'Monthly Quota Exceeded'
+                                      : 'Submit Leave Request',
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w800),
@@ -3170,23 +3627,33 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
 
   Widget _buildQuotaTile(BuildContext context, Map b) {
     final quota = (b['quota'] as num?)?.toInt() ?? 0;
-    final taken = (b['leaves_taken'] as num?)?.toDouble() ?? 0;
-    final remaining = (quota - taken).clamp(0, quota);
+    final paidTaken = (b['paid_taken'] as num? ?? b['leaves_taken'] as num? ?? 0).toDouble();
+    final unpaidTaken = (b['unpaid_taken'] as num? ?? 0).toDouble();
+    final halfDayCount = (b['half_day_count'] as num? ?? 0).toInt();
+    final halfDayDays = (b['half_day_days'] as num? ?? 0).toDouble();
+    final accruedToDate = (b['accrued_to_date'] as num? ?? quota).toDouble();
+    final availableThisMonth = (b['available_this_month'] as num? ?? (quota - paidTaken)).toDouble();
+    final remainingAnnual = (b['remaining_annual'] as num? ?? (quota - paidTaken)).toDouble();
+
     final typeName = b['leave_type']?['name'] ?? 'Leave';
-    final isPaid = typeName == 'Paid Leave' || typeName == 'Casual Leave';
-    final pct = quota > 0 ? (taken / quota).clamp(0.0, 1.0).toDouble() : 0.0;
-    final remainingPct =
-        quota > 0 ? (((quota - taken) / quota) * 100).round() : 0;
+    final isSick = typeName.toString().toLowerCase().contains('sick');
+    final isCasual = typeName.toString().toLowerCase().contains('casual');
+    final isPaid = typeName == 'Paid Leave' || isCasual || isSick;
+    final pct = quota > 0 ? (paidTaken / quota).clamp(0.0, 1.0).toDouble() : 0.0;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: context.card,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: (isPaid ? AppColors.success : const Color(0xFFF59E0B))
-              .withValues(alpha: 0.25),
-          width: 1,
+          color: (isSick
+                  ? const Color(0xFF6366F1)
+                  : isCasual
+                      ? AppColors.primary
+                      : (isPaid ? AppColors.success : const Color(0xFFF59E0B)))
+              .withValues(alpha: 0.3),
+          width: 1.2,
         ),
       ),
       child: Column(
@@ -3200,93 +3667,173 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(5),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color:
-                          (isPaid ? AppColors.success : const Color(0xFFF59E0B))
-                              .withValues(alpha: 0.12),
+                      color: (isSick
+                              ? const Color(0xFF6366F1)
+                              : isCasual
+                                  ? AppColors.primary
+                                  : (isPaid ? AppColors.success : const Color(0xFFF59E0B)))
+                          .withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
-                      typeName.toString().toLowerCase().contains('sick')
+                      isSick
                           ? Iconsax.health
-                          : typeName.toString().toLowerCase().contains('casual')
+                          : isCasual
                               ? Iconsax.sun_1
-                              : (isPaid
-                                  ? Iconsax.wallet_3
-                                  : Iconsax.calendar_remove),
-                      color:
-                          isPaid ? AppColors.success : const Color(0xFFF59E0B),
-                      size: 14,
+                              : (isPaid ? Iconsax.wallet_3 : Iconsax.calendar_remove),
+                      color: isSick
+                          ? const Color(0xFF6366F1)
+                          : isCasual
+                              ? AppColors.primary
+                              : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
+                      size: 16,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    typeName,
-                    style: TextStyle(
-                      color:
-                          isPaid ? AppColors.success : const Color(0xFFF59E0B),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12.5,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        typeName,
+                        style: TextStyle(
+                          color: isSick
+                              ? const Color(0xFF6366F1)
+                              : isCasual
+                                  ? AppColors.primary
+                                  : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Text(
+                        'Annual: ${quota}d • Accrued: ${accruedToDate.toStringAsFixed(1)}d',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
               IconButton(
-                icon: const Icon(Iconsax.edit,
-                    size: 15, color: AppColors.primary),
-                tooltip: 'Adjust Quota',
+                icon: const Icon(Iconsax.edit, size: 15, color: AppColors.primary),
+                tooltip: 'Adjust Annual Quota',
                 onPressed: () => _showEditQuotaDialog(context, b),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
             ],
           ),
+          const SizedBox(height: 10),
+
+          // Available This Month Hero Display
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: (isSick ? const Color(0xFF6366F1) : AppColors.primary)
+                  .withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Iconsax.calendar_tick,
+                      size: 14,
+                      color: isSick ? const Color(0xFF6366F1) : AppColors.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Available This Month:',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isSick ? const Color(0xFF6366F1) : AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  '${availableThisMonth.toStringAsFixed(1)} Days',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: isSick ? const Color(0xFF6366F1) : AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 8),
 
-          // Numbers: Remaining / Total Quota
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+          // Multi-metric Breakdown Chips
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    '$remaining',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      color: context.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    ' / $quota days remaining',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: (isPaid ? AppColors.success : const Color(0xFFF59E0B))
-                      .withValues(alpha: 0.1),
+                  color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  '$remainingPct% left',
-                  style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w700,
-                    color: isPaid ? AppColors.success : const Color(0xFFF59E0B),
+                  'Paid: ${paidTaken.toStringAsFixed(1)}d',
+                  style: const TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.success),
+                ),
+              ),
+              if (unpaidTaken > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
                   ),
+                  child: Text(
+                    'Unpaid: ${unpaidTaken.toStringAsFixed(1)}d',
+                    style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFF59E0B)),
+                  ),
+                ),
+              if (halfDayCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Half-Day: $halfDayCount (${halfDayDays.toStringAsFixed(1)}d)',
+                    style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF6366F1)),
+                  ),
+                ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: context.surface,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: context.border),
+                ),
+                child: Text(
+                  'Remaining: ${remainingAnnual.toStringAsFixed(1)}d',
+                  style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: context.textPrimary),
                 ),
               ),
             ],
@@ -3302,7 +3849,9 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
               valueColor: AlwaysStoppedAnimation<Color>(
                 pct > 0.85
                     ? AppColors.error
-                    : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
+                    : (isSick
+                        ? const Color(0xFF6366F1)
+                        : (isPaid ? AppColors.success : const Color(0xFFF59E0B))),
               ),
               minHeight: 4.5,
             ),

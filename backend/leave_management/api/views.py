@@ -10,14 +10,66 @@ from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
-from leave_management.models import LeaveBalance, LeaveRequest, LeaveType
+from leave_management.models import LeaveBalance, LeaveRequest, LeaveType, LeaveSetting
+from leave_management.utils import (
+    ensure_default_leave_types_and_settings,
+    get_employee_leave_breakdown,
+)
 from .serializers import (
     EmployeeLeaveBalanceSerializer,
     LeaveRequestSerializer,
     LeaveTypeSerializer,
     LeaveBalanceSerializer,
+    LeaveSettingSerializer,
 )
 from organization.models import Employee
+
+
+class LeaveSettingAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        org = None
+        if user.organization.exists():
+            org = user.organization.first()
+        elif hasattr(user, 'employee') and user.employee.organization:
+            org = user.employee.organization
+        if not org:
+            from organization.models import Organization
+            org = Organization.objects.first()
+
+        setting, _ = LeaveSetting.objects.get_or_create(
+            organization=org,
+            defaults={
+                'paid_leave_during_provision': False,
+                'allow_intern_leave': True,
+            }
+        )
+        return Response(LeaveSettingSerializer(setting).data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        user = request.user
+        org = None
+        if user.organization.exists():
+            org = user.organization.first()
+        elif hasattr(user, 'employee') and user.employee.organization:
+            org = user.employee.organization
+        if not org:
+            from organization.models import Organization
+            org = Organization.objects.first()
+
+        setting, _ = LeaveSetting.objects.get_or_create(
+            organization=org,
+            defaults={
+                'paid_leave_during_provision': False,
+                'allow_intern_leave': True,
+            }
+        )
+        serializer = LeaveSettingSerializer(setting, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class LeaveTypeListCreateAPIView(generics.ListCreateAPIView):
@@ -33,10 +85,12 @@ class LeaveTypeListCreateAPIView(generics.ListCreateAPIView):
             org = user.employee.organization
 
         if org:
+            ensure_default_leave_types_and_settings(org)
             return LeaveType.objects.filter(
-                models.Q(organization=org) | models.Q(organization__isnull=True)
+                models.Q(organization=org) | models.Q(organization__isnull=True),
+                name__in=['Casual Leave', 'Sick Leave']
             ).order_by('id')
-        return LeaveType.objects.all().order_by('id')
+        return LeaveType.objects.filter(name__in=['Casual Leave', 'Sick Leave']).order_by('id')
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -166,7 +220,7 @@ class LeaveTypeRetrieveAPIView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class LeaveQuotaRetrieveAPIView(APIView):
-    """Returns leave balances for any employee. Accessible by admin and the employee themselves."""
+    """Returns leave balances for any employee with monthly accrual breakdown."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request, employee_id):
@@ -175,14 +229,20 @@ class LeaveQuotaRetrieveAPIView(APIView):
         except Employee.DoesNotExist:
             return Response({"error": "Employee does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
-        leave_balances = LeaveBalance.objects.filter(employee=employee).select_related('leave_type')
-        sorted_leave_balances = sorted(
-            leave_balances, key=lambda lb: lb.leave_type.name if lb.leave_type else '')
+        today = nepali_datetime.date.today()
+        ny = int(request.GET.get('nepali_year', today.year))
+        nm = int(request.GET.get('nepali_month', today.month))
 
-        serializer = EmployeeLeaveBalanceSerializer(
-            {"employee": employee, "leave_balances": sorted_leave_balances}
+        breakdown = get_employee_leave_breakdown(employee, year=ny, month=nm)
+
+        from organization.api.serializers import EmployeeSerializer
+        return Response(
+            {
+                "employee": EmployeeSerializer(employee).data,
+                "leave_balances": breakdown,
+            },
+            status=status.HTTP_200_OK,
         )
-        return Response(data=serializer.data, status=status.HTTP_200_OK)
 
 
 class LeaveBalanceUpdateAPIView(APIView):
@@ -199,11 +259,11 @@ class LeaveBalanceUpdateAPIView(APIView):
             return Response({'error': 'quota is required'}, status=status.HTTP_400_BAD_REQUEST)
         lb.quota = int(quota)
         lb.save(update_fields=['quota'])
-        return Response(LeaveBalanceSerializer(lb).data, status=status.HTTP_200_OK)
+        return Response(LeaveBalanceSerializer(lb, context={'request': request}).data, status=status.HTTP_200_OK)
 
 
 class AllEmployeeLeaveSummaryView(APIView):
-    """Admin: returns a summary of all employees' leave balances."""
+    """Admin: returns a summary of all employees' leave balances with monthly accumulation."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -216,14 +276,20 @@ class AllEmployeeLeaveSummaryView(APIView):
         if not org:
             return Response([], status=status.HTTP_200_OK)
 
+        today = nepali_datetime.date.today()
+        ny = int(request.GET.get('nepali_year', today.year))
+        nm = int(request.GET.get('nepali_month', today.month))
+
         employees = org.employees.select_related('user')
         result = []
         for emp in employees:
-            balances = LeaveBalance.objects.filter(employee=emp).select_related('leave_type')
+            breakdown = get_employee_leave_breakdown(emp, year=ny, month=nm)
             result.append({
                 'employee_id': emp.id,
                 'employee_name': emp.user.full_name if emp.user else str(emp),
-                'balances': LeaveBalanceSerializer(balances, many=True).data,
+                'employee_type': emp.employee_type,
+                'is_in_provision': getattr(emp, 'is_in_provision', False),
+                'balances': breakdown,
             })
         return Response(result, status=status.HTTP_200_OK)
 
@@ -333,11 +399,29 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
                     break
             requested_days = days
 
-
         if requested_days <= 0:
             raise serializers.ValidationError({'detail': 'The requested date range contains no working days (e.g. only Saturdays).'})
 
-        # Resolve LeaveType
+        # Organization Leave Settings Check
+        org = employee.organization
+        setting, _ = LeaveSetting.objects.get_or_create(
+            organization=org,
+            defaults={'paid_leave_during_provision': False, 'allow_intern_leave': True}
+        )
+
+        # Policy Rule 1: Intern Leave
+        if getattr(employee, 'employee_type', None) == 'intern' and not setting.allow_intern_leave:
+            raise serializers.ValidationError({
+                'detail': 'Interns are not currently eligible to apply for leave per company policy.'
+            })
+
+        # Policy Rule 2: Provision Period Leave Eligibility
+        if getattr(employee, 'is_in_provision', False) and not setting.paid_leave_during_provision and is_paid:
+            raise serializers.ValidationError({
+                'detail': 'Paid leave is not permitted during your provision/probation period. Please submit your request as Unpaid Leave.'
+            })
+
+        # Resolve LeaveType (Casual Leave or Sick Leave)
         leave_type = serializer.validated_data.get('type')
         if not leave_type:
             type_id = self.request.data.get('leave_type_id') or self.request.data.get('type')
@@ -348,44 +432,43 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
                     pass
 
         if not leave_type:
-            cat_name = self.request.data.get('leave_category') or ('Paid Leave' if is_paid else 'Unpaid Leave')
-            if employee.organization:
-                leave_type = LeaveType.objects.filter(organization=employee.organization, name__iexact=cat_name).first()
+            cat_name = self.request.data.get('leave_category') or ('Casual Leave' if is_paid else 'Unpaid Leave')
+            if org:
+                leave_type = LeaveType.objects.filter(organization=org, name__iexact=cat_name).first()
             if not leave_type:
                 leave_type = LeaveType.objects.filter(name__iexact=cat_name).first()
 
-        # Quota Validation
-        if leave_type:
-            lb = LeaveBalance.objects.filter(employee=employee, leave_type=leave_type).first()
-            if not lb and is_paid:
-                lb = LeaveBalance.objects.filter(employee=employee, leave_type__name__iexact='Paid Leave').first()
-            elif not lb and not is_paid:
-                lb = LeaveBalance.objects.filter(employee=employee, leave_type__name__iexact='Unpaid Leave').first()
+        # Fallback to Casual Leave for paid leave if unspecified
+        if not leave_type and is_paid and org:
+            ensure_default_leave_types_and_settings(org)
+            leave_type = LeaveType.objects.filter(organization=org, is_casual_leave=True).first()
 
-            if lb and lb.quota > 0:
-                quota = lb.quota or 0
-                approved_leaves = LeaveRequest.objects.filter(
-                    employee=employee, is_approved=True, is_reviewed=True, type=leave_type
-                )
-                total_approved = sum(lr.no_days for lr in approved_leaves)
+        # Policy Rule 3 & 4: Quota Validation
+        # Unpaid leave is NOT restricted by quota.
+        if is_paid and leave_type:
+            breakdown = get_employee_leave_breakdown(employee, year=from_date.year, month=from_date.month)
+            target = next((item for item in breakdown if item['leave_type']['id'] == leave_type.id), None)
+            if not target:
+                target = next((item for item in breakdown if leave_type.name.lower() in item['leave_type']['name'].lower()), None)
 
+            if target:
+                # Count other pending unreviewed paid requests of this type in this year
                 pending_leaves = LeaveRequest.objects.filter(
-                    employee=employee, is_approved=False, is_reviewed=False, type=leave_type
+                    employee=employee, is_approved=False, is_reviewed=False, type=leave_type, is_paid=True
                 )
-                total_pending = sum(lr.no_days for lr in pending_leaves)
+                pending_days = sum(lr.no_days for lr in pending_leaves if lr.from_date and getattr(lr.from_date, 'year', None) == from_date.year)
+                available = max(0.0, round(target['available_this_month'] - pending_days, 2))
 
-                available_quota = quota - (total_approved + total_pending)
-                if requested_days > available_quota:
-                    available_display = max(0.0, available_quota)
+                if requested_days > available:
                     raise serializers.ValidationError({
-                        'detail': f'Quota exceeded for {leave_type.name}. You requested {requested_days} day(s), but only have {available_display} day(s) available (Total Quota: {quota}d, Approved: {total_approved}d, Pending: {total_pending}d).'
+                        'detail': f"Quota exceeded for {target['leave_type']['name']} this month. You requested {requested_days} day(s), but only have {available} day(s) available this month (Monthly Accrued: {target['accrued_to_date']}d, Taken: {target['paid_taken']}d, Pending: {pending_days}d)."
                     })
 
         doc_file = self.request.FILES.get('document') or serializer.validated_data.get('document')
 
         serializer.save(
             employee=employee,
-            organization=employee.organization,
+            organization=org,
             type=leave_type,
             from_date=from_date,
             till_date=till_date,

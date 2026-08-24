@@ -210,6 +210,9 @@ class Employee(SoftDeleteModel):
     pan_number = models.CharField(
         max_length=50, null=True, blank=True, verbose_name="PAN Number"
     )
+    is_in_provision = models.BooleanField(
+        default=False, verbose_name="In Provision/Probation Period"
+    )
 
     class Meta:
         ordering = ["user__first_name", "user__last_name"]

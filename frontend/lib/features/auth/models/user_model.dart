@@ -11,6 +11,8 @@ class UserProfile {
   final int? employeeId;
   final int? organizationId;
   final bool hasApprovedPolicy;
+  final String? employeeType;
+  final bool isInProvision;
 
   const UserProfile({
     required this.id,
@@ -25,6 +27,8 @@ class UserProfile {
     this.employeeId,
     this.organizationId,
     this.hasApprovedPolicy = true,
+    this.employeeType,
+    this.isInProvision = false,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
@@ -40,6 +44,8 @@ class UserProfile {
     employeeId:         json['employee_id']         as int?,
     organizationId:     json['organization_id']     as int?,
     hasApprovedPolicy:  json['has_approved_policy']  as bool? ?? true,
+    employeeType:       json['employee_type']       as String?,
+    isInProvision:      json['is_in_provision']      as bool? ?? false,
   );
 
   bool get isOrgAdmin   => role == 'org_admin';

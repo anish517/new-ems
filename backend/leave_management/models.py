@@ -11,6 +11,21 @@ from utils.models import SoftDeleteModel
 User = get_user_model()
 
 
+class LeaveSetting(models.Model):
+    organization = models.OneToOneField(
+        Organization, on_delete=models.CASCADE, related_name='leave_setting', null=True, blank=True
+    )
+    paid_leave_during_provision = models.BooleanField(
+        default=False, verbose_name="Paid Leave During Provision Period"
+    )
+    allow_intern_leave = models.BooleanField(
+        default=True, verbose_name="Allow Intern Leave"
+    )
+
+    def __str__(self):
+        return f"LeaveSetting for {self.organization.name if self.organization else 'Global'}"
+
+
 class LeaveType(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
