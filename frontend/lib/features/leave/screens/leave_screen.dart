@@ -759,7 +759,122 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
               // ── Top Header Card ──────────────────────────────────────────
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final isMobile = constraints.maxWidth < 600;
+                  final isNarrow = constraints.maxWidth < 800;
+                  final leftWidget = Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B)
+                              .withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(Iconsax.calendar_remove,
+                            color: Color(0xFFF59E0B), size: 24),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: [
+                                Text(
+                                  'Leave & Attendance Portal',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.4,
+                                    color: context.textPrimary,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF59E0B)
+                                        .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    isAdmin ? 'Admin View' : 'Employee View',
+                                    style: const TextStyle(
+                                      color: Color(0xFFF59E0B),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              isAdmin
+                                  ? 'Review leave applications, manage categories & staff quotas'
+                                  : 'Request time-off, track leave balances & approvals',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+
+                  final actionsWidget = Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: _loadLeaves,
+                        icon: const Icon(Iconsax.refresh, size: 20),
+                        tooltip: 'Refresh Leaves',
+                      ),
+                      if (isAdmin) ...[
+                        OutlinedButton.icon(
+                          onPressed: () => _showLeaveSettingsDialog(context),
+                          icon: const Icon(Iconsax.setting_2,
+                              size: 16, color: AppColors.primary),
+                          label: const Text('Leave Policy',
+                              style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700)),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                                color: AppColors.primary
+                                    .withValues(alpha: 0.4)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () => _showApplyLeaveDialog(context),
+                          icon: const Icon(Iconsax.add,
+                              size: 16, color: Colors.white),
+                          label: const Text('New Leave',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+
                   return Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -775,205 +890,23 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                         ),
                       ],
                     ),
-                    child: Flex(
-                      direction: isMobile ? Axis.vertical : Axis.horizontal,
-                      crossAxisAlignment: isMobile
-                          ? CrossAxisAlignment.start
-                          : CrossAxisAlignment.center,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        if (isMobile)
-                          Row(
+                    child: isNarrow
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF59E0B)
-                                      .withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: const Icon(Iconsax.calendar_remove,
-                                    color: Color(0xFFF59E0B), size: 24),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Wrap(
-                                      crossAxisAlignment:
-                                          WrapCrossAlignment.center,
-                                      spacing: 8,
-                                      runSpacing: 4,
-                                      children: [
-                                        Text(
-                                          'Leave & Attendance Portal',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: -0.4,
-                                            color: context.textPrimary,
-                                          ),
-                                        ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF59E0B)
-                                                .withValues(alpha: 0.12),
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                          child: Text(
-                                            isAdmin
-                                                ? 'Admin View'
-                                                : 'Employee View',
-                                            style: const TextStyle(
-                                              color: Color(0xFFF59E0B),
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      isAdmin
-                                          ? 'Review leave applications, manage categories & staff quotas'
-                                          : 'Request time-off, track leave balances & approvals',
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.textSecondary),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              leftWidget,
+                              const SizedBox(height: 16),
+                              actionsWidget,
                             ],
                           )
-                        else
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF59E0B)
-                                        .withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: const Icon(Iconsax.calendar_remove,
-                                      color: Color(0xFFF59E0B), size: 24),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Wrap(
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.center,
-                                        spacing: 8,
-                                        runSpacing: 4,
-                                        children: [
-                                          Text(
-                                            'Leave & Attendance Portal',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w800,
-                                              letterSpacing: -0.4,
-                                              color: context.textPrimary,
-                                            ),
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF59E0B)
-                                                  .withValues(alpha: 0.12),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              isAdmin
-                                                  ? 'Admin View'
-                                                  : 'Employee View',
-                                              style: const TextStyle(
-                                                color: Color(0xFFF59E0B),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        isAdmin
-                                            ? 'Review leave applications, manage categories & staff quotas'
-                                            : 'Request time-off, track leave balances & approvals',
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppColors.textSecondary),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        if (isMobile) const SizedBox(height: 16),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              onPressed: _loadLeaves,
-                              icon: const Icon(Iconsax.refresh, size: 20),
-                              tooltip: 'Refresh Leaves',
-                            ),
-                            if (isAdmin) ...[
-                              const SizedBox(width: 8),
-                              OutlinedButton.icon(
-                                onPressed: () =>
-                                    _showLeaveSettingsDialog(context),
-                                icon: const Icon(Iconsax.setting_2,
-                                    size: 16, color: AppColors.primary),
-                                label: const Text('Leave Policy',
-                                    style: TextStyle(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w700)),
-                                style: OutlinedButton.styleFrom(
-                                  side: BorderSide(
-                                      color: AppColors.primary
-                                          .withValues(alpha: 0.4)),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12)),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 10),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              ElevatedButton.icon(
-                                onPressed: () => _showApplyLeaveDialog(context),
-                                icon: const Icon(Iconsax.add,
-                                    size: 16, color: Colors.white),
-                                label: const Text('New Leave',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12)),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 10),
-                                ),
-                              ),
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(child: leftWidget),
+                              const SizedBox(width: 16),
+                              actionsWidget,
                             ],
-                          ],
-                        ),
-                      ],
-                    ),
+                          ),
                   );
                 },
               ),
