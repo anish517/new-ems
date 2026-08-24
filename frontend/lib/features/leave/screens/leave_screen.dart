@@ -754,7 +754,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
               // ── Top Header Card ──────────────────────────────────────────
               Container(
