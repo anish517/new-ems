@@ -1470,7 +1470,6 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
   final _descCtrl = TextEditingController();
   final _fromCtrl = TextEditingController();
   final _tillCtrl = TextEditingController();
-  String _fromDate = '', _tillDate = '';
   List _projects = [];
   List _employees = [];
   int? _selProject, _selEmployee;
@@ -1530,29 +1529,6 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
     }
   }
 
-  Future<void> _pickDate(bool isFrom) async {
-    final nepaliPicked = await showDialog<NepaliDateTime>(
-      context: context,
-      builder: (ctx) => NepaliDatePickerDialog(
-        title: isFrom ? 'Select Planned Start Date' : 'Select Planned Due Date',
-        initial: NepaliDateTime.now(),
-      ),
-    );
-    if (nepaliPicked != null) {
-      setState(() {
-        final dateStr =
-            '${nepaliPicked.year}-${nepaliPicked.month.toString().padLeft(2, '0')}-${nepaliPicked.day.toString().padLeft(2, '0')}';
-        if (isFrom) {
-          _fromDate = dateStr;
-          _fromCtrl.text = dateStr;
-        } else {
-          _tillDate = dateStr;
-          _tillCtrl.text = dateStr;
-        }
-      });
-    }
-  }
-
   Future<void> _save() async {
     if (_titleCtrl.text.trim().isEmpty ||
         _selProject == null ||
@@ -1576,8 +1552,10 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
         'status': 'to-do',
         'rating': _rating.toInt().toString(),
       };
-      if (_fromDate.isNotEmpty) data['planned_start_date'] = _fromDate;
-      if (_tillDate.isNotEmpty) data['planned_end_date'] = _tillDate;
+      final fromStr = _fromCtrl.text.trim();
+      final tillStr = _tillCtrl.text.trim();
+      if (fromStr.isNotEmpty) data['planned_start_date'] = fromStr;
+      if (tillStr.isNotEmpty) data['planned_end_date'] = tillStr;
 
       if (_attachment != null) {
         await ApiService().postMultipart(
@@ -1756,26 +1734,18 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
+                  child: NepaliDateFormField(
                     controller: _fromCtrl,
-                    readOnly: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Start Date (B.S.)',
-                      prefixIcon: Icon(Iconsax.calendar, size: 18),
-                    ),
-                    onTap: () => _pickDate(true),
+                    labelText: 'Start Date (B.S.)',
+                    prefixIcon: Iconsax.calendar,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextField(
+                  child: NepaliDateFormField(
                     controller: _tillCtrl,
-                    readOnly: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Due Date (B.S.)',
-                      prefixIcon: Icon(Iconsax.calendar_tick, size: 18),
-                    ),
-                    onTap: () => _pickDate(false),
+                    labelText: 'Due Date (B.S.)',
+                    prefixIcon: Iconsax.calendar_tick,
                   ),
                 ),
               ],

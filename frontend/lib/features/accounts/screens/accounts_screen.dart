@@ -794,69 +794,21 @@ class _ReportsTabState extends State<_ReportsTab> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 SizedBox(
-                  width: 190,
-                  child: TextField(
+                  width: 200,
+                  child: NepaliDateFormField(
                     controller: _startDateController,
-                    readOnly: true,
-                    onTap: () async {
-                      final now = NepaliDateTime.now();
-                      NepaliDateTime? initial;
-                      try {
-                        if (_startDateController.text.isNotEmpty) {
-                          initial = NepaliDateTime.parse(_startDateController.text);
-                        }
-                      } catch (_) {}
-
-                      final start = await showDialog<NepaliDateTime>(
-                        context: context,
-                        builder: (ctx) => NepaliDatePickerDialog(
-                          title: 'Select Start Date',
-                          initial: initial ?? now,
-                        ),
-                      );
-                      if (start != null && mounted) {
-                        setState(() {
-                          _startDateController.text = start.toString().substring(0, 10);
-                        });
-                      }
-                    },
-                    decoration: const InputDecoration(
-                      labelText: 'Start Date (B.S.)',
-                      prefixIcon: Icon(Iconsax.calendar_1, size: 18),
-                    ),
+                    labelText: 'Start Date (B.S.)',
+                    prefixIcon: Iconsax.calendar_1,
+                    onChanged: (_) => setState(() {}),
                   ),
                 ),
                 SizedBox(
-                  width: 190,
-                  child: TextField(
+                  width: 200,
+                  child: NepaliDateFormField(
                     controller: _endDateController,
-                    readOnly: true,
-                    onTap: () async {
-                      final now = NepaliDateTime.now();
-                      NepaliDateTime? initial;
-                      try {
-                        if (_endDateController.text.isNotEmpty) {
-                          initial = NepaliDateTime.parse(_endDateController.text);
-                        }
-                      } catch (_) {}
-
-                      final end = await showDialog<NepaliDateTime>(
-                        context: context,
-                        builder: (ctx) => NepaliDatePickerDialog(
-                          title: 'Select End Date',
-                          initial: initial ?? now,
-                        ),
-                      );
-                      if (end != null && mounted) {
-                        setState(() {
-                          _endDateController.text = end.toString().substring(0, 10);
-                        });
-                      }
-                    },
-                    decoration: const InputDecoration(
-                      labelText: 'End Date (B.S.)',
-                      prefixIcon: Icon(Iconsax.calendar_2, size: 18),
-                    ),
+                    labelText: 'End Date (B.S.)',
+                    prefixIcon: Iconsax.calendar_2,
+                    onChanged: (_) => setState(() {}),
                   ),
                 ),
                 SizedBox(

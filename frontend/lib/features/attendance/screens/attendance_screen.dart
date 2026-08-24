@@ -654,27 +654,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
               ),
               const SizedBox(height: 16),
-              TextField(
+              NepaliDateFormField(
                 controller: dateCtrl,
-                readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: 'Target Date (B.S.) *',
-                  hintText: 'Select Nepali date',
-                  prefixIcon: Icon(Iconsax.calendar_1, size: 18),
-                ),
-                onTap: () async {
-                  final picked = await showDialog<NepaliDateTime>(
-                    context: ctx,
-                    builder: (dialogCtx) => NepaliDatePickerDialog(
-                      title: 'Select Attendance Date',
-                      initial: NepaliDateTime.now(),
-                    ),
-                  );
-                  if (picked != null) {
-                    dateCtrl.text =
-                        '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-                  }
-                },
+                labelText: 'Target Date (B.S.) *',
+                prefixIcon: Iconsax.calendar_1,
+                isRequired: true,
               ),
               const SizedBox(height: 12),
               Row(

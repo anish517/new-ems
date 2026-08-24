@@ -923,7 +923,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                       SizedBox(
                         width: itemWidth,
                         child: _buildKpiCard(
-                          isAdmin ? 'Total' : 'Total App',
+                          isAdmin ? 'Total' : 'Total Applications',
                           '$totalRequests',
                           Iconsax.calendar_tick,
                           AppColors.primary,
@@ -2361,33 +2361,6 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
     }
   }
 
-  Future<void> _pickDate(bool isFrom) async {
-    final picked = await showDialog<NepaliDateTime>(
-      context: context,
-      builder: (ctx) => NepaliDatePickerDialog(
-        title: isFrom ? 'Select From Date (B.S.)' : 'Select Till Date (B.S.)',
-        initial: NepaliDateTime.now(),
-      ),
-    );
-    if (picked != null && mounted) {
-      setState(() {
-        final dateStr =
-            '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-        if (isFrom) {
-          _fromDate = dateStr;
-          _fromCtrl.text = dateStr;
-          if (_isHalfDay || _tillDate.isEmpty) {
-            _tillDate = dateStr;
-            _tillCtrl.text = dateStr;
-          }
-        } else {
-          _tillDate = dateStr;
-          _tillCtrl.text = dateStr;
-        }
-      });
-    }
-  }
-
   double _calculateRequestedDays() {
     if (_isHalfDay) {
       _excludedSaturdays = 0;
@@ -2491,10 +2464,12 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
 
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
+    _fromDate = _fromCtrl.text.trim();
+    _tillDate = _tillCtrl.text.trim();
     if (_fromDate.isEmpty || _tillDate.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Please select both From Date and Till Date'),
+            content: Text('Please select or enter both From Date and Till Date'),
             backgroundColor: AppColors.error),
       );
       return;
@@ -2848,31 +2823,35 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
               Row(
                 children: [
                   Expanded(
-                    child: TextFormField(
+                    child: NepaliDateFormField(
                       controller: _fromCtrl,
-                      readOnly: true,
-                      onTap: () => _pickDate(true),
-                      decoration: const InputDecoration(
-                        labelText: 'From Date *',
-                        prefixIcon: Icon(Iconsax.calendar_1, size: 18),
-                      ),
-                      validator: (v) =>
-                          (v == null || v.isEmpty) ? 'Required' : null,
+                      labelText: 'From Date *',
+                      prefixIcon: Iconsax.calendar_1,
+                      isRequired: true,
+                      onChanged: (val) {
+                        setState(() {
+                          _fromDate = val;
+                          if (_isHalfDay || _tillDate.isEmpty) {
+                            _tillDate = val;
+                            _tillCtrl.text = val;
+                          }
+                        });
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: TextFormField(
+                    child: NepaliDateFormField(
                       controller: _tillCtrl,
-                      readOnly: true,
+                      labelText: _isHalfDay ? 'Same Day' : 'Till Date *',
+                      prefixIcon: Iconsax.calendar_2,
                       enabled: !_isHalfDay,
-                      onTap: () => _pickDate(false),
-                      decoration: InputDecoration(
-                        labelText: _isHalfDay ? 'Same Day' : 'Till Date *',
-                        prefixIcon: const Icon(Iconsax.calendar_2, size: 18),
-                      ),
-                      validator: (v) =>
-                          (v == null || v.isEmpty) ? 'Required' : null,
+                      isRequired: true,
+                      onChanged: (val) {
+                        setState(() {
+                          _tillDate = val;
+                        });
+                      },
                     ),
                   ),
                 ],

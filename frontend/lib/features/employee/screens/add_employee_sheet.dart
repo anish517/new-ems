@@ -606,23 +606,6 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
     }
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDialog<NepaliDateTime>(
-      context: context,
-      builder: (ctx) => NepaliDatePickerDialog(
-        title: 'Select Date of Birth (B.S.)',
-        initial: _dob,
-      ),
-    );
-    if (picked != null) {
-      setState(() {
-        _dob = picked;
-        _dobCtrl.text =
-            "${_dob.year}-${_dob.month.toString().padLeft(2, '0')}-${_dob.day.toString().padLeft(2, '0')}";
-      });
-    }
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -686,8 +669,9 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
         }
       }
 
+      final parsedDob = parseNepaliDateString(_dobCtrl.text) ?? _dob;
       final dobStr =
-          "${_dob.year}-${_dob.month.toString().padLeft(2, '0')}-${_dob.day.toString().padLeft(2, '0')}";
+          "${parsedDob.year}-${parsedDob.month.toString().padLeft(2, '0')}-${parsedDob.day.toString().padLeft(2, '0')}";
 
       final data = {
         'user': {
@@ -1543,14 +1527,16 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                         ),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: TextFormField(
+                          child: NepaliDateFormField(
                             controller: _dobCtrl,
-                            readOnly: true,
-                            onTap: _pickDate,
-                            decoration: const InputDecoration(
-                              labelText: 'Date of Birth (B.S.) *',
-                              prefixIcon: Icon(Iconsax.calendar_1, size: 18),
-                            ),
+                            labelText: 'Date of Birth (B.S.) *',
+                            isRequired: true,
+                            onChanged: (val) {
+                              final parsed = parseNepaliDateString(val);
+                              if (parsed != null) {
+                                _dob = parsed;
+                              }
+                            },
                           ),
                         ),
                       ],

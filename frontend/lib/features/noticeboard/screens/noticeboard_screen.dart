@@ -895,7 +895,7 @@ class _CreateNoticeSheet extends StatefulWidget {
 class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
   final _formKey = GlobalKey<FormState>();
   final _dateCtrl = TextEditingController();
-  String _title = '', _description = '', _date = '';
+  String _title = '', _description = '';
   bool _isLoading = false;
 
   @override
@@ -904,7 +904,6 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
     final now = NepaliDateTime.now();
     final todayStr =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    _date = todayStr;
     _dateCtrl.text = todayStr;
   }
 
@@ -912,24 +911,6 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
   void dispose() {
     _dateCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickDate() async {
-    final nepaliPicked = await showDialog<NepaliDateTime>(
-      context: context,
-      builder: (ctx) => NepaliDatePickerDialog(
-        title: 'Select Notice Date',
-        initial: NepaliDateTime.now(),
-      ),
-    );
-    if (nepaliPicked != null && mounted) {
-      setState(() {
-        final dateStr =
-            '${nepaliPicked.year}-${nepaliPicked.month.toString().padLeft(2, '0')}-${nepaliPicked.day.toString().padLeft(2, '0')}';
-        _date = dateStr;
-        _dateCtrl.text = dateStr;
-      });
-    }
   }
 
   Future<void> _submit() async {
@@ -942,7 +923,7 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
         data: {
           'title': _title.trim(),
           'description': _description.trim(),
-          if (_date.isNotEmpty) 'date': _date.trim(),
+          if (_dateCtrl.text.trim().isNotEmpty) 'date': _dateCtrl.text.trim(),
         },
       );
       if (mounted) {
@@ -1051,15 +1032,10 @@ class _CreateNoticeSheetState extends State<_CreateNoticeSheet> {
                 onSaved: (v) => _title = v ?? '',
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              NepaliDateFormField(
                 controller: _dateCtrl,
-                readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: 'Broadcast Date (B.S.)',
-                  prefixIcon: Icon(Iconsax.calendar, size: 18),
-                  suffixIcon: Icon(Iconsax.arrow_down_1, size: 16),
-                ),
-                onTap: _pickDate,
+                labelText: 'Broadcast Date (B.S.)',
+                prefixIcon: Iconsax.calendar,
               ),
               const SizedBox(height: 12),
               TextFormField(
