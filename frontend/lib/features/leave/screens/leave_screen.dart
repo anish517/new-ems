@@ -782,76 +782,149 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                           : CrossAxisAlignment.center,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF59E0B)
-                                    .withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(16),
+                        if (isMobile)
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF59E0B)
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(Iconsax.calendar_remove,
+                                    color: Color(0xFFF59E0B), size: 24),
                               ),
-                              child: const Icon(Iconsax.calendar_remove,
-                                  color: Color(0xFFF59E0B), size: 24),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Wrap(
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.center,
-                                    spacing: 8,
-                                    runSpacing: 4,
-                                    children: [
-                                      Text(
-                                        'Leave & Attendance Portal',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: -0.4,
-                                          color: context.textPrimary,
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFF59E0B)
-                                              .withValues(alpha: 0.12),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          isAdmin
-                                              ? 'Admin View'
-                                              : 'Employee View',
-                                          style: const TextStyle(
-                                            color: Color(0xFFF59E0B),
-                                            fontSize: 11,
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Wrap(
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      spacing: 8,
+                                      runSpacing: 4,
+                                      children: [
+                                        Text(
+                                          'Leave & Attendance Portal',
+                                          style: TextStyle(
+                                            fontSize: 18,
                                             fontWeight: FontWeight.w800,
+                                            letterSpacing: -0.4,
+                                            color: context.textPrimary,
                                           ),
                                         ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF59E0B)
+                                                .withValues(alpha: 0.12),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            isAdmin
+                                                ? 'Admin View'
+                                                : 'Employee View',
+                                            style: const TextStyle(
+                                              color: Color(0xFFF59E0B),
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      isAdmin
+                                          ? 'Review leave applications, manage categories & staff quotas'
+                                          : 'Request time-off, track leave balances & approvals',
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF59E0B)
+                                        .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Icon(Iconsax.calendar_remove,
+                                      color: Color(0xFFF59E0B), size: 24),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Wrap(
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        spacing: 8,
+                                        runSpacing: 4,
+                                        children: [
+                                          Text(
+                                            'Leave & Attendance Portal',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: -0.4,
+                                              color: context.textPrimary,
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF59E0B)
+                                                  .withValues(alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              isAdmin
+                                                  ? 'Admin View'
+                                                  : 'Employee View',
+                                              style: const TextStyle(
+                                                color: Color(0xFFF59E0B),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        isAdmin
+                                            ? 'Review leave applications, manage categories & staff quotas'
+                                            : 'Request time-off, track leave balances & approvals',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    isAdmin
-                                        ? 'Review leave applications, manage categories & staff quotas'
-                                        : 'Request time-off, track leave balances & approvals',
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
                         if (isMobile) const SizedBox(height: 16),
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
                               onPressed: _loadLeaves,
