@@ -102,6 +102,120 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     }
   }
 
+  Color _getEmployeeTypeColor(String? empType) {
+    switch (empType?.toLowerCase()) {
+      case 'full_time':
+      case 'full-time':
+        return AppColors.fullTime;
+      case 'part_time':
+      case 'part-time':
+        return AppColors.partTime;
+      case 'intern':
+        return AppColors.intern;
+      case 'contract':
+        return AppColors.contract;
+      default:
+        return AppColors.fullTime;
+    }
+  }
+
+  String _getEmployeeTypeLabel(String? empType) {
+    switch (empType?.toLowerCase()) {
+      case 'full_time':
+      case 'full-time':
+        return 'Full-Time';
+      case 'part_time':
+      case 'part-time':
+        return 'Part-Time';
+      case 'intern':
+        return 'Intern';
+      case 'contract':
+        return 'Contract';
+      default:
+        return 'Full-Time';
+    }
+  }
+
+  Future<void> _toggleActive() async {
+    final isActive = _employee?['is_active'] == true;
+    final fullName =
+        '${_employee?['user']?['first_name'] ?? ''} ${_employee?['user']?['last_name'] ?? ''}'
+            .trim();
+    final actionWord = isActive ? 'Deactivate' : 'Activate';
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ctx.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(
+              isActive ? Iconsax.user_minus : Iconsax.user_tick,
+              color: isActive ? AppColors.warning : AppColors.success,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Text('$actionWord Staff Account',
+                style: TextStyle(
+                    color: ctx.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: Text(
+          isActive
+              ? 'Are you sure you want to deactivate $fullName? Their login credentials will be disabled immediately.'
+              : 'Reactivate $fullName? Their login access will be restored immediately.',
+          style: TextStyle(color: ctx.textPrimary, fontSize: 13.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  isActive ? AppColors.warning : AppColors.success,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(actionWord,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      final res = await ApiService().post(
+          '${AppConstants.organizationBase}/employees/${widget.id}/toggle_active/');
+      _loadAll();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text(res.data['message'] ?? 'Status updated successfully'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ApiService.getErrorMessage(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _pickDateRange() async {
     final now = NepaliDateTime.now();
     final NepaliDateTime? start = await showDialog<NepaliDateTime>(
@@ -927,7 +1041,6 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                               child: LayoutBuilder(
                                 builder: (context, c) {
                                   final isTight = c.maxWidth < 500;
-
                                   return Flex(
                                     direction: isTight ? Axis.vertical : Axis.horizontal,
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -952,6 +1065,35 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                                                   color: context.textPrimary,
                                                 ),
                                               ),
+                                              if ((_employee?['employee_code']?.toString() ??
+                                                      _employee?['id_prefix']?.toString() ??
+                                                      '')
+                                                  .trim()
+                                                  .isNotEmpty &&
+                                                  (_employee?['employee_code'] ??
+                                                      _employee?['id_prefix']) !=
+                                                      'null')
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                      horizontal: 8, vertical: 3),
+                                                  decoration: BoxDecoration(
+                                                    color: context.card,
+                                                    borderRadius:
+                                                        BorderRadius.circular(8),
+                                                    border: Border.all(
+                                                        color: context.border),
+                                                  ),
+                                                  child: Text(
+                                                    _employee?['employee_code'] ??
+                                                        _employee?['id_prefix'] ??
+                                                        '',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w800,
+                                                      color: context.textPrimary,
+                                                    ),
+                                                  ),
+                                                ),
                                               Container(
                                                 padding: const EdgeInsets.symmetric(
                                                     horizontal: 8, vertical: 3),
@@ -962,6 +1104,12 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                                                       .withValues(alpha: 0.12),
                                                   borderRadius:
                                                       BorderRadius.circular(8),
+                                                  border: Border.all(
+                                                    color: (isActive
+                                                            ? AppColors.success
+                                                            : AppColors.error)
+                                                        .withValues(alpha: 0.3),
+                                                  ),
                                                 ),
                                                 child: Text(
                                                   isActive ? 'Active' : 'Inactive',
@@ -977,55 +1125,53 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                                             ],
                                           ),
                                           const SizedBox(height: 4),
-                                          Text(
-                                            '$designation · ${empType == 'full_time' ? 'Full-Time' : empType == 'part_time' ? 'Part-Time' : 'Intern'}',
-                                            style: const TextStyle(
-                                              fontSize: 13.5,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Wrap(
-                                            crossAxisAlignment: WrapCrossAlignment.center,
-                                            spacing: 12,
-                                            runSpacing: 4,
+                                          Row(
                                             children: [
-                                              Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  const Icon(Iconsax.sms,
-                                                      size: 14, color: AppColors.primary),
-                                                  const SizedBox(width: 6),
-                                                  Text(
-                                                    email,
-                                                    style: const TextStyle(
-                                                      fontSize: 12.5,
-                                                      color: AppColors.textSecondary,
-                                                    ),
-                                                  ),
-                                                ],
+                                              Text(
+                                                designation,
+                                                style: const TextStyle(
+                                                  fontSize: 13.5,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppColors.textSecondary,
+                                                ),
                                               ),
+                                              const SizedBox(width: 8),
                                               Container(
                                                 padding: const EdgeInsets.symmetric(
-                                                    horizontal: 6, vertical: 1.5),
+                                                    horizontal: 7, vertical: 2),
                                                 decoration: BoxDecoration(
-                                                  color: AppColors.primary
-                                                      .withValues(alpha: 0.08),
+                                                  color: _getEmployeeTypeColor(empType)
+                                                      .withValues(alpha: 0.12),
                                                   borderRadius:
                                                       BorderRadius.circular(6),
+                                                  border: Border.all(
+                                                    color: _getEmployeeTypeColor(empType)
+                                                        .withValues(alpha: 0.3),
+                                                  ),
                                                 ),
                                                 child: Text(
-                                                  empType == 'full_time'
-                                                      ? 'Full Time'
-                                                      : empType == 'part_time'
-                                                          ? 'Part Time'
-                                                          : 'Intern',
-                                                  style: const TextStyle(
+                                                  _getEmployeeTypeLabel(empType),
+                                                  style: TextStyle(
+                                                    color: _getEmployeeTypeColor(empType),
                                                     fontSize: 10.5,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: AppColors.primary,
+                                                    fontWeight: FontWeight.w800,
                                                   ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Iconsax.sms,
+                                                  size: 14, color: AppColors.primary),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                email,
+                                                style: const TextStyle(
+                                                  fontSize: 12.5,
+                                                  color: AppColors.textSecondary,
                                                 ),
                                               ),
                                             ],
@@ -1033,17 +1179,48 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                                         ],
                                       ),
                                       if (isTight) const SizedBox(height: 12),
-                                      OutlinedButton.icon(
-                                        onPressed: _openEditModal,
-                                        icon: const Icon(Iconsax.edit_2, size: 16),
-                                        label: const Text('Edit Profile'),
-                                        style: OutlinedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 16, vertical: 10),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: [
+                                          OutlinedButton.icon(
+                                            onPressed: _openEditModal,
+                                            icon: const Icon(Iconsax.edit_2, size: 16),
+                                            label: const Text('Edit Profile'),
+                                            style: OutlinedButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 14, vertical: 10),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                          ElevatedButton.icon(
+                                            onPressed: _toggleActive,
+                                            icon: Icon(
+                                              isActive ? Iconsax.user_minus : Iconsax.user_tick,
+                                              size: 16,
+                                              color: Colors.white,
+                                            ),
+                                            label: Text(
+                                              isActive ? 'Deactivate' : 'Activate',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: isActive
+                                                  ? AppColors.warning
+                                                  : AppColors.success,
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 14, vertical: 10),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   );

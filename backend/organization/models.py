@@ -162,10 +162,12 @@ class Employee(SoftDeleteModel):
         ("full_time", "Full time"),
         ("part_time", "Part time"),
         ("intern", "Intern"),
+        ("contract", "Contract"),
     )
 
     id_prefix = models.CharField(
-        default="EMP", max_length=255, null=True, blank=True)
+        max_length=255, null=True, blank=True, verbose_name="Employee ID"
+    )
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     post = models.ForeignKey(
         "Post",
@@ -225,7 +227,9 @@ class Employee(SoftDeleteModel):
 
     @property
     def get_id(self):
-        return f'{self.id_prefix or "EMP"}_{self.id}'
+        if self.id_prefix and str(self.id_prefix).strip():
+            return str(self.id_prefix).strip()
+        return ""
 
     @property
     def organization(self):

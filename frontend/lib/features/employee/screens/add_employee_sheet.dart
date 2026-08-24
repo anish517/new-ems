@@ -32,10 +32,18 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
 
   String _fname = '', _lname = '', _email = '', _password = '';
   String _phone = '', _gender = 'male', _employeeType = 'full_time', _maritalStatus = 'single';
+  String _customEmployeeId = '';
+  final _employeeIdCtrl = TextEditingController();
+  bool _isActive = true;
   NepaliDateTime _dob = NepaliDateTime(2055, 1, 1);
   final _dobCtrl = TextEditingController();
   bool _isLoading = false;
   bool _isLoadingDetails = false;
+
+  // Passport Photo
+  Uint8List? _passportPhotoBytes;
+  String? _passportPhotoName;
+  String? _existingPhotoUrl;
 
   // Designation (Post) & Custom entry
   int? _selectedPostId;
@@ -69,10 +77,16 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
       _fname = user['first_name'] ?? '';
       _lname = user['last_name'] ?? '';
       _email = user['email'] ?? '';
+      _existingPhotoUrl = user['profile_picture']?.toString();
       _phone = widget.employee!['phone_no'] ?? '';
       _gender = widget.employee!['gender'] ?? 'male';
       _maritalStatus = widget.employee!['marital_status'] ?? 'single';
       _employeeType = widget.employee!['employee_type'] ?? 'full_time';
+      _isActive = widget.employee!['is_active'] ?? true;
+      _customEmployeeId = widget.employee!['id_prefix']?.toString() ??
+          widget.employee!['employee_code']?.toString() ??
+          '';
+      _employeeIdCtrl.text = _customEmployeeId;
       _panNumber = widget.employee!['pan_number']?.toString() ??
           widget.employee!['pan']?.toString() ??
           '';
@@ -117,6 +131,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
     _dobCtrl.dispose();
     _customPostCtrl.dispose();
     _panCtrl.dispose();
+    _employeeIdCtrl.dispose();
     super.dispose();
   }
 
@@ -571,6 +586,24 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
     }
   }
 
+  Future<void> _pickPassportPhoto() async {
+    try {
+      final res = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        withData: true,
+      );
+      if (res != null && res.files.isNotEmpty) {
+        final f = res.files.first;
+        setState(() {
+          _passportPhotoBytes = f.bytes;
+          _passportPhotoName = f.name;
+        });
+      }
+    } catch (e) {
+      debugPrint('Passport photo picker error: $e');
+    }
+  }
+
   Future<void> _pickDate() async {
     final picked = await showDialog<NepaliDateTime>(
       context: context,
@@ -610,6 +643,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
     }
     _formKey.currentState!.save();
     _panNumber = _panCtrl.text.trim();
+    _customEmployeeId = _employeeIdCtrl.text.trim();
 
     if (widget.employee == null && _attachedDocs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -660,6 +694,8 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
           'email': _email.trim(),
           if (_password.isNotEmpty) 'password': _password,
         },
+        'id_prefix': _customEmployeeId.isNotEmpty ? _customEmployeeId : null,
+        'is_active': _isActive,
         'post': postId,
         'gender': _gender,
         'marital_status': _maritalStatus,
@@ -676,17 +712,37 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
       };
 
       int? employeeId;
+      int? targetUserId;
 
       if (widget.employee == null) {
-        data['is_active'] = true;
         final res = await ApiService()
             .post('${AppConstants.organizationBase}/employees/', data: data);
         employeeId = res.data['id'];
+        targetUserId = res.data['user']?['id'];
       } else {
         employeeId = widget.employee!['id'];
+        targetUserId = widget.employee!['user']?['id'];
         await ApiService().patch(
             '${AppConstants.organizationBase}/employees/$employeeId/',
             data: data);
+      }
+
+      // Upload Passport Profile Photo if selected
+      if (targetUserId != null && _passportPhotoBytes != null) {
+        try {
+          final photoForm = FormData.fromMap({
+            'profile_picture': MultipartFile.fromBytes(
+              _passportPhotoBytes!,
+              filename: _passportPhotoName ?? 'passport_photo.jpg',
+            ),
+          });
+          await ApiService().patch(
+            '/api/auth/accounts/$targetUserId/',
+            data: photoForm,
+          );
+        } catch (e) {
+          debugPrint('Profile photo upload warning: $e');
+        }
       }
 
       // Save Address (create or update even if cleared/empty)
@@ -923,6 +979,197 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                     ),
                     const SizedBox(height: 12),
                     Divider(color: context.border),
+
+                    const SizedBox(height: 10),
+
+                    // ── Manual Employee ID (Optional / Nullable) ───────
+                    TextFormField(
+                      controller: _employeeIdCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Employee ID (Optional)',
+                        hintText: 'e.g. EMP-001, EMP-104 (optional, can be empty)',
+                        prefixIcon: Icon(Iconsax.card_tick, size: 18),
+                        helperText:
+                            'Manually entered staff ID. Leave blank if not applicable.',
+                      ),
+                      keyboardType: TextInputType.text,
+                      onChanged: (v) => _customEmployeeId = v,
+                      onSaved: (v) => _customEmployeeId = v ?? '',
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // ── Account Status (Active / Inactive Toggle) ───────
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _isActive
+                            ? AppColors.success.withValues(alpha: 0.08)
+                            : AppColors.error.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _isActive
+                              ? AppColors.success.withValues(alpha: 0.3)
+                              : AppColors.error.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                _isActive ? Iconsax.user_tick : Iconsax.user_minus,
+                                color: _isActive
+                                    ? AppColors.success
+                                    : AppColors.error,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _isActive
+                                        ? 'Account Status: ACTIVE'
+                                        : 'Account Status: INACTIVE',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: _isActive
+                                          ? AppColors.success
+                                          : AppColors.error,
+                                    ),
+                                  ),
+                                  Text(
+                                    _isActive
+                                        ? 'Employee is active & authorized to login'
+                                        : 'Account is deactivated (login credentials disabled)',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Switch(
+                            value: _isActive,
+                            activeThumbColor: AppColors.success,
+                            onChanged: (val) =>
+                                setState(() => _isActive = val),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ── Passport-Size Profile Photo (35x45 mm) ──────────
+                    Center(
+                      child: Column(
+                        children: [
+                          Stack(
+                            children: [
+                              Container(
+                                width: 112,
+                                height: 144,
+                                decoration: BoxDecoration(
+                                  color: context.card,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.4),
+                                      width: 1.5),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.08),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: _passportPhotoBytes != null
+                                      ? Image.memory(
+                                          _passportPhotoBytes!,
+                                          fit: BoxFit.cover,
+                                          width: 112,
+                                          height: 144,
+                                        )
+                                      : (_existingPhotoUrl != null &&
+                                              _existingPhotoUrl!.isNotEmpty
+                                          ? Image.network(
+                                              _existingPhotoUrl!,
+                                              fit: BoxFit.cover,
+                                              width: 112,
+                                              height: 144,
+                                            )
+                                          : Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(Iconsax.user,
+                                                    size: 38,
+                                                    color: AppColors
+                                                        .textSecondary
+                                                        .withValues(alpha: 0.6)),
+                                                const SizedBox(height: 6),
+                                                const Text(
+                                                  'Passport Photo\n(35 × 45 mm)',
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w600,
+                                                    color:
+                                                        AppColors.textSecondary,
+                                                  ),
+                                                ),
+                                              ],
+                                            )),
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 4,
+                                right: 4,
+                                child: InkWell(
+                                  onTap: _pickPassportPhoto,
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Iconsax.camera,
+                                        color: Colors.white, size: 14),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          TextButton.icon(
+                            onPressed: _pickPassportPhoto,
+                            icon: const Icon(Iconsax.image,
+                                size: 14, color: AppColors.primary),
+                            label: Text(
+                              _passportPhotoBytes != null ||
+                                      _existingPhotoUrl != null
+                                  ? 'Change Passport Photo'
+                                  : 'Upload Passport Photo',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                     // ── 1. Account & Personal Info ──────────────────────
                     _buildSectionHeader('Account & Identity Info', Iconsax.user),
@@ -1170,11 +1417,49 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                             ),
                             items: const [
                               DropdownMenuItem(
-                                  value: 'full_time', child: Text('Full Time')),
+                                value: 'full_time',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.circle,
+                                        size: 9, color: AppColors.fullTime),
+                                    SizedBox(width: 8),
+                                    Text('Full Time'),
+                                  ],
+                                ),
+                              ),
                               DropdownMenuItem(
-                                  value: 'part_time', child: Text('Part Time')),
+                                value: 'part_time',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.circle,
+                                        size: 9, color: AppColors.partTime),
+                                    SizedBox(width: 8),
+                                    Text('Part Time'),
+                                  ],
+                                ),
+                              ),
                               DropdownMenuItem(
-                                  value: 'intern', child: Text('Intern')),
+                                value: 'intern',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.circle,
+                                        size: 9, color: AppColors.intern),
+                                    SizedBox(width: 8),
+                                    Text('Intern'),
+                                  ],
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: 'contract',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.circle,
+                                        size: 9, color: AppColors.contract),
+                                    SizedBox(width: 8),
+                                    Text('Contract'),
+                                  ],
+                                ),
+                              ),
                             ],
                             onChanged: (v) =>
                                 setState(() => _employeeType = v!),

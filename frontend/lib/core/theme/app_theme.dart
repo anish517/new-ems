@@ -40,6 +40,12 @@ class AppColors {
   static const Color absent        = Color(0xFFEF4444);
   static const Color remote        = Color(0xFF8B5CF6);
   static const Color leave         = Color(0xFFF59E0B);
+
+  // Employment Type badge colors
+  static const Color fullTime      = Color(0xFF10B981); // Emerald Green
+  static const Color partTime      = Color(0xFF0EA5E9); // Ocean / Sky Blue
+  static const Color intern        = Color(0xFF8B5CF6); // Royal Violet / Purple
+  static const Color contract      = Color(0xFFF59E0B); // Amber Gold
 }
 
 class AppTextStyles {

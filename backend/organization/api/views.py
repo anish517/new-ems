@@ -90,6 +90,24 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         user.save()
         return Response({'message': 'Password updated successfully'}, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['post'])
+    def toggle_active(self, request, pk=None):
+        employee = self.get_object()
+        new_status = not employee.is_active
+        employee.is_active = new_status
+        employee.save(update_fields=['is_active'])
+        if employee.user:
+            employee.user.is_active = new_status
+            employee.user.save(update_fields=['is_active'])
+        
+        status_str = 'activated' if new_status else 'deactivated'
+        login_str = 'Login access enabled.' if new_status else 'Login access disabled.'
+        return Response({
+            'id': employee.id,
+            'is_active': employee.is_active,
+            'message': f'Employee {status_str} successfully. {login_str}'
+        }, status=status.HTTP_200_OK)
+
 
 class EmployeeAddressCreateView(ListCreateAPIView):
     nepali_date_filter_field = False
@@ -447,7 +465,7 @@ class EmployeeExportCSVAPIView(APIView):
                 bank.bank_name if bank else '',
                 bank.account_name if bank else '',
                 bank.account_number if bank else '',
-                'Active' if emp.is_active else 'Archived'
+                'Active' if emp.is_active else 'Inactive'
             ])
 
         return response

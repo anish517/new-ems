@@ -109,6 +109,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     )
     department_name = serializers.SerializerMethodField()
     designation_title = serializers.SerializerMethodField()
+    employee_code = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()
 
     class Meta:
@@ -116,6 +117,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "id_prefix",
+            "employee_code",
             "user",
             "post",
             "gender",
@@ -135,6 +137,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "designation_title",
             "address",
         ]
+
+    def get_employee_code(self, obj):
+        return obj.get_id
 
     def get_address(self, obj):
         try:
@@ -165,7 +170,11 @@ class EmployeeSerializer(serializers.ModelSerializer):
             account_serializer.is_valid(raise_exception=True)
             account_serializer.save()
 
-        return super().update(instance, validated_data)
+        updated_emp = super().update(instance, validated_data)
+        if "is_active" in validated_data and instance.user:
+            instance.user.is_active = updated_emp.is_active
+            instance.user.save(update_fields=["is_active"])
+        return updated_emp
 
 
 class AddressSerializer(serializers.ModelSerializer):

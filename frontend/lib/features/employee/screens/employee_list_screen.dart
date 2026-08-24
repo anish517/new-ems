@@ -347,6 +347,119 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
     }
   }
 
+  Color _getEmployeeTypeColor(String? empType) {
+    switch (empType?.toLowerCase()) {
+      case 'full_time':
+      case 'full-time':
+        return AppColors.fullTime;
+      case 'part_time':
+      case 'part-time':
+        return AppColors.partTime;
+      case 'intern':
+        return AppColors.intern;
+      case 'contract':
+        return AppColors.contract;
+      default:
+        return AppColors.fullTime;
+    }
+  }
+
+  String _getEmployeeTypeLabel(String? empType) {
+    switch (empType?.toLowerCase()) {
+      case 'full_time':
+      case 'full-time':
+        return 'Full-Time';
+      case 'part_time':
+      case 'part-time':
+        return 'Part-Time';
+      case 'intern':
+        return 'Intern';
+      case 'contract':
+        return 'Contract';
+      default:
+        return 'Full-Time';
+    }
+  }
+
+  Future<void> _toggleEmployeeActive(
+      int id, String name, bool currentActive) async {
+    final actionWord = currentActive ? 'Deactivate' : 'Activate';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ctx.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(
+              currentActive ? Iconsax.user_minus : Iconsax.user_tick,
+              color: currentActive ? AppColors.warning : AppColors.success,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              '$actionWord Staff Account',
+              style: TextStyle(
+                color: ctx.textPrimary,
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          currentActive
+              ? 'Are you sure you want to deactivate $name? Their login credentials will be disabled immediately.'
+              : 'Reactivate $name? Their login access will be restored immediately.',
+          style: TextStyle(color: ctx.textPrimary, fontSize: 13.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  currentActive ? AppColors.warning : AppColors.success,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(actionWord,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      final res = await ApiService()
+          .post('${AppConstants.organizationBase}/employees/$id/toggle_active/');
+      _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                res.data['message'] ?? 'Status updated successfully'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ApiService.getErrorMessage(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   void _openAddEmployeeModal({Map? employee}) {
     final isDesktop = MediaQuery.of(context).size.width >= 768;
 
@@ -858,19 +971,19 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
 
         if (width >= 1200) {
           crossAxisCount = 5;
-          childAspectRatio = 0.70;
+          childAspectRatio = 0.65;
         } else if (width >= 900) {
           crossAxisCount = 4;
-          childAspectRatio = 0.71;
+          childAspectRatio = 0.65;
         } else if (width >= 620) {
           crossAxisCount = 3;
-          childAspectRatio = 0.70;
+          childAspectRatio = 0.64;
         } else if (width >= 420) {
           crossAxisCount = 2;
-          childAspectRatio = 0.68;
+          childAspectRatio = 0.62;
         } else {
           crossAxisCount = 2;
-          childAspectRatio = 0.63;
+          childAspectRatio = 0.58;
         }
 
         return GridView.builder(
@@ -901,11 +1014,17 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
         : (e['official_email'] ?? 'Unnamed Employee');
     final profilePic = user['profile_picture']?.toString();
     final email = user['email'] ?? e['official_email'] ?? 'No email';
-    final empType = e['employee_type'] ?? 'full_time';
+    final empType = e['employee_type']?.toString() ?? 'full_time';
+    final typeColor = _getEmployeeTypeColor(empType);
+    final typeLabel = _getEmployeeTypeLabel(empType);
     final isActive = e['is_active'] == true;
     final designation = e['designation_title'] ??
         (e['post'] is Map ? e['post']['title'] : null) ??
         'Staff Member';
+    final rawCode = e['employee_code']?.toString() ?? e['id_prefix']?.toString();
+    final employeeCode = (rawCode != null && rawCode.isNotEmpty && rawCode != 'null')
+        ? rawCode
+        : '';
 
     return Material(
       color: Colors.transparent,
@@ -931,9 +1050,9 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Large Profile Image with Status and Action Overlays ──
+              // ── Passport-Size Profile Photo Container ──
               Expanded(
-                flex: 11,
+                flex: 12,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -944,6 +1063,7 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                               profilePic,
                               fit: BoxFit.cover,
                               width: double.infinity,
+                              height: double.infinity,
                               errorBuilder: (_, __, ___) => _buildFallbackAvatar(fname, fullName),
                               loadingBuilder: (ctx, child, progress) {
                                 if (progress == null) return child;
@@ -970,7 +1090,7 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      height: 36,
+                      height: 32,
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -1061,6 +1181,8 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                                       _openAddEmployeeModal(employee: e);
                                     } else if (val == 'delete') {
                                       _deleteEmployee(e['id'], fullName);
+                                    } else if (val == 'toggle_active') {
+                                      _toggleEmployeeActive(e['id'], fullName, isActive);
                                     } else if (val == 'password') {
                                       _changePassword(e['id'], fullName);
                                     } else if (val == 'salary') {
@@ -1110,6 +1232,20 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                                         ],
                                       ),
                                     ),
+                                    PopupMenuItem(
+                                      value: 'toggle_active',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            isActive ? Iconsax.user_minus : Iconsax.user_tick,
+                                            size: 16,
+                                            color: isActive ? AppColors.warning : AppColors.success,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text(isActive ? 'Deactivate (Block Login)' : 'Activate (Enable Login)'),
+                                        ],
+                                      ),
+                                    ),
                                     const PopupMenuDivider(),
                                     const PopupMenuItem(
                                       value: 'delete',
@@ -1136,79 +1272,100 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                 ),
               ),
 
-              // ── Details Section ──
+              // ── Details Section (Tightly packed with no large vertical gap) ──
               Expanded(
-                flex: 9,
+                flex: 8,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Column(
-                        children: [
-                          Text(
-                            fullName,
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.3,
-                              color: context.textPrimary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            designation,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-
-                      // Badge (Employment Type / Archived)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isArchived
-                              ? AppColors.error.withValues(alpha: 0.1)
-                              : AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
+                      Text(
+                        fullName,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                          color: context.textPrimary,
                         ),
-                        child: Text(
-                          isArchived
-                              ? 'Archived'
-                              : (empType == 'full_time'
-                                  ? 'Full-Time'
-                                  : empType == 'part_time'
-                                      ? 'Part-Time'
-                                      : 'Intern'),
-                          style: TextStyle(
-                            color: isArchived ? AppColors.error : AppColors.primary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
                       ),
+                      const SizedBox(height: 2),
+                      Text(
+                        designation,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
 
-                      // Email / Subtitle
+                      // Badges row: Auto Employee ID + Distinct Employment Type Badge
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Iconsax.sms, size: 11, color: AppColors.textSecondary),
-                          const SizedBox(width: 4),
+                          if (employeeCode.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: context.card,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: context.border),
+                              ),
+                              child: Text(
+                                employeeCode,
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: isArchived
+                                  ? AppColors.error.withValues(alpha: 0.12)
+                                  : typeColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: isArchived
+                                    ? AppColors.error.withValues(alpha: 0.3)
+                                    : typeColor.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Text(
+                              isArchived ? 'Archived' : typeLabel,
+                              style: TextStyle(
+                                color: isArchived ? AppColors.error : typeColor,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+
+                      // Email row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Iconsax.sms, size: 10.5, color: AppColors.textSecondary),
+                          const SizedBox(width: 3),
                           Flexible(
                             child: Text(
                               email,
                               style: const TextStyle(
-                                fontSize: 10.5,
+                                fontSize: 10,
                                 color: AppColors.textSecondary,
                               ),
                               maxLines: 1,
@@ -1248,11 +1405,17 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
             : (e['official_email'] ?? 'Unnamed Employee');
         final email = user['email'] ?? e['official_email'] ?? 'No email';
         final phone = e['phone_no'] ?? 'No phone';
-        final empType = e['employee_type'] ?? 'full_time';
+        final empType = e['employee_type']?.toString() ?? 'full_time';
+        final typeColor = _getEmployeeTypeColor(empType);
+        final typeLabel = _getEmployeeTypeLabel(empType);
         final isActive = e['is_active'] == true;
         final designation = e['designation_title'] ??
             (e['post'] is Map ? e['post']['title'] : null) ??
             'Staff Member';
+        final rawCode = e['employee_code']?.toString() ?? e['id_prefix']?.toString();
+        final employeeCode = (rawCode != null && rawCode.isNotEmpty && rawCode != 'null')
+            ? rawCode
+            : '';
 
         return Material(
           color: Colors.transparent,
@@ -1334,6 +1497,26 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                               ),
                             ),
                             const SizedBox(width: 8),
+                            if (employeeCode.isNotEmpty) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: context.card,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: context.border),
+                                ),
+                                child: Text(
+                                  employeeCode,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: context.textPrimary,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
                             if (isArchived)
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -1356,18 +1539,14 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary
-                                      .withValues(alpha: 0.1),
+                                  color: typeColor.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: typeColor.withValues(alpha: 0.3)),
                                 ),
                                 child: Text(
-                                  empType == 'full_time'
-                                      ? 'Full-Time'
-                                      : empType == 'part_time'
-                                          ? 'Part-Time'
-                                          : 'Intern',
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
+                                  typeLabel,
+                                  style: TextStyle(
+                                    color: typeColor,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -1452,6 +1631,8 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                               _openAddEmployeeModal(employee: e);
                             } else if (val == 'delete') {
                               _deleteEmployee(e['id'], fullName);
+                            } else if (val == 'toggle_active') {
+                              _toggleEmployeeActive(e['id'], fullName, isActive);
                             } else if (val == 'password') {
                               _changePassword(e['id'], fullName);
                             } else if (val == 'salary') {
@@ -1501,6 +1682,20 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                                       size: 16, color: AppColors.warning),
                                   SizedBox(width: 10),
                                   Text('Reset Password'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'toggle_active',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    isActive ? Iconsax.user_minus : Iconsax.user_tick,
+                                    size: 16,
+                                    color: isActive ? AppColors.warning : AppColors.success,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(isActive ? 'Deactivate Staff' : 'Activate Staff'),
                                 ],
                               ),
                             ),
