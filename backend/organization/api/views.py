@@ -377,7 +377,7 @@ class EmployeeExportCSVAPIView(APIView):
     """
     Export full employee directory to CSV including PAN, designation, bank, and statutory details.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     nepali_date_filter_field = False
 
     def get(self, request):
@@ -385,31 +385,29 @@ class EmployeeExportCSVAPIView(APIView):
         from django.http import HttpResponse
         from organization.models import BankDetail
 
-        # Authenticate via Header or Query Token
+        # ?token= is resolved globally by base.query_param_auth.QueryParamJWTAuthentication,
+        # so request.user is already populated for browser-initiated downloads.
         user = request.user
-        if not user or not user.is_authenticated:
-            token = request.GET.get('token') or request.headers.get('Authorization', '').replace('Bearer ', '')
-            if token:
-                try:
-                    from rest_framework_simplejwt.authentication import JWTAuthentication
-                    validated = JWTAuthentication().get_validated_token(token)
-                    user = JWTAuthentication().get_user(validated)
-                except Exception:
-                    pass
-        if not user or not user.is_authenticated:
-            return Response({'error': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # This export carries PAN, bank and statutory details for the whole
+        # directory, so it is admin/HR only -- same gate as the CSV import view.
+        is_admin = user.organization.exists() or user.is_superuser or user.is_staff or getattr(user, 'is_hr', False)
+        if not is_admin:
+            return Response({'error': 'Only administrators and HR can export employee records.'}, status=status.HTTP_403_FORBIDDEN)
 
         org = None
-        if hasattr(user, 'organization') and user.organization.exists():
+        if user.organization.exists():
             org = user.organization.first()
         elif getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False):
             from organization.models import Organization
             org = Organization.objects.first()
 
-        if org:
-            employees = Employee.objects.filter(post__department__organization=org)
-        else:
-            employees = Employee.objects.all()
+        # Fail closed. Previously this fell through to Employee.objects.all(),
+        # so an account with no resolvable organization exported every tenant.
+        if not org:
+            return Response({'error': 'No organization could be resolved for this account.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        employees = Employee.objects.filter(post__department__organization=org)
 
         response = HttpResponse(content_type='text/csv; charset=utf-8')
         response['Content-Disposition'] = 'attachment; filename="employee_directory.csv"'

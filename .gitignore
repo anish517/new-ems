@@ -19,3 +19,6 @@ frontend/add_listeners.py
 .playwright-mcp/
 frontend/ios/Podfile
 frontend/ios/Pods/
+
+# Local deploy credentials — never commit
+cred.txt
