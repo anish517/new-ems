@@ -760,9 +760,57 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
               LayoutBuilder(
                 builder: (context, constraints) {
                   final isNarrow = constraints.maxWidth < 800;
-                  final leftWidget = Row(
-                    children: [
-                      Container(
+
+                  Widget buildInfoColumn() => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: [
+                              Text(
+                                'Leave & Attendance Portal',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.4,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF59E0B)
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  isAdmin ? 'Admin View' : 'Employee View',
+                                  style: const TextStyle(
+                                    color: Color(0xFFF59E0B),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            isAdmin
+                                ? 'Review leave applications, manage categories & staff quotas'
+                                : 'Request time-off, track leave balances & approvals',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary),
+                          ),
+                        ],
+                      );
+
+                  Widget buildIconBadge() => Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF59E0B)
@@ -771,60 +819,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                         ),
                         child: const Icon(Iconsax.calendar_remove,
                             color: Color(0xFFF59E0B), size: 24),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Wrap(
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              spacing: 8,
-                              runSpacing: 4,
-                              children: [
-                                Text(
-                                  'Leave & Attendance Portal',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.4,
-                                    color: context.textPrimary,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF59E0B)
-                                        .withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    isAdmin ? 'Admin View' : 'Employee View',
-                                    style: const TextStyle(
-                                      color: Color(0xFFF59E0B),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              isAdmin
-                                  ? 'Review leave applications, manage categories & staff quotas'
-                                  : 'Request time-off, track leave balances & approvals',
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
+                      );
 
                   final actionsWidget = Wrap(
                     spacing: 8,
@@ -876,6 +871,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                   );
 
                   return Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: context.surface,
@@ -893,16 +889,26 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                     child: isNarrow
                         ? Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              leftWidget,
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  buildIconBadge(),
+                                  const SizedBox(width: 14),
+                                  Expanded(child: buildInfoColumn()),
+                                ],
+                              ),
                               const SizedBox(height: 16),
                               actionsWidget,
                             ],
                           )
                         : Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Expanded(child: leftWidget),
+                              buildIconBadge(),
+                              const SizedBox(width: 14),
+                              Expanded(child: buildInfoColumn()),
                               const SizedBox(width: 16),
                               actionsWidget,
                             ],
