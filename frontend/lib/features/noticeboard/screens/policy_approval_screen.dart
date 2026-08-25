@@ -347,7 +347,9 @@ class _PolicyApprovalScreenState extends ConsumerState<PolicyApprovalScreen> {
                                     child: Padding(
                                       padding: const EdgeInsets.only(top: 10),
                                       child: Text(
-                                        'I confirm that I have read, understood, and formally agree to strictly comply with all stated company policies, workplace standards, confidentiality obligations, and code of conduct.',
+                                        _policies.isEmpty
+                                            ? 'I confirm that I understand company compliance rules and acknowledge entering the workspace.'
+                                            : 'I confirm that I have read, understood, and formally agree to strictly comply with all stated company policies, workplace standards, confidentiality obligations, and code of conduct.',
                                         style: TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700,
@@ -389,14 +391,16 @@ class _PolicyApprovalScreenState extends ConsumerState<PolicyApprovalScreen> {
                                     height: 22,
                                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                                   )
-                                : const Row(
+                                : Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Iconsax.tick_circle, color: Colors.white, size: 20),
-                                      SizedBox(width: 8),
+                                      const Icon(Iconsax.tick_circle, color: Colors.white, size: 20),
+                                      const SizedBox(width: 8),
                                       Text(
-                                        'Accept & Proceed to Dashboard',
-                                        style: TextStyle(
+                                        _policies.isEmpty
+                                            ? 'Proceed to Dashboard'
+                                            : 'Accept & Proceed to Dashboard',
+                                        style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 15,
                                           fontWeight: FontWeight.w900,
@@ -516,42 +520,32 @@ class _PolicyApprovalScreenState extends ConsumerState<PolicyApprovalScreen> {
 
   Widget _buildDefaultPoliciesCard(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: context.border),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'Standard Corporate Guidelines',
-                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: AppColors.primary),
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Iconsax.document_text, size: 32, color: AppColors.primary),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Text(
-            'General Code of Conduct & Operational Integrity',
+            'No Policies Published Yet',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           const Text(
-            '1. Professional Conduct: All employees are expected to maintain the highest standards of integrity, respect, and professionalism in all communications and duties.\n\n'
-            '2. Data Protection & Confidentiality: Company proprietary code, customer records, and internal assets must remain strictly confidential and protected.\n\n'
-            '3. Attendance & Punctuality: Employees must accurately log attendance, request leaves in advance, and notify managers of any unexpected schedule delays.\n\n'
-            '4. Equal Opportunity: We are committed to a safe, inclusive, and harassment-free work environment for everyone.',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5),
+            'Your organization does not have any custom workplace policies published at this moment.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
           ),
         ],
       ),

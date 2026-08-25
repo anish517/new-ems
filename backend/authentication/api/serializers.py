@@ -152,10 +152,19 @@ class MeSerializer(serializers.ModelSerializer):
             return False
 
     def get_has_approved_policy(self, obj):
-        if obj.is_superuser:
+        if obj.is_superuser or obj.is_staff or getattr(obj, 'is_hr', False) or getattr(obj, 'role', '') in ('admin', 'org_admin', 'super_admin'):
             return True
         try:
-            from noticeboard.models import PolicyApproval
+            from noticeboard.models import PolicyApproval, CompanyPolicy
+            org = getattr(obj.employee, 'organization', None) if hasattr(obj, 'employee') else None
+            if not org and obj.organization.exists():
+                org = obj.organization.first()
+            if org:
+                active_policies = CompanyPolicy.objects.filter(organization=org, is_active=True)
+                if not active_policies.exists():
+                    return True
+            else:
+                return True
             return PolicyApproval.objects.filter(user=obj, is_approved=True).exists()
         except Exception:
             return True
