@@ -1,9 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:nepali_utils/nepali_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../auth/providers/auth_provider.dart';
+
+String _fmtDate(dynamic raw) {
+  if (raw == null) return '';
+  final s = raw.toString().trim();
+  if (s.isEmpty) return '';
+  try {
+    DateTime dt;
+    if (s.contains('T') || s.contains('Z') || s.contains('+')) {
+      dt = DateTime.parse(s).toLocal();
+    } else if (s.contains(' ')) {
+      dt = DateTime.parse(s.replaceFirst(' ', 'T')).toLocal();
+    } else {
+      final parts = s.split('-');
+      if (parts.length == 3) {
+        dt = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+      } else {
+        dt = DateTime.parse(s).toLocal();
+      }
+    }
+    final nepaliDt = dt.toNepaliDateTime();
+    return NepaliDateFormat('dd MMMM yyyy').format(nepaliDt);
+  } catch (_) {
+    return s.split('T')[0];
+  }
+}
+
+String _fmtDateTime(dynamic raw) {
+  if (raw == null) return '';
+  final s = raw.toString().trim();
+  if (s.isEmpty) return '';
+  try {
+    DateTime dt;
+    if (s.contains('T') || s.contains('Z') || s.contains('+')) {
+      dt = DateTime.parse(s).toLocal();
+    } else if (s.contains(' ')) {
+      final parts = s.split(' ');
+      final dateParts = parts[0].split('-');
+      final timeParts = parts[1].split(':');
+      dt = DateTime(
+        int.parse(dateParts[0]),
+        int.parse(dateParts[1]),
+        int.parse(dateParts[2]),
+        int.parse(timeParts[0]),
+        int.parse(timeParts[1]),
+        timeParts.length > 2 ? int.parse(timeParts[2].split('.')[0]) : 0,
+      );
+    } else {
+      dt = DateTime.parse(s).toLocal();
+    }
+    final nepaliDt = dt.toNepaliDateTime();
+    return NepaliDateFormat('dd MMMM yyyy, hh:mm a').format(nepaliDt);
+  } catch (_) {
+    return s.split('.')[0].replaceFirst('T', ' ');
+  }
+}
 
 class PolicyScreen extends ConsumerStatefulWidget {
   const PolicyScreen({super.key});
@@ -817,7 +873,7 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
                           final a = filteredApprovals[i];
                           final empName = a['employee_name'] ?? a['user_name'] ?? 'Employee';
                           final empEmail = a['user_email'] ?? '';
-                          final approvedAt = a['approved_at']?.toString().split('.')[0].replaceFirst('T', ' ') ?? '';
+                          final approvedAt = _fmtDateTime(a['approved_at']);
                           final device = a['device_name'] ?? a['os'] ?? 'Unknown Device';
                           final ip = a['ip_address'] ?? '127.0.0.1';
 
@@ -1130,7 +1186,7 @@ class _PolicyCardState extends State<_PolicyCard> {
   @override
   Widget build(BuildContext context) {
     final content = widget.policy['content'] as String? ?? '';
-    final createdAt = widget.policy['created_at']?.toString().split('T')[0] ?? '';
+    final createdAt = _fmtDate(widget.policy['created_at']);
     final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Container(
