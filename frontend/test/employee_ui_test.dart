@@ -72,7 +72,6 @@ void main() {
 
     testWidgets('Add Employee form should display Date of Joining field', (WidgetTester tester) async {
       final ctrl = TextEditingController(text: '2083-05-16');
-      String? savedDoj;
 
       final testWidget = MaterialApp(
         home: Scaffold(
@@ -83,7 +82,6 @@ void main() {
                   key: const Key('date_of_joining_field'),
                   controller: ctrl,
                   decoration: const InputDecoration(labelText: 'Date of Joining (B.S.)'),
-                  onSaved: (val) => savedDoj = val,
                 ),
               ],
             ),

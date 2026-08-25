@@ -1550,6 +1550,33 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
     _loadFiscalYears();
   }
 
+  void _autoSelectMatchingFiscalYear() {
+    if (_fiscalYears.isEmpty) return;
+    try {
+      final parts = _date.split('-');
+      if (parts.length >= 2) {
+        final year = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final startYear = month >= 4 ? year : (year - 1);
+        final expectedTitleShort = '$startYear/${(startYear + 1).toString().substring(2)}';
+        final expectedTitleLong = '$startYear/${startYear + 1}';
+
+        final match = _fiscalYears.firstWhere(
+          (f) {
+            final t = (f['title'] ?? '').toString().replaceAll(' ', '');
+            return t.contains(expectedTitleShort) || t.contains(expectedTitleLong) || t.startsWith('$startYear');
+          },
+          orElse: () => null,
+        );
+        if (match != null && _selFiscalYear == null) {
+          setState(() {
+            _selFiscalYear = match['id'];
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
   Future<void> _loadFiscalYears() async {
     try {
       final fRes = await ApiService().get('/api/fiscal-year/');
@@ -1558,8 +1585,109 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
         _fiscalYears = fRes.data is List ? fRes.data : (fRes.data['results'] ?? []);
         _loading = false;
       });
+      _autoSelectMatchingFiscalYear();
     } catch (_) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _showAddFiscalYearDialog(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final titleCtrl = TextEditingController();
+    try {
+      final parts = _date.split('-');
+      if (parts.isNotEmpty) {
+        final year = int.parse(parts[0]);
+        final month = parts.length > 1 ? int.parse(parts[1]) : 1;
+        final startYear = month >= 4 ? year : (year - 1);
+        titleCtrl.text = '$startYear/${(startYear + 1).toString().substring(2)}';
+      }
+    } catch (_) {
+      titleCtrl.text = '2083/84';
+    }
+
+    final created = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ctx.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Iconsax.calendar_add, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Text('Add Fiscal Year', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter the Fiscal Year title (e.g. 2083/84, 2084/85):',
+              style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: titleCtrl,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Fiscal Year Title',
+                hintText: 'e.g. 2083/84',
+                prefixIcon: const Icon(Iconsax.calendar_1, size: 18),
+                filled: true,
+                fillColor: ctx.surface,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: TextStyle(color: ctx.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final val = titleCtrl.text.trim();
+              if (val.isEmpty) return;
+              try {
+                final res = await ApiService().post('/api/fiscal-year/', data: {'title': val});
+                if (ctx.mounted) Navigator.pop(ctx, res.data);
+              } catch (e) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(content: Text('Failed to create: ${ApiService.getErrorMessage(e)}'), backgroundColor: AppColors.error),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Add Fiscal Year', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (created != null && mounted) {
+      await _loadFiscalYears();
+      if (!mounted) return;
+      setState(() {
+        _selFiscalYear = created['id'];
+      });
+      messenger.showSnackBar(
+        SnackBar(content: Text('Fiscal Year "${created['title']}" added successfully!'), backgroundColor: AppColors.success),
+      );
     }
   }
 
@@ -1727,22 +1855,45 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
               },
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              // ignore: deprecated_member_use
-              value: _selFiscalYear,
-              hint: const Text('Select Fiscal Year'),
-              isExpanded: true,
-              items: _fiscalYears
-                  .fold<List<dynamic>>([], (prev, curr) {
-                    if (!prev.any((e) => e['id'] == curr['id'])) prev.add(curr);
-                    return prev;
-                  })
-                  .map((f) => DropdownMenuItem<int>(
-                        value: f['id'],
-                        child: Text(f['title'] ?? ''),
-                      ))
-                  .toList(),
-              onChanged: _fiscalYears.isEmpty ? null : (v) => setState(() => _selFiscalYear = v),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    // ignore: deprecated_member_use
+                    value: _selFiscalYear,
+                    hint: const Text('Select Fiscal Year'),
+                    isExpanded: true,
+                    items: _fiscalYears
+                        .fold<List<dynamic>>([], (prev, curr) {
+                          if (!prev.any((e) => e['id'] == curr['id'])) prev.add(curr);
+                          return prev;
+                        })
+                        .map((f) => DropdownMenuItem<int>(
+                              value: f['id'],
+                              child: Text(f['title'] ?? ''),
+                            ))
+                        .toList(),
+                    onChanged: _fiscalYears.isEmpty ? null : (v) => setState(() => _selFiscalYear = v),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Add New Fiscal Year',
+                  child: InkWell(
+                    onTap: () => _showAddFiscalYearDialog(context),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(13),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                      child: const Icon(Iconsax.add, color: AppColors.primary, size: 20),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -1754,6 +1905,7 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
               keyboardType: TextInputType.datetime,
               onChanged: (v) {
                 _date = v;
+                _autoSelectMatchingFiscalYear();
                 if (v.length == 10) _loadNetSalary();
               },
             ),

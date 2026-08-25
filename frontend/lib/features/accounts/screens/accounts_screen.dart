@@ -50,11 +50,13 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
       backgroundColor: context.bg,
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── Top Header Card ────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Container(
+                width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: context.surface,
@@ -71,55 +73,84 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Iconsax.wallet_3, color: AppColors.primary, size: 22),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isTight = constraints.maxWidth < 680;
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(Iconsax.wallet_3, color: AppColors.primary, size: 24),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    'Financial Accounts & Governance',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                      color: context.textPrimary,
-                                      letterSpacing: -0.3,
-                                    ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          'Financial Accounts & Governance',
+                                          style: TextStyle(
+                                            fontSize: isTight ? 16 : 20,
+                                            fontWeight: FontWeight.w800,
+                                            color: context.textPrimary,
+                                            letterSpacing: -0.4,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Text(
+                                          'Admin Console',
+                                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text(
-                                      'Admin Console',
-                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
-                                    ),
+                                  const SizedBox(height: 3),
+                                  const Text(
+                                    'Manage company payroll, statutory tax bands & audit logs',
+                                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 2),
-                              const Text(
-                                'Manage company payroll, statutory tax bands & audit logs',
-                                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton.icon(
+                              onPressed: () => _showFiscalYearManagementDialog(context),
+                              icon: const Icon(Iconsax.calendar_add, size: 16),
+                              label: Text(isTight ? 'FY' : 'Fiscal Years', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                                foregroundColor: AppColors.primary,
+                                elevation: 0,
+                                padding: EdgeInsets.symmetric(horizontal: isTight ? 10 : 14, vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                                ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
 
@@ -164,6 +195,171 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _showFiscalYearManagementDialog(BuildContext context) async {
+    List<dynamic> fiscalYears = [];
+    bool loading = true;
+    final titleCtrl = TextEditingController();
+
+    // Auto-suggest next year
+    final now = NepaliDateTime.now();
+    final nextYear = now.month >= 4 ? now.year : (now.year - 1);
+    titleCtrl.text = '$nextYear/${(nextYear + 1).toString().substring(2)}';
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) {
+          Future<void> loadFys() async {
+            try {
+              final res = await ApiService().get('/api/fiscal-year/');
+              if (dialogCtx.mounted) {
+                setDialogState(() {
+                  fiscalYears = res.data is List ? res.data : (res.data['results'] ?? []);
+                  loading = false;
+                });
+              }
+            } catch (_) {
+              if (dialogCtx.mounted) setDialogState(() => loading = false);
+            }
+          }
+
+          if (loading) {
+            loadFys();
+          }
+
+          return AlertDialog(
+            backgroundColor: dialogCtx.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Iconsax.calendar_tick, color: AppColors.primary, size: 22),
+                ),
+                const SizedBox(width: 12),
+                const Text('Fiscal Years Management', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+              ],
+            ),
+            content: SizedBox(
+              width: 440,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Add or review statutory fiscal years used across payroll and tax reporting.',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: titleCtrl,
+                          decoration: InputDecoration(
+                            labelText: 'New Fiscal Year Title',
+                            hintText: 'e.g. 2084/85',
+                            prefixIcon: const Icon(Iconsax.calendar_add, size: 18),
+                            filled: true,
+                            fillColor: dialogCtx.surface,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final val = titleCtrl.text.trim();
+                          if (val.isEmpty) return;
+                          try {
+                            await ApiService().post('/api/fiscal-year/', data: {'title': val});
+                            titleCtrl.clear();
+                            setDialogState(() => loading = true);
+                            await loadFys();
+                          } catch (e) {
+                            if (dialogCtx.mounted) {
+                              ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                                SnackBar(content: Text('Error: ${ApiService.getErrorMessage(e)}'), backgroundColor: AppColors.error),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Add', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  const Text('Registered Fiscal Years:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  if (loading)
+                    const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
+                  else if (fiscalYears.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: Text('No fiscal years found.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
+                    )
+                  else
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 220),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: fiscalYears.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (c, idx) {
+                          final fy = fiscalYears[idx];
+                          return ListTile(
+                            dense: true,
+                            leading: const Icon(Iconsax.calendar_1, size: 18, color: AppColors.primary),
+                            title: Text(fy['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                            trailing: IconButton(
+                              icon: const Icon(Iconsax.trash, size: 16, color: AppColors.error),
+                              onPressed: () async {
+                                final fyId = fy['id'];
+                                try {
+                                  await ApiService().delete('/api/fiscal-year/$fyId/');
+                                  setDialogState(() => loading = true);
+                                  await loadFys();
+                                } catch (e) {
+                                  if (dialogCtx.mounted) {
+                                    ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                                      SnackBar(content: Text('Could not delete: ${ApiService.getErrorMessage(e)}'), backgroundColor: AppColors.error),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('Close', style: TextStyle(color: dialogCtx.textSecondary)),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
