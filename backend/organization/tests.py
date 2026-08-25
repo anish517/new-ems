@@ -93,3 +93,43 @@ class OrganizationAPITests(TestCase):
         emp.refresh_from_db()
         self.assertEqual(emp.marital_status, "married")
         self.assertEqual(emp.employee_type, "full_time")
+
+    def test_employee_date_of_joining_creation_and_edit(self):
+        """
+        Test that date_of_joining (B.S.) can be set on creation and updated via API.
+        """
+        payload = {
+            "user": {
+                "first_name": "JoinDate",
+                "last_name": "Tester",
+                "email": "joindate@test.com",
+                "password": "Password123!"
+            },
+            "post": self.post.id,
+            "gender": "female",
+            "marital_status": "single",
+            "date_of_birth": "2052-04-10",
+            "date_of_joining": "2083-05-16",
+            "phone_no": "9811111111",
+            "employee_type": "full_time",
+            "official_email": "joindate@test.com",
+            "personal_email": "personal.join@test.com",
+            "father_name": "Father Join"
+        }
+        
+        response = self.client.post('/api/organization/employees/', payload, format='json')
+        if response.status_code != status.HTTP_201_CREATED:
+            print(f"CREATE ERROR: {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(str(response.data.get('date_of_joining')), "2083-05-16")
+
+        emp = Employee.objects.get(user__email="joindate@test.com")
+        self.assertEqual(str(emp.date_of_joining), "2083-05-16")
+
+        # Now update date_of_joining via patch
+        patch_res = self.client.patch(f'/api/organization/employees/{emp.id}/', {
+            "date_of_joining": "2083-06-01"
+        }, format='json')
+        self.assertEqual(patch_res.status_code, status.HTTP_200_OK)
+        emp.refresh_from_db()
+        self.assertEqual(str(emp.date_of_joining), "2083-06-01")

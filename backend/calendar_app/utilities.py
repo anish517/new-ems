@@ -7,55 +7,53 @@ from organization.models import Organization
 TODAY = nepali_datetime.date.today()
 
 
-def count_saturdays(year: int, month: int) -> int:
+def count_saturdays(year: int, month: int, start_day: int = 1, end_day: int = None) -> int:
     """
-    Counts the number of Saturdays in a given month of a specified year
+    Counts the number of Saturdays in a given month (or day range) of a specified year
     using the Nepali calendar.
-
-    Parameters:
-        year (int): The year in the Nepali calendar.
-        month (int): The month in the Nepali calendar (1 to 12).
-
-    Returns:
-        int: The total number of Saturdays in the specified month.
-
     """
     days_in_month = total_days_in_month(year, month)
+    if end_day is None or end_day > days_in_month:
+        end_day = days_in_month
+    start_day = max(1, start_day)
+    if start_day > end_day:
+        return 0
 
-    saturdays = sum(1 for day in range(1, days_in_month + 1)
+    saturdays = sum(1 for day in range(start_day, end_day + 1)
                     if nepali_datetime.date(year, month, day).weekday() == 6)
 
     return saturdays
 
 
-def count_holidays(organization: Organization, year: int, month: int) -> int:
+def count_holidays(organization: Organization, year: int, month: int, start_day: int = 1, end_day: int = None) -> int:
     """
-    Counts the total number of holiday days in a specific month for a given organization.
-
-    This function filters events associated with the specified organization and counts 
-    the days classified as holidays (`is_holiday=True`) for the given month and year.
-    The holiday count is accumulated based on each event's duration.
-
-    Parameters:
-        organization (Organization): The organization to filter events for.
-        year (int): The year to filter events by.
-        month (int): The month to filter events by (1-12).
-
-    Returns:
-        int: The total number of holiday days in the specified month.
+    Counts the total number of holiday days in a specific month (or day range) for a given organization.
     """
+    if not organization:
+        return 0
 
-    date_np = nepali_datetime.date(year=year, month=month, day=1)
+    days_in_month = total_days_in_month(year, month)
+    if end_day is None or end_day > days_in_month:
+        end_day = days_in_month
+    start_day = max(1, start_day)
+    if start_day > end_day:
+        return 0
 
     events = Event.objects.filter(
-        organization=organization).order_by('start')
+        organization=organization,
+        is_holiday=True,
+    ).order_by('start')
 
     holidays = 0
 
     for event in events:
-        if event.start.year == date_np.year and event.start.month == date_np.month:
-            if event.is_holiday:
-                holidays += event.duration
+        if event.start.year == year and event.start.month == month:
+            ev_start = event.start.day
+            ev_end = ev_start + event.duration - 1
+            overlap_start = max(start_day, ev_start)
+            overlap_end = min(end_day, ev_end)
+            if overlap_start <= overlap_end:
+                holidays += (overlap_end - overlap_start + 1)
 
     return holidays
 

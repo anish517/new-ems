@@ -1950,6 +1950,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                   (emp['gender'] ?? 'N/A').toString().toUpperCase()),
               _infoTile(Iconsax.calendar_1, 'Date of Birth (B.S.)',
                   emp['date_of_birth'] ?? 'N/A'),
+              _infoTile(Iconsax.calendar_tick, 'Date of Joining (B.S.)',
+                  emp['date_of_joining']?.toString().isNotEmpty == true ? emp['date_of_joining'] : (emp['contract_start_date'] ?? 'N/A')),
               _infoTile(
                 Iconsax.location,
                 'Permanent Address',

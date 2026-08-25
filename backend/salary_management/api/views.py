@@ -16,7 +16,7 @@ from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from django.contrib.auth import get_user_model
 
 from attendance.models import Attendance
-from calendar_app.utilities import count_holidays, count_saturdays
+from calendar_app.utilities import count_holidays, count_saturdays, total_days_in_month
 from leave_management.models import LeaveRequest
 from organization.models import Employee
 from salary_management.models import Salary, SalaryTransaction, SalaryTaxBand, IncentiveTaxBand, BonusTaxBand, get_tax_from_bands
@@ -111,8 +111,16 @@ class NetSalaryAPIView(generics.RetrieveAPIView):
     def get(self, request, salary_id):
         nepali_date = nepali_datetime.date.today()
         selected_date = request.GET.get('date', None)
+        req_year = request.GET.get('year', None)
+        req_month = request.GET.get('month', None)
 
-        if selected_date:
+        if req_year and req_month:
+            try:
+                nepali_date = nepali_datetime.date(
+                    year=int(req_year), month=int(req_month), day=1)
+            except Exception:
+                pass
+        elif selected_date:
             date = datetime.datetime.strptime(selected_date, "%Y-%m-%d").date()
             nepali_date = nepali_datetime.date(
                 year=date.year, month=date.month, day=1)
@@ -177,8 +185,19 @@ class NetSalaryAPIView(generics.RetrieveAPIView):
             salary.employee, year, month)
         paid_leaves = LeaveRequest.get_total_paid_leaves(
             salary.employee, year, month)
+        
+        # Determine active start day for this month based on joining date
+        joined_year, joined_month, joined_day = Salary.get_employee_joining_bs(salary.employee)
+        start_day = 1
+        days_in_month = total_days_in_month(year, month)
+        if joined_year:
+            if year < joined_year or (year == joined_year and month < joined_month):
+                start_day = days_in_month + 1
+            elif year == joined_year and month == joined_month:
+                start_day = max(1, min(joined_day, days_in_month))
+
         holidays = holidays_override if holidays_override is not None else (count_saturdays(
-            year, month) + count_holidays(salary.employee.organization, year, month))
+            year, month, start_day=start_day) + count_holidays(salary.employee.organization, year, month, start_day=start_day))
         unpaid_leaves = LeaveRequest.get_total_unpaid_leaves(
             salary.employee, year, month)
         half_leaves = LeaveRequest.get_total_half_leaves(

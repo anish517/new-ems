@@ -107,6 +107,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
     date_of_birth = serializers.CharField(
         required=True, allow_null=True, style={"input_type": "password"}
     )
+    date_of_joining = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True
+    )
     department_name = serializers.SerializerMethodField()
     designation_title = serializers.SerializerMethodField()
     employee_code = serializers.SerializerMethodField()
@@ -124,6 +127,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "marital_status",
             "pan_number",
             "date_of_birth",
+            "date_of_joining",
             "father_name",
             "grandfather_name",
             "blood_group",

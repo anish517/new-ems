@@ -16,14 +16,20 @@ class LeaveManagementTests(TestCase):
         self.dept = Department.objects.create(organization=self.org, department_name="Engineering")
         self.post = Post.objects.create(department=self.dept, title="Developer")
         
-        # Create Employees
+        # Create Employees (joined in 2080 BS prior to current fiscal year 2083)
         self.user = Account.objects.create(email="user@test.com", first_name="Regular", last_name="Employee")
+        self.user.date_joined = nepali_date(2080, 1, 1).to_datetime_date()
+        self.user.save()
         self.emp = Employee.objects.create(user=self.user, post=self.post, employee_type='full_time', is_in_provision=False)
 
         self.probation_user = Account.objects.create(email="probation@test.com", first_name="Probation", last_name="Staff")
+        self.probation_user.date_joined = nepali_date(2080, 1, 1).to_datetime_date()
+        self.probation_user.save()
         self.probation_emp = Employee.objects.create(user=self.probation_user, post=self.post, employee_type='full_time', is_in_provision=True)
 
         self.intern_user = Account.objects.create(email="intern@test.com", first_name="Intern", last_name="Student")
+        self.intern_user.date_joined = nepali_date(2080, 1, 1).to_datetime_date()
+        self.intern_user.save()
         self.intern_emp = Employee.objects.create(user=self.intern_user, post=self.post, employee_type='intern', is_in_provision=False)
 
         # Setup Leave Setting & Default Types
@@ -233,4 +239,77 @@ class LeaveManagementTests(TestCase):
         )
         self.assertIsInstance(gross, (int, float))
         self.assertGreater(gross, 0)
+
+    def test_mid_year_joinee_leave_proration(self):
+        """
+        Verify that an employee joining in Month 5 (Bhadra 1) gets:
+        - 0 accrual in months 1 to 4
+        - 1.0d Casual / 0.67d Sick in month 5
+        - Prorated annual quota of 8.0d Casual / 5.33d Sick (for remaining 8 months).
+        """
+        mid_user = Account.objects.create(email="bhadra_join@test.com", first_name="Bhadra", last_name="Joinee")
+        mid_user.date_joined = nepali_date(2083, 5, 1).to_datetime_date()
+        mid_user.save()
+        mid_emp = Employee.objects.create(user=mid_user, post=self.post, employee_type='full_time')
+
+        # Check Month 4 (Shrawan): Should have 0 accrued
+        b_m4 = get_employee_leave_breakdown(mid_emp, year=2083, month=4)
+        casual_m4 = next(b for b in b_m4 if b['is_casual_leave'])
+        self.assertEqual(casual_m4['accrued_to_date'], 0.0)
+        self.assertEqual(casual_m4['available_this_month'], 0.0)
+
+        # Check Month 5 (Bhadra): Should have 1.0d Casual, 8.0d annual quota
+        b_m5 = get_employee_leave_breakdown(mid_emp, year=2083, month=5)
+        casual_m5 = next(b for b in b_m5 if b['is_casual_leave'])
+        sick_m5 = next(b for b in b_m5 if b['is_sick_leave'])
+        self.assertEqual(casual_m5['annual_quota'], 8.0)
+        self.assertEqual(casual_m5['accrued_to_date'], 1.0)
+        self.assertEqual(casual_m5['available_this_month'], 1.0)
+        self.assertEqual(sick_m5['annual_quota'], 5.33)
+        self.assertEqual(sick_m5['accrued_to_date'], 0.67)
+
+    def test_mid_month_joinee_leave_proration(self):
+        """
+        Verify that an employee joining on 16th of a 30-day month (Bhadra 16)
+        gets a half-month fraction (0.5d) in joining month.
+        """
+        mid_user = Account.objects.create(email="mid_month@test.com", first_name="Mid", last_name="Month")
+        mid_user.date_joined = nepali_date(2083, 5, 16).to_datetime_date()
+        mid_user.save()
+        mid_emp = Employee.objects.create(user=mid_user, post=self.post, employee_type='full_time')
+
+        b_m5 = get_employee_leave_breakdown(mid_emp, year=2083, month=5)
+        casual_m5 = next(b for b in b_m5 if b['is_casual_leave'])
+        # Fraction worked = (31 - 16 + 1)/31 = 16/31 approx 0.52, or approx 0.5
+        self.assertGreater(casual_m5['accrued_to_date'], 0.0)
+        self.assertLess(casual_m5['accrued_to_date'], 1.0)
+        self.assertEqual(casual_m5['is_prorated'], True)
+
+    def test_explicit_date_of_joining_leave_proration(self):
+        """
+        Verify that employee.date_of_joining overrides user.date_joined and accurately
+        prorates leave balances for mid-year join date.
+        """
+        user = Account.objects.create(email="explicit_doj@test.com", first_name="Explicit", last_name="DOJ")
+        # user.date_joined is in 2080 BS, but employee.date_of_joining is set explicitly to 2083-05-01
+        user.date_joined = nepali_date(2080, 1, 1).to_datetime_date()
+        user.save()
+        emp = Employee.objects.create(
+            user=user, post=self.post, employee_type='full_time',
+            date_of_joining=nepali_date(2083, 5, 1)
+        )
+
+        # In Month 4: Accrued = 0.0
+        b_m4 = get_employee_leave_breakdown(emp, year=2083, month=4)
+        casual_m4 = next(b for b in b_m4 if b['is_casual_leave'])
+        self.assertEqual(casual_m4['accrued_to_date'], 0.0)
+
+        # In Month 5: Accrued = 1.0, Annual Quota = 8.0
+        b_m5 = get_employee_leave_breakdown(emp, year=2083, month=5)
+        casual_m5 = next(b for b in b_m5 if b['is_casual_leave'])
+        self.assertEqual(casual_m5['annual_quota'], 8.0)
+        self.assertEqual(casual_m5['accrued_to_date'], 1.0)
+        self.assertEqual(casual_m5['available_this_month'], 1.0)
+
+
 

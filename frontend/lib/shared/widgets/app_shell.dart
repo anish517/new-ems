@@ -78,8 +78,7 @@ class AppShell extends ConsumerWidget {
                     fit: BoxFit.contain,
                     filterQuality: FilterQuality.high,
                     color: context.isDark ? Colors.white : null,
-                    colorBlendMode:
-                        context.isDark ? BlendMode.srcIn : null,
+                    colorBlendMode: context.isDark ? BlendMode.srcIn : null,
                     errorBuilder: (context, error, stackTrace) => Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -87,9 +86,8 @@ class AppShell extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(Iconsax.box,
-                          color: context.isDark
-                              ? Colors.white
-                              : AppColors.primary,
+                          color:
+                              context.isDark ? Colors.white : AppColors.primary,
                           size: 24),
                     ),
                   ),
@@ -114,7 +112,8 @@ class AppShell extends ConsumerWidget {
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: location == '/notifications'
                         ? AppColors.primary.withValues(alpha: 0.12)
@@ -128,7 +127,8 @@ class AppShell extends ConsumerWidget {
                         backgroundColor: AppColors.primary,
                         label: Text(
                           unreadCount > 99 ? '99+' : '$unreadCount',
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              fontSize: 10, fontWeight: FontWeight.bold),
                         ),
                         child: Icon(
                           Iconsax.notification,
@@ -146,7 +146,9 @@ class AppShell extends ConsumerWidget {
                               ? AppColors.primary
                               : AppColors.textSecondary,
                           fontSize: 13,
-                          fontWeight: location == '/notifications' ? FontWeight.w800 : FontWeight.w600,
+                          fontWeight: location == '/notifications'
+                              ? FontWeight.w800
+                              : FontWeight.w600,
                         ),
                       ),
                     ],
@@ -168,7 +170,8 @@ class AppShell extends ConsumerWidget {
                   final item = navItems[i];
                   final isSelected = currentIndex == i;
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -178,7 +181,8 @@ class AppShell extends ConsumerWidget {
                         },
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? AppColors.primary.withValues(alpha: 0.12)
@@ -189,7 +193,9 @@ class AppShell extends ConsumerWidget {
                             children: [
                               Icon(
                                 item.icon,
-                                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary,
                                 size: 19,
                               ),
                               const SizedBox(width: 14),
@@ -197,9 +203,13 @@ class AppShell extends ConsumerWidget {
                                 child: Text(
                                   item.label,
                                   style: TextStyle(
-                                    color: isSelected ? AppColors.primary : context.textPrimary,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : context.textPrimary,
                                     fontSize: 13,
-                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w800
+                                        : FontWeight.w500,
                                   ),
                                 ),
                               ),
@@ -262,7 +272,9 @@ class AppShell extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            user?.fullName.isNotEmpty == true ? user!.fullName : 'My Account',
+                            user?.fullName.isNotEmpty == true
+                                ? user!.fullName
+                                : 'My Account',
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 12.5,
@@ -284,7 +296,8 @@ class AppShell extends ConsumerWidget {
                     const ThemeToggleBtn(),
                     const SizedBox(width: 4),
                     IconButton(
-                      icon: const Icon(Iconsax.logout, color: AppColors.error, size: 18),
+                      icon: const Icon(Iconsax.logout,
+                          color: AppColors.error, size: 18),
                       tooltip: 'Log out',
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -341,7 +354,8 @@ class AppShell extends ConsumerWidget {
           scrolledUnderElevation: 0,
           leading: Builder(
             builder: (ctx) => IconButton(
-              icon: const Icon(Iconsax.menu_1, color: AppColors.primary, size: 22),
+              icon: const Icon(Iconsax.menu_1,
+                  color: AppColors.primary, size: 22),
               tooltip: 'Open Navigation Drawer',
               onPressed: () => Scaffold.of(ctx).openDrawer(),
             ),
@@ -355,8 +369,7 @@ class AppShell extends ConsumerWidget {
                 fit: BoxFit.contain,
                 filterQuality: FilterQuality.high,
                 color: context.isDark ? Colors.white : null,
-                colorBlendMode:
-                    context.isDark ? BlendMode.srcIn : null,
+                colorBlendMode: context.isDark ? BlendMode.srcIn : null,
                 errorBuilder: (context, error, stackTrace) => Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
@@ -364,9 +377,7 @@ class AppShell extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(Iconsax.box,
-                      color: context.isDark
-                          ? Colors.white
-                          : AppColors.primary,
+                      color: context.isDark ? Colors.white : AppColors.primary,
                       size: 18),
                 ),
               ),
@@ -379,7 +390,8 @@ class AppShell extends ConsumerWidget {
                 backgroundColor: AppColors.primary,
                 label: Text(
                   unreadCount > 99 ? '99+' : '$unreadCount',
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 10, fontWeight: FontWeight.bold),
                 ),
                 child: Icon(
                   Iconsax.notification,
@@ -423,7 +435,8 @@ class AppShell extends ConsumerWidget {
                     child: InkWell(
                       onTap: () {
                         if (isMore) {
-                          _showMoreNavigationSheet(context, navItems, currentIndex, ref);
+                          _showMoreNavigationSheet(
+                              context, navItems, currentIndex, ref);
                         } else {
                           context.go(item.route);
                         }
@@ -571,9 +584,8 @@ class AppShell extends ConsumerWidget {
                         title: Text(
                           item.label,
                           style: TextStyle(
-                            fontWeight: isSelected
-                                ? FontWeight.w800
-                                : FontWeight.w600,
+                            fontWeight:
+                                isSelected ? FontWeight.w800 : FontWeight.w600,
                             color: isSelected
                                 ? AppColors.primary
                                 : ctx.textPrimary,

@@ -38,6 +38,8 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
   bool _isInProvision = false;
   NepaliDateTime _dob = NepaliDateTime(2055, 1, 1);
   final _dobCtrl = TextEditingController();
+  NepaliDateTime? _dateOfJoining;
+  final _dojCtrl = TextEditingController();
   bool _isLoading = false;
   bool _isLoadingDetails = false;
 
@@ -115,6 +117,12 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
           _dob = NepaliDateTime.parse(widget.employee!['date_of_birth']);
         } catch (_) {}
       }
+      if (widget.employee!['date_of_joining'] != null && widget.employee!['date_of_joining'].toString().isNotEmpty) {
+        try {
+          _dateOfJoining = NepaliDateTime.parse(widget.employee!['date_of_joining']);
+          _dojCtrl.text = widget.employee!['date_of_joining'].toString();
+        } catch (_) {}
+      }
       _fatherName = widget.employee!['father_name'] ?? '';
       _grandfatherName = widget.employee!['grandfather_name'] ?? '';
       _bloodGroup = widget.employee!['blood_group'] ?? 'A+';
@@ -131,6 +139,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
   @override
   void dispose() {
     _dobCtrl.dispose();
+    _dojCtrl.dispose();
     _customPostCtrl.dispose();
     _panCtrl.dispose();
     _employeeIdCtrl.dispose();
@@ -673,6 +682,15 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
       final dobStr =
           "${parsedDob.year}-${parsedDob.month.toString().padLeft(2, '0')}-${parsedDob.day.toString().padLeft(2, '0')}";
 
+      String? dojStr;
+      if (_dojCtrl.text.trim().isNotEmpty) {
+        final parsedDoj = parseNepaliDateString(_dojCtrl.text) ?? _dateOfJoining;
+        if (parsedDoj != null) {
+          dojStr =
+              "${parsedDoj.year}-${parsedDoj.month.toString().padLeft(2, '0')}-${parsedDoj.day.toString().padLeft(2, '0')}";
+        }
+      }
+
       final data = {
         'user': {
           'first_name': _fname.trim(),
@@ -688,6 +706,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
         'marital_status': _maritalStatus,
         'pan_number': _panNumber.trim(),
         'date_of_birth': dobStr,
+        if (dojStr != null) 'date_of_joining': dojStr,
         'phone_no': _phone.trim(),
         'father_name': _fatherName.trim(),
         'grandfather_name': _grandfatherName.trim(),
@@ -1541,22 +1560,40 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
-
-                    TextFormField(
-                      decoration: InputDecoration(
-                        labelText: widget.employee == null
-                            ? 'Login Password *'
-                            : 'Login Password (leave blank to keep unchanged)',
-                        hintText: 'Min 6 characters',
-                        prefixIcon: const Icon(Iconsax.lock, size: 18),
-                      ),
-                      obscureText: true,
-                      validator: (v) =>
-                          (widget.employee == null && (v == null || v.length < 6))
-                              ? 'Password (min 6 characters) is required'
-                              : null,
-                      onSaved: (v) => _password = v ?? '',
+                    Row(
+                      children: [
+                        Expanded(
+                          child: NepaliDateFormField(
+                            controller: _dojCtrl,
+                            labelText: 'Date of Joining (B.S.)',
+                            isRequired: false,
+                            onChanged: (val) {
+                              final parsed = parseNepaliDateString(val);
+                              if (parsed != null) {
+                                _dateOfJoining = parsed;
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: TextFormField(
+                            decoration: InputDecoration(
+                              labelText: widget.employee == null
+                                  ? 'Login Password *'
+                                  : 'Login Password (blank to keep)',
+                              hintText: 'Min 6 characters',
+                              prefixIcon: const Icon(Iconsax.lock, size: 18),
+                            ),
+                            obscureText: true,
+                            validator: (v) =>
+                                (widget.employee == null && (v == null || v.length < 6))
+                                    ? 'Password (min 6 characters) is required'
+                                    : null,
+                            onSaved: (v) => _password = v ?? '',
+                          ),
+                        ),
+                      ],
                     ),
 
                     // ── 2. Family & Emergency Info ──────────────────────

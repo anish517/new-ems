@@ -183,6 +183,7 @@ class Employee(SoftDeleteModel):
     )
 
     date_of_birth = NepaliDateField(null=True, blank=False)
+    date_of_joining = NepaliDateField(null=True, blank=True, verbose_name="Date of Joining")
 
     father_name = models.CharField(
         max_length=255, null=False, blank=False, verbose_name="Father's name"

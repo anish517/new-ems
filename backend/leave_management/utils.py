@@ -258,6 +258,46 @@ def get_employee_leave_breakdown(employee: Employee, year: int = None, month: in
         except Exception:
             return None
 
+    # Determine employee joining date in Nepali calendar (BS)
+    joined_year = None
+    joined_month = None
+    joined_day = None
+
+    if getattr(employee, 'date_of_joining', None):
+        doj = employee.date_of_joining
+        try:
+            if hasattr(doj, 'year'):
+                joined_year = doj.year
+                joined_month = doj.month
+                joined_day = doj.day
+            else:
+                parts = str(doj).split('-')
+                joined_year = int(parts[0])
+                joined_month = int(parts[1])
+                joined_day = int(parts[2]) if len(parts) > 2 else 1
+        except Exception:
+            pass
+
+    if not joined_year:
+        date_joined_dt = None
+        if hasattr(employee, 'user') and employee.user and getattr(employee.user, 'date_joined', None):
+            date_joined_dt = employee.user.date_joined
+        elif hasattr(employee, 'created_at') and getattr(employee, 'created_at', None):
+            date_joined_dt = employee.created_at
+
+        if date_joined_dt:
+            try:
+                if hasattr(date_joined_dt, 'date'):
+                    greg_date = date_joined_dt.date()
+                else:
+                    greg_date = date_joined_dt
+                bs_date = nepali_datetime.date.from_datetime_date(greg_date)
+                joined_year = bs_date.year
+                joined_month = bs_date.month
+                joined_day = bs_date.day
+            except Exception:
+                pass
+
     # Get all approved leave requests for this employee in this year
     all_approved = LeaveRequest.objects.filter(
         employee=employee,
@@ -278,16 +318,47 @@ def get_employee_leave_breakdown(employee: Employee, year: int = None, month: in
         ensure_default_leave_types_and_settings(organization)
         leave_types = LeaveType.objects.filter(organization=organization, name__in=['Casual Leave', 'Sick Leave']).order_by('id')
 
+    from calendar_app.utilities import total_days_in_month
+
     breakdown = []
     for lt in leave_types:
         is_casual = lt.is_casual_leave or (lt.name and 'casual' in lt.name.lower())
         is_sick = lt.is_sick_leave or (lt.name and 'sick' in lt.name.lower())
 
-        annual_quota = float(lt.quota or (12 if is_casual else (8 if is_sick else 0)))
-        
-        # Monthly rate & Accrued to date
-        monthly_rate = annual_quota / 12.0
-        accrued_to_date = min(annual_quota, round(monthly_rate * month, 2))
+        full_annual_quota = float(lt.quota or (12 if is_casual else (8 if is_sick else 0)))
+        monthly_rate = full_annual_quota / 12.0
+
+        # --- Tenure-based Pro-rata Calculation ---
+        if joined_year and joined_month and joined_year == year:
+            # Employee joined during this fiscal year
+            dim = total_days_in_month(joined_year, joined_month)
+            if not dim or dim <= 0:
+                dim = 30
+            
+            # Exact fractional month worked in the joining month
+            joining_month_fraction = max(0.0, min(1.0, (dim - (joined_day or 1) + 1) / float(dim)))
+            
+            # Prorated Annual Quota for remaining fiscal year (from joined_month to 12)
+            remaining_months = max(0.0, (12 - joined_month) + joining_month_fraction)
+            annual_quota = round(monthly_rate * remaining_months, 2)
+            
+            # Accrued to requested month:
+            if month < joined_month:
+                accrued_to_date = 0.0
+            elif month == joined_month:
+                accrued_to_date = round(monthly_rate * joining_month_fraction, 2)
+            else:
+                completed_months_after_joining = (month - joined_month)
+                active_tenure_months = completed_months_after_joining + joining_month_fraction
+                accrued_to_date = min(annual_quota, round(monthly_rate * active_tenure_months, 2))
+        elif joined_year and joined_year > year:
+            # Employee joined in a future year -> 0 quota for this year
+            annual_quota = 0.0
+            accrued_to_date = 0.0
+        else:
+            # Employee joined in prior year -> standard full annual quota and month accrual
+            annual_quota = full_annual_quota
+            accrued_to_date = min(annual_quota, round(monthly_rate * month, 2))
 
         # Filter requests for this leave type
         type_reqs = [
@@ -336,6 +407,7 @@ def get_employee_leave_breakdown(employee: Employee, year: int = None, month: in
             'half_day_count': half_day_count,
             'half_day_days': half_day_days,
             'remaining_annual': remaining_annual,
+            'is_prorated': (joined_year == year),
         })
 
     return breakdown

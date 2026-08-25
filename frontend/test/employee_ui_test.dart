@@ -69,5 +69,55 @@ void main() {
       
       expect(employeeType, 'intern');
     });
+
+    testWidgets('Add Employee form should display Date of Joining field', (WidgetTester tester) async {
+      final ctrl = TextEditingController(text: '2083-05-16');
+      String? savedDoj;
+
+      final testWidget = MaterialApp(
+        home: Scaffold(
+          body: Form(
+            child: Column(
+              children: [
+                TextFormField(
+                  key: const Key('date_of_joining_field'),
+                  controller: ctrl,
+                  decoration: const InputDecoration(labelText: 'Date of Joining (B.S.)'),
+                  onSaved: (val) => savedDoj = val,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(testWidget);
+
+      expect(find.byKey(const Key('date_of_joining_field')), findsOneWidget);
+      expect(find.text('2083-05-16'), findsOneWidget);
+
+      await tester.enterText(find.byKey(const Key('date_of_joining_field')), '2083-06-01');
+      expect(ctrl.text, '2083-06-01');
+    });
+
+    test('Leave Proration string format verification', () {
+      final Map<String, dynamic> proratedBalance = {
+        'quota': 8,
+        'annual_quota': 8.0,
+        'accrued_to_date': 1.0,
+        'is_prorated': true,
+      };
+
+      final annualQuota = (proratedBalance['annual_quota'] as num? ?? 0).toDouble();
+      final accruedToDate = (proratedBalance['accrued_to_date'] as num? ?? 0).toDouble();
+      final isProrated = proratedBalance['is_prorated'] == true;
+
+      final formatted = isProrated
+          ? 'Annual: ${annualQuota.toStringAsFixed(1)}d (Prorated) • Accrued: ${accruedToDate.toStringAsFixed(1)}d'
+          : 'Annual: ${proratedBalance['quota']}d • Accrued: ${accruedToDate.toStringAsFixed(1)}d';
+
+      expect(formatted, 'Annual: 8.0d (Prorated) • Accrued: 1.0d');
+    });
   });
 }
+

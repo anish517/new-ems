@@ -2201,7 +2201,9 @@ class _LeaveTypeTile extends StatelessWidget {
     final isCasual = typeName.toString().toLowerCase().contains('casual');
     final isPaid = typeName == 'Paid Leave' || isCasual || isSick;
 
+    final annualQuota = (lb['annual_quota'] as num? ?? lb['quota'] as num? ?? 1).toDouble();
     final total = (lb['quota'] as num? ?? 1).toDouble();
+    final isProrated = lb['is_prorated'] == true;
     final paidTaken = (lb['paid_taken'] as num? ?? lb['leaves_taken'] as num? ?? 0).toDouble();
     final unpaidTaken = (lb['unpaid_taken'] as num? ?? 0).toDouble();
     final halfDayCount = (lb['half_day_count'] as num? ?? 0).toInt();
@@ -2280,7 +2282,9 @@ class _LeaveTypeTile extends StatelessWidget {
                             color: context.textPrimary),
                       ),
                       Text(
-                        'Annual: ${total.toStringAsFixed(0)}d • Accrued: ${accruedToDate.toStringAsFixed(1)}d',
+                        isProrated
+                            ? 'Annual: ${annualQuota.toStringAsFixed(1)}d (Prorated) • Accrued: ${accruedToDate.toStringAsFixed(1)}d'
+                            : 'Annual: ${total.toStringAsFixed(0)}d • Accrued: ${accruedToDate.toStringAsFixed(1)}d',
                         style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -4007,7 +4011,9 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
   }
 
   Widget _buildQuotaTile(BuildContext context, Map b) {
-    final quota = (b['quota'] as num?)?.toInt() ?? 0;
+    final annualQuota = (b['annual_quota'] as num? ?? b['quota'] as num? ?? 0).toDouble();
+    final quota = (b['quota'] as num?)?.toInt() ?? annualQuota.toInt();
+    final isProrated = b['is_prorated'] == true;
     final paidTaken = (b['paid_taken'] as num? ?? b['leaves_taken'] as num? ?? 0).toDouble();
     final unpaidTaken = (b['unpaid_taken'] as num? ?? 0).toDouble();
     final halfDayCount = (b['half_day_count'] as num? ?? 0).toInt();
@@ -4079,17 +4085,19 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
                       Text(
                         typeName,
                         style: TextStyle(
-                          color: isSick
-                              ? const Color(0xFF6366F1)
-                              : isCasual
-                                  ? AppColors.primary
-                                  : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
+                            color: isSick
+                                ? const Color(0xFF6366F1)
+                                : isCasual
+                                    ? AppColors.primary
+                                    : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
                         ),
                       ),
                       Text(
-                        'Annual: ${quota}d • Accrued: ${accruedToDate.toStringAsFixed(1)}d',
+                        isProrated
+                            ? 'Annual: ${annualQuota.toStringAsFixed(1)}d (Prorated) • Accrued: ${accruedToDate.toStringAsFixed(1)}d'
+                            : 'Annual: ${quota}d • Accrued: ${accruedToDate.toStringAsFixed(1)}d',
                         style: const TextStyle(
                           fontSize: 10,
                           color: AppColors.textSecondary,

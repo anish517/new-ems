@@ -50,10 +50,49 @@ class Salary(SoftDeleteModel):
         return f'{self.employee.user.full_name}'
 
     @staticmethod
+    def get_employee_joining_bs(employee: Employee):
+        if getattr(employee, 'date_of_joining', None):
+            doj = employee.date_of_joining
+            try:
+                if hasattr(doj, 'year'):
+                    return doj.year, doj.month, doj.day
+                parts = str(doj).split('-')
+                return int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 1
+            except Exception:
+                pass
+
+        date_joined_dt = None
+        if hasattr(employee, 'user') and employee.user and getattr(employee.user, 'date_joined', None):
+            date_joined_dt = employee.user.date_joined
+        elif hasattr(employee, 'created_at') and getattr(employee, 'created_at', None):
+            date_joined_dt = employee.created_at
+
+        if date_joined_dt:
+            try:
+                greg_date = date_joined_dt.date() if hasattr(date_joined_dt, 'date') else date_joined_dt
+                bs_date = nepali_datetime.date.from_datetime_date(greg_date)
+                return bs_date.year, bs_date.month, bs_date.day
+            except Exception:
+                pass
+        return None, None, None
+
+    @staticmethod
     def calculate_gross_salary(employee: Employee, year: int, month: int, holidays_override=None):
         organization = employee.organization
-
         days_in_month = total_days_in_month(year, month)
+
+        # Check employee joining date
+        joined_year, joined_month, joined_day = Salary.get_employee_joining_bs(employee)
+
+        # 1. If employee has not joined yet in this month/year -> 0 salary
+        if joined_year:
+            if year < joined_year or (year == joined_year and month < joined_month):
+                return 0.0
+
+        # Determine active start day for this month
+        start_day = 1
+        if joined_year and year == joined_year and month == joined_month:
+            start_day = max(1, min(joined_day, days_in_month))
 
         attendances = Attendance.get_attendance_of_selected_month(
             employee=employee, year=year, month=month)
@@ -72,14 +111,19 @@ class Salary(SoftDeleteModel):
         if holidays_override is not None:
             holidays = holidays_override
         else:
-            holidays = count_saturdays(year=year, month=month) + count_holidays(
-                organization, year=year, month=month)
+            holidays = count_saturdays(year=year, month=month, start_day=start_day) + count_holidays(
+                organization, year=year, month=month, start_day=start_day)
 
         # 30-Day Basis Calculation
-        per_day_rate = Salary.objects.get(employee=employee).basic_salary / 30.0
-        remote_per_day = Salary.objects.get(employee=employee).remote_salary / 30.0
+        salary_qs = Salary.objects.filter(employee=employee)
+        if not salary_qs.exists():
+            return 0.0
+        salary_obj = salary_qs.first()
 
-        # Total paid days (they get credit for attendance, paid leaves, and holidays)
+        per_day_rate = salary_obj.basic_salary / 30.0
+        remote_per_day = salary_obj.remote_salary / 30.0
+
+        # Total paid days (they get credit for attendance, paid leaves, and holidays during active employment)
         paid_days = site_attendance + remote_attendance + paid_leaves + holidays
         
         # Unpaid Half Leave Loophole Fix:
@@ -97,13 +141,12 @@ class Salary(SoftDeleteModel):
                 paid_days -= 0.5
         
         # Calculate unpaid absences by comparing actual days in month to their paid days
-        # We use max(0) to ensure we don't accidentally overpay if there's double-counting 
-        # (e.g. someone checks in on a holiday)
-        unpaid_absences = max(0, days_in_month - paid_days)
+        # (For mid-month joinees, unworked days prior to joining date are automatically in (days_in_month - paid_days))
+        unpaid_absences = max(0.0, days_in_month - paid_days)
 
         # Start with the full 30-day base salary, and deduct any unpaid absences
-        base_salary = Salary.objects.get(employee=employee).basic_salary
-        base_payout = base_salary - (unpaid_absences * per_day_rate)
+        base_salary = salary_obj.basic_salary
+        base_payout = max(0.0, base_salary - (unpaid_absences * per_day_rate))
         
         # Remote Swap Adjustment:
         # Since 'paid_days' includes remote_attendance, the base_payout currently pays them 
@@ -112,12 +155,15 @@ class Salary(SoftDeleteModel):
         remote_swap_adjustment = remote_attendance * (remote_per_day - per_day_rate)
 
         gross_salary = base_payout + remote_swap_adjustment
-        return round(gross_salary)
+        return max(0.0, round(gross_salary))
 
     @classmethod
     def calculate_net_salary(cls, employee, year, month, holidays_override=None, ssf_override=None, epf_override=None, tds_override=None, incentive_override=0, bonus_override=0):
         gross_salary = cls.calculate_gross_salary(
             employee=employee, year=year, month=month, holidays_override=holidays_override)
+        if gross_salary <= 0:
+            return 0.0
+
         try:
             salary_obj = Salary.objects.get(employee=employee)
 
@@ -161,7 +207,7 @@ class Salary(SoftDeleteModel):
             cit = salary_obj.citizen_investment_trust or 0
             insurance = salary_obj.insurance or 0
             total_deductions = tds_amount + ssf + epf + cit + insurance
-            net = gross_salary - total_deductions
+            net = max(0.0, gross_salary - total_deductions)
         except Exception:
             net = gross_salary
         return round(net)
