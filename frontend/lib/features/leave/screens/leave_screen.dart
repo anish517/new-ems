@@ -284,6 +284,51 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
     if (mounted) setState(() => _isLoading = false);
   }
 
+  Future<void> _togglePolicySetting(String key, bool value) async {
+    final updated = Map<String, dynamic>.from(_leaveSetting ?? {});
+    updated[key] = value;
+    setState(() => _leaveSetting = updated);
+    try {
+      final res = await ApiService().patch(
+        '${AppConstants.leaveBase}/settings/',
+        data: {
+          'paid_leave_during_provision':
+              updated['paid_leave_during_provision'] ?? false,
+          'allow_intern_leave': updated['allow_intern_leave'] ?? true,
+        },
+      );
+      if (mounted) {
+        setState(() {
+          _leaveSetting = Map<String, dynamic>.from(res.data);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Text(
+                    'Policy updated: ${key == 'allow_intern_leave' ? 'Allow Intern Leave' : 'Paid Leave in Provision'} is now ${value ? 'ON' : 'OFF'}'),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _loadLeaves();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update leave policy: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   void _showLeaveSettingsDialog(BuildContext context) {
     bool paidInProvision =
         _leaveSetting?['paid_leave_during_provision'] ?? false;
@@ -675,7 +720,6 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
     final isAdmin = user?.canManage ?? false;
     final isDark = context.isDark;
 
-    final isMobile = MediaQuery.of(context).size.width < 768;
     final tabLength = isAdmin ? 3 : 2;
     if (!mounted) return const SizedBox.shrink();
     try {
@@ -759,11 +803,10 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                 decoration: BoxDecoration(
                   color: context.surface,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: context.border),
+                  border: Border.all(color: context.border, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black
-                          .withValues(alpha: isDark ? 0.25 : 0.04),
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
                       blurRadius: 18,
                       offset: const Offset(0, 4),
                     ),
@@ -772,55 +815,43 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Title row: icon + title + badge
                     Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF59E0B)
-                                .withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(16),
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          child: const Icon(Iconsax.calendar_remove,
-                              color: Color(0xFFF59E0B), size: 24),
+                          child: const Icon(Iconsax.calendar_remove, color: Color(0xFFF59E0B), size: 24),
                         ),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  'Leave & Attendance Portal',
-                                  style: TextStyle(
-                                    fontSize: isMobile ? 16 : 19,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.4,
-                                    color: context.textPrimary,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF59E0B)
-                                      .withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  isAdmin ? 'Admin View' : 'Employee View',
-                                  style: const TextStyle(
-                                    color: Color(0xFFF59E0B),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ],
+                        const Text(
+                          'Leave & Attendance Portal',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            isAdmin ? 'Admin View' : 'Employee View',
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFF59E0B),
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
                         IconButton(
                           icon: const Icon(Iconsax.refresh, size: 18),
                           tooltip: 'Refresh Leaves',
@@ -835,37 +866,25 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                           const SizedBox(width: 8),
                           OutlinedButton.icon(
                             onPressed: () => _showLeaveSettingsDialog(context),
-                            icon: const Icon(Iconsax.setting_2,
-                                size: 16, color: AppColors.primary),
+                            icon: const Icon(Iconsax.setting_2, size: 16, color: AppColors.primary),
                             label: const Text('Leave Policy',
-                                style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w700)),
+                                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
                             style: OutlinedButton.styleFrom(
-                              side: BorderSide(
-                                  color: AppColors.primary
-                                      .withValues(alpha: 0.4)),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 10),
+                              side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                             ),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton.icon(
                             onPressed: () => _showApplyLeaveDialog(context),
-                            icon: const Icon(Iconsax.add,
-                                size: 16, color: Colors.white),
+                            icon: const Icon(Iconsax.add, size: 16, color: Colors.white),
                             label: const Text('New Leave',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold)),
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                             ),
                           ),
                         ],
@@ -876,9 +895,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                       isAdmin
                           ? 'Review leave applications, manage categories & staff quotas'
                           : 'Request time-off, track leave balances & approvals',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary),
-                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ],
                 ),
@@ -1177,8 +1194,179 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
   }
 
   Widget _buildAdminBalancesTab() {
-    return _adminBalances.isEmpty
-        ? Container(
+    final allowIntern = _leaveSetting?['allow_intern_leave'] ?? true;
+    final paidInProvision =
+        _leaveSetting?['paid_leave_during_provision'] ?? false;
+
+    final policyCard = Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Iconsax.setting_2,
+                    color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Organization Leave Policies',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Intern Leave Toggle Switch
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: context.card,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.border),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Allow Intern Leave',
+                            style: TextStyle(
+                                fontSize: 13.5, fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (allowIntern
+                                      ? AppColors.success
+                                      : AppColors.error)
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              allowIntern ? 'ON (Allowed)' : 'OFF (Blocked)',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: allowIntern
+                                    ? AppColors.success
+                                    : AppColors.error,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      const Text(
+                        'When ON, interns can apply for leaves. When OFF, intern leave applications are blocked.',
+                        style: TextStyle(
+                            fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: allowIntern,
+                  activeThumbColor: AppColors.primary,
+                  onChanged: (val) =>
+                      _togglePolicySetting('allow_intern_leave', val),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Provision Leave Toggle Switch
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: context.card,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.border),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Paid Leave in Provision Period',
+                            style: TextStyle(
+                                fontSize: 13.5, fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (paidInProvision
+                                      ? AppColors.success
+                                      : AppColors.warning)
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              paidInProvision
+                                  ? 'ON (Paid)'
+                                  : 'OFF (Unpaid Only)',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: paidInProvision
+                                    ? AppColors.success
+                                    : const Color(0xFFF59E0B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      const Text(
+                        'When ON, staff on probation can take paid leaves. When OFF, probation leave is unpaid.',
+                        style: TextStyle(
+                            fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: paidInProvision,
+                  activeThumbColor: AppColors.primary,
+                  onChanged: (val) =>
+                      _togglePolicySetting('paid_leave_during_provision', val),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (_adminBalances.isEmpty) {
+      return Column(
+        children: [
+          policyCard,
+          Container(
             width: double.infinity,
             padding: const EdgeInsets.all(32),
             alignment: Alignment.center,
@@ -1189,17 +1377,26 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
             ),
             child: const Text('No employee leave quotas configured.',
                 style: TextStyle(color: AppColors.textSecondary)),
-          )
-        : ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _adminBalances.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (_, i) => _AdminEmployeeBalanceCard(
-              data: _adminBalances[i],
-              onRefresh: _loadLeaves,
-            ),
-          );
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        policyCard,
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _adminBalances.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (_, i) => _AdminEmployeeBalanceCard(
+            data: _adminBalances[i],
+            onRefresh: _loadLeaves,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildKpiCard(
@@ -2261,7 +2458,8 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
   int _excludedSaturdays = 0;
 
   bool get _isInternBlocked {
-    final isIntern = widget.currentUser?.employeeType == 'intern';
+    final isIntern =
+        (widget.currentUser?.employeeType ?? '').toLowerCase() == 'intern';
     final allowIntern = widget.leaveSetting?['allow_intern_leave'] ?? true;
     return isIntern && !allowIntern;
   }
@@ -3125,6 +3323,7 @@ void _showLeaveDetails(BuildContext context, Map leave, bool isAdmin,
   final rejectionReason = leave['rejection_reason']?.toString().trim();
   String? currentDocUrl = leave['document_url']?.toString();
   bool isUploadingDoc = false;
+  final messenger = ScaffoldMessenger.of(context);
 
   showModalBottomSheet(
     context: context,
@@ -3431,7 +3630,231 @@ void _showLeaveDetails(BuildContext context, Map leave, bool isAdmin,
                 ),
               ],
 
-              const SizedBox(height: 20),
+              if (isAdmin && leave['is_reviewed'] != true) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          final reasonCtrl = TextEditingController();
+                          final formKey = GlobalKey<FormState>();
+                          showDialog(
+                            context: context,
+                            builder: (dCtx) => AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20)),
+                              title: const Row(
+                                children: [
+                                  Icon(Iconsax.close_circle,
+                                      color: AppColors.error, size: 22),
+                                  SizedBox(width: 10),
+                                  Text('Reject Leave',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 16)),
+                                ],
+                              ),
+                              content: Form(
+                                key: formKey,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text(
+                                      'Provide a reason for rejecting this leave application:',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextFormField(
+                                      controller: reasonCtrl,
+                                      maxLines: 3,
+                                      decoration: const InputDecoration(
+                                          hintText:
+                                              'e.g. Inadequate balance / Team shortage'),
+                                      validator: (v) => (v == null ||
+                                              v.trim().isEmpty)
+                                          ? 'Reason is required'
+                                          : null,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dCtx),
+                                  child: const Text('Cancel'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    if (formKey.currentState!.validate()) {
+                                      Navigator.pop(dCtx);
+                                      try {
+                                        await ApiService().patch(
+                                          '${AppConstants.leaveBase}/update/${leave['id']}/',
+                                          data: {
+                                            'action': 'reject',
+                                            'is_approved': false,
+                                            'is_reviewed': true,
+                                            'rejection_reason':
+                                                reasonCtrl.text.trim(),
+                                          },
+                                        );
+                                        onRefresh?.call();
+                                        messenger.showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                                'Leave request rejected successfully'),
+                                            backgroundColor: AppColors.error,
+                                          ),
+                                        );
+                                      } catch (e) {
+                                        messenger.showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                                'Error: ${ApiService.getErrorMessage(e)}'),
+                                            backgroundColor: AppColors.error,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.error),
+                                  child: const Text('Confirm Rejection',
+                                      style: TextStyle(color: Colors.white)),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        icon: const Icon(Iconsax.close_circle,
+                            size: 16, color: AppColors.error),
+                        label: const Text('Reject',
+                            style: TextStyle(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.w700)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.error),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    if (isSickLeave && leave['is_initial_approved'] != true)
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            try {
+                              await ApiService().patch(
+                                '${AppConstants.leaveBase}/update/${leave['id']}/',
+                                data: {
+                                  'action': 'initial_approve',
+                                  'is_initial_approved': true,
+                                },
+                              );
+                              onRefresh?.call();
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Row(
+                                    children: [
+                                      Icon(Iconsax.verify,
+                                          color: Colors.white, size: 18),
+                                      SizedBox(width: 10),
+                                      Text('Sick leave initial approved!'),
+                                    ],
+                                  ),
+                                  backgroundColor: Color(0xFF6366F1),
+                                ),
+                              );
+                            } catch (e) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Error: ${ApiService.getErrorMessage(e)}'),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Iconsax.verify,
+                              size: 16, color: Colors.white),
+                          label: const Text('Initial Approve',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6366F1),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            try {
+                              await ApiService().patch(
+                                '${AppConstants.leaveBase}/update/${leave['id']}/',
+                                data: {
+                                  'action': 'final_approve',
+                                  'is_approved': true,
+                                  'is_reviewed': true,
+                                },
+                              );
+                              onRefresh?.call();
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Row(
+                                    children: [
+                                      Icon(Iconsax.tick_circle,
+                                          color: Colors.white, size: 18),
+                                      SizedBox(width: 10),
+                                      Text(
+                                          'Leave request approved successfully!'),
+                                    ],
+                                  ),
+                                  backgroundColor: AppColors.success,
+                                ),
+                              );
+                            } catch (e) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Error: ${ApiService.getErrorMessage(e)}'),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Iconsax.tick_circle,
+                              size: 16, color: Colors.white),
+                          label: Text(
+                            isSickLeave ? 'Final Approve' : 'Approve Leave',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 16),
               OutlinedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: OutlinedButton.styleFrom(

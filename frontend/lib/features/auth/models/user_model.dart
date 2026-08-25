@@ -48,11 +48,11 @@ class UserProfile {
     isInProvision:      json['is_in_provision']      as bool? ?? false,
   );
 
-  bool get isOrgAdmin   => role == 'org_admin';
-  bool get isSuperAdmin => role == 'super_admin';
+  bool get isOrgAdmin   => role == 'org_admin' || role == 'admin';
+  bool get isSuperAdmin => role == 'super_admin' || isSuperuser;
   bool get isHr         => role == 'hr';
-  bool get isEmployee   => role == 'employee';
-  bool get canManage    => isOrgAdmin || isSuperAdmin || isHr;
+  bool get isEmployee   => role == 'employee' && !isSuperAdmin && !isOrgAdmin && !isHr && !isStaff;
+  bool get canManage    => isOrgAdmin || isSuperAdmin || isHr || isStaff || isSuperuser;
 }
 
 

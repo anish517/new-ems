@@ -144,13 +144,21 @@ class UpdateLeaveRequestApiView(generics.RetrieveUpdateDestroyAPIView):
         )
         if is_decision:
             user = request.user
-            is_admin = user.organization.exists() or user.is_superuser or user.is_staff or getattr(user, 'is_hr', False)
+            is_admin = (
+                user.is_superuser
+                or user.is_staff
+                or getattr(user, 'is_hr', False)
+                or getattr(user, 'role', '') in ('admin', 'org_admin', 'hr', 'super_admin')
+                or user.organization.exists()
+            )
             if not is_admin:
                 return Response({'error': 'Only administrators and HR can approve or reject leave requests.'}, status=status.HTTP_403_FORBIDDEN)
             # Scope the decision to the acting admin's own organization.
-            if not (user.is_superuser or getattr(user, 'is_hr', False)):
+            if not user.is_superuser:
                 admin_org_ids = set(user.organization.values_list('id', flat=True))
-                if instance.organization_id not in admin_org_ids:
+                if hasattr(user, 'employee') and getattr(user.employee, 'organization_id', None):
+                    admin_org_ids.add(user.employee.organization_id)
+                if instance.organization_id and admin_org_ids and instance.organization_id not in admin_org_ids:
                     return Response({'error': 'This leave request belongs to another organization.'}, status=status.HTTP_403_FORBIDDEN)
 
         # 1. Initial Approval (for Sick Leave 2-tier approval)

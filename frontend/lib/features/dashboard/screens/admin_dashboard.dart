@@ -334,12 +334,25 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               ? req['id'] as int
               : (int.tryParse('${req['id']}') ?? 0);
 
+          final rawTypeName = req['leave_type_name']?.toString() ?? '';
+          final isSickLeave = req['is_sick_leave'] == true ||
+              rawTypeName.toLowerCase().contains('sick');
+          final isInitialApproved = req['is_initial_approved'] == true;
+
           final leaveTypeLabel = isHalfDay
               ? 'Half Day'
-              : (isPaid ? 'Paid Leave' : 'Unpaid Leave');
+              : (isSickLeave
+                  ? (isInitialApproved
+                      ? '📋 Sick (Initial Approved)'
+                      : '⏳ Sick (Pending Initial)')
+                  : (rawTypeName.isNotEmpty
+                      ? rawTypeName
+                      : (isPaid ? 'Paid Leave' : 'Unpaid Leave')));
           final leaveTypeColor = isHalfDay
               ? AppColors.info
-              : (isPaid ? AppColors.success : AppColors.error);
+              : (isSickLeave
+                  ? const Color(0xFF6366F1)
+                  : (isPaid ? AppColors.success : AppColors.error));
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -353,10 +366,23 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.12),
+                        color: (isSickLeave
+                                ? const Color(0xFF6366F1)
+                                : AppColors.warning)
+                            .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Iconsax.calendar_remove, size: 17, color: AppColors.warning),
+                      child: Icon(
+                        isSickLeave
+                            ? (isInitialApproved
+                                ? Iconsax.verify
+                                : Iconsax.calendar_remove)
+                            : Iconsax.calendar_remove,
+                        size: 17,
+                        color: isSickLeave
+                            ? const Color(0xFF6366F1)
+                            : AppColors.warning,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -462,18 +488,35 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: () => _actionLeaveRequest(reqId, true),
-                        icon: const Icon(Iconsax.tick_circle, size: 13, color: Colors.white),
-                        label: const Text('Approve', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.success,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                          minimumSize: Size.zero,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      if (isSickLeave && !isInitialApproved)
+                        ElevatedButton.icon(
+                          onPressed: () => _actionLeaveRequest(reqId, true, action: 'initial_approve'),
+                          icon: const Icon(Iconsax.verify, size: 13, color: Colors.white),
+                          label: const Text('Initial Approve', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6366F1),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            minimumSize: Size.zero,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        )
+                      else
+                        ElevatedButton.icon(
+                          onPressed: () => _actionLeaveRequest(reqId, true, action: 'final_approve'),
+                          icon: const Icon(Iconsax.tick_circle, size: 13, color: Colors.white),
+                          label: Text(
+                            isSickLeave ? 'Final Approve' : 'Approve',
+                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            minimumSize: Size.zero,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -1554,33 +1597,52 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     }
   }
 
-  Future<void> _actionLeaveRequest(int id, bool approve, [String reason = 'Rejected by administrator']) async {
+  Future<void> _actionLeaveRequest(int id, bool approve, {String reason = 'Rejected by administrator', String action = 'final_approve'}) async {
     try {
+      final actualAction = approve ? action : 'reject';
+      final Map<String, dynamic> patchData = {'action': actualAction};
+      if (actualAction == 'initial_approve') {
+        patchData['is_initial_approved'] = true;
+      } else if (actualAction == 'final_approve') {
+        patchData['is_approved'] = true;
+        patchData['is_reviewed'] = true;
+      } else {
+        patchData['is_approved'] = false;
+        patchData['is_reviewed'] = true;
+        patchData['rejection_reason'] = reason;
+      }
+
       await ApiService().patch(
         '${AppConstants.leaveBase}/update/$id/',
-        data: {
-          'action': approve ? 'final_approve' : 'reject',
-          'is_approved': approve,
-          'is_reviewed': true,
-          'rejection_reason': reason,
-        },
+        data: patchData,
       );
       _loadStats();
       if (mounted) {
+        String msg = 'Leave request approved successfully';
+        if (actualAction == 'initial_approve') {
+          msg = 'Sick leave initial approved!';
+        } else if (!approve) {
+          msg = 'Leave request rejected';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 Icon(
-                  approve ? Iconsax.tick_circle : Iconsax.close_circle,
+                  actualAction == 'initial_approve'
+                      ? Iconsax.verify
+                      : (approve ? Iconsax.tick_circle : Iconsax.close_circle),
                   color: Colors.white,
                   size: 20,
                 ),
                 const SizedBox(width: 12),
-                Text(approve ? 'Leave request approved' : 'Leave request rejected'),
+                Text(msg),
               ],
             ),
-            backgroundColor: approve ? AppColors.success : AppColors.error,
+            backgroundColor: actualAction == 'initial_approve'
+                ? const Color(0xFF6366F1)
+                : (approve ? AppColors.success : AppColors.error),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(20),
@@ -1677,7 +1739,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     );
 
     if (result != null) {
-      await _actionLeaveRequest(id, false, result);
+      await _actionLeaveRequest(id, false, reason: result);
     }
   }
 
@@ -3414,10 +3476,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
   String _getTodayOnTimeRate() {
     final present = _todayAttendanceStatus
-        .where((e) => e['is_present'] == true)
+        .where((e) => e['is_present'] == true && e['check_in_time'] != null)
         .toList();
-    if (present.isEmpty) return '100%';
+    if (present.isEmpty) return '--';
     int onTime = 0;
+    int validCount = 0;
     for (final p in present) {
       final raw = p['check_in_time']?.toString() ?? '';
       try {
@@ -3427,11 +3490,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         if (h * 60 + m <= 10 * 60 + 15) {
           onTime++;
         }
-      } catch (_) {
-        onTime++;
-      }
+        validCount++;
+      } catch (_) {}
     }
-    final pct = (onTime / present.length) * 100;
+    if (validCount == 0) return '--';
+    final pct = (onTime / validCount) * 100;
     return '${pct.toStringAsFixed(0)}%';
   }
 
