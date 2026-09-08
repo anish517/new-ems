@@ -25,6 +25,25 @@ from .serializers import (
 from organization.models import Employee
 
 
+def resolve_org(user):
+    """Organisation an admin-facing leave view operates on.
+
+    Order: the user's own Employee row, then Organization.admin_users, then -- for
+    superusers and HR, who in production have neither (the admin account is a
+    superuser with no Employee row and admin_users is empty) -- the first
+    organisation. Anyone else resolves to None and the caller returns nothing.
+    """
+    employee = getattr(user, 'employee', None)
+    if employee is not None and getattr(employee, 'organization', None):
+        return employee.organization
+    if user.organization.exists():
+        return user.organization.first()
+    if getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False):
+        from organization.models import Organization
+        return Organization.objects.first()
+    return None
+
+
 class LeaveSettingAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -297,11 +316,7 @@ class AllEmployeeLeaveSummaryView(APIView):
 
     def get(self, request):
         user = request.user
-        org = None
-        if user.organization.exists():
-            org = user.organization.first()
-        elif hasattr(user, 'employee'):
-            org = getattr(user.employee, 'organization', None)
+        org = resolve_org(user)
         if not org:
             return Response([], status=status.HTTP_200_OK)
 
@@ -338,7 +353,7 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
         if user.organization.exists():
             is_admin = True
             org = user.organization.first()
-        elif getattr(user, 'is_hr', False):
+        elif getattr(user, 'is_hr', False) or user.is_superuser:
             is_admin = True
             org = getattr(user.employee, 'organization', None) if hasattr(user, 'employee') else None
             if not org:

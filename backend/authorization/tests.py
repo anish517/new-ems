@@ -101,6 +101,31 @@ class AuthorizationRegressionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('text/csv', response['Content-Type'])
 
+    # ------------------------------------------------------ leave: admin views
+
+    def _superuser(self, tag):
+        return Account.objects.create(
+            email=f"root-{tag}@test.com", first_name="Root", last_name="User", is_superuser=True)
+
+    def test_superuser_without_employee_sees_staff_leave_summary(self):
+        """
+        /leave-summary/ (the admin's Staff Quotas tab) returned [] for the production
+        admin -- a superuser with no Employee row and empty admin_users -- so the
+        screen showed "No employee leave quotas configured."
+        """
+        self.client.force_authenticate(user=self._superuser("summary"))
+        response = self.client.get('/api/leave-tracker/leave-summary/?nepali_year=2080&nepali_month=1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual({e['employee_id'] for e in response.json()},
+                         {self.employee.id, self.admin_employee.id})
+
+    def test_superuser_without_employee_lists_org_leave_requests(self):
+        """Same account shape saw an empty leave-request list for the same reason."""
+        self.client.force_authenticate(user=self._superuser("requests"))
+        response = self.client.get('/api/leave-tracker/leave-requests/?nepali_year=2080&nepali_month=1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['count'], 1)
+
     # ----------------------------------------------------------------- leave
 
     def _patch_leave(self, pk, payload):
