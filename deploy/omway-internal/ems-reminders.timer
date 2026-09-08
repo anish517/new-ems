@@ -1,0 +1,11 @@
+# /etc/systemd/system/ems-reminders.timer
+[Unit]
+Description=Run EMS calendar reminders daily at 00:01 Asia/Kathmandu
+
+[Timer]
+# Same schedule as calendar_app/scheduler.py (cron hour=0, minute=1, tz Asia/Kathmandu).
+OnCalendar=*-*-* 00:01:00 Asia/Kathmandu
+Persistent=true
+
+[Install]
+WantedBy=timers.target

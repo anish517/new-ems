@@ -1,0 +1,28 @@
+# /etc/systemd/system/ems-gunicorn.service
+# OmWay EMS Django API under gunicorn. Runs as the same user as the Node apps on this box.
+[Unit]
+Description=OmWay EMS (Django / gunicorn)
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+User=omway
+# nginx (www-data) needs to reach the socket; group-owning it avoids a world-writable socket.
+Group=www-data
+WorkingDirectory=/srv/ems/app
+# python-decouple reads /srv/ems/app/.env relative to the working directory.
+ExecStart=/srv/ems/venv/bin/gunicorn base.wsgi:application \
+    --workers 2 --max-requests 1000 --max-requests-jitter 100 \
+    --timeout 60 --umask 007 \
+    --bind unix:/srv/ems/run/gunicorn.sock \
+    --access-logfile /srv/ems/logs/gunicorn-access.log \
+    --error-logfile  /srv/ems/logs/gunicorn-error.log
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=3
+# 2 workers and a hard cap are deliberate: the box has 1.8 GB and the two Next.js
+# processes already use ~600 MB. Seven users do not need more than this.
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
