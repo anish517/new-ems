@@ -87,6 +87,20 @@ class AuthorizationRegressionTests(TestCase):
         self.client.force_authenticate(user=self.admin_user)
         self.assertNotEqual(self.client.get(SALARY_REPORT_URL).status_code, 403)
 
+    def test_superuser_without_employee_can_generate_salary_report(self):
+        """
+        The production admin is a superuser with no Employee row, and admin_users is
+        empty. Failing closed on that account took the salary report down; it must
+        resolve an organization like the employee export does.
+        """
+        root = Account.objects.create(
+            email="root@test.com", first_name="Root", last_name="User", is_superuser=True)
+        self.client.force_authenticate(user=root)
+        response = self.client.get(
+            SALARY_REPORT_URL + '?start_date=2083-01-01&end_date=2083-06-30')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('text/csv', response['Content-Type'])
+
     # ----------------------------------------------------------------- leave
 
     def _patch_leave(self, pk, payload):
