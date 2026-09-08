@@ -10,6 +10,8 @@ User = get_user_model()
 
 @receiver(post_save, sender=Complain)
 def complain_post_notification(sender, instance, created, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if not created:
         return
 
@@ -42,6 +44,8 @@ from feedback.models import ComplainReply
 
 @receiver(post_save, sender=ComplainReply)
 def complain_reply_post_notification(sender, instance, created, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if not created:
         return
         

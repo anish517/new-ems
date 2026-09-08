@@ -13,6 +13,8 @@ from logs.models import ActivityLog
 
 @receiver(post_save, sender=Employee)
 def create_employee_post_save_log(sender, instance, created, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if not created:
         ActivityLog.objects.create(
             organization=instance.organization,
@@ -29,6 +31,8 @@ def create_employee_post_save_log(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=Employee)
 def create_employee_post_delete_log(sender, instance, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     ActivityLog.objects.create(
         organization=instance.organization,
         action=f'{instance.user.full_name} removed'
@@ -37,6 +41,8 @@ def create_employee_post_delete_log(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Post)
 def create_post_create_update_log(sender, instance, created, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if created:
         ActivityLog.objects.create(
             organization=instance.organization,
@@ -51,6 +57,8 @@ def create_post_create_update_log(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=Post)
 def create_post_delete_log(sender, instance, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     ActivityLog.objects.create(
         organization=instance.organization,
         action=f'{instance.title} deleted'
@@ -59,6 +67,8 @@ def create_post_delete_log(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Department)
 def create_department_create_update_log(sender, instance, created, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if created:
         ActivityLog.objects.create(
             organization=instance.organization,
@@ -73,6 +83,8 @@ def create_department_create_update_log(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=Department)
 def create_department_delete_log(sender, instance, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     ActivityLog.objects.create(
         organization=instance.organization,
         action=f'{instance.department_name} deleted'
@@ -81,6 +93,8 @@ def create_department_delete_log(sender, instance, **kwargs):
 
 @receiver(post_delete, sender=OrganizationFile)
 def delete_file_on_model_delete(sender, instance, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if instance.file:
         if hasattr(instance.file, 'path'):
             # Local file storage
@@ -94,6 +108,8 @@ def delete_file_on_model_delete(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Employee)
 def create_leave_quota(sender, instance, created, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if created:
         leave_types = LeaveType.objects.filter(
             organization=instance.organization)
@@ -109,6 +125,8 @@ def create_leave_quota(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=Employee)
 def create_employee_birthday_event(sender, instance, created, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if created:
         if instance.date_of_birth:
             category, _ = Category.objects.get_or_create(
@@ -127,6 +145,8 @@ def create_employee_birthday_event(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=Employee)
 def create_remote_attendance_permission(sender, instance, created, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if created:
         RemoteWorkPermission.objects.get_or_create(
             employee=instance
