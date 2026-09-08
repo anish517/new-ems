@@ -80,6 +80,10 @@ from django.apps import apps
 for m in sorted(apps.get_models(), key=lambda m: m._meta.label):
     if m._meta.app_label in ("contenttypes", "sessions", "admin") or m._meta.model_name == "permission": continue
     print(f"{m._meta.label}\t{m._base_manager.count()}")
+    for f in m._meta.many_to_many:
+        t = f.remote_field.through
+        if t._meta.auto_created:
+            print(f"{m._meta.label}.{f.name}\t{t._default_manager.count()}")
 '
 $SSH "$CP" "cd ~/ems && $CPY -" <<<"$COUNT_PY" > /tmp/counts-cpanel.tsv
 su omway -c "cd /srv/ems/app && $PY -" <<<"$COUNT_PY" > /tmp/counts-local.tsv
