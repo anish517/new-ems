@@ -67,9 +67,10 @@ then
 else echo "   dump FAILED"; rc=1; fi
 
 echo "== 4. media (rsync, server to server)"
-if rsync -az --info=stats1 -e "$SSH" "$CP:public_html/media/" /srv/ems/media/ | grep -E "Number of (regular )?files|Total transferred file size|Total file size" | sed 's/^/   /'; then
-  chown -R omway:omway /srv/ems/media; echo "   media on disk: $(du -sh /srv/ems/media | cut -f1)"
-else echo "   rsync FAILED"; rc=1; fi
+RS=$(rsync -az --stats -e "$SSH" "$CP:public_html/media/" /srv/ems/media/ 2>&1); rrc=$?
+printf '%s\n' "$RS" | grep -E "Number of files|Number of regular files transferred|Total file size" | sed 's/^/   /'
+if [ "$rrc" -eq 0 ]; then chown -R omway:omway /srv/ems/media; echo "   ok  media on disk: $(du -sh /srv/ems/media | cut -f1), $(find /srv/ems/media -type f | wc -l) files"
+else echo "   rsync FAILED (exit $rrc)"; printf '%s\n' "$RS" | tail -3 | sed 's/^/   /'; rc=1; fi
 
 echo "== 5. proof: row counts per model, cPanel (MariaDB) vs here (PostgreSQL)"
 COUNT_PY='
