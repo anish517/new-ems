@@ -29,8 +29,23 @@ from rest_framework_simplejwt.tokens import RefreshToken  # noqa: E402
 from leave_management.models import LeaveRequest  # noqa: E402
 from organization.models import Employee, Organization  # noqa: E402
 
-BASE = "http://127.0.0.1"
+# Port 80 now 301s to https (certbot --redirect), so talk to 443 on loopback. TLS is still
+# fully verified: SNI is sent as the public name so nginx presents the EMS certificate, and
+# the chain and hostname are checked against that name rather than 127.0.0.1. This is also
+# exactly what Cloudflare's Full (strict) mode verifies at the origin.
+BASE = os.environ.get("EMS_SMOKE_BASE", "https://127.0.0.1")
 HOST = "ems.omwaytechnologies.com"
+
+
+class OriginAdapter(requests.adapters.HTTPAdapter):
+    def init_poolmanager(self, *args, **kwargs):
+        kwargs["server_hostname"] = HOST
+        kwargs["assert_hostname"] = HOST
+        return super().init_poolmanager(*args, **kwargs)
+
+
+SESSION = requests.Session()
+SESSION.mount("https://", OriginAdapter())
 
 org = Organization.objects.first()
 # Production has no admin_users rows: admin access is carried by is_superuser. Try both.
@@ -52,7 +67,7 @@ def call(label, method, path, token=None, expect=(), **kw):
     headers = {"Host": HOST}
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    r = requests.request(method, BASE + path, headers=headers, timeout=30, allow_redirects=False, **kw)
+    r = SESSION.request(method, BASE + path, headers=headers, timeout=30, allow_redirects=False, **kw)
     ct = r.headers.get("content-type", "")
     payload = ""
     if "json" in ct:
