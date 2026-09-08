@@ -111,6 +111,18 @@ call(
     {200},
 )
 
+# Admin leave views. Both returned nothing for the production admin (superuser, no Employee,
+# empty admin_users) until ca64d1e. Note: /leave-summary/ recomputes and persists LeaveBalance
+# rows on every GET -- that is the application's own behaviour on every page view.
+r = call("GET /api/leave-tracker/leave-summary/ (Staff Quotas)", "GET", "/api/leave-tracker/leave-summary/", ADMIN, {200})
+if r.status_code == 200 and isinstance(r.json(), list) and len(r.json()) == 0:
+    fails.append("leave-summary is empty for the admin")
+    print("  FAIL leave-summary returned [] -- Staff Quotas tab would be empty")
+r = call("GET leave-requests (whole FY, admin)", "GET", "/api/leave-tracker/leave-requests/?start_date=2083-01-01&end_date=2083-12-30", ADMIN, {200})
+if r.status_code == 200 and isinstance(r.json(), dict) and r.json().get("count", 0) == 0:
+    fails.append("leave-requests empty for the admin")
+    print("  FAIL leave-requests count=0 for the admin over the whole fiscal year")
+
 print("== plain employee: authorization gates")
 call("GET /api/auth/me/", "GET", "/api/auth/me/", PLAIN, {200})
 call("GET employees export-csv -> refused", "GET", "/api/organization/employees/export-csv/", PLAIN, {403})
