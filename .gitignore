@@ -22,3 +22,6 @@ frontend/ios/Pods/
 
 # Local deploy credentials — never commit
 cred.txt
+
+# Claude Code personal permission grants (per-machine) — never commit
+.claude/settings.local.json
