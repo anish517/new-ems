@@ -25,3 +25,6 @@ cred.txt
 
 # Claude Code personal permission grants (per-machine) — never commit
 .claude/settings.local.json
+
+# Python bytecode (deploy scripts import each other when run from the repo)
+__pycache__/

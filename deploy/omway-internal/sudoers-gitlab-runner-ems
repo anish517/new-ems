@@ -1,0 +1,5 @@
+# Installed as /etc/sudoers.d/gitlab-runner-ems (mode 440, validate with visudo -c).
+# Lets the GitLab shell runner run the EMS deploy script, and nothing else, as root.
+# /srv/ems/deploy is root-owned and the runner cannot write to it; the script validates its
+# own arguments (see ci-deploy.sh). Same shape as the existing rule for medconalert-dev-queue.
+gitlab-runner ALL=(root) NOPASSWD: /srv/ems/deploy/ci-deploy.sh
