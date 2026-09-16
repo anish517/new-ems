@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
-# Builds the Flutter web client on THIS machine and installs it on omway-internal.
-#
-#     deploy/omway-internal/5-deploy-frontend.sh
-#
-# The frontend is not built by the GitLab pipeline: the only runner is the production box
-# itself (1.8 GB RAM, shared with the Node apps), and `flutter build web` needs more than that.
-# Until a runner with room to build exists, this script is the frontend deploy.
-#
-# Requires the pinned SDK (~/fvm/versions/3.47.1; the global Flutter cannot build this
-# project) and the `omway-internal` ssh alias with root access.
+# Builds the Flutter web client on this machine and installs it on omway-internal.
+# Needs the pinned SDK (~/fvm/versions/3.47.1) and the omway-internal ssh alias.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 FLUTTER=${FLUTTER:-$HOME/fvm/versions/3.47.1/bin/flutter}

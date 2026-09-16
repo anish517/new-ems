@@ -1,17 +1,10 @@
 #!/usr/bin/env bash
-# Installs a built Flutter web bundle into /srv/ems/www/app with an atomic swap. Run as root.
-#
-#     install-frontend.sh <dir containing index.html>
-#
-# Called by ci-deploy.sh when a pipeline carries frontend/build/web, and by
-# 5-deploy-frontend.sh (run on a developer machine) after it uploads a bundle built there.
-# The previous bundle is kept at /srv/ems/www/app.prev for one deploy, so a bad build is a
-# `mv` away from being undone.
+# Installs a Flutter web build into /srv/ems/www/app (atomic swap, previous kept
+# at app.prev). Run as root:  install-frontend.sh <dir containing index.html>
 set -euo pipefail
 SRC=${1:?usage: install-frontend.sh <build-dir>}
 WWW=/srv/ems/www
 [[ -f $SRC/index.html && -f $SRC/main.dart.js ]] || { echo "install-frontend: $SRC is not a Flutter web build" >&2; exit 1; }
-# Refuse a bundle built for the wrong origin: the API base URL is compiled into main.dart.js.
 grep -q 'ems.omwaytechnologies.com' "$SRC/main.dart.js" || { echo "install-frontend: bundle does not reference ems.omwaytechnologies.com — built without --dart-define=API_BASE_URL?" >&2; exit 1; }
 
 echo "== install Flutter bundle -> $WWW/app"

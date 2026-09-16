@@ -1,21 +1,7 @@
-# Tests every merge request and every push to master, and deploys master to production.
-#
-#   MR pipeline      -> test:backend only
-#   push to master   -> test:backend, then deploy:production on omway-internal
-#
-# Both jobs run on the "omwayinternal" shell-executor runner, which is the production box
-# itself. It is tagged `omway-internal` and does not accept untagged jobs, so every job here
-# carries that tag; an untagged job would sit pending until it timed out.
-#
-# The deploy job does one thing: it hands the checkout to /srv/ems/deploy/ci-deploy.sh via a
-# single sudoers rule (deploy/omway-internal/sudoers-gitlab-runner-ems). That script backs up
-# the database, mirrors backend/ into /srv/ems/app, runs 2-install.sh (migrate, collectstatic,
-# gunicorn restart, nginx reload) and finishes with the authenticated smoke test 4-smoke.py.
-#
-# The Flutter client is NOT built here: this runner has 1.8 GB RAM shared with the Node apps
-# and `flutter build web` needs more. deploy/omway-internal/5-deploy-frontend.sh builds it on a
-# developer machine and installs it. If a checkout ever carries frontend/build/web (from a
-# future build job on a bigger runner), ci-deploy.sh installs it automatically.
+# MR -> test:backend. Push to master -> test:backend, then deploy:production.
+# Runner "omwayinternal" is the production box (shell executor, tag omway-internal).
+# The Flutter client is not built here (not enough RAM on the runner); see
+# deploy/omway-internal/5-deploy-frontend.sh.
 
 stages:
   - test
@@ -36,8 +22,6 @@ test:backend:
   stage: test
   variables:
     PIP_DISABLE_PIP_VERSION_CHECK: "1"
-  # The venv is cached per requirements.txt. $CI_PROJECT_DIR is stable on a shell runner, so the
-  # absolute paths baked into the venv stay valid between jobs.
   cache:
     key:
       files:
@@ -48,9 +32,7 @@ test:backend:
     - '[ -x .venv/bin/python ] || python3 -m venv .venv'
     - .venv/bin/pip install -q -r backend/requirements.txt
     - cd backend
-    # No .env in the checkout, so this runs on SQLite with the settings defaults.
-    # Only the apps with real tests: three stray scripts at the backend root are collected by a
-    # bare `manage.py test` and fail at import (documented in CLAUDE.md).
+    # Only apps with real tests; stray scripts at the backend root fail at import.
     - ../.venv/bin/python manage.py test --noinput
         attendance authentication authorization feedback
         leave_management organization performance salary_management
@@ -62,19 +44,15 @@ deploy:production:
   rules:
     - if: $CI_COMMIT_BRANCH == "master"
   interruptible: false
-  resource_group: production        # never two deploys at once
+  resource_group: production
   environment:
     name: production
     url: https://ems.omwaytechnologies.com
   script:
-    # Same guard the sibling medconalert pipeline uses: the sha and path reach a root script
-    # as arguments, so refuse anything that is not a plain hex sha before it gets there.
     - |
       case "$CI_COMMIT_SHA" in
         *[!0-9a-f]*|"") echo "refusing to deploy: CI_COMMIT_SHA is not a hex sha"; exit 1 ;;
       esac
     - sudo /srv/ems/deploy/ci-deploy.sh "$CI_PROJECT_DIR" "$CI_COMMIT_SHA"
-    # Through Cloudflare, as a user would reach it: the bundle must load and the API must
-    # answer (401 without a token is the expected answer).
     - 'curl -sS --fail -o /dev/null -w "public /app/         -> HTTP %{http_code}\n" https://ems.omwaytechnologies.com/app/'
     - 'code=$(curl -sS -o /dev/null -w "%{http_code}" https://ems.omwaytechnologies.com/api/auth/me/); echo "public /api/auth/me/ -> HTTP $code"; [ "$code" = "401" ]'

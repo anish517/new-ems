@@ -1,26 +1,9 @@
 #!/usr/bin/env bash
-# Deploys one commit of OmWay EMS to this host. Invoked by the GitLab job as
-#
-#     sudo /srv/ems/deploy/ci-deploy.sh "$CI_PROJECT_DIR" "$CI_COMMIT_SHA"
-#
-# and allowed by /etc/sudoers.d/gitlab-runner-ems (installed from sudoers-gitlab-runner-ems
-# next to this file). Runs as root because installing units and reloading nginx needs it;
-# everything that touches the app itself runs as omway, like 2-install.sh always has.
-#
-# Order of operations, and why:
-#   1. validate the arguments   — the sha and path come from the runner; trust nothing
-#   2. pg_dump                  — a restorable copy from *before* migrate, kept for 14 deploys
-#   3. rsync backend/           — mirrors the checkout; .env and the Firebase key are the only
-#                                 server-only files (verified 2026-09-16) and are excluded, which
-#                                 also protects them from --delete
-#   4. rsync deploy/            — refreshes this directory, including this script (rsync writes a
-#                                 temp file and renames, so the running copy is unaffected)
-#   5. 2-install.sh             — pip, DB-target assertion, migrate, collectstatic, units, nginx
-#   6. Flutter bundle           — only if the checkout carries frontend/build/web (a CI artifact);
-#                                 the runner box cannot build Flutter itself, see CLAUDE.md
-#   7. 4-smoke.py               — authenticated end-to-end check; a failure fails the job
-#
-# A full transcript goes to /srv/ems/logs/deploy-<timestamp>.log.
+# Deploys one commit to this host. Called by the GitLab deploy job as
+#   sudo /srv/ems/deploy/ci-deploy.sh "$CI_PROJECT_DIR" "$CI_COMMIT_SHA"
+# (allowed by /etc/sudoers.d/gitlab-runner-ems). Steps: validate args, pg_dump,
+# rsync backend/ and deploy/, 2-install.sh, optional Flutter bundle, 4-smoke.py.
+# Transcript: /srv/ems/logs/deploy-<timestamp>.log
 set -euo pipefail
 
 SRC=${1:?usage: ci-deploy.sh <checkout-dir> <commit-sha>}
@@ -31,7 +14,6 @@ KEEP_DUMPS=14
 
 die() { echo "ci-deploy: $*" >&2; exit 1; }
 
-# --- 1. validate -------------------------------------------------------------------------
 [[ $EUID -eq 0 ]] || die "must run as root (via sudo)"
 case "$SHA" in *[!0-9a-f]*|"") die "commit sha is not hex: $SHA" ;; esac
 [[ ${#SHA} -eq 40 ]] || die "commit sha must be 40 characters"
@@ -49,10 +31,8 @@ exec > >(tee -a "$EMS/logs/deploy-$TS.log") 2>&1
 echo "== deploy $SHA at $TS from $SRC"
 git -C "$SRC" --no-pager log --oneline -1
 
-# --- 2. database backup --------------------------------------------------------------------
 echo "== pg_dump before migrate"
-# The URL lives in .env (mode 600, owned by omway). Turn it into libpq environment variables
-# so the password reaches pg_dump through the environment and never through argv.
+# DATABASE_URL from .env -> libpq env vars, so the password never appears in argv.
 eval "$(runuser -u omway -- env -C "$EMS/app" "$EMS/venv/bin/python" - <<'PY'
 import shlex
 import dj_database_url
@@ -68,14 +48,10 @@ DUMP="$EMS/backups/pre-deploy-$TS-${SHA:0:7}.dump"
 runuser -u omway --preserve-environment -- pg_dump --format=custom --no-owner --file="$DUMP"
 unset PGPASSWORD
 ls -la "$DUMP"
-# keep the newest $KEEP_DUMPS pre-deploy dumps; the cPanel migration dumps are named differently
 ls -1t "$EMS"/backups/pre-deploy-*.dump 2>/dev/null | tail -n +$((KEEP_DUMPS + 1)) | xargs -r rm -v --
 
-# --- 3 + 4. code ---------------------------------------------------------------------------
-# --checksum: a fresh CI checkout gives every file a new mtime, so without it rsync would
-# re-send (and list) all ~1800 files on every deploy. With it, only files whose content changed
-# are transferred, and --info=name,del makes the log a plain list of exactly those, plus
-# deletions. Never pipe rsync here: under pipefail, a closed pipe kills the transfer midway.
+# .env and the Firebase key are the only server-only files; excluding them also
+# protects them from --delete. --checksum: CI checkouts have fresh mtimes.
 echo "== sync backend/ -> $EMS/app (changed files only)"
 rsync -a --checksum --delete --chown=omway:omway --info=name,del \
     --exclude='/.env' --exclude='/firebase-service-account.json' \
@@ -86,17 +62,14 @@ echo "== sync deploy/omway-internal/ -> $EMS/deploy"
 rsync -a --checksum --delete --chown=root:root --info=name,del --exclude='__pycache__/' \
     "$SRC/deploy/omway-internal/" "$EMS/deploy/"
 
-# --- 5. install ----------------------------------------------------------------------------
 bash "$EMS/deploy/2-install.sh"
 
-# --- 6. Flutter bundle (optional) ----------------------------------------------------------
 if [[ -f $SRC/frontend/build/web/index.html ]]; then
     bash "$EMS/deploy/install-frontend.sh" "$SRC/frontend/build/web"
 else
     echo "== no frontend/build/web in the checkout; Flutter bundle left as is"
 fi
 
-# --- 7. smoke ------------------------------------------------------------------------------
 echo "== smoke test"
 runuser -u omway -- env -C "$EMS/app" "$EMS/venv/bin/python" "$EMS/deploy/4-smoke.py"
 
