@@ -179,3 +179,117 @@ class AttendanceAdminRestrictionTests(TestCase):
         attendance = Attendance.objects.filter(employee=self.emp, date=nepali_date(2080, 1, 5)).first()
         self.assertIsNotNone(attendance)
         self.assertEqual(attendance.check_ins_outs.count(), 1)
+
+
+class NepaliCalendarAttendanceDateTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.org = Organization.objects.create(name="Calendar Test Org")
+        self.dept = Department.objects.create(organization=self.org, department_name="Ops")
+        self.post = Post.objects.create(department=self.dept, title="Engineer")
+        self.emp_user = Account.objects.create(
+            email="cal.emp@test.com", first_name="Cal", last_name="Emp"
+        )
+        self.emp = Employee.objects.create(user=self.emp_user, post=self.post)
+
+    def test_bs_2082_and_2083_official_calendar_alignment(self):
+        """Backend nepali_datetime matches official BS calendar & Flutter nepali_utils."""
+        import datetime as _dt
+        import nepali_datetime
+        from calendar_app.utilities import total_days_in_month
+
+        # Month lengths for BS 2083
+        self.assertEqual(total_days_in_month(2083, 6), 31)   # Asoj
+        self.assertEqual(total_days_in_month(2083, 7), 30)   # Kartik
+        self.assertEqual(total_days_in_month(2083, 8), 29)   # Mangsir
+        self.assertEqual(total_days_in_month(2083, 9), 30)   # Poush
+        self.assertEqual(total_days_in_month(2083, 10), 29)  # Magh
+        self.assertEqual(total_days_in_month(2100, 12), 31)  # MAXYEAR boundary
+
+        expected_pairs = [
+            (_dt.date(2025, 10, 17), nepali_date(2082, 6, 31)),
+            (_dt.date(2025, 11, 17), nepali_date(2082, 8, 1)),
+            (_dt.date(2026, 4, 14), nepali_date(2083, 1, 1)),
+            (_dt.date(2026, 10, 17), nepali_date(2083, 6, 31)),
+            (_dt.date(2026, 11, 16), nepali_date(2083, 7, 30)),
+            (_dt.date(2026, 11, 17), nepali_date(2083, 8, 1)),
+            (_dt.date(2026, 11, 18), nepali_date(2083, 8, 2)),
+            (_dt.date(2026, 11, 19), nepali_date(2083, 8, 3)),
+            (_dt.date(2026, 12, 15), nepali_date(2083, 8, 29)),
+            (_dt.date(2026, 12, 16), nepali_date(2083, 9, 1)),
+            (_dt.date(2027, 1, 14), nepali_date(2083, 9, 30)),
+            (_dt.date(2027, 1, 15), nepali_date(2083, 10, 1)),
+            (_dt.date(2027, 4, 14), nepali_date(2084, 1, 1)),
+        ]
+        for ad, bs in expected_pairs:
+            self.assertEqual(nepali_datetime.date.from_datetime_date(ad), bs)
+            self.assertEqual(bs.to_datetime_date(), ad)
+            self.assertEqual(bs.weekday(), (ad.weekday() + 1) % 7)
+
+    def test_full_calendar_range_monotonic_and_weekday_consistent(self):
+        """Every year from 1975..2100 round-trips cleanly between AD and BS."""
+        import datetime as _dt
+        import nepali_datetime
+        from calendar_app.utilities import total_days_in_month
+
+        for year in range(nepali_datetime.MINYEAR, nepali_datetime.MAXYEAR + 1):
+            first_bs = nepali_date(year, 1, 1)
+            first_ad = first_bs.to_datetime_date()
+            self.assertEqual(nepali_datetime.date.from_datetime_date(first_ad), first_bs)
+            self.assertEqual(first_bs.weekday(), (first_ad.weekday() + 1) % 7)
+
+            last_day = total_days_in_month(year, 12)
+            last_bs = nepali_date(year, 12, last_day)
+            last_ad = last_bs.to_datetime_date()
+            self.assertEqual(nepali_datetime.date.from_datetime_date(last_ad), last_bs)
+            if year < nepali_datetime.MAXYEAR:
+                next_first_ad = nepali_date(year + 1, 1, 1).to_datetime_date()
+                self.assertEqual(next_first_ad - last_ad, _dt.timedelta(days=1))
+
+    def test_attendance_list_and_present_days_use_accurate_mangsir_2083_dates(self):
+        """Nov 16 (Kartik 30) stays in Kartik; Nov 17-19 show as Mangsir 1-3."""
+        import datetime as _dt
+        import nepali_datetime
+
+        for ad in (
+            _dt.date(2026, 11, 16),  # 2083-07-30 (Kartik 30)
+            _dt.date(2026, 11, 17),  # 2083-08-01 (Mangsir 1)
+            _dt.date(2026, 11, 18),  # 2083-08-02 (Mangsir 2)
+            _dt.date(2026, 11, 19),  # 2083-08-03 (Mangsir 3)
+        ):
+            att = Attendance.objects.create(
+                organization=self.org,
+                employee=self.emp,
+                date=nepali_datetime.date.from_datetime_date(ad),
+            )
+            CheckInOut.objects.create(attendance=att, check_in=time(9, 30))
+
+        self.client.force_authenticate(user=self.emp_user)
+
+        mangsir_res = self.client.get('/api/attendance/list/?nepali_year=2083&nepali_month=8')
+        self.assertEqual(mangsir_res.status_code, status.HTTP_200_OK)
+        mangsir_dates = [row['date'] for row in mangsir_res.data['results']]
+        self.assertEqual(mangsir_dates, ['2083-08-03', '2083-08-02', '2083-08-01'])
+
+        kartik_res = self.client.get('/api/attendance/list/?nepali_year=2083&nepali_month=7')
+        self.assertEqual(kartik_res.status_code, status.HTTP_200_OK)
+        kartik_dates = [row['date'] for row in kartik_res.data['results']]
+        self.assertEqual(kartik_dates, ['2083-07-30'])
+
+        stats_res = self.client.get(
+            f'/api/attendance/total-working-hour/{self.emp.id}/?nepali_year=2083&nepali_month=8'
+        )
+        self.assertEqual(stats_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(stats_res.data['total_no_of_days_present'], 3)
+
+    def test_correction_request_accepts_31_asoj_2083(self):
+        """Asoj 31, 2083 (previously invalid in nepali-datetime 1.0.8.2) is accepted."""
+        self.client.force_authenticate(user=self.emp_user)
+        res = self.client.post('/api/attendance/correction-requests/', {
+            'requested_date': '2083-06-31',
+            'requested_check_in': '09:30:00',
+            'requested_check_out': '17:30:00',
+            'reason': 'Check-in on Asoj 31',
+        })
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data['requested_date'], '2083-06-31')

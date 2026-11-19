@@ -4,9 +4,6 @@ from organization.models import Organization, Employee
 from .models import Project, Task
 
 
-TODAY = nepali_datetime.date.today()
-
-
 def get_employees_list_with_task(organization: Organization) -> list:
     employees = organization.employees
     result = []
@@ -25,7 +22,10 @@ def get_employees_list_with_task(organization: Organization) -> list:
     return result
 
 
-def get_employee_task_summary(employee: Employee, year: int = TODAY.year, month: int = TODAY.month):
+def get_employee_task_summary(employee: Employee, year: int = None, month: int = None):
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
     tasks = Task.objects.filter(assigned_to=employee)
     filtered_tasks_id = []
 
@@ -57,7 +57,10 @@ def get_employee_task_summary(employee: Employee, year: int = TODAY.year, month:
     return data
 
 
-def get_organization_task_summary(organization: Organization, year: int = TODAY.year, month: int = TODAY.month):
+def get_organization_task_summary(organization: Organization, year: int = None, month: int = None):
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
     tasks = Task.objects.filter(
         created_by__post__department__organization=organization)
         
@@ -76,7 +79,10 @@ def get_organization_task_summary(organization: Organization, year: int = TODAY.
     return data
 
 
-def get_project_task_summary(project: Project, year: int = TODAY.year, month: int = TODAY.month):
+def get_project_task_summary(project: Project, year: int = None, month: int = None):
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
     tasks = Task.objects.filter(project=project)
     
     filtered_tasks_id = []

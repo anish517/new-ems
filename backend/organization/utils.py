@@ -12,8 +12,6 @@ from task_management.utils import get_employee_task_summary
 
 from .models import Employee, EmployeeAnalysisReport
 
-TODAY = nepali_datetime.date.today()
-
 
 def build_absolute_uri(request, relative_link):
     redirect_link = request.build_absolute_uri(relative_link)
@@ -45,7 +43,10 @@ def send_welcome_email(employee: Employee, redirect_link: str):
     email.send()
 
 
-def get_analysis_report(employee: Employee, year: int = TODAY.year, month: int = TODAY.month) -> EmployeeAnalysisReport:
+def get_analysis_report(employee: Employee, year: int = None, month: int = None) -> EmployeeAnalysisReport:
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
     tasks = get_employee_task_summary(
         employee=employee, year=year, month=month)
 
@@ -86,7 +87,7 @@ def get_analysis_report(employee: Employee, year: int = TODAY.year, month: int =
     if report is not None:
         report.task_score = task_score
         report.attendance_score = attendance_score
-        report.date = TODAY
+        report.date = nepali_datetime.date.today()
     else:
         report = EmployeeAnalysisReport.objects.create(
             organization=employee.organization, employee=employee, task_score=task_score, attendance_score=attendance_score)

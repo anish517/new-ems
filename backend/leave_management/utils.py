@@ -9,9 +9,6 @@ from organization.models import Employee, Organization
 from .models import LeaveRequest, LeaveBalance
 
 
-TODAY = nepali_datetime.date.today()
-
-
 def send_leave_email(employee: Employee, leave_request: LeaveRequest):
     from_email = 'noreply@meroadvice.com'
     recepient_list = [employee.user.email]
@@ -129,7 +126,10 @@ def get_employees_on_leave(organization: Organization, year: int = None, month: 
     return filtered_qs
 
 
-def get_employee_leave_days(employee: Employee, year: int = TODAY.year, month: int = TODAY.month) -> int:
+def get_employee_leave_days(employee: Employee, year: int = None, month: int = None) -> int:
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
 
     no_of_days = 0
 
@@ -413,7 +413,10 @@ def get_employee_leave_breakdown(employee: Employee, year: int = None, month: in
     return breakdown
 
 
-def get_employee_leave_request(employee: Employee, year: int = TODAY.year, month: int = TODAY.month) -> int:
+def get_employee_leave_request(employee: Employee, year: int = None, month: int = None) -> int:
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
     no_of_days = 0
 
     leave_requests = LeaveRequest.objects.filter(

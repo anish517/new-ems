@@ -3,10 +3,10 @@ from organization.models import Organization
 from .models import Notice
 
 
-TODAY = nepali_datetime.date.today()
-
-
-def get_notices(organization: Organization, year: int = TODAY.year, month: int = TODAY.month):
+def get_notices(organization: Organization, year: int = None, month: int = None):
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
     notice_qs = Notice.objects.filter(organization=organization)
     id_list = []
     for notice in notice_qs:

@@ -4,8 +4,6 @@ import datetime
 from calendar_app.models import Event
 from organization.models import Organization
 
-TODAY = nepali_datetime.date.today()
-
 
 def count_saturdays(year: int, month: int, start_day: int = 1, end_day: int = None) -> int:
     """
@@ -69,19 +67,13 @@ def total_days_in_month(year: int, month: int):
     Returns:
         int: The total number of days in the specified month.
     """
-
-    first_day = nepali_datetime.date(year, month, 1)
-
-    if month == 12:
-        next_month = nepali_datetime.date(year + 1, 1, 1)
-    else:
-        next_month = nepali_datetime.date(year, month + 1, 1)
-
-    days_in_month = (next_month - first_day).days
-    return days_in_month
+    # Validate year/month bounds first, then look up month length directly so
+    # even MAXYEAR-12 works without overflowing into MAXYEAR+1.
+    nepali_datetime.date(year, month, 1)
+    return nepali_datetime._days_in_month(year, month)
 
 
-def get_events(year: int = TODAY.year, month: int = TODAY.month):
+def get_events(year: int = None, month: int = None):
     """
     Returns events in the given month of the year for the given organization.
 
@@ -93,6 +85,9 @@ def get_events(year: int = TODAY.year, month: int = TODAY.month):
     Returns:
         int: The total number of days in the specified month.
     """
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
 
     events = Event.objects.all()
     id_list = []
@@ -103,7 +98,7 @@ def get_events(year: int = TODAY.year, month: int = TODAY.month):
     return events.filter(id__in=id_list)
 
 
-def get_working_days(organization: Organization, year: int = TODAY.year, month: str = TODAY.month) -> int:
+def get_working_days(organization: Organization, year: int = None, month: int = None) -> int:
     """
     Returns total number of working days in the given 
     month of the year for the given organization.
@@ -116,6 +111,9 @@ def get_working_days(organization: Organization, year: int = TODAY.year, month: 
     Returns:
         int: The total number of days in the specified month.
     """
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
     total_days = total_days_in_month(year=year, month=month)
     total_holidays = (count_saturdays(year=year, month=month) +
                       count_holidays(organization=organization, year=year, month=month))

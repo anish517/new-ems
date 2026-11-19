@@ -8,13 +8,14 @@ from calendar_app.utilities import total_days_in_month
 from .models import Attendance, CheckInOut
 from organization.models import Employee, Organization
 
-TODAY = nepali_datetime.date.today()
-
-
-def get_checked_employees(organization: Organization, year: int = TODAY.year, month: int = TODAY.month, day: int = TODAY.day) -> QuerySet[Attendance]:
+def get_checked_employees(organization: Organization, year: int = None, month: int = None, day: int = None) -> QuerySet[Attendance]:
     """
     Returns queryset of Attendances that has checked in time.
     """
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
+    day = today.day if day is None else day
     date = nepali_datetime.date(year=year, month=month, day=day)
     attendances = Attendance.objects.filter(
         organization=organization, date=date)
@@ -23,10 +24,14 @@ def get_checked_employees(organization: Organization, year: int = TODAY.year, mo
     return Attendance.objects.filter(id__in=attendance_ids)
 
 
-def get_absent_employees(organization: Organization, year: int = TODAY.year, month: int = TODAY.today().month, day: int = TODAY.today().day) -> QuerySet[Attendance]:
+def get_absent_employees(organization: Organization, year: int = None, month: int = None, day: int = None) -> QuerySet[Attendance]:
     """
     Returns queryset of Attendances that has checked in time.
     """
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
+    day = today.day if day is None else day
     date = nepali_datetime.date(year=year, month=month, day=day)
     employees = organization.employees
     absent_employee_ids = []
@@ -66,7 +71,10 @@ def get_employees_attendance_list(organization: Organization,):
     return attendance_list
 
 
-def get_attendance(employee: Employee, year: int = TODAY.year, month: int = TODAY.month):
+def get_attendance(employee: Employee, year: int = None, month: int = None):
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
     last_day = total_days_in_month(year=year, month=month)
     start_date = nepali_datetime.date(year=year, month=month, day=1)
     max_date = nepali_datetime.date(year=year, month=month, day=last_day)
@@ -83,7 +91,11 @@ def get_attendance(employee: Employee, year: int = TODAY.year, month: int = TODA
     return attendance_qs
 
 
-def get_working_hour(employee: Employee, year: int = TODAY.year, month: int = TODAY.month, day: int = TODAY.day):
+def get_working_hour(employee: Employee, year: int = None, month: int = None, day: int = None):
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
+    day = today.day if day is None else day
     date = nepali_datetime.date(year=year, month=month, day=day)
     organization: Organization = employee.organization
 
@@ -107,7 +119,10 @@ def get_working_hour(employee: Employee, year: int = TODAY.year, month: int = TO
     return attendance.formated_working_hour(), round(percentage)
 
 
-def average_working_hour(employee: Employee, year: int = TODAY.year, month: int = TODAY.month):
+def average_working_hour(employee: Employee, year: int = None, month: int = None):
+    today = nepali_datetime.date.today()
+    year = today.year if year is None else year
+    month = today.month if month is None else month
     date = nepali_datetime.date(year=year, month=month, day=1)
     attendances = get_attendance(
         employee=employee, year=date.year, month=date.month)
