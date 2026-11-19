@@ -2241,59 +2241,65 @@ class _LeaveTypeTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: (isSick
-                              ? const Color(0xFF6366F1)
-                              : isCasual
-                                  ? AppColors.primary
-                                  : (isPaid ? AppColors.success : const Color(0xFFF59E0B)))
-                          .withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      isSick
-                          ? Iconsax.health
-                          : isCasual
-                              ? Iconsax.sun_1
-                              : (isPaid ? Iconsax.wallet_3 : Iconsax.calendar_remove),
-                      color: isSick
-                          ? const Color(0xFF6366F1)
-                          : isCasual
-                              ? AppColors.primary
-                              : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        typeName,
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14.5,
-                            color: context.textPrimary),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (isSick
+                                ? const Color(0xFF6366F1)
+                                : isCasual
+                                    ? AppColors.primary
+                                    : (isPaid ? AppColors.success : const Color(0xFFF59E0B)))
+                            .withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      Text(
-                        isProrated
-                            ? 'Annual: ${annualQuota.toStringAsFixed(1)}d (Prorated) • Accrued: ${accruedToDate.toStringAsFixed(1)}d'
-                            : 'Annual: ${total.toStringAsFixed(0)}d • Accrued: ${accruedToDate.toStringAsFixed(1)}d',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary),
+                      child: Icon(
+                        isSick
+                            ? Iconsax.health
+                            : isCasual
+                                ? Iconsax.sun_1
+                                : (isPaid ? Iconsax.wallet_3 : Iconsax.calendar_remove),
+                        color: isSick
+                            ? const Color(0xFF6366F1)
+                            : isCasual
+                                ? AppColors.primary
+                                : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
+                        size: 18,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            typeName,
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14.5,
+                                color: context.textPrimary),
+                          ),
+                          Text(
+                            isProrated
+                                ? 'Annual: ${annualQuota.toStringAsFixed(1)}d (Prorated) • Accrued: ${accruedToDate.toStringAsFixed(1)}d'
+                                : 'Annual: ${total.toStringAsFixed(0)}d • Accrued: ${accruedToDate.toStringAsFixed(1)}d',
+                            style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -4048,66 +4054,71 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
         children: [
           // Header: Icon + Name + Edit Button
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: (isSick
-                              ? const Color(0xFF6366F1)
-                              : isCasual
-                                  ? AppColors.primary
-                                  : (isPaid ? AppColors.success : const Color(0xFFF59E0B)))
-                          .withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      isSick
-                          ? Iconsax.health
-                          : isCasual
-                              ? Iconsax.sun_1
-                              : (isPaid ? Iconsax.wallet_3 : Iconsax.calendar_remove),
-                      color: isSick
-                          ? const Color(0xFF6366F1)
-                          : isCasual
-                              ? AppColors.primary
-                              : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
-                      size: 16,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        typeName,
-                        style: TextStyle(
-                            color: isSick
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: (isSick
                                 ? const Color(0xFF6366F1)
                                 : isCasual
                                     ? AppColors.primary
-                                    : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                        ),
+                                    : (isPaid ? AppColors.success : const Color(0xFFF59E0B)))
+                            .withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      Text(
-                        isProrated
-                            ? 'Annual: ${annualQuota.toStringAsFixed(1)}d (Prorated) • Accrued: ${accruedToDate.toStringAsFixed(1)}d'
-                            : 'Annual: ${quota}d • Accrued: ${accruedToDate.toStringAsFixed(1)}d',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      child: Icon(
+                        isSick
+                            ? Iconsax.health
+                            : isCasual
+                                ? Iconsax.sun_1
+                                : (isPaid ? Iconsax.wallet_3 : Iconsax.calendar_remove),
+                        color: isSick
+                            ? const Color(0xFF6366F1)
+                            : isCasual
+                                ? AppColors.primary
+                                : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
+                        size: 16,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            typeName,
+                            style: TextStyle(
+                                color: isSick
+                                    ? const Color(0xFF6366F1)
+                                    : isCasual
+                                        ? AppColors.primary
+                                        : (isPaid ? AppColors.success : const Color(0xFFF59E0B)),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                            ),
+                          ),
+                          Text(
+                            isProrated
+                                ? 'Annual: ${annualQuota.toStringAsFixed(1)}d (Prorated) • Accrued: ${accruedToDate.toStringAsFixed(1)}d'
+                                : 'Annual: ${quota}d • Accrued: ${accruedToDate.toStringAsFixed(1)}d',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Iconsax.edit, size: 15, color: AppColors.primary),
                 tooltip: 'Adjust Annual Quota',

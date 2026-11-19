@@ -633,7 +633,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                             // Profile Info & Avatar Row
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                              padding: EdgeInsets.fromLTRB(
+                                  isTight ? 16 : 24, 0, isTight ? 16 : 24, 20),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
@@ -718,7 +719,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(width: 18),
+                                  SizedBox(width: isTight ? 14 : 18),
 
                                   // Name & Designation Details
                                   Expanded(
@@ -728,155 +729,156 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         builder: (context, c) {
                                           final isTight = c.maxWidth < 450;
 
-                                          return Flex(
-                                            direction: isTight
-                                                ? Axis.vertical
-                                                : Axis.horizontal,
+                                          final infoColumn = Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Wrap(
+                                                spacing: 8,
+                                                runSpacing: 4,
+                                                crossAxisAlignment:
+                                                    WrapCrossAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    user?.fullName ??
+                                                        'User Profile',
+                                                    style: TextStyle(
+                                                      fontSize:
+                                                          isTight ? 19 : 22,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                      letterSpacing: -0.4,
+                                                      color:
+                                                          context.textPrimary,
+                                                    ),
+                                                  ),
+                                                  Container(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.primary
+                                                          .withValues(
+                                                              alpha: 0.12),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              8),
+                                                    ),
+                                                    child: Text(
+                                                      user?.role
+                                                              .replaceAll(
+                                                                  '_', ' ')
+                                                              .toUpperCase() ??
+                                                          'STAFF',
+                                                      style: const TextStyle(
+                                                        fontSize: 10.5,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color:
+                                                            AppColors.primary,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                (user?.canManage == true &&
+                                                        emp == null)
+                                                    ? 'System Administrator · Full Platform Control'
+                                                    : '$designation · ${empType == 'full_time' ? 'Full-Time' : empType == 'part_time' ? 'Part-Time' : 'Intern'}',
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 3),
+                                              Row(
+                                                children: [
+                                                  const Icon(Iconsax.sms,
+                                                      size: 13,
+                                                      color: AppColors
+                                                          .textSecondary),
+                                                  const SizedBox(width: 4),
+                                                  Expanded(
+                                                    child: Text(
+                                                      user?.email ?? 'No email',
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        color: AppColors
+                                                            .textSecondary,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          );
+
+                                          final actionButtons = Wrap(
+                                            spacing: 8,
+                                            runSpacing: 8,
+                                            crossAxisAlignment:
+                                                WrapCrossAlignment.center,
+                                            children: [
+                                              OutlinedButton.icon(
+                                                onPressed: _showEditProfile,
+                                                icon: const Icon(Iconsax.edit,
+                                                    size: 16),
+                                                label: const Text('Edit Name'),
+                                                style: OutlinedButton.styleFrom(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 14,
+                                                      vertical: 10),
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12)),
+                                                ),
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Iconsax.key,
+                                                    size: 18,
+                                                    color: AppColors.primary),
+                                                tooltip: 'Change Password',
+                                                onPressed: _showChangePassword,
+                                                style: IconButton.styleFrom(
+                                                  backgroundColor: context.card,
+                                                  side: BorderSide(
+                                                      color: context.border),
+                                                ),
+                                              ),
+                                            ],
+                                          );
+
+                                          if (isTight) {
+                                            return Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                infoColumn,
+                                                const SizedBox(height: 12),
+                                                actionButtons,
+                                              ],
+                                            );
+                                          }
+
+                                          return Row(
                                             mainAxisAlignment:
                                                 MainAxisAlignment.spaceBetween,
-                                            crossAxisAlignment: isTight
-                                                ? CrossAxisAlignment.start
-                                                : CrossAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
                                             children: [
-                                              Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Wrap(
-                                                    spacing: 8,
-                                                    runSpacing: 4,
-                                                    crossAxisAlignment:
-                                                        WrapCrossAlignment
-                                                            .center,
-                                                    children: [
-                                                      Text(
-                                                        user?.fullName ??
-                                                            'User Profile',
-                                                        style: TextStyle(
-                                                          fontSize:
-                                                              isTight ? 19 : 22,
-                                                          fontWeight:
-                                                              FontWeight.w900,
-                                                          letterSpacing: -0.4,
-                                                          color: context
-                                                              .textPrimary,
-                                                        ),
-                                                      ),
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                horizontal: 8,
-                                                                vertical: 2),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: AppColors
-                                                              .primary
-                                                              .withValues(
-                                                                  alpha: 0.12),
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(8),
-                                                        ),
-                                                        child: Text(
-                                                          user?.role
-                                                                  .replaceAll(
-                                                                      '_', ' ')
-                                                                  .toUpperCase() ??
-                                                              'STAFF',
-                                                          style:
-                                                              const TextStyle(
-                                                            fontSize: 10.5,
-                                                            fontWeight:
-                                                                FontWeight.w800,
-                                                            color: AppColors
-                                                                .primary,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 3),
-                                                  Text(
-                                                    (user?.canManage == true &&
-                                                            emp == null)
-                                                        ? 'System Administrator · Full Platform Control'
-                                                        : '$designation · ${empType == 'full_time' ? 'Full-Time' : empType == 'part_time' ? 'Part-Time' : 'Intern'}',
-                                                    style: const TextStyle(
-                                                      fontSize: 13,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color: AppColors
-                                                          .textSecondary,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 3),
-                                                  Row(
-                                                    children: [
-                                                      const Icon(Iconsax.sms,
-                                                          size: 13,
-                                                          color: AppColors
-                                                              .textSecondary),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        user?.email ??
-                                                            'No email',
-                                                        style: const TextStyle(
-                                                          fontSize: 12,
-                                                          color: AppColors
-                                                              .textSecondary,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                              if (isTight)
-                                                const SizedBox(height: 12),
-                                              Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  OutlinedButton.icon(
-                                                    onPressed: _showEditProfile,
-                                                    icon: const Icon(
-                                                        Iconsax.edit,
-                                                        size: 16),
-                                                    label:
-                                                        const Text('Edit Name'),
-                                                    style: OutlinedButton
-                                                        .styleFrom(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 14,
-                                                          vertical: 10),
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          12)),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  IconButton(
-                                                    icon: const Icon(
-                                                        Iconsax.key,
-                                                        size: 18,
-                                                        color:
-                                                            AppColors.primary),
-                                                    tooltip: 'Change Password',
-                                                    onPressed:
-                                                        _showChangePassword,
-                                                    style: IconButton.styleFrom(
-                                                      backgroundColor:
-                                                          context.card,
-                                                      side: BorderSide(
-                                                          color:
-                                                              context.border),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                                              Expanded(child: infoColumn),
+                                              const SizedBox(width: 12),
+                                              actionButtons,
                                             ],
                                           );
                                         },
@@ -919,12 +921,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         color: AppColors.primary, size: 18),
                                   ),
                                   const SizedBox(width: 10),
-                                  Text(
-                                    'Administrator Roles & System Privileges',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: context.textPrimary,
+                                  Expanded(
+                                    child: Text(
+                                      'Administrator Roles & System Privileges',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: context.textPrimary,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1013,12 +1017,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         color: AppColors.primary, size: 18),
                                   ),
                                   const SizedBox(width: 10),
-                                  Text(
-                                    'Account & Security Settings',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: context.textPrimary,
+                                  Expanded(
+                                    child: Text(
+                                      'Account & Security Settings',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: context.textPrimary,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1071,54 +1077,55 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary
-                                              .withValues(alpha: 0.12),
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                        child: const Icon(Iconsax.call_calling,
-                                            color: AppColors.primary, size: 18),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        'Contact Details & Self-Edit Requests',
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w800,
-                                          color: context.textPrimary,
-                                        ),
-                                      ),
-                                    ],
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.12),
+                                      borderRadius:
+                                          BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Iconsax.call_calling,
+                                        color: AppColors.primary, size: 18),
                                   ),
-                                  if (_myChangeRequests
-                                      .any((r) => r['status'] == 'pending'))
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.warning
-                                            .withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Text(
-                                        '⏳ Change Pending Review',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.warning,
-                                        ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Contact Details & Self-Edit Requests',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: context.textPrimary,
                                       ),
                                     ),
+                                  ),
                                 ],
                               ),
+                              if (_myChangeRequests
+                                  .any((r) => r['status'] == 'pending')) ...[
+                                const SizedBox(height: 8),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.warning
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      '⏳ Change Pending Review',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.warning,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 6),
                               const Text(
                                 'You can request updates to your contact channels. Changes take effect upon HR approval.',
@@ -1203,12 +1210,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         color: AppColors.primary, size: 18),
                                   ),
                                   const SizedBox(width: 10),
-                                  Text(
-                                    'Personal & Statutory Information',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: context.textPrimary,
+                                  Expanded(
+                                    child: Text(
+                                      'Personal & Statutory Information',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: context.textPrimary,
+                                      ),
                                     ),
                                   ),
                                 ],
