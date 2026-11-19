@@ -2304,174 +2304,226 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                         .where((e) => e['is_present'] == true)
                         .length;
 
-                    return Flex(
-                      direction: isMobile ? Axis.vertical : Axis.horizontal,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Attendance & Punch Time Analytics Card
-                        Expanded(
-                          flex: isMobile ? 0 : 9,
-                          child: Container(
-                            height: isMobile ? null : 390,
-                            padding: const EdgeInsets.all(22),
-                            decoration: BoxDecoration(
-                              color: context.surface,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: context.border, width: 1),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(
-                                      alpha: isDark ? 0.25 : 0.04),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                    Widget wrapTabBody(Widget body) {
+                      if (!isMobile) return Expanded(child: body);
+                      if (_analyticsTab == 0) {
+                        return SizedBox(height: 240, child: body);
+                      }
+                      return body;
+                    }
+
+                    // Attendance & Punch Time Analytics Card
+                    final analyticsCard = Container(
+                      height: isMobile ? null : 390,
+                      padding: const EdgeInsets.all(22),
+                      decoration: BoxDecoration(
+                        color: context.surface,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: context.border, width: 1),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                                alpha: isDark ? 0.25 : 0.04),
+                            blurRadius: 20,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize:
+                            isMobile ? MainAxisSize.min : MainAxisSize.max,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                                 // Header with Title and Segmented View Switch
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
+                                Builder(
+                                  builder: (_) {
+                                    final titleBlock = Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.12),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: const Icon(Iconsax.chart_21,
+                                                  size: 16,
+                                                  color: AppColors.primary),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Flexible(
+                                              child: Text(
+                                                'Attendance & Punch Analytics',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w800,
+                                                  letterSpacing: -0.3,
+                                                  color: context.textPrimary,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 3),
+                                        const Text(
+                                          'Live check-in patterns, punctuality & time distribution',
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+
+                                    final toggleBlock = SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(3),
+                                        decoration: BoxDecoration(
+                                          color: context.card,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border:
+                                              Border.all(color: context.border),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            InkWell(
+                                              onTap: () => setState(
+                                                  () => _analyticsTab = 0),
+                                              borderRadius:
+                                                  BorderRadius.circular(9),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 5),
+                                                decoration: BoxDecoration(
+                                                  color: _analyticsTab == 0
+                                                      ? AppColors.primary
+                                                      : Colors.transparent,
+                                                  borderRadius:
+                                                      BorderRadius.circular(9),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Iconsax.chart_2,
+                                                      size: 13,
+                                                      color: _analyticsTab == 0
+                                                          ? Colors.white
+                                                          : AppColors
+                                                              .textSecondary,
+                                                    ),
+                                                    const SizedBox(width: 5),
+                                                    Text(
+                                                      'Weekly Activity',
+                                                      style: TextStyle(
+                                                        fontSize: 11.5,
+                                                        fontWeight:
+                                                            _analyticsTab == 0
+                                                                ? FontWeight
+                                                                    .w800
+                                                                : FontWeight
+                                                                    .w600,
+                                                        color: _analyticsTab ==
+                                                                0
+                                                            ? Colors.white
+                                                            : AppColors
+                                                                .textSecondary,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            InkWell(
+                                              onTap: () => setState(
+                                                  () => _analyticsTab = 1),
+                                              borderRadius:
+                                                  BorderRadius.circular(9),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 5),
+                                                decoration: BoxDecoration(
+                                                  color: _analyticsTab == 1
+                                                      ? AppColors.primary
+                                                      : Colors.transparent,
+                                                  borderRadius:
+                                                      BorderRadius.circular(9),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Iconsax.clock,
+                                                      size: 13,
+                                                      color: _analyticsTab == 1
+                                                          ? Colors.white
+                                                          : AppColors
+                                                              .textSecondary,
+                                                    ),
+                                                    const SizedBox(width: 5),
+                                                    Text(
+                                                      "Today's Punch Time",
+                                                      style: TextStyle(
+                                                        fontSize: 11.5,
+                                                        fontWeight:
+                                                            _analyticsTab == 1
+                                                                ? FontWeight
+                                                                    .w800
+                                                                : FontWeight
+                                                                    .w600,
+                                                        color: _analyticsTab ==
+                                                                1
+                                                            ? Colors.white
+                                                            : AppColors
+                                                                .textSecondary,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+
+                                    if (constraints.maxWidth < 620) {
+                                      return Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.all(6),
-                                                decoration: BoxDecoration(
-                                                  color: AppColors.primary
-                                                      .withValues(alpha: 0.12),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: const Icon(Iconsax.chart_21,
-                                                    size: 16,
-                                                    color: AppColors.primary),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Flexible(
-                                                child: Text(
-                                                  'Attendance & Punch Analytics',
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w800,
-                                                    letterSpacing: -0.3,
-                                                    color: context.textPrimary,
-                                                  ),
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 3),
-                                          const Text(
-                                            'Live check-in patterns, punctuality & time distribution',
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
+                                          titleBlock,
+                                          const SizedBox(height: 10),
+                                          toggleBlock,
                                         ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // View Mode Toggle
-                                    Container(
-                                      padding: const EdgeInsets.all(3),
-                                      decoration: BoxDecoration(
-                                        color: context.card,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: context.border),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          InkWell(
-                                            onTap: () => setState(() => _analyticsTab = 0),
-                                            borderRadius: BorderRadius.circular(9),
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                              decoration: BoxDecoration(
-                                                color: _analyticsTab == 0
-                                                    ? AppColors.primary
-                                                    : Colors.transparent,
-                                                borderRadius: BorderRadius.circular(9),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(
-                                                    Iconsax.chart_2,
-                                                    size: 13,
-                                                    color: _analyticsTab == 0
-                                                        ? Colors.white
-                                                        : AppColors.textSecondary,
-                                                  ),
-                                                  const SizedBox(width: 5),
-                                                  Text(
-                                                    'Weekly Activity',
-                                                    style: TextStyle(
-                                                      fontSize: 11.5,
-                                                      fontWeight: _analyticsTab == 0
-                                                          ? FontWeight.w800
-                                                          : FontWeight.w600,
-                                                      color: _analyticsTab == 0
-                                                          ? Colors.white
-                                                          : AppColors.textSecondary,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                          InkWell(
-                                            onTap: () => setState(() => _analyticsTab = 1),
-                                            borderRadius: BorderRadius.circular(9),
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                              decoration: BoxDecoration(
-                                                color: _analyticsTab == 1
-                                                    ? AppColors.primary
-                                                    : Colors.transparent,
-                                                borderRadius: BorderRadius.circular(9),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(
-                                                    Iconsax.clock,
-                                                    size: 13,
-                                                    color: _analyticsTab == 1
-                                                        ? Colors.white
-                                                        : AppColors.textSecondary,
-                                                  ),
-                                                  const SizedBox(width: 5),
-                                                  Text(
-                                                    "Today's Punch Time",
-                                                    style: TextStyle(
-                                                      fontSize: 11.5,
-                                                      fontWeight: _analyticsTab == 1
-                                                          ? FontWeight.w800
-                                                          : FontWeight.w600,
-                                                      color: _analyticsTab == 1
-                                                          ? Colors.white
-                                                          : AppColors.textSecondary,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                                      );
+                                    }
+
+                                    return Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(child: titleBlock),
+                                        const SizedBox(width: 12),
+                                        toggleBlock,
+                                      ],
+                                    );
+                                  },
                                 ),
                                 const SizedBox(height: 14),
                                 // KPI Summary Strip
@@ -2571,8 +2623,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                 ),
                                 const SizedBox(height: 14),
                                 // Body of Tab
-                                Expanded(
-                                  child: _analyticsTab == 0
+                                wrapTabBody(
+                                  _analyticsTab == 0
                                       // Tab 0: Weekly Activity BarChart
                                       ? BarChart(
                                           BarChartData(
@@ -2779,36 +2831,30 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                 ),
                               ],
                             ),
+                          );
+
+                    // Quick Actions & Reports (Decreased width: flex 3 vs flex 9)
+                    final quickActionsCard = Container(
+                      height: isMobile ? null : 390,
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: context.surface,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: context.border, width: 1),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                                alpha: isDark ? 0.25 : 0.04),
+                            blurRadius: 20,
+                            offset: const Offset(0, 6),
                           ),
-                        ),
-
-                        if (isMobile)
-                          const SizedBox(height: 20)
-                        else
-                          const SizedBox(width: 18),
-
-                        // Quick Actions & Reports (Decreased width: flex 3 vs flex 9)
-                        Expanded(
-                          flex: isMobile ? 0 : 3,
-                          child: Container(
-                            height: isMobile ? null : 390,
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: context.surface,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: context.border, width: 1),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(
-                                      alpha: isDark ? 0.25 : 0.04),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize:
+                            isMobile ? MainAxisSize.min : MainAxisSize.max,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                                 Row(
                                   children: [
                                     const Icon(Iconsax.flash_1,
@@ -2849,7 +2895,10 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                   color: AppColors.success,
                                   onTap: () => _showReportDialog('salary'),
                                 ),
-                                const Spacer(),
+                                if (isMobile)
+                                  const SizedBox(height: 14)
+                                else
+                                  const Spacer(),
                                 Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
@@ -2877,8 +2926,25 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                 ),
                               ],
                             ),
-                          ),
-                        ),
+                          );
+
+                    if (isMobile) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          analyticsCard,
+                          const SizedBox(height: 20),
+                          quickActionsCard,
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 9, child: analyticsCard),
+                        const SizedBox(width: 18),
+                        Expanded(flex: 3, child: quickActionsCard),
                       ],
                     );
                   },

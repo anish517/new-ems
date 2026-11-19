@@ -39,19 +39,25 @@ class GlobalMonthYearPicker extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(Iconsax.calendar_tick, color: AppColors.primary, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Fiscal Period',
-                    style: TextStyle(
-                      color: context.textPrimary,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800,
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Iconsax.calendar_tick, color: AppColors.primary, size: 16),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'Fiscal Period',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: context.textPrimary,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               InkWell(
                 onTap: () => ref.read(nepaliDateProvider.notifier).resetToCurrent(),
