@@ -10,6 +10,8 @@ User = get_user_model()
 
 @receiver(post_save, sender=Notice)
 def notice_post_notification(sender, instance, created, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if not created:
         return
 

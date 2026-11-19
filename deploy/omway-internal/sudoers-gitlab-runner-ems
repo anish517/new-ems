@@ -1,0 +1,2 @@
+# Install as /etc/sudoers.d/gitlab-runner-ems (mode 440, check with visudo -c).
+gitlab-runner ALL=(root) NOPASSWD: /srv/ems/deploy/ci-deploy.sh

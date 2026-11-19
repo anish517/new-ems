@@ -13,6 +13,8 @@ def increment_leave_balance(sender, instance, created, **kwargs):
     (Paid or Unpaid) for that employee.
     When a leave is de-approved (reversed), subtract it back.
     """
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if created:
         return  # Only care about updates
 
@@ -59,6 +61,8 @@ def update_leave_balance(sender, instance, created, **kwargs):
     else:
         Updates employees' leave balance when LeaveType is updated
     """
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if not instance.organization:
         return  # Guard: cannot create balances without an org
     employees = instance.organization.employees
@@ -85,6 +89,8 @@ def delete_leave_balance(sender, instance, using, **kwargs):
     """
     Deletes all leave balance instances related to the LeaveType instance
     """
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if not instance.organization:
         return
     employees = instance.organization.employees
@@ -94,6 +100,8 @@ def delete_leave_balance(sender, instance, using, **kwargs):
 
 @receiver(post_save, sender=LeaveRequest)
 def send_leave_request_notification(sender, instance, created, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if not instance.employee or not instance.employee.user:
         return
 

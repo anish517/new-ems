@@ -6,9 +6,22 @@ from datetime import timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-local-dev-key-change-in-production')
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '*']
+# Comma-separated. The default matches the hand-patched production copy so this file is a
+# drop-in replacement there; override per host with ALLOWED_HOSTS in the environment.
+ALLOWED_HOSTS = [h.strip() for h in config(
+    'ALLOWED_HOSTS', default='127.0.0.1,localhost,ems.omwaytechnologies.com').split(',') if h.strip()]
+
+# TLS is terminated by nginx / Passenger in front of Django. Without these the admin
+# rejects POSTs over HTTPS and session cookies are never marked secure.
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in config(
+    'CSRF_TRUSTED_ORIGINS', default='https://ems.omwaytechnologies.com').split(',') if o.strip()]
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# Session/CSRF cookies are only used by the admin and the legacy HTML UI (the API is JWT).
+# Secure by default; local HTTP development sets DEBUG=True and gets plain cookies.
+SESSION_COOKIE_SECURE = config('SECURE_COOKIES', default=not DEBUG, cast=bool)
+CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
 
 AUTH_USER_MODEL = 'authentication.Account'
 
@@ -75,25 +88,37 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'base.wsgi.application'
 
-# SQLite for development
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Database: one settings file for every target, selected by environment.
+#   DATABASE_URL set  -> that database (PostgreSQL on omway-internal)
+#   DB_NAME set       -> MySQL/MariaDB (cPanel production, via the Python Selector env)
+#   neither           -> SQLite for local development
+if config('DATABASE_URL', default=''):
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.parse(config('DATABASE_URL'), conn_max_age=600),
     }
-}
-
-# MySQL for production - uncomment and configure
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': config('DB_NAME'),
-#         'USER': config('DB_USER'),
-#         'PASSWORD': config('DB_PASSWORD'),
-#         'HOST': config('DB_HOST'),
-#         'PORT': config('DB_PORT'),
-#     }
-# }
+elif config('DB_NAME', default=''):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': config('DB_NAME'),
+            'USER': config('DB_USER'),
+            'PASSWORD': config('DB_PASSWORD'),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     # Relaxed for development - tighten in production

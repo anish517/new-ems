@@ -1,0 +1,58 @@
+# MR -> test:backend. Push to master -> test:backend, then deploy:production.
+# Runner "omwayinternal" is the production box (shell executor, tag omway-internal).
+# The Flutter client is not built here (not enough RAM on the runner); see
+# deploy/omway-internal/5-deploy-frontend.sh.
+
+stages:
+  - test
+  - deploy
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - when: never
+
+default:
+  tags:
+    - omway-internal
+  interruptible: true
+
+test:backend:
+  stage: test
+  variables:
+    PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  cache:
+    key:
+      files:
+        - backend/requirements.txt
+    paths:
+      - .venv/
+  script:
+    - '[ -x .venv/bin/python ] || python3 -m venv .venv'
+    - .venv/bin/pip install -q -r backend/requirements.txt
+    - cd backend
+    # Only apps with real tests; stray scripts at the backend root fail at import.
+    - ../.venv/bin/python manage.py test --noinput
+        attendance authentication authorization feedback
+        leave_management organization performance salary_management
+
+deploy:production:
+  stage: deploy
+  needs:
+    - test:backend
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+  interruptible: false
+  resource_group: production
+  environment:
+    name: production
+    url: https://ems.omwaytechnologies.com
+  script:
+    - |
+      case "$CI_COMMIT_SHA" in
+        *[!0-9a-f]*|"") echo "refusing to deploy: CI_COMMIT_SHA is not a hex sha"; exit 1 ;;
+      esac
+    - sudo /srv/ems/deploy/ci-deploy.sh "$CI_PROJECT_DIR" "$CI_COMMIT_SHA"
+    - 'curl -sS --fail -o /dev/null -w "public /app/         -> HTTP %{http_code}\n" https://ems.omwaytechnologies.com/app/'
+    - 'code=$(curl -sS -o /dev/null -w "%{http_code}" https://ems.omwaytechnologies.com/api/auth/me/); echo "public /api/auth/me/ -> HTTP $code"; [ "$code" = "401" ]'

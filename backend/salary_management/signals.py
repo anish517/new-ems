@@ -7,6 +7,8 @@ from .models import Salary
 
 @receiver(post_save, sender=Employee)
 def create_employee_salary_instance(sender, instance: Employee, created: bool, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if created:
         Salary.objects.create(
             organization=instance.organization,

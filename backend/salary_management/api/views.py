@@ -18,7 +18,7 @@ from django.contrib.auth import get_user_model
 from attendance.models import Attendance
 from calendar_app.utilities import count_holidays, count_saturdays, total_days_in_month
 from leave_management.models import LeaveRequest
-from organization.models import Employee
+from organization.models import Employee, Organization
 from salary_management.models import Salary, SalaryTransaction, SalaryTaxBand, IncentiveTaxBand, BonusTaxBand, get_tax_from_bands
 
 from .serializers import SalarySerializer, SalaryTransactionSerializer, NetSalarySerializer, SalaryTaxBandSerializer, IncentiveTaxBandSerializer, BonusTaxBandSerializer
@@ -48,10 +48,23 @@ class IsSalaryAdminOrHR(permissions.BasePermission):
         return False
 
 def _get_org(user):
+    """Resolve the tenant for the salary views.
+
+    Employees resolve through their post; organization admins through admin_users.
+    Production's admin account has neither -- it is a superuser with no Employee row,
+    and admin_users is empty -- so superusers and HR fall back to the first
+    organization, the same rule EmployeeExportCSVAPIView applies. Anyone else
+    resolves to None and the calling view fails closed.
+    """
     try:
         return user.employee.post.department.organization
     except Exception:
+        pass
+    if user.organization.exists():
         return user.organization.first()
+    if getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False):
+        return Organization.objects.first()
+    return None
 
 
 class BasicSalaryCreateAPIView(generics.ListCreateAPIView):

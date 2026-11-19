@@ -11,6 +11,8 @@ def track_field_changes(sender, instance, **kwargs):
     """
     Signal to track changes to model fields before saving.
     """
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if instance.pk:
         # Fetch the old instance from the database
         old_instance = sender.objects.get(pk=instance.pk)
@@ -55,6 +57,8 @@ def track_field_changes(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Task)
 def update_timestamps(sender, instance, created, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     if created:
         creator_name = instance.created_by.user.full_name if (instance.created_by and instance.created_by.user) else "Admin"
         

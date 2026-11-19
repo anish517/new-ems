@@ -20,6 +20,8 @@ def get_browser_device(user_agent):
 
 @receiver(user_logged_in)
 def log_user_login(sender, request, user, **kwargs):
+    if kwargs.get("raw", False):
+        return  # loading a fixture (loaddata): no side effects
     organization: Organization = user.employee.organization
     admin_users = organization.admin_users.all()
     user_agent = request.META.get('HTTP_USER_AGENT', '')

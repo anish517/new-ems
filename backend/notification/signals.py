@@ -20,6 +20,8 @@ def _connect_task_signals():
 
         @receiver(post_save, sender=Task)
         def on_task_saved(sender, instance, created, **kwargs):
+            if kwargs.get("raw", False):
+                return  # loading a fixture (loaddata): no side effects
             creator_user = instance.created_by.user if (instance.created_by and hasattr(instance.created_by, 'user')) else None
             assignee_user = instance.assigned_to.user if (instance.assigned_to and hasattr(instance.assigned_to, 'user')) else None
 
@@ -70,6 +72,8 @@ def _connect_leave_signals():
 
         @receiver(post_save, sender=LeaveRequest)
         def on_leave_saved(sender, instance, created, **kwargs):
+            if kwargs.get("raw", False):
+                return  # loading a fixture (loaddata): no side effects
             if created:
                 # 1. Notify the employee who applied
                 if instance.employee and instance.employee.user:
@@ -147,6 +151,8 @@ def _connect_performance_signals():
 
         @receiver(post_save, sender=PerformanceReview)
         def on_performance_saved(sender, instance, created, **kwargs):
+            if kwargs.get("raw", False):
+                return  # loading a fixture (loaddata): no side effects
             if created and hasattr(instance, 'employee') and instance.employee and instance.employee.user:
                 notify_user(
                     user=instance.employee.user,
@@ -169,6 +175,8 @@ def _connect_feedback_signals():
 
         @receiver(post_save, sender=Complain)
         def on_complain_saved(sender, instance, created, **kwargs):
+            if kwargs.get("raw", False):
+                return  # loading a fixture (loaddata): no side effects
             if created:
                 # Notify all superadmin users
                 superadmins = User.objects.filter(is_superuser=True, is_active=True)
@@ -183,6 +191,8 @@ def _connect_feedback_signals():
 
         @receiver(post_save, sender=ComplainReply)
         def on_complain_reply_saved(sender, instance, created, **kwargs):
+            if kwargs.get("raw", False):
+                return  # loading a fixture (loaddata): no side effects
             if created and instance.complain and instance.complain.owner and instance.complain.owner.user:
                 # Notify the employee who filed the complaint that a reply has been posted
                 notify_user(
@@ -205,6 +215,8 @@ def _connect_noticeboard_signals():
 
         @receiver(post_save, sender=Notice)
         def on_notice_saved(sender, instance, created, **kwargs):
+            if kwargs.get("raw", False):
+                return  # loading a fixture (loaddata): no side effects
             if created:
                 notified_user_ids = set()
                 if instance.organization:
@@ -250,6 +262,8 @@ def _connect_salary_signals():
 
         @receiver(post_save, sender=SalaryTransaction)
         def on_salary_transaction_saved(sender, instance, created, **kwargs):
+            if kwargs.get("raw", False):
+                return  # loading a fixture (loaddata): no side effects
             if not instance.salary or not instance.salary.employee or not instance.salary.employee.user:
                 return
             emp_user = instance.salary.employee.user
@@ -277,6 +291,8 @@ def _connect_salary_signals():
 
         @receiver(post_save, sender=Salary)
         def on_salary_saved(sender, instance, created, **kwargs):
+            if kwargs.get("raw", False):
+                return  # loading a fixture (loaddata): no side effects
             if not created and instance.employee and instance.employee.user:
                 notify_user(
                     user=instance.employee.user,
