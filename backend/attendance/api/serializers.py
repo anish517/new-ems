@@ -1,3 +1,4 @@
+import nepali_datetime
 from rest_framework import serializers
 
 from organization.models import Employee
@@ -120,6 +121,26 @@ class AttendanceCorrectionRequestSerializer(serializers.ModelSerializer):
             return obj.reviewed_by.email
         return None
 
+    def validate_requested_date(self, value):
+        if isinstance(value, nepali_datetime.date):
+            parsed_date = value
+        else:
+            raw = str(value).strip()
+            parts = raw.split('-')
+            if len(parts) != 3:
+                raise serializers.ValidationError('Invalid Nepali date format. Expected YYYY-MM-DD.')
+            try:
+                y, m, d = map(int, parts)
+                parsed_date = nepali_datetime.date(y, m, d)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError('Invalid Nepali date. Please provide a valid B.S. date (YYYY-MM-DD).')
+
+        today = nepali_datetime.date.today()
+        if parsed_date > today:
+            raise serializers.ValidationError('Attendance correction cannot be requested for a future date.')
+
+        return str(parsed_date)
+
     def validate(self, attrs):
         cin = attrs.get('requested_check_in')
         cout = attrs.get('requested_check_out')
@@ -127,10 +148,5 @@ class AttendanceCorrectionRequestSerializer(serializers.ModelSerializer):
             import datetime as _dt
             attrs['requested_check_out'] = _dt.time(cout.hour + 12, cout.minute, cout.second)
         return attrs
-
-    def get_reviewed_by_name(self, obj):
-        if obj.reviewed_by:
-            return obj.reviewed_by.full_name or obj.reviewed_by.email
-        return None
 
 

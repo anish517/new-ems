@@ -293,3 +293,76 @@ class NepaliCalendarAttendanceDateTests(TestCase):
         })
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         self.assertEqual(res.data['requested_date'], '2083-06-31')
+
+    def test_correction_request_rejects_future_date_and_allows_today(self):
+        """Correction requests block future BS dates and allow today/past dates."""
+        import datetime as _dt
+        import nepali_datetime
+
+        today = nepali_datetime.date.today()
+        tomorrow = today + _dt.timedelta(days=1)
+
+        self.client.force_authenticate(user=self.emp_user)
+
+        # Future date must be rejected
+        future_res = self.client.post('/api/attendance/correction-requests/', {
+            'requested_date': str(tomorrow),
+            'requested_check_in': '09:30:00',
+            'requested_check_out': '17:30:00',
+            'reason': 'Future date attempt',
+        })
+        self.assertEqual(future_res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('requested_date', future_res.data)
+        self.assertIn('future date', str(future_res.data['requested_date']).lower())
+
+        # Invalid BS date (Mangsir 30, 2083 does not exist) must be rejected
+        invalid_res = self.client.post('/api/attendance/correction-requests/', {
+            'requested_date': '2083-08-30',
+            'requested_check_in': '09:30:00',
+            'reason': 'Invalid date attempt',
+        })
+        self.assertEqual(invalid_res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('requested_date', invalid_res.data)
+
+        # Today must be allowed
+        today_res = self.client.post('/api/attendance/correction-requests/', {
+            'requested_date': str(today),
+            'requested_check_in': '09:30:00',
+            'requested_check_out': '17:30:00',
+            'reason': 'Missed check-out today',
+        })
+        self.assertEqual(today_res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(today_res.data['requested_date'], str(today))
+
+    def test_admin_cannot_approve_future_correction_request_but_can_reject(self):
+        """Admin cannot approve a pre-existing future-dated request, but can reject it."""
+        import datetime as _dt
+        import nepali_datetime
+
+        admin_user = Account.objects.create(
+            email="cal.admin@test.com", first_name="Cal", last_name="Admin", is_superuser=True
+        )
+        self.org.admin_users.add(admin_user)
+
+        tomorrow = nepali_datetime.date.today() + _dt.timedelta(days=1)
+        req_obj = AttendanceCorrectionRequest.objects.create(
+            employee=self.emp,
+            requested_date=tomorrow,
+            requested_check_in=time(9, 30),
+            requested_check_out=time(17, 30),
+            reason='Pre-existing future request',
+        )
+
+        self.client.force_authenticate(user=admin_user)
+        approve_res = self.client.patch(f'/api/attendance/correction-requests/{req_obj.id}/action/', {
+            'status': 'approved',
+        })
+        self.assertEqual(approve_res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('future date', str(approve_res.data.get('error', '')).lower())
+
+        reject_res = self.client.patch(f'/api/attendance/correction-requests/{req_obj.id}/action/', {
+            'status': 'rejected',
+            'admin_note': 'Future date not allowed',
+        })
+        self.assertEqual(reject_res.status_code, status.HTTP_200_OK)
+

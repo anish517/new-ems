@@ -601,6 +601,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     final reasonCtrl = TextEditingController();
     final isMobile = MediaQuery.of(context).size.width < 600;
 
+    final todayNow = NepaliDateTime.now();
+    final maxCorrectionDate =
+        NepaliDateTime(todayNow.year, todayNow.month, todayNow.day);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -659,6 +663,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 labelText: 'Target Date (B.S.) *',
                 prefixIcon: Iconsax.calendar_1,
                 isRequired: true,
+                maxDate: maxCorrectionDate,
               ),
               const SizedBox(height: 12),
               Row(
@@ -734,10 +739,30 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 label: const Text('Submit Correction Request',
                     style: TextStyle(fontWeight: FontWeight.w800)),
                 onPressed: () {
-                  if (dateCtrl.text.isEmpty || reasonCtrl.text.isEmpty) {
+                  if (dateCtrl.text.trim().isEmpty ||
+                      reasonCtrl.text.trim().isEmpty) {
                     ScaffoldMessenger.of(ctx).showSnackBar(
                       const SnackBar(
                           content: Text('Date and Reason are required.'),
+                          backgroundColor: AppColors.error),
+                    );
+                    return;
+                  }
+                  final parsedDate = parseNepaliDateString(dateCtrl.text);
+                  if (parsedDate == null) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(
+                          content: Text(
+                              'Please enter a valid Nepali date (YYYY-MM-DD).'),
+                          backgroundColor: AppColors.error),
+                    );
+                    return;
+                  }
+                  if (parsedDate.isAfter(maxCorrectionDate)) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(
+                          content: Text(
+                              'Attendance correction cannot be requested for a future date.'),
                           backgroundColor: AppColors.error),
                     );
                     return;
@@ -762,10 +787,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
                   Navigator.pop(ctx);
                   _submitCorrectionRequest(
-                    date: dateCtrl.text,
+                    date: formatNepaliDate(parsedDate),
                     checkIn: inVal,
                     checkOut: outVal,
-                    reason: reasonCtrl.text,
+                    reason: reasonCtrl.text.trim(),
                   );
                 },
               ),

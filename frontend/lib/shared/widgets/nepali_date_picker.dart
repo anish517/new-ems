@@ -391,8 +391,8 @@ class _NepaliDatePickerDialogState extends State<NepaliDatePickerDialog> {
                         if (index < emptySlots) return const SizedBox.shrink();
 
                         final day = index - emptySlots + 1;
-                        final isSelected = day == _day;
                         final disabled = _isDisabled(_year, _month, day);
+                        final isSelected = !disabled && day == _day;
 
                         return Material(
                           color: Colors.transparent,

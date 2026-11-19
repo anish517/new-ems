@@ -1060,6 +1060,12 @@ class AdminCorrectionRequestActionAPIView(APIView):
         if action not in ['approved', 'rejected']:
             return Response({'error': 'status must be "approved" or "rejected".'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if action == 'approved' and req_obj.requested_date > nepali_datetime.date.today():
+            return Response(
+                {'error': 'Cannot approve an attendance correction for a future date.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         req_obj.status = action
         req_obj.admin_note = request.data.get('admin_note', '')
         req_obj.reviewed_by = request.user
