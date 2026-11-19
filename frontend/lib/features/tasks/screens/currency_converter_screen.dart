@@ -1,6 +1,6 @@
 import 'package:currency_converter/currency.dart';
 import 'package:currency_converter/currency_converter.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class CurrencyConverterScreen extends StatefulWidget {
   const CurrencyConverterScreen({super.key});

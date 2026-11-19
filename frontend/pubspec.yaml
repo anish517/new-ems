@@ -64,6 +64,7 @@ dependencies:
   google_maps_flutter_web: ^0.6.3
   universal_html: ^2.3.0
   currency_converter: ^3.0.0
+  material_ui: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

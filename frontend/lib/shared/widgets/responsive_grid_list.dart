@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A fluid, responsive grid list that automatically calculates optimal column counts
 /// based on available width while maintaining balanced item proportions.

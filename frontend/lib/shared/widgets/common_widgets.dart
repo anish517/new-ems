@@ -3,7 +3,7 @@ export 'responsive_grid_list.dart';
 export 'nepali_date_picker.dart';
 export 'global_month_year_picker.dart';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
