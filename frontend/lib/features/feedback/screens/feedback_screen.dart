@@ -1437,6 +1437,7 @@ class _SubmitComplaintSheetState extends State<_SubmitComplaintSheet> {
               if (widget.categories.isNotEmpty) ...[
                 DropdownButtonFormField<int>(
                   initialValue: _categoryId,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Category *',
                     prefixIcon: Icon(Iconsax.tag, size: 18),
@@ -1444,7 +1445,11 @@ class _SubmitComplaintSheetState extends State<_SubmitComplaintSheet> {
                   items: widget.categories.map((cat) {
                     return DropdownMenuItem<int>(
                       value: cat['id'] as int,
-                      child: Text(cat['title'] ?? 'Category'),
+                      child: Text(
+                        cat['title'] ?? 'Category',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     );
                   }).toList(),
                   onChanged: (v) => setState(() => _categoryId = v),

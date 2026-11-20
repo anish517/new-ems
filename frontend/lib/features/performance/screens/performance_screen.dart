@@ -1820,7 +1820,8 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
 
             DropdownButtonFormField<int>(
               initialValue: _selEmployee,
-              hint: const Text('Select Employee *'),
+              isExpanded: true,
+              hint: const Text('Select Employee *', maxLines: 1, overflow: TextOverflow.ellipsis),
               decoration: const InputDecoration(
                 prefixIcon: Icon(Iconsax.user, size: 18),
               ),
@@ -1829,7 +1830,11 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
                 final name = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
                 return DropdownMenuItem<int>(
                   value: e['id'],
-                  child: Text(name.isNotEmpty ? name : 'Employee #${e['id']}'),
+                  child: Text(
+                    name.isNotEmpty ? name : 'Employee #${e['id']}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 );
               }).toList(),
               onChanged: (v) => setState(() => _selEmployee = v),
@@ -1841,14 +1846,19 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
                 Expanded(
                   child: DropdownButtonFormField<int>(
                     initialValue: _selCategory,
-                    hint: const Text('Evaluation Category (Optional)'),
+                    isExpanded: true,
+                    hint: const Text('Evaluation Category (Optional)', maxLines: 1, overflow: TextOverflow.ellipsis),
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Iconsax.category, size: 18),
                     ),
                     items: _localCategories.map((c) {
                       return DropdownMenuItem<int>(
                         value: c['id'],
-                        child: Text(c['name'] ?? ''),
+                        child: Text(
+                          c['name'] ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       );
                     }).toList(),
                     onChanged: (v) => setState(() => _selCategory = v),

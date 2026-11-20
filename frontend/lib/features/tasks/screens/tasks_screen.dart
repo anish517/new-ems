@@ -1708,6 +1708,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
             // Project Dropdown
             DropdownButtonFormField<int>(
               initialValue: _selProject,
+              isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Project *',
                 prefixIcon: Icon(Iconsax.briefcase, size: 18),
@@ -1715,7 +1716,11 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
               items: _projects
                   .map((p) => DropdownMenuItem<int>(
                         value: p['id'] as int,
-                        child: Text(p['title'] ?? p['name'] ?? 'Project'),
+                        child: Text(
+                          p['title'] ?? p['name'] ?? 'Project',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ))
                   .toList(),
               onChanged: (v) => setState(() {
@@ -1732,6 +1737,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
             // Assignee Dropdown
             DropdownButtonFormField<int>(
               initialValue: _selEmployee,
+              isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Assign To *',
                 prefixIcon: Icon(Iconsax.user, size: 18),
@@ -1741,8 +1747,11 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                 return DropdownMenuItem<int>(
                   value: e['id'] as int,
                   child: Text(
-                      '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'
-                          .trim()),
+                    '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'
+                        .trim(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 );
               }).toList(),
               onChanged: (v) => setState(() => _selEmployee = v),
@@ -1777,12 +1786,21 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: _priority,
+                    isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Priority'),
                     items: const [
-                      DropdownMenuItem(value: 'low', child: Text('🌱 Low')),
                       DropdownMenuItem(
-                          value: 'medium', child: Text('⚡ Medium')),
-                      DropdownMenuItem(value: 'high', child: Text('🔥 High')),
+                          value: 'low',
+                          child: Text('🌱 Low',
+                              maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      DropdownMenuItem(
+                          value: 'medium',
+                          child: Text('⚡ Medium',
+                              maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      DropdownMenuItem(
+                          value: 'high',
+                          child: Text('🔥 High',
+                              maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ],
                     onChanged: (v) => setState(() => _priority = v!),
                   ),
@@ -1791,12 +1809,17 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: _taskType,
+                    isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Type'),
                     items: const [
                       DropdownMenuItem(
-                          value: 'daily', child: Text('Daily Task')),
+                          value: 'daily',
+                          child: Text('Daily Task',
+                              maxLines: 1, overflow: TextOverflow.ellipsis)),
                       DropdownMenuItem(
-                          value: 'hourly', child: Text('Hourly Task')),
+                          value: 'hourly',
+                          child: Text('Hourly Task',
+                              maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ],
                     onChanged: (v) => setState(() => _taskType = v!),
                   ),

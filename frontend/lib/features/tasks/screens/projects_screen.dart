@@ -1242,17 +1242,24 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
               // Project Type
               DropdownButtonFormField<String>(
                 initialValue: _projectType,
+                isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: "Billing Model *",
                   prefixIcon: Icon(Iconsax.card, size: 18),
                 ),
                 items: const [
                   DropdownMenuItem(
-                      value: "monthly", child: Text("💼 Monthly Retainer")),
+                      value: "monthly",
+                      child: Text("💼 Monthly Retainer",
+                          maxLines: 1, overflow: TextOverflow.ellipsis)),
                   DropdownMenuItem(
-                      value: "daily", child: Text("📅 Daily Rate Billing")),
+                      value: "daily",
+                      child: Text("📅 Daily Rate Billing",
+                          maxLines: 1, overflow: TextOverflow.ellipsis)),
                   DropdownMenuItem(
-                      value: "hourly", child: Text("⚡ Hourly Billing")),
+                      value: "hourly",
+                      child: Text("⚡ Hourly Billing",
+                          maxLines: 1, overflow: TextOverflow.ellipsis)),
                 ],
                 onChanged: (v) => setState(() => _projectType = v!),
               ),

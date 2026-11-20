@@ -3030,6 +3030,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
 
               // Leave Category Selection Dropdown
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Leave Category *',
                   prefixIcon: Icon(Iconsax.category, size: 18),
@@ -3051,6 +3052,8 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                     .map((cat) => DropdownMenuItem(
                           value: cat,
                           child: Text(cat,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style:
                                   const TextStyle(fontWeight: FontWeight.w700)),
                         ))
@@ -3315,6 +3318,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
               if (_isHalfDay) ...[
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Half Day Period',
                     prefixIcon: Icon(Iconsax.clock, size: 18),
@@ -3324,10 +3328,18 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                   items: const [
                     DropdownMenuItem(
                         value: 'First Half',
-                        child: Text('First Half (Morning Session)')),
+                        child: Text(
+                          'First Half (Morning Session)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )),
                     DropdownMenuItem(
                         value: 'Second Half',
-                        child: Text('Second Half (Afternoon Session)')),
+                        child: Text(
+                          'Second Half (Afternoon Session)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )),
                   ],
                   onChanged: (v) => setState(() => _halfDayPeriod = v!),
                 ),

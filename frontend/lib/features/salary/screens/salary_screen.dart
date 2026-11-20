@@ -1982,15 +1982,16 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
             DropdownButtonFormField<String>(
               // ignore: deprecated_member_use
               value: _emailPreference,
+              isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Send Salary Slip Email To',
                 prefixIcon: Icon(Iconsax.sms),
               ),
               items: const [
-                DropdownMenuItem(value: 'official', child: Text('Official Email')),
-                DropdownMenuItem(value: 'personal', child: Text('Personal Email')),
-                DropdownMenuItem(value: 'both', child: Text('Both Emails')),
-                DropdownMenuItem(value: 'none', child: Text('Do Not Send')),
+                DropdownMenuItem(value: 'official', child: Text('Official Email', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                DropdownMenuItem(value: 'personal', child: Text('Personal Email', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                DropdownMenuItem(value: 'both', child: Text('Both Emails', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                DropdownMenuItem(value: 'none', child: Text('Do Not Send', maxLines: 1, overflow: TextOverflow.ellipsis)),
               ],
               onChanged: (v) => setState(() => _emailPreference = v!),
             ),

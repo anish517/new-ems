@@ -23,7 +23,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   int _employeeCount = 0;
   int _pendingLeaves = 0;
   int _onTimeToday = 0;
-  List<Map<String, dynamic>> _todayAttendanceStatus = []; // replaces _onTimeTodayNames
+  List<Map<String, dynamic>> _todayAttendanceStatus =
+      []; // replaces _onTimeTodayNames
   List<Map<String, dynamic>> _punctualityChampions = [];
   String _championsMonthName = '';
   List<double> _weeklyAttendance = List.filled(7, 0.0);
@@ -47,10 +48,29 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   String _formatNepaliHeaderDate(NepaliDateTime d) {
-    const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const weekdays = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday'
+    ];
     const months = [
-      '', 'Baishakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra',
-      'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
+      '',
+      'Baishakh',
+      'Jestha',
+      'Ashadh',
+      'Shrawan',
+      'Bhadra',
+      'Ashwin',
+      'Kartik',
+      'Mangsir',
+      'Poush',
+      'Magh',
+      'Falgun',
+      'Chaitra'
     ];
     final wName = weekdays[(d.weekday - 1).clamp(0, 6)];
     final mName = months[d.month.clamp(1, 12)];
@@ -244,11 +264,14 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2.5),
                         decoration: BoxDecoration(
                           color: count > 0
                               ? headerColor.withValues(alpha: 0.14)
-                              : (isDark ? Colors.white10 : Colors.grey.withValues(alpha: 0.12)),
+                              : (isDark
+                                  ? Colors.white10
+                                  : Colors.grey.withValues(alpha: 0.12)),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
@@ -256,7 +279,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                           style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w800,
-                            color: count > 0 ? headerColor : AppColors.textSecondary,
+                            color: count > 0
+                                ? headerColor
+                                : AppColors.textSecondary,
                           ),
                         ),
                       ),
@@ -265,7 +290,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 ),
                 TextButton.icon(
                   onPressed: onActionTap,
-                  icon: const Icon(Iconsax.arrow_right_3, size: 13, color: AppColors.primary),
+                  icon: const Icon(Iconsax.arrow_right_3,
+                      size: 13, color: AppColors.primary),
                   label: Text(
                     actionLabel,
                     style: const TextStyle(
@@ -275,7 +301,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     ),
                   ),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -298,7 +325,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     String fmtNepali(String raw) {
       if (raw.isEmpty) return '-';
       try {
-        return NepaliDateFormat('dd MMM yyyy').format(NepaliDateTime.parse(raw));
+        return NepaliDateFormat('dd MMM yyyy')
+            .format(NepaliDateTime.parse(raw));
       } catch (_) {
         return raw;
       }
@@ -311,18 +339,22 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       content = _buildEmptyPendingCard(
         icon: Iconsax.calendar_tick,
         title: 'No Pending Leave Requests Found',
-        subtitle: 'All employee leave applications have been reviewed and processed.',
+        subtitle:
+            'All employee leave applications have been reviewed and processed.',
         color: AppColors.warning,
       );
     } else {
       final listWidget = ListView.separated(
         shrinkWrap: count <= 2,
-        physics: count <= 2 ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
+        physics: count <= 2
+            ? const NeverScrollableScrollPhysics()
+            : const ClampingScrollPhysics(),
         itemCount: count,
         separatorBuilder: (_, __) => Divider(height: 1, color: context.border),
         itemBuilder: (_, i) {
           final req = _pendingLeaveRequests[i];
-          final employeeName = req['employee_name']?.toString() ?? 'Staff Member';
+          final employeeName =
+              req['employee_name']?.toString() ?? 'Staff Member';
           final subject = req['subject']?.toString() ?? '-';
           final fromDate = req['from_date']?.toString() ?? '';
           final tillDate = req['till_date']?.toString() ?? '';
@@ -401,7 +433,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1.5),
                             decoration: BoxDecoration(
                               color: leaveTypeColor.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
@@ -442,7 +475,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   padding: const EdgeInsets.only(left: 48),
                   child: Row(
                     children: [
-                      const Icon(Iconsax.calendar_1, size: 13, color: AppColors.textSecondary),
+                      const Icon(Iconsax.calendar_1,
+                          size: 13, color: AppColors.textSecondary),
                       const SizedBox(width: 5),
                       Text(
                         '${fmtNepali(fromDate)} → ${fmtNepali(tillDate)}',
@@ -477,44 +511,65 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     children: [
                       OutlinedButton.icon(
                         onPressed: () => _showRejectLeaveDialog(reqId),
-                        icon: const Icon(Iconsax.close_circle, size: 13, color: AppColors.error),
-                        label: const Text('Reject', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                        icon: const Icon(Iconsax.close_circle,
+                            size: 13, color: AppColors.error),
+                        label: const Text('Reject',
+                            style: TextStyle(
+                                fontSize: 11.5, fontWeight: FontWeight.w700)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.error,
-                          side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          side: BorderSide(
+                              color: AppColors.error.withValues(alpha: 0.5)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           minimumSize: Size.zero,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                       const SizedBox(width: 8),
                       if (isSickLeave && !isInitialApproved)
                         ElevatedButton.icon(
-                          onPressed: () => _actionLeaveRequest(reqId, true, action: 'initial_approve'),
-                          icon: const Icon(Iconsax.verify, size: 13, color: Colors.white),
-                          label: const Text('Initial Approve', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                          onPressed: () => _actionLeaveRequest(reqId, true,
+                              action: 'initial_approve'),
+                          icon: const Icon(Iconsax.verify,
+                              size: 13, color: Colors.white),
+                          label: const Text('Initial Approve',
+                              style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF6366F1),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 6),
                             minimumSize: Size.zero,
                             elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
                           ),
                         )
                       else
                         ElevatedButton.icon(
-                          onPressed: () => _actionLeaveRequest(reqId, true, action: 'final_approve'),
-                          icon: const Icon(Iconsax.tick_circle, size: 13, color: Colors.white),
+                          onPressed: () => _actionLeaveRequest(reqId, true,
+                              action: 'final_approve'),
+                          icon: const Icon(Iconsax.tick_circle,
+                              size: 13, color: Colors.white),
                           label: Text(
                             isSickLeave ? 'Final Approve' : 'Approve',
-                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white),
+                            style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.success,
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 6),
                             minimumSize: Size.zero,
                             elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
                     ],
@@ -549,7 +604,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   decoration: BoxDecoration(
                     color: AppColors.warning.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
+                    border: Border.all(
+                        color: AppColors.warning.withValues(alpha: 0.25)),
                   ),
                   child: Text(
                     'View all $count leave requests in Leaves →',
@@ -589,13 +645,16 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       content = _buildEmptyPendingCard(
         icon: Iconsax.home_wifi,
         title: 'No Pending Remote Work Requests Found',
-        subtitle: 'No work-from-home or remote check-in applications are pending approval.',
+        subtitle:
+            'No work-from-home or remote check-in applications are pending approval.',
         color: AppColors.accent,
       );
     } else {
       final listWidget = ListView.separated(
         shrinkWrap: count <= 2,
-        physics: count <= 2 ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
+        physics: count <= 2
+            ? const NeverScrollableScrollPhysics()
+            : const ClampingScrollPhysics(),
         itemCount: count,
         separatorBuilder: (_, __) => Divider(height: 1, color: context.border),
         itemBuilder: (_, i) {
@@ -619,7 +678,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                         color: AppColors.accent.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Iconsax.home_wifi, size: 17, color: AppColors.accent),
+                      child: const Icon(Iconsax.home_wifi,
+                          size: 17, color: AppColors.accent),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -637,7 +697,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            req['reason'] != null && req['reason'].toString().isNotEmpty
+                            req['reason'] != null &&
+                                    req['reason'].toString().isNotEmpty
                                 ? 'Reason: ${req['reason']}'
                                 : 'No reason specified',
                             style: const TextStyle(
@@ -668,7 +729,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     padding: const EdgeInsets.only(left: 48),
                     child: Row(
                       children: [
-                        const Icon(Iconsax.location, size: 13, color: AppColors.primary),
+                        const Icon(Iconsax.location,
+                            size: 13, color: AppColors.primary),
                         const SizedBox(width: 4),
                         Text(
                           'GPS: ${_formatGps(lat)}, ${_formatGps(lng)}',
@@ -682,7 +744,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                           const SizedBox(width: 6),
                           InkWell(
                             onTap: () async {
-                              final url = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+                              final url =
+                                  'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
                               if (await canLaunchUrlString(url)) {
                                 await launchUrlString(url);
                               }
@@ -710,28 +773,43 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: () => _actionRemoteRequest(req['id'], 'rejected'),
-                        icon: const Icon(Iconsax.close_circle, size: 13, color: AppColors.error),
-                        label: const Text('Reject', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                        onPressed: () =>
+                            _actionRemoteRequest(req['id'], 'rejected'),
+                        icon: const Icon(Iconsax.close_circle,
+                            size: 13, color: AppColors.error),
+                        label: const Text('Reject',
+                            style: TextStyle(
+                                fontSize: 11.5, fontWeight: FontWeight.w700)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.error,
-                          side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          side: BorderSide(
+                              color: AppColors.error.withValues(alpha: 0.5)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           minimumSize: Size.zero,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton.icon(
-                        onPressed: () => _actionRemoteRequest(req['id'], 'approved'),
-                        icon: const Icon(Iconsax.tick_circle, size: 13, color: Colors.white),
-                        label: const Text('Approve WFH', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                        onPressed: () =>
+                            _actionRemoteRequest(req['id'], 'approved'),
+                        icon: const Icon(Iconsax.tick_circle,
+                            size: 13, color: Colors.white),
+                        label: const Text('Approve WFH',
+                            style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF10B981),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
                           minimumSize: Size.zero,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                     ],
@@ -766,7 +844,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   decoration: BoxDecoration(
                     color: AppColors.accent.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.accent.withValues(alpha: 0.25)),
+                    border: Border.all(
+                        color: AppColors.accent.withValues(alpha: 0.25)),
                   ),
                   child: Text(
                     'View all $count requests in Attendance →',
@@ -806,13 +885,16 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       content = _buildEmptyPendingCard(
         icon: Iconsax.user_tick,
         title: 'No Pending Profile Update Requests Found',
-        subtitle: 'All employee profile detail updates have been reviewed and verified.',
+        subtitle:
+            'All employee profile detail updates have been reviewed and verified.',
         color: const Color(0xFFF59E0B),
       );
     } else {
       final listWidget = ListView.separated(
         shrinkWrap: count <= 2,
-        physics: count <= 2 ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
+        physics: count <= 2
+            ? const NeverScrollableScrollPhysics()
+            : const ClampingScrollPhysics(),
         itemCount: count,
         separatorBuilder: (_, __) => Divider(height: 1, color: context.border),
         itemBuilder: (_, i) {
@@ -820,7 +902,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           final field = req['field_name'] ?? '';
           final val = req['new_value']?.toString() ?? '-';
           final oldVal = req['old_value']?.toString() ?? '';
-          final employeeName = req['employee_name']?.toString() ?? 'Staff Member';
+          final employeeName =
+              req['employee_name']?.toString() ?? 'Staff Member';
           final employeeCode = req['employee_code']?.toString() ?? '';
           final int reqId = (req['id'] is int)
               ? (req['id'] as int)
@@ -842,7 +925,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                         color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Iconsax.user_edit, size: 17, color: Color(0xFFF59E0B)),
+                      child: const Icon(Iconsax.user_edit,
+                          size: 17, color: Color(0xFFF59E0B)),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -870,7 +954,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                               ),
                             ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1.5),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.10),
                               borderRadius: BorderRadius.circular(6),
@@ -919,7 +1004,10 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                         children: [
                           const Text(
                             'Requested New: ',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600),
                           ),
                           Text(
                             val,
@@ -941,28 +1029,44 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: () => _actionProfileChangeRequest(reqId, 'rejected'),
-                        icon: const Icon(Iconsax.close_circle, size: 13, color: Color(0xFFEF4444)),
-                        label: const Text('Reject', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                        onPressed: () =>
+                            _actionProfileChangeRequest(reqId, 'rejected'),
+                        icon: const Icon(Iconsax.close_circle,
+                            size: 13, color: Color(0xFFEF4444)),
+                        label: const Text('Reject',
+                            style: TextStyle(
+                                fontSize: 11.5, fontWeight: FontWeight.w700)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFFEF4444),
-                          side: BorderSide(color: const Color(0xFFEF4444).withValues(alpha: 0.5)),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          side: BorderSide(
+                              color: const Color(0xFFEF4444)
+                                  .withValues(alpha: 0.5)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           minimumSize: Size.zero,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton.icon(
-                        onPressed: () => _actionProfileChangeRequest(reqId, 'approved'),
-                        icon: const Icon(Iconsax.tick_circle, size: 13, color: Colors.white),
-                        label: const Text('Approve Update', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                        onPressed: () =>
+                            _actionProfileChangeRequest(reqId, 'approved'),
+                        icon: const Icon(Iconsax.tick_circle,
+                            size: 13, color: Colors.white),
+                        label: const Text('Approve Update',
+                            style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF10B981),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
                           minimumSize: Size.zero,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                     ],
@@ -997,7 +1101,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.25)),
+                    border: Border.all(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.25)),
                   ),
                   child: Text(
                     'View all $count update requests in Employees →',
@@ -1033,7 +1138,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     String fmtNepali(String raw) {
       if (raw.isEmpty) return '-';
       try {
-        return NepaliDateFormat('dd MMM yyyy').format(NepaliDateTime.parse(raw));
+        return NepaliDateFormat('dd MMM yyyy')
+            .format(NepaliDateTime.parse(raw));
       } catch (_) {
         return raw;
       }
@@ -1046,13 +1152,16 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       content = _buildEmptyPendingCard(
         icon: Iconsax.timer_1,
         title: 'No Pending Attendance Corrections Found',
-        subtitle: 'All employee missed punch and time adjustment requests have been reviewed.',
+        subtitle:
+            'All employee missed punch and time adjustment requests have been reviewed.',
         color: const Color(0xFFF59E0B),
       );
     } else {
       final listWidget = ListView.separated(
         shrinkWrap: count <= 2,
-        physics: count <= 2 ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
+        physics: count <= 2
+            ? const NeverScrollableScrollPhysics()
+            : const ClampingScrollPhysics(),
         itemCount: count,
         separatorBuilder: (_, __) => Divider(height: 1, color: context.border),
         itemBuilder: (_, i) {
@@ -1061,7 +1170,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               req['employee']?['full_name']?.toString() ??
               req['employee']?['name']?.toString() ??
               '';
-          final employeeName = (rawName.isNotEmpty && rawName != 'null') ? rawName : 'Staff Member';
+          final employeeName = (rawName.isNotEmpty && rawName != 'null')
+              ? rawName
+              : 'Staff Member';
           final employeeEmail = req['employee_email']?.toString();
           final targetDate = req['requested_date']?.toString() ?? '-';
           final checkIn = req['requested_check_in']?.toString() ?? '--:--';
@@ -1087,7 +1198,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                         color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Iconsax.timer_1, size: 17, color: Color(0xFFF59E0B)),
+                      child: const Icon(Iconsax.timer_1,
+                          size: 17, color: Color(0xFFF59E0B)),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1105,7 +1217,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (employeeEmail != null && employeeEmail.isNotEmpty && employeeEmail != 'null')
+                          if (employeeEmail != null &&
+                              employeeEmail.isNotEmpty &&
+                              employeeEmail != 'null')
                             Text(
                               '($employeeEmail)',
                               style: const TextStyle(
@@ -1115,9 +1229,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1.5),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                              color: const Color(0xFFF59E0B)
+                                  .withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -1155,9 +1271,13 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Iconsax.clock, size: 13, color: AppColors.textSecondary),
+                          const Icon(Iconsax.clock,
+                              size: 13, color: AppColors.textSecondary),
                           const SizedBox(width: 4),
-                          const Text('Requested: ', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          const Text('Requested: ',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary)),
                           Text(
                             'In: $checkIn',
                             style: const TextStyle(
@@ -1167,7 +1287,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          const Text('•', style: TextStyle(color: AppColors.textSecondary)),
+                          const Text('•',
+                              style: TextStyle(color: AppColors.textSecondary)),
                           const SizedBox(width: 6),
                           Text(
                             'Out: $checkOut',
@@ -1200,27 +1321,41 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     children: [
                       OutlinedButton.icon(
                         onPressed: () => _showRejectCorrectionDialog(reqId),
-                        icon: const Icon(Iconsax.close_circle, size: 13, color: AppColors.error),
-                        label: const Text('Reject', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                        icon: const Icon(Iconsax.close_circle,
+                            size: 13, color: AppColors.error),
+                        label: const Text('Reject',
+                            style: TextStyle(
+                                fontSize: 11.5, fontWeight: FontWeight.w700)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.error,
-                          side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          side: BorderSide(
+                              color: AppColors.error.withValues(alpha: 0.5)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           minimumSize: Size.zero,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton.icon(
-                        onPressed: () => _actionCorrectionRequest(reqId, 'approved', ''),
-                        icon: const Icon(Iconsax.tick_circle, size: 13, color: Colors.white),
-                        label: const Text('Approve & Update', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                        onPressed: () =>
+                            _actionCorrectionRequest(reqId, 'approved', ''),
+                        icon: const Icon(Iconsax.tick_circle,
+                            size: 13, color: Colors.white),
+                        label: const Text('Approve & Update',
+                            style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.success,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
                           minimumSize: Size.zero,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                     ],
@@ -1255,7 +1390,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.25)),
+                    border: Border.all(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.25)),
                   ),
                   child: Text(
                     'View all $count requests in Attendance →',
@@ -1295,13 +1431,16 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       content = _buildEmptyPendingCard(
         icon: Iconsax.message_tick,
         title: 'No Pending Feedback or Grievances Found',
-        subtitle: 'All employee feedback and grievance submissions have been resolved.',
+        subtitle:
+            'All employee feedback and grievance submissions have been resolved.',
         color: const Color(0xFFFB923C),
       );
     } else {
       final listWidget = ListView.separated(
         shrinkWrap: count <= 2,
-        physics: count <= 2 ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
+        physics: count <= 2
+            ? const NeverScrollableScrollPhysics()
+            : const ClampingScrollPhysics(),
         itemCount: count,
         separatorBuilder: (_, __) => Divider(height: 1, color: context.border),
         itemBuilder: (_, i) {
@@ -1330,7 +1469,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                         color: const Color(0xFFFB923C).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Iconsax.message_text, size: 17, color: Color(0xFFFB923C)),
+                      child: const Icon(Iconsax.message_text,
+                          size: 17, color: Color(0xFFFB923C)),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1349,7 +1489,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1.5),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.10),
                               borderRadius: BorderRadius.circular(6),
@@ -1364,10 +1505,12 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1.5),
                             decoration: BoxDecoration(
                               color: isAnonymous
-                                  ? const Color(0xFF8B5CF6).withValues(alpha: 0.12)
+                                  ? const Color(0xFF8B5CF6)
+                                      .withValues(alpha: 0.12)
                                   : AppColors.primary.withValues(alpha: 0.10),
                               borderRadius: BorderRadius.circular(6),
                             ),
@@ -1376,7 +1519,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                               style: TextStyle(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w700,
-                                color: isAnonymous ? const Color(0xFF8B5CF6) : AppColors.primary,
+                                color: isAnonymous
+                                    ? const Color(0xFF8B5CF6)
+                                    : AppColors.primary,
                               ),
                             ),
                           ),
@@ -1419,20 +1564,30 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       if (repliesCount > 0)
                         Text(
                           '$repliesCount repl${repliesCount == 1 ? 'y' : 'ies'}',
-                          style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                              fontSize: 11.5,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w600),
                         )
                       else
                         const SizedBox.shrink(),
                       ElevatedButton.icon(
                         onPressed: () => _resolveFeedback(id),
-                        icon: const Icon(Iconsax.tick_circle, size: 13, color: Colors.white),
-                        label: const Text('Resolve', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                        icon: const Icon(Iconsax.tick_circle,
+                            size: 13, color: Colors.white),
+                        label: const Text('Resolve',
+                            style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.success,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
                           minimumSize: Size.zero,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                     ],
@@ -1467,7 +1622,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   decoration: BoxDecoration(
                     color: AppColors.error.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.error.withValues(alpha: 0.25)),
+                    border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.25)),
                   ),
                   child: Text(
                     'View all $count grievances in Feedback →',
@@ -1512,7 +1668,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             content: Row(
               children: [
                 Icon(
-                  status == 'approved' ? Iconsax.tick_circle : Iconsax.close_circle,
+                  status == 'approved'
+                      ? Iconsax.tick_circle
+                      : Iconsax.close_circle,
                   color: Colors.white,
                   size: 20,
                 ),
@@ -1520,9 +1678,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 Text('Profile change request $status successfully'),
               ],
             ),
-            backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
+            backgroundColor:
+                status == 'approved' ? AppColors.success : AppColors.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(20),
           ),
         );
@@ -1540,7 +1700,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             ),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(20),
           ),
         );
@@ -1561,7 +1722,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             content: Row(
               children: [
                 Icon(
-                  status == 'approved' ? Iconsax.tick_circle : Iconsax.close_circle,
+                  status == 'approved'
+                      ? Iconsax.tick_circle
+                      : Iconsax.close_circle,
                   color: Colors.white,
                   size: 20,
                 ),
@@ -1569,9 +1732,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 Text('Request $status successfully'),
               ],
             ),
-            backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
+            backgroundColor:
+                status == 'approved' ? AppColors.success : AppColors.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(20),
           ),
         );
@@ -1589,7 +1754,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             ),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(20),
           ),
         );
@@ -1597,7 +1763,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     }
   }
 
-  Future<void> _actionLeaveRequest(int id, bool approve, {String reason = 'Rejected by administrator', String action = 'final_approve'}) async {
+  Future<void> _actionLeaveRequest(int id, bool approve,
+      {String reason = 'Rejected by administrator',
+      String action = 'final_approve'}) async {
     try {
       final actualAction = approve ? action : 'reject';
       final Map<String, dynamic> patchData = {'action': actualAction};
@@ -1644,7 +1812,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 ? const Color(0xFF6366F1)
                 : (approve ? AppColors.success : AppColors.error),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(20),
           ),
         );
@@ -1657,12 +1826,15 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               children: [
                 const Icon(Iconsax.warning_2, color: Colors.white, size: 20),
                 const SizedBox(width: 12),
-                Expanded(child: Text('Error updating leave request: ${ApiService.getErrorMessage(e)}')),
+                Expanded(
+                    child: Text(
+                        'Error updating leave request: ${ApiService.getErrorMessage(e)}')),
               ],
             ),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(20),
           ),
         );
@@ -1685,12 +1857,16 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 color: AppColors.error.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Iconsax.close_circle, color: AppColors.error, size: 20),
+              child: const Icon(Iconsax.close_circle,
+                  color: AppColors.error, size: 20),
             ),
             const SizedBox(width: 10),
             Text(
               'Reject Leave Request',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ctx.textPrimary),
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: ctx.textPrimary),
             ),
           ],
         ),
@@ -1726,13 +1902,17 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           ElevatedButton(
             onPressed: () {
               final reason = controller.text.trim();
-              Navigator.pop(ctx, reason.isNotEmpty ? reason : 'Rejected by administrator');
+              Navigator.pop(ctx,
+                  reason.isNotEmpty ? reason : 'Rejected by administrator');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Reject Leave', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('Reject Leave',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1769,8 +1949,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
       // Load remote requests
       try {
-        final remoteRes = await ApiService().get('${AppConstants.attendanceBase}/remote-requests/');
-        final remoteData = remoteRes.data is List ? remoteRes.data : (remoteRes.data['results'] ?? []);
+        final remoteRes = await ApiService()
+            .get('${AppConstants.attendanceBase}/remote-requests/');
+        final remoteData = remoteRes.data is List
+            ? remoteRes.data
+            : (remoteRes.data['results'] ?? []);
         if (mounted) {
           setState(() {
             _pendingRemoteRequests = (remoteData as List).toList();
@@ -1780,8 +1963,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
       // Load pending profile change requests
       try {
-        final profileRes = await ApiService().get('${AppConstants.organizationBase}/profile-change-requests/?status=pending');
-        final profileData = profileRes.data is List ? profileRes.data : (profileRes.data['results'] ?? []);
+        final profileRes = await ApiService().get(
+            '${AppConstants.organizationBase}/profile-change-requests/?status=pending');
+        final profileData = profileRes.data is List
+            ? profileRes.data
+            : (profileRes.data['results'] ?? []);
         if (mounted) {
           setState(() {
             _pendingProfileChangeRequests = (profileData as List).toList();
@@ -1857,7 +2043,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
       // Load monthly Punctuality Champions
       try {
-        final champRes = await ApiService().get(AppConstants.punctualityChampions);
+        final champRes =
+            await ApiService().get(AppConstants.punctualityChampions);
         if (champRes.data is Map) {
           final data = champRes.data as Map<String, dynamic>;
           final list = data['champions'] as List? ?? [];
@@ -1873,7 +2060,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       // Load pending feedback & complaints
       try {
         final fbRes = await ApiService().get('${AppConstants.feedbackBase}/');
-        final fbData = fbRes.data is List ? fbRes.data as List : (fbRes.data['results'] as List? ?? []);
+        final fbData = fbRes.data is List
+            ? fbRes.data as List
+            : (fbRes.data['results'] as List? ?? []);
         if (mounted) {
           final pendingOnly = fbData.where((c) {
             final s = (c['status'] ?? 'pending').toString().toLowerCase();
@@ -1888,12 +2077,15 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
       // Load today's attendance status (present / absent per employee)
       try {
-        final todayRes = await ApiService().get(AppConstants.todayAttendanceStatus);
+        final todayRes =
+            await ApiService().get(AppConstants.todayAttendanceStatus);
         final todayData = todayRes.data is List ? todayRes.data as List : [];
         if (mounted) {
           setState(() {
             _todayAttendanceStatus = todayData.cast<Map<String, dynamic>>();
-            _onTimeToday = _todayAttendanceStatus.where((e) => e['is_present'] == true).length;
+            _onTimeToday = _todayAttendanceStatus
+                .where((e) => e['is_present'] == true)
+                .length;
           });
         }
       } catch (_) {}
@@ -1903,7 +2095,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
   Future<void> _resolveFeedback(int id) async {
     try {
-      await ApiService().patch('${AppConstants.feedbackBase}/$id/', data: {'status': 'resolved'});
+      await ApiService().patch('${AppConstants.feedbackBase}/$id/',
+          data: {'status': 'resolved'});
       _loadStats();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1915,7 +2108,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             ]),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(20),
           ),
         );
@@ -1927,7 +2121,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             content: Text('Error: ${ApiService.getErrorMessage(e)}'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(20),
           ),
         );
@@ -1949,11 +2144,14 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             content: Row(children: [
               const Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
               const SizedBox(width: 10),
-              Text('Correction request ${action == 'approved' ? 'approved & updated' : 'rejected'}'),
+              Text(
+                  'Correction request ${action == 'approved' ? 'approved & updated' : 'rejected'}'),
             ]),
-            backgroundColor: action == 'approved' ? AppColors.success : AppColors.error,
+            backgroundColor:
+                action == 'approved' ? AppColors.success : AppColors.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(20),
           ),
         );
@@ -1965,7 +2163,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             content: Text('Error: ${ApiService.getErrorMessage(e)}'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(20),
           ),
         );
@@ -1988,11 +2187,15 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 color: AppColors.error.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Iconsax.close_circle, color: AppColors.error, size: 20),
+              child: const Icon(Iconsax.close_circle,
+                  color: AppColors.error, size: 20),
             ),
             const SizedBox(width: 10),
             Text('Reject Correction',
-                style: TextStyle(color: ctx.textPrimary, fontSize: 17, fontWeight: FontWeight.w800)),
+                style: TextStyle(
+                    color: ctx.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800)),
           ],
         ),
         content: Column(
@@ -2007,8 +2210,10 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               maxLines: 3,
               decoration: InputDecoration(
                 hintText: 'Reason for rejection (e.g. invalid time logs)...',
-                hintStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                hintStyle: const TextStyle(
+                    fontSize: 13, color: AppColors.textSecondary),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],
@@ -2021,11 +2226,13 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Reject Request',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -2084,7 +2291,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.12),
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: const Text(
@@ -2108,1410 +2316,1548 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                   color: context.textPrimary,
                                 ),
                               ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Iconsax.calendar_1,
-                                  size: 14, color: AppColors.textSecondary),
-                              const SizedBox(width: 6),
-                              Text(
-                                _formatNepaliHeaderDate(nowNepali),
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.textSecondary,
-                                ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Iconsax.calendar_1,
+                                      size: 14, color: AppColors.textSecondary),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _formatNepaliHeaderDate(nowNepali),
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        if (!isTight) ...[
-                          const ThemeToggleBtn(),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Iconsax.notification, size: 20),
-                            tooltip: 'Notifications',
-                            onPressed: () => context.go('/notifications'),
-                            style: IconButton.styleFrom(
-                              backgroundColor: context.surface,
-                              padding: const EdgeInsets.all(10),
-                              side: BorderSide(color: context.border, width: 1),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                        GestureDetector(
-                          onTap: () => context.go('/profile'),
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: const LinearGradient(
-                                colors: [AppColors.primary, AppColors.accent],
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withValues(alpha: 0.25),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
+                        ),
+                        Row(
+                          children: [
+                            if (!isTight) ...[
+                              const ThemeToggleBtn(),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon:
+                                    const Icon(Iconsax.notification, size: 20),
+                                tooltip: 'Notifications',
+                                onPressed: () => context.go('/notifications'),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: context.surface,
+                                  padding: const EdgeInsets.all(10),
+                                  side: BorderSide(
+                                      color: context.border, width: 1),
                                 ),
-                              ],
+                              ),
+                              const SizedBox(width: 12),
+                            ],
+                            GestureDetector(
+                              onTap: () => context.go('/profile'),
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      AppColors.primary,
+                                      AppColors.accent
+                                    ],
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.25),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: context.surface,
+                                  backgroundImage: user?.profilePicture != null
+                                      ? NetworkImage(user!.profilePicture!)
+                                      : null,
+                                  child: user?.profilePicture == null
+                                      ? Text(
+                                          user?.firstName.isNotEmpty == true
+                                              ? user!.firstName[0].toUpperCase()
+                                              : 'A',
+                                          style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                              ),
                             ),
-                            child: CircleAvatar(
-                              radius: 20,
-                              backgroundColor: context.surface,
-                              backgroundImage: user?.profilePicture != null
-                                  ? NetworkImage(user!.profilePicture!)
-                                  : null,
-                              child: user?.profilePicture == null
-                                  ? Text(
-                                      user?.firstName.isNotEmpty == true
-                                          ? user!.firstName[0].toUpperCase()
-                                          : 'A',
-                                      style: const TextStyle(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                          ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
 
-                const SizedBox(height: 28),
+                    const SizedBox(height: 28),
 
-                // -- KPI Summary Cards ------------------------------------------─
-                if (_loading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40),
-                    child: Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
-                    ),
-                  )
-                else
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isMobile = constraints.maxWidth < 680;
+                    // -- KPI Summary Cards ------------------------------------------─
+                    if (_loading)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                              color: AppColors.primary),
+                        ),
+                      )
+                    else
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isMobile = constraints.maxWidth < 680;
 
-                      if (isMobile) {
-                        return Column(
-                          children: [
-                            _KpiCard(
-                              title: 'Total Employees',
-                              value: '$_employeeCount',
-                              subtitle: 'Active staff members',
-                              icon: Iconsax.people,
-                              color: AppColors.primary,
-                              onTap: () => context.go('/employees'),
-                            ),
-                            const SizedBox(height: 14),
-                            _KpiCard(
-                              title: 'Pending Leaves',
-                              value: '$_pendingLeaves',
-                              subtitle: 'Requires review',
-                              icon: Iconsax.calendar_remove,
-                              color: AppColors.warning,
-                              onTap: () => context.go('/leave'),
-                            ),
-                            const SizedBox(height: 14),
-                            _KpiCard(
-                              title: 'Present Today',
-                              value: '$_onTimeToday',
-                              subtitle: 'Employees checked in',
-                              icon: Iconsax.people,
-                              color: AppColors.success,
-                              onTap: null,
-                            ),
-                            const SizedBox(height: 14),
-                            _KpiCard(
-                              title: 'Pending Feedback',
-                              value: '$_pendingFeedbackCount',
-                              subtitle: 'Unresolved grievances',
-                              icon: Iconsax.messages_3,
-                              color: AppColors.error,
-                              onTap: () => context.go('/feedback'),
-                            ),
-                          ],
-                        );
-                      }
+                          if (isMobile) {
+                            return Column(
+                              children: [
+                                _KpiCard(
+                                  title: 'Total Employees',
+                                  value: '$_employeeCount',
+                                  subtitle: 'Active staff members',
+                                  icon: Iconsax.people,
+                                  color: AppColors.primary,
+                                  onTap: () => context.go('/employees'),
+                                ),
+                                const SizedBox(height: 14),
+                                _KpiCard(
+                                  title: 'Pending Leaves',
+                                  value: '$_pendingLeaves',
+                                  subtitle: 'Requires review',
+                                  icon: Iconsax.calendar_remove,
+                                  color: AppColors.warning,
+                                  onTap: () => context.go('/leave'),
+                                ),
+                                const SizedBox(height: 14),
+                                _KpiCard(
+                                  title: 'Present Today',
+                                  value: '$_onTimeToday',
+                                  subtitle: 'Employees checked in',
+                                  icon: Iconsax.people,
+                                  color: AppColors.success,
+                                  onTap: null,
+                                ),
+                                const SizedBox(height: 14),
+                                _KpiCard(
+                                  title: 'Pending Feedback',
+                                  value: '$_pendingFeedbackCount',
+                                  subtitle: 'Unresolved grievances',
+                                  icon: Iconsax.messages_3,
+                                  color: AppColors.error,
+                                  onTap: () => context.go('/feedback'),
+                                ),
+                              ],
+                            );
+                          }
 
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: _KpiCard(
-                              title: 'Total Employees',
-                              value: '$_employeeCount',
-                              subtitle: 'Active staff members',
-                              icon: Iconsax.people,
-                              color: AppColors.primary,
-                              onTap: () => context.go('/employees'),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _KpiCard(
-                              title: 'Pending Leaves',
-                              value: '$_pendingLeaves',
-                              subtitle: 'Requires review',
-                              icon: Iconsax.calendar_remove,
-                              color: AppColors.warning,
-                              onTap: () => context.go('/leave'),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _KpiCard(
-                              title: 'Present Today',
-                              value: '$_onTimeToday',
-                              subtitle: 'Employees checked in',
-                              icon: Iconsax.people,
-                              color: AppColors.success,
-                              onTap: null,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _KpiCard(
-                              title: 'Pending Feedback',
-                              value: '$_pendingFeedbackCount',
-                              subtitle: 'Unresolved grievances',
-                              icon: Iconsax.messages_3,
-                              color: AppColors.error,
-                              onTap: () => context.go('/feedback'),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-
-                const SizedBox(height: 28),
-
-                // -- Attendance Chart & Quick Actions Row ------------------------─
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isMobile = constraints.maxWidth < 900;
-                    final timeBuckets = _getTodayTimeBuckets();
-                    final presentCount = _todayAttendanceStatus
-                        .where((e) => e['is_present'] == true)
-                        .length;
-
-                    Widget wrapTabBody(Widget body) {
-                      if (!isMobile) return Expanded(child: body);
-                      if (_analyticsTab == 0) {
-                        return SizedBox(height: 240, child: body);
-                      }
-                      return body;
-                    }
-
-                    // Attendance & Punch Time Analytics Card
-                    final analyticsCard = Container(
-                      height: isMobile ? null : 390,
-                      padding: const EdgeInsets.all(22),
-                      decoration: BoxDecoration(
-                        color: context.surface,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: context.border, width: 1),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(
-                                alpha: isDark ? 0.25 : 0.04),
-                            blurRadius: 20,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: _KpiCard(
+                                  title: 'Total Employees',
+                                  value: '$_employeeCount',
+                                  subtitle: 'Active staff members',
+                                  icon: Iconsax.people,
+                                  color: AppColors.primary,
+                                  onTap: () => context.go('/employees'),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _KpiCard(
+                                  title: 'Pending Leaves',
+                                  value: '$_pendingLeaves',
+                                  subtitle: 'Requires review',
+                                  icon: Iconsax.calendar_remove,
+                                  color: AppColors.warning,
+                                  onTap: () => context.go('/leave'),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _KpiCard(
+                                  title: 'Present Today',
+                                  value: '$_onTimeToday',
+                                  subtitle: 'Employees checked in',
+                                  icon: Iconsax.people,
+                                  color: AppColors.success,
+                                  onTap: null,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _KpiCard(
+                                  title: 'Pending Feedback',
+                                  value: '$_pendingFeedbackCount',
+                                  subtitle: 'Unresolved grievances',
+                                  icon: Iconsax.messages_3,
+                                  color: AppColors.error,
+                                  onTap: () => context.go('/feedback'),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
-                      child: Column(
-                        mainAxisSize:
-                            isMobile ? MainAxisSize.min : MainAxisSize.max,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                                // Header with Title and Segmented View Switch
-                                Builder(
-                                  builder: (_) {
-                                    final titleBlock = Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.all(6),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.primary
-                                                    .withValues(alpha: 0.12),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: const Icon(Iconsax.chart_21,
-                                                  size: 16,
-                                                  color: AppColors.primary),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Flexible(
-                                              child: Text(
-                                                'Attendance & Punch Analytics',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w800,
-                                                  letterSpacing: -0.3,
-                                                  color: context.textPrimary,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 3),
-                                        const Text(
-                                          'Live check-in patterns, punctuality & time distribution',
-                                          style: TextStyle(
-                                            fontSize: 11.5,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                    );
 
-                                    final toggleBlock = SingleChildScrollView(
-                                      scrollDirection: Axis.horizontal,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(3),
-                                        decoration: BoxDecoration(
-                                          color: context.card,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border:
-                                              Border.all(color: context.border),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            InkWell(
-                                              onTap: () => setState(
-                                                  () => _analyticsTab = 0),
+                    const SizedBox(height: 28),
+
+                    // -- Attendance Chart & Quick Actions Row ------------------------─
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isMobile = constraints.maxWidth < 900;
+                        final timeBuckets = _getTodayTimeBuckets();
+                        final presentCount = _todayAttendanceStatus
+                            .where((e) => e['is_present'] == true)
+                            .length;
+
+                        Widget wrapTabBody(Widget body) {
+                          if (!isMobile) return Expanded(child: body);
+                          if (_analyticsTab == 0) {
+                            return SizedBox(height: 240, child: body);
+                          }
+                          return body;
+                        }
+
+                        // Attendance & Punch Time Analytics Card
+                        final analyticsCard = Container(
+                          height: isMobile ? null : 390,
+                          padding: const EdgeInsets.all(22),
+                          decoration: BoxDecoration(
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: context.border, width: 1),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black
+                                    .withValues(alpha: isDark ? 0.25 : 0.04),
+                                blurRadius: 20,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize:
+                                isMobile ? MainAxisSize.min : MainAxisSize.max,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header with Title and Segmented View Switch
+                              Builder(
+                                builder: (_) {
+                                  final titleBlock = Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primary
+                                                  .withValues(alpha: 0.12),
                                               borderRadius:
-                                                  BorderRadius.circular(9),
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 5),
-                                                decoration: BoxDecoration(
-                                                  color: _analyticsTab == 0
-                                                      ? AppColors.primary
-                                                      : Colors.transparent,
-                                                  borderRadius:
-                                                      BorderRadius.circular(9),
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      Iconsax.chart_2,
-                                                      size: 13,
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: const Icon(Iconsax.chart_21,
+                                                size: 16,
+                                                color: AppColors.primary),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            child: Text(
+                                              'Attendance & Punch Analytics',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: -0.3,
+                                                color: context.textPrimary,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 3),
+                                      const Text(
+                                        'Live check-in patterns, punctuality & time distribution',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+
+                                  final toggleBlock = SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(3),
+                                      decoration: BoxDecoration(
+                                        color: context.card,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border:
+                                            Border.all(color: context.border),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          InkWell(
+                                            onTap: () => setState(
+                                                () => _analyticsTab = 0),
+                                            borderRadius:
+                                                BorderRadius.circular(9),
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: _analyticsTab == 0
+                                                    ? AppColors.primary
+                                                    : Colors.transparent,
+                                                borderRadius:
+                                                    BorderRadius.circular(9),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Iconsax.chart_2,
+                                                    size: 13,
+                                                    color: _analyticsTab == 0
+                                                        ? Colors.white
+                                                        : AppColors
+                                                            .textSecondary,
+                                                  ),
+                                                  const SizedBox(width: 5),
+                                                  Text(
+                                                    'Weekly Activity',
+                                                    style: TextStyle(
+                                                      fontSize: 11.5,
+                                                      fontWeight:
+                                                          _analyticsTab == 0
+                                                              ? FontWeight.w800
+                                                              : FontWeight.w600,
                                                       color: _analyticsTab == 0
                                                           ? Colors.white
                                                           : AppColors
                                                               .textSecondary,
                                                     ),
-                                                    const SizedBox(width: 5),
-                                                    Text(
-                                                      'Weekly Activity',
-                                                      style: TextStyle(
-                                                        fontSize: 11.5,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          InkWell(
+                                            onTap: () => setState(
+                                                () => _analyticsTab = 1),
+                                            borderRadius:
+                                                BorderRadius.circular(9),
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: _analyticsTab == 1
+                                                    ? AppColors.primary
+                                                    : Colors.transparent,
+                                                borderRadius:
+                                                    BorderRadius.circular(9),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Iconsax.clock,
+                                                    size: 13,
+                                                    color: _analyticsTab == 1
+                                                        ? Colors.white
+                                                        : AppColors
+                                                            .textSecondary,
+                                                  ),
+                                                  const SizedBox(width: 5),
+                                                  Text(
+                                                    "Today's Punch Time",
+                                                    style: TextStyle(
+                                                      fontSize: 11.5,
+                                                      fontWeight:
+                                                          _analyticsTab == 1
+                                                              ? FontWeight.w800
+                                                              : FontWeight.w600,
+                                                      color: _analyticsTab == 1
+                                                          ? Colors.white
+                                                          : AppColors
+                                                              .textSecondary,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+
+                                  if (constraints.maxWidth < 620) {
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        titleBlock,
+                                        const SizedBox(height: 10),
+                                        toggleBlock,
+                                      ],
+                                    );
+                                  }
+
+                                  return Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(child: titleBlock),
+                                      const SizedBox(width: 12),
+                                      toggleBlock,
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 14),
+                              // KPI Summary Strip
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: context.card,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: context.border),
+                                ),
+                                child: Wrap(
+                                  spacing: 16,
+                                  runSpacing: 6,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Iconsax.timer_1,
+                                            size: 13, color: AppColors.primary),
+                                        const SizedBox(width: 5),
+                                        const Text(
+                                          'Avg Check-in: ',
+                                          style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: AppColors.textSecondary),
+                                        ),
+                                        Text(
+                                          _getTodayAvgCheckIn(),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: context.textPrimary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Iconsax.tick_circle,
+                                            size: 13, color: AppColors.success),
+                                        const SizedBox(width: 5),
+                                        const Text(
+                                          'On-Time Rate: ',
+                                          style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: AppColors.textSecondary),
+                                        ),
+                                        Text(
+                                          _getTodayOnTimeRate(),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.success,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Iconsax.user_tick,
+                                            size: 13, color: AppColors.accent),
+                                        const SizedBox(width: 5),
+                                        const Text(
+                                          'Present: ',
+                                          style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: AppColors.textSecondary),
+                                        ),
+                                        Text(
+                                          '$presentCount / $_employeeCount Staff',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: context.textPrimary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Iconsax.info_circle,
+                                              size: 11,
+                                              color: AppColors.primary),
+                                          SizedBox(width: 3),
+                                          Text(
+                                            'Tap any column/bar to view staff names',
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              // Body of Tab
+                              wrapTabBody(
+                                _analyticsTab == 0
+                                    // Tab 0: Weekly Activity BarChart
+                                    ? BarChart(
+                                        BarChartData(
+                                          alignment:
+                                              BarChartAlignment.spaceAround,
+                                          maxY: 120,
+                                          barTouchData: BarTouchData(
+                                            enabled: true,
+                                            touchCallback: (FlTouchEvent event,
+                                                BarTouchResponse? response) {
+                                              if (!event
+                                                      .isInterestedForInteractions ||
+                                                  response == null ||
+                                                  response.spot == null) {
+                                                return;
+                                              }
+                                              if (event is FlTapUpEvent) {
+                                                final groupIndex = response
+                                                    .spot!.touchedBarGroupIndex;
+                                                const days = [
+                                                  'Monday',
+                                                  'Tuesday',
+                                                  'Wednesday',
+                                                  'Thursday',
+                                                  'Friday',
+                                                  'Saturday',
+                                                  'Sunday'
+                                                ];
+                                                final dayName = days[
+                                                    groupIndex.clamp(0, 6)];
+                                                final emps =
+                                                    _getWeeklyDayEmployees(
+                                                        groupIndex);
+                                                _showEmployeePunchInspector(
+                                                  title: '$dayName Check-ins',
+                                                  subtitle:
+                                                      'Employees logged on $dayName (Current Week)',
+                                                  employees: emps,
+                                                  themeColor: AppColors.primary,
+                                                );
+                                              }
+                                            },
+                                            touchTooltipData:
+                                                BarTouchTooltipData(
+                                              getTooltipColor: (_) => isDark
+                                                  ? const Color(0xFF1E293B)
+                                                  : Colors.white,
+                                              tooltipPadding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 8),
+                                              tooltipMargin: 8,
+                                              getTooltipItem: (group,
+                                                  groupIndex, rod, rodIndex) {
+                                                const days = [
+                                                  'Monday',
+                                                  'Tuesday',
+                                                  'Wednesday',
+                                                  'Thursday',
+                                                  'Friday',
+                                                  'Saturday',
+                                                  'Sunday'
+                                                ];
+                                                final dayName = days[group.x
+                                                    .toInt()
+                                                    .clamp(0, 6)];
+                                                final emps =
+                                                    _getWeeklyDayEmployees(
+                                                        group.x.toInt());
+                                                return BarTooltipItem(
+                                                  '$dayName\n',
+                                                  TextStyle(
+                                                    color: context.textPrimary,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12,
+                                                  ),
+                                                  children: [
+                                                    TextSpan(
+                                                      text:
+                                                          '${emps.length} Checked In (${rod.toY.toStringAsFixed(0)}%)\n',
+                                                      style: const TextStyle(
+                                                        color:
+                                                            AppColors.primary,
+                                                        fontSize: 11,
                                                         fontWeight:
-                                                            _analyticsTab == 0
-                                                                ? FontWeight
-                                                                    .w800
-                                                                : FontWeight
-                                                                    .w600,
-                                                        color: _analyticsTab ==
-                                                                0
-                                                            ? Colors.white
-                                                            : AppColors
-                                                                .textSecondary,
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    const TextSpan(
+                                                      text:
+                                                          'Tap to view employee list',
+                                                      style: TextStyle(
+                                                        color: AppColors
+                                                            .textSecondary,
+                                                        fontSize: 9.5,
+                                                        fontStyle:
+                                                            FontStyle.italic,
                                                       ),
                                                     ),
                                                   ],
-                                                ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                          titlesData: FlTitlesData(
+                                            show: true,
+                                            bottomTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                showTitles: true,
+                                                getTitlesWidget: (v, meta) {
+                                                  const days = [
+                                                    'Mon',
+                                                    'Tue',
+                                                    'Wed',
+                                                    'Thu',
+                                                    'Fri',
+                                                    'Sat',
+                                                    'Sun'
+                                                  ];
+                                                  final i = v.toInt();
+                                                  final isToday = (NepaliDateTime
+                                                                      .now()
+                                                                  .weekday ==
+                                                              1
+                                                          ? 6
+                                                          : NepaliDateTime.now()
+                                                                  .weekday -
+                                                              2) ==
+                                                      i;
+                                                  return SideTitleWidget(
+                                                    axisSide: meta.axisSide,
+                                                    child: Text(
+                                                      i >= 0 && i < 7
+                                                          ? days[i]
+                                                          : '',
+                                                      style: TextStyle(
+                                                        color: isToday
+                                                            ? AppColors.primary
+                                                            : AppColors
+                                                                .textSecondary,
+                                                        fontWeight: isToday
+                                                            ? FontWeight.w900
+                                                            : FontWeight.w600,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
                                               ),
                                             ),
-                                            InkWell(
-                                              onTap: () => setState(
-                                                  () => _analyticsTab = 1),
-                                              borderRadius:
-                                                  BorderRadius.circular(9),
-                                              child: Container(
+                                            leftTitles: const AxisTitles(
+                                                sideTitles: SideTitles(
+                                                    showTitles: false)),
+                                            topTitles: const AxisTitles(
+                                                sideTitles: SideTitles(
+                                                    showTitles: false)),
+                                            rightTitles: const AxisTitles(
+                                                sideTitles: SideTitles(
+                                                    showTitles: false)),
+                                          ),
+                                          gridData:
+                                              const FlGridData(show: false),
+                                          borderData: FlBorderData(show: false),
+                                          barGroups: List.generate(7, (i) {
+                                            final val =
+                                                i < _weeklyAttendance.length
+                                                    ? _weeklyAttendance[i]
+                                                    : 0.0;
+                                            final isWeekend = i >= 5;
+                                            return _bar(i, val,
+                                                isWeekend: isWeekend);
+                                          }),
+                                        ),
+                                      )
+                                    // Tab 1: Today's Punch Time Windows Breakdown
+                                    : Builder(
+                                        builder: (ctx) {
+                                          final totalCount =
+                                              _todayAttendanceStatus.isEmpty
+                                                  ? 1
+                                                  : _todayAttendanceStatus
+                                                      .length;
+                                          if (isMobile) {
+                                            return Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                        child:
+                                                            _buildTimeSlotCard(
+                                                                timeBuckets[0],
+                                                                totalCount,
+                                                                ctx)),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                        child:
+                                                            _buildTimeSlotCard(
+                                                                timeBuckets[1],
+                                                                totalCount,
+                                                                ctx)),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 10),
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                        child:
+                                                            _buildTimeSlotCard(
+                                                                timeBuckets[2],
+                                                                totalCount,
+                                                                ctx)),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                        child:
+                                                            _buildTimeSlotCard(
+                                                                timeBuckets[3],
+                                                                totalCount,
+                                                                ctx)),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 10),
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                        child:
+                                                            _buildTimeSlotCard(
+                                                                timeBuckets[4],
+                                                                totalCount,
+                                                                ctx)),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                        child:
+                                                            _buildTimeSlotCard(
+                                                                timeBuckets[5],
+                                                                totalCount,
+                                                                ctx)),
+                                                  ],
+                                                ),
+                                              ],
+                                            );
+                                          }
+                                          return Column(
+                                            children: [
+                                              Expanded(
+                                                child: Row(
+                                                  children: [
+                                                    Expanded(
+                                                        child:
+                                                            _buildTimeSlotCard(
+                                                                timeBuckets[0],
+                                                                totalCount,
+                                                                ctx)),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                        child:
+                                                            _buildTimeSlotCard(
+                                                                timeBuckets[1],
+                                                                totalCount,
+                                                                ctx)),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                        child:
+                                                            _buildTimeSlotCard(
+                                                                timeBuckets[2],
+                                                                totalCount,
+                                                                ctx)),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 10),
+                                              Expanded(
+                                                child: Row(
+                                                  children: [
+                                                    Expanded(
+                                                        child:
+                                                            _buildTimeSlotCard(
+                                                                timeBuckets[3],
+                                                                totalCount,
+                                                                ctx)),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                        child:
+                                                            _buildTimeSlotCard(
+                                                                timeBuckets[4],
+                                                                totalCount,
+                                                                ctx)),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                        child:
+                                                            _buildTimeSlotCard(
+                                                                timeBuckets[5],
+                                                                totalCount,
+                                                                ctx)),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      ),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        // Quick Actions & Reports (Decreased width: flex 3 vs flex 9)
+                        final quickActionsCard = Container(
+                          height: isMobile ? null : 390,
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: context.border, width: 1),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black
+                                    .withValues(alpha: isDark ? 0.25 : 0.04),
+                                blurRadius: 20,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize:
+                                isMobile ? MainAxisSize.min : MainAxisSize.max,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Iconsax.flash_1,
+                                      size: 18, color: AppColors.accent),
+                                  const SizedBox(width: 7),
+                                  Text(
+                                    'Quick Exports',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.3,
+                                      color: context.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 3),
+                              const Text(
+                                'Download monthly CSV reports',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              _QuickActionBtn(
+                                icon: Iconsax.document_download,
+                                title: 'Attendance Report',
+                                subtitle: 'Monthly check-ins & hours CSV',
+                                color: AppColors.info,
+                                onTap: () => _showReportDialog('attendance'),
+                              ),
+                              const SizedBox(height: 10),
+                              _QuickActionBtn(
+                                icon: Iconsax.wallet_money,
+                                title: 'Payroll Report',
+                                subtitle: 'Monthly payslip & tax breakdown',
+                                color: AppColors.success,
+                                onTap: () => _showReportDialog('salary'),
+                              ),
+                              if (isMobile)
+                                const SizedBox(height: 14)
+                              else
+                                const Spacer(),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Iconsax.info_circle,
+                                        size: 14, color: AppColors.primary),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        'Reports include Bikram Sambat & SSF deductions.',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: context.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (isMobile) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              analyticsCard,
+                              const SizedBox(height: 20),
+                              quickActionsCard,
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 9, child: analyticsCard),
+                            const SizedBox(width: 18),
+                            Expanded(flex: 3, child: quickActionsCard),
+                          ],
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // -- Attendance Status + Punctuality Champions ---------------------
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth >= 700;
+
+                        // -- Attendance Status card ----------------------------------
+                        final attendanceCard = Builder(builder: (ctx) {
+                          if (_todayAttendanceStatus.isEmpty)
+                            return const SizedBox.shrink();
+                          final presentList = _todayAttendanceStatus
+                              .where((e) => e['is_present'] == true)
+                              .toList();
+                          final absentList = _todayAttendanceStatus
+                              .where((e) => e['is_present'] != true)
+                              .toList();
+                          presentList.sort((a, b) => (a['check_in_time'] ?? '')
+                              .toString()
+                              .compareTo(
+                                  (b['check_in_time'] ?? '').toString()));
+                          absentList.sort((a, b) => (a['employee_name'] ?? '')
+                              .toString()
+                              .compareTo(
+                                  (b['employee_name'] ?? '').toString()));
+                          final allSorted = [...presentList, ...absentList];
+
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: ctx.surface,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: ctx.border, width: 1),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black
+                                      .withValues(alpha: isDark ? 0.25 : 0.04),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Header
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary
+                                                .withValues(alpha: 0.12),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: const Icon(Iconsax.people,
+                                              color: AppColors.primary,
+                                              size: 18),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Attendance Status',
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w800,
+                                                color: ctx.textPrimary,
+                                              ),
+                                            ),
+                                            Text(
+                                              _fmtDate(NepaliDateTime.now()),
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.success
+                                                .withValues(alpha: 0.15),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            '${presentList.length} Present',
+                                            style: const TextStyle(
+                                              color: AppColors.success,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.error
+                                                .withValues(alpha: 0.12),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            '${absentList.length} Absent',
+                                            style: const TextStyle(
+                                              color: AppColors.error,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                // Employee list (capped height to keep cards balanced)
+                                ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxHeight: 320),
+                                  child: SingleChildScrollView(
+                                    physics: const ClampingScrollPhysics(),
+                                    child: ListView.separated(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      itemCount: allSorted.length,
+                                      separatorBuilder: (_, __) =>
+                                          Divider(height: 1, color: ctx.border),
+                                      itemBuilder: (_, i) {
+                                        final emp = allSorted[i];
+                                        final isPresent =
+                                            emp['is_present'] == true;
+                                        final name =
+                                            emp['employee_name']?.toString() ??
+                                                'Unknown';
+                                        final rawTime =
+                                            emp['check_in_time']?.toString();
+                                        String checkInDisplay =
+                                            'Not checked in';
+                                        if (rawTime != null &&
+                                            rawTime.isNotEmpty) {
+                                          try {
+                                            final parts = rawTime.split(':');
+                                            final h = int.parse(parts[0]);
+                                            final m = int.parse(parts[1]);
+                                            final period =
+                                                h >= 12 ? 'PM' : 'AM';
+                                            final h12 =
+                                                h % 12 == 0 ? 12 : h % 12;
+                                            checkInDisplay =
+                                                '$h12:${m.toString().padLeft(2, '0')} $period';
+                                          } catch (_) {
+                                            checkInDisplay = rawTime;
+                                          }
+                                        }
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 10),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                width: 32,
+                                                height: 32,
+                                                decoration: BoxDecoration(
+                                                  color: isPresent
+                                                      ? AppColors.success
+                                                          .withValues(
+                                                              alpha: 0.12)
+                                                      : AppColors.error
+                                                          .withValues(
+                                                              alpha: 0.10),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Icon(
+                                                  isPresent
+                                                      ? Iconsax.tick_circle
+                                                      : Iconsax.close_circle,
+                                                  size: 16,
+                                                  color: isPresent
+                                                      ? AppColors.success
+                                                      : AppColors.error,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  name,
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: ctx.textPrimary,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
                                                         horizontal: 10,
-                                                        vertical: 5),
+                                                        vertical: 4),
                                                 decoration: BoxDecoration(
-                                                  color: _analyticsTab == 1
-                                                      ? AppColors.primary
-                                                      : Colors.transparent,
+                                                  color: isPresent
+                                                      ? AppColors.success
+                                                          .withValues(
+                                                              alpha: 0.10)
+                                                      : AppColors.error
+                                                          .withValues(
+                                                              alpha: 0.08),
                                                   borderRadius:
-                                                      BorderRadius.circular(9),
+                                                      BorderRadius.circular(10),
                                                 ),
                                                 child: Row(
                                                   mainAxisSize:
                                                       MainAxisSize.min,
                                                   children: [
                                                     Icon(
-                                                      Iconsax.clock,
-                                                      size: 13,
-                                                      color: _analyticsTab == 1
-                                                          ? Colors.white
-                                                          : AppColors
-                                                              .textSecondary,
+                                                      isPresent
+                                                          ? Iconsax.timer_1
+                                                          : Iconsax.slash,
+                                                      size: 12,
+                                                      color: isPresent
+                                                          ? AppColors.success
+                                                          : AppColors.error,
                                                     ),
-                                                    const SizedBox(width: 5),
+                                                    const SizedBox(width: 4),
                                                     Text(
-                                                      "Today's Punch Time",
+                                                      isPresent
+                                                          ? checkInDisplay
+                                                          : 'Absent',
                                                       style: TextStyle(
-                                                        fontSize: 11.5,
+                                                        fontSize: 11,
                                                         fontWeight:
-                                                            _analyticsTab == 1
-                                                                ? FontWeight
-                                                                    .w800
-                                                                : FontWeight
-                                                                    .w600,
-                                                        color: _analyticsTab ==
-                                                                1
-                                                            ? Colors.white
-                                                            : AppColors
-                                                                .textSecondary,
+                                                            FontWeight.w700,
+                                                        color: isPresent
+                                                            ? AppColors.success
+                                                            : AppColors.error,
                                                       ),
                                                     ),
                                                   ],
                                                 ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-
-                                    if (constraints.maxWidth < 620) {
-                                      return Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          titleBlock,
-                                          const SizedBox(height: 10),
-                                          toggleBlock,
-                                        ],
-                                      );
-                                    }
-
-                                    return Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(child: titleBlock),
-                                        const SizedBox(width: 12),
-                                        toggleBlock,
-                                      ],
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 14),
-                                // KPI Summary Strip
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: context.card,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: context.border),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ),
-                                  child: Wrap(
-                                    spacing: 16,
-                                    runSpacing: 6,
-                                    crossAxisAlignment: WrapCrossAlignment.center,
-                                    children: [
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(Iconsax.timer_1, size: 13, color: AppColors.primary),
-                                          const SizedBox(width: 5),
-                                          const Text(
-                                            'Avg Check-in: ',
-                                            style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
-                                          ),
-                                          Text(
-                                            _getTodayAvgCheckIn(),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w800,
-                                              color: context.textPrimary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(Iconsax.tick_circle, size: 13, color: AppColors.success),
-                                          const SizedBox(width: 5),
-                                          const Text(
-                                            'On-Time Rate: ',
-                                            style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
-                                          ),
-                                          Text(
-                                            _getTodayOnTimeRate(),
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.success,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(Iconsax.user_tick, size: 13, color: AppColors.accent),
-                                          const SizedBox(width: 5),
-                                          const Text(
-                                            'Present: ',
-                                            style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
-                                          ),
-                                          Text(
-                                            '$presentCount / $_employeeCount Staff',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w800,
-                                              color: context.textPrimary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(alpha: 0.08),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Iconsax.info_circle, size: 11, color: AppColors.primary),
-                                            SizedBox(width: 3),
-                                            Text(
-                                              'Tap any column/bar to view staff names',
-                                              style: TextStyle(
-                                                fontSize: 10.5,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppColors.primary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                // Body of Tab
-                                wrapTabBody(
-                                  _analyticsTab == 0
-                                      // Tab 0: Weekly Activity BarChart
-                                      ? BarChart(
-                                          BarChartData(
-                                            alignment: BarChartAlignment.spaceAround,
-                                            maxY: 120,
-                                            barTouchData: BarTouchData(
-                                              enabled: true,
-                                              touchCallback: (FlTouchEvent event, BarTouchResponse? response) {
-                                                if (!event.isInterestedForInteractions ||
-                                                    response == null ||
-                                                    response.spot == null) {
-                                                  return;
-                                                }
-                                                if (event is FlTapUpEvent) {
-                                                  final groupIndex = response.spot!.touchedBarGroupIndex;
-                                                  const days = [
-                                                    'Monday',
-                                                    'Tuesday',
-                                                    'Wednesday',
-                                                    'Thursday',
-                                                    'Friday',
-                                                    'Saturday',
-                                                    'Sunday'
-                                                  ];
-                                                  final dayName = days[groupIndex.clamp(0, 6)];
-                                                  final emps = _getWeeklyDayEmployees(groupIndex);
-                                                  _showEmployeePunchInspector(
-                                                    title: '$dayName Check-ins',
-                                                    subtitle: 'Employees logged on $dayName (Current Week)',
-                                                    employees: emps,
-                                                    themeColor: AppColors.primary,
-                                                  );
-                                                }
-                                              },
-                                              touchTooltipData: BarTouchTooltipData(
-                                                getTooltipColor: (_) => isDark
-                                                    ? const Color(0xFF1E293B)
-                                                    : Colors.white,
-                                                tooltipPadding: const EdgeInsets.symmetric(
-                                                    horizontal: 12, vertical: 8),
-                                                tooltipMargin: 8,
-                                                getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                                                  const days = [
-                                                    'Monday',
-                                                    'Tuesday',
-                                                    'Wednesday',
-                                                    'Thursday',
-                                                    'Friday',
-                                                    'Saturday',
-                                                    'Sunday'
-                                                  ];
-                                                  final dayName = days[group.x.toInt().clamp(0, 6)];
-                                                  final emps = _getWeeklyDayEmployees(group.x.toInt());
-                                                  return BarTooltipItem(
-                                                    '$dayName\n',
-                                                    TextStyle(
-                                                      color: context.textPrimary,
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
-                                                    children: [
-                                                      TextSpan(
-                                                        text: '${emps.length} Checked In (${rod.toY.toStringAsFixed(0)}%)\n',
-                                                        style: const TextStyle(
-                                                          color: AppColors.primary,
-                                                          fontSize: 11,
-                                                          fontWeight: FontWeight.w700,
-                                                        ),
-                                                      ),
-                                                      const TextSpan(
-                                                        text: 'Tap to view employee list',
-                                                        style: TextStyle(
-                                                          color: AppColors.textSecondary,
-                                                          fontSize: 9.5,
-                                                          fontStyle: FontStyle.italic,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                            titlesData: FlTitlesData(
-                                              show: true,
-                                              bottomTitles: AxisTitles(
-                                                sideTitles: SideTitles(
-                                                  showTitles: true,
-                                                  getTitlesWidget: (v, meta) {
-                                                    const days = [
-                                                      'Mon',
-                                                      'Tue',
-                                                      'Wed',
-                                                      'Thu',
-                                                      'Fri',
-                                                      'Sat',
-                                                      'Sun'
-                                                    ];
-                                                    final i = v.toInt();
-                                                    final isToday = (NepaliDateTime.now().weekday == 1
-                                                            ? 6
-                                                            : NepaliDateTime.now().weekday - 2) ==
-                                                        i;
-                                                    return SideTitleWidget(
-                                                      axisSide: meta.axisSide,
-                                                      child: Text(
-                                                        i >= 0 && i < 7 ? days[i] : '',
-                                                        style: TextStyle(
-                                                          color: isToday
-                                                              ? AppColors.primary
-                                                              : AppColors.textSecondary,
-                                                          fontWeight: isToday
-                                                              ? FontWeight.w900
-                                                              : FontWeight.w600,
-                                                          fontSize: 12,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                              ),
-                                              leftTitles: const AxisTitles(
-                                                  sideTitles: SideTitles(showTitles: false)),
-                                              topTitles: const AxisTitles(
-                                                  sideTitles: SideTitles(showTitles: false)),
-                                              rightTitles: const AxisTitles(
-                                                  sideTitles: SideTitles(showTitles: false)),
-                                            ),
-                                            gridData: const FlGridData(show: false),
-                                            borderData: FlBorderData(show: false),
-                                            barGroups: List.generate(7, (i) {
-                                              final val = i < _weeklyAttendance.length
-                                                  ? _weeklyAttendance[i]
-                                                  : 0.0;
-                                              final isWeekend = i >= 5;
-                                              return _bar(i, val, isWeekend: isWeekend);
-                                            }),
-                                          ),
-                                        )
-                                      // Tab 1: Today's Punch Time Windows Breakdown
-                                      : Builder(
-                                          builder: (ctx) {
-                                            final totalCount = _todayAttendanceStatus.isEmpty
-                                                ? 1
-                                                : _todayAttendanceStatus.length;
-                                            if (isMobile) {
-                                              return Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Row(
-                                                    children: [
-                                                      Expanded(child: _buildTimeSlotCard(timeBuckets[0], totalCount, ctx)),
-                                                      const SizedBox(width: 10),
-                                                      Expanded(child: _buildTimeSlotCard(timeBuckets[1], totalCount, ctx)),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 10),
-                                                  Row(
-                                                    children: [
-                                                      Expanded(child: _buildTimeSlotCard(timeBuckets[2], totalCount, ctx)),
-                                                      const SizedBox(width: 10),
-                                                      Expanded(child: _buildTimeSlotCard(timeBuckets[3], totalCount, ctx)),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 10),
-                                                  Row(
-                                                    children: [
-                                                      Expanded(child: _buildTimeSlotCard(timeBuckets[4], totalCount, ctx)),
-                                                      const SizedBox(width: 10),
-                                                      Expanded(child: _buildTimeSlotCard(timeBuckets[5], totalCount, ctx)),
-                                                    ],
-                                                  ),
-                                                ],
-                                              );
-                                            }
-                                            return Column(
-                                              children: [
-                                                Expanded(
-                                                  child: Row(
-                                                    children: [
-                                                      Expanded(child: _buildTimeSlotCard(timeBuckets[0], totalCount, ctx)),
-                                                      const SizedBox(width: 10),
-                                                      Expanded(child: _buildTimeSlotCard(timeBuckets[1], totalCount, ctx)),
-                                                      const SizedBox(width: 10),
-                                                      Expanded(child: _buildTimeSlotCard(timeBuckets[2], totalCount, ctx)),
-                                                    ],
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 10),
-                                                Expanded(
-                                                  child: Row(
-                                                    children: [
-                                                      Expanded(child: _buildTimeSlotCard(timeBuckets[3], totalCount, ctx)),
-                                                      const SizedBox(width: 10),
-                                                      Expanded(child: _buildTimeSlotCard(timeBuckets[4], totalCount, ctx)),
-                                                      const SizedBox(width: 10),
-                                                      Expanded(child: _buildTimeSlotCard(timeBuckets[5], totalCount, ctx)),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        ),
                                 ),
                               ],
                             ),
                           );
+                        });
 
-                    // Quick Actions & Reports (Decreased width: flex 3 vs flex 9)
-                    final quickActionsCard = Container(
-                      height: isMobile ? null : 390,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: context.surface,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: context.border, width: 1),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(
-                                alpha: isDark ? 0.25 : 0.04),
-                            blurRadius: 20,
-                            offset: const Offset(0, 6),
+                        // -- Punctuality Champions card ------------------------------
+                        final punctualityCard = Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: context.border, width: 1),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black
+                                    .withValues(alpha: isDark ? 0.25 : 0.04),
+                                blurRadius: 20,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize:
-                            isMobile ? MainAxisSize.min : MainAxisSize.max,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                                Row(
-                                  children: [
-                                    const Icon(Iconsax.flash_1,
-                                        size: 18, color: AppColors.accent),
-                                    const SizedBox(width: 7),
-                                    Text(
-                                      'Quick Exports',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: -0.3,
-                                        color: context.textPrimary,
-                                      ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.warning
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 3),
-                                const Text(
-                                  'Download monthly CSV reports',
-                                  style: TextStyle(
-                                    fontSize: 11.5,
-                                    color: AppColors.textSecondary,
+                                    child: const Icon(Iconsax.medal_star,
+                                        color: AppColors.warning, size: 18),
                                   ),
-                                ),
-                                const SizedBox(height: 14),
-                                _QuickActionBtn(
-                                  icon: Iconsax.document_download,
-                                  title: 'Attendance Report',
-                                  subtitle: 'Monthly check-ins & hours CSV',
-                                  color: AppColors.info,
-                                  onTap: () => _showReportDialog('attendance'),
-                                ),
-                                const SizedBox(height: 10),
-                                _QuickActionBtn(
-                                  icon: Iconsax.wallet_money,
-                                  title: 'Payroll Report',
-                                  subtitle: 'Monthly payslip & tax breakdown',
-                                  color: AppColors.success,
-                                  onTap: () => _showReportDialog('salary'),
-                                ),
-                                if (isMobile)
-                                  const SizedBox(height: 14)
-                                else
-                                  const Spacer(),
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Iconsax.info_circle,
-                                          size: 14, color: AppColors.primary),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          'Reports include Bikram Sambat & SSF deductions.',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w500,
-                                            color: context.textPrimary,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-
-                    if (isMobile) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          analyticsCard,
-                          const SizedBox(height: 20),
-                          quickActionsCard,
-                        ],
-                      );
-                    }
-
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(flex: 9, child: analyticsCard),
-                        const SizedBox(width: 18),
-                        Expanded(flex: 3, child: quickActionsCard),
-                      ],
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 28),
-
-                // -- Attendance Status + Punctuality Champions ---------------------
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= 700;
-
-                    // -- Attendance Status card ----------------------------------
-                    final attendanceCard = Builder(builder: (ctx) {
-                      if (_todayAttendanceStatus.isEmpty) return const SizedBox.shrink();
-                      final presentList = _todayAttendanceStatus
-                          .where((e) => e['is_present'] == true)
-                          .toList();
-                      final absentList = _todayAttendanceStatus
-                          .where((e) => e['is_present'] != true)
-                          .toList();
-                      presentList.sort((a, b) => (a['check_in_time'] ?? '')
-                          .toString()
-                          .compareTo((b['check_in_time'] ?? '').toString()));
-                      absentList.sort((a, b) => (a['employee_name'] ?? '')
-                          .toString()
-                          .compareTo((b['employee_name'] ?? '').toString()));
-                      final allSorted = [...presentList, ...absentList];
-
-                      return Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: ctx.surface,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: ctx.border, width: 1),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.25 : 0.04),
-                              blurRadius: 20,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Header
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary
-                                            .withValues(alpha: 0.12),
-                                        borderRadius:
-                                            BorderRadius.circular(10),
-                                      ),
-                                      child: const Icon(Iconsax.people,
-                                          color: AppColors.primary, size: 18),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Column(
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Attendance Status',
+                                          _championsMonthName.isNotEmpty
+                                              ? 'Punctuality Champion - $_championsMonthName'
+                                              : 'Punctuality Champions',
                                           style: TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w800,
-                                            color: ctx.textPrimary,
+                                            color: context.textPrimary,
                                           ),
                                         ),
-                                        Text(
-                                          _fmtDate(NepaliDateTime.now()),
-                                          style: const TextStyle(
+                                        const Text(
+                                          'Perfect attendance - on-time check-ins - zero corrections',
+                                          style: TextStyle(
                                             fontSize: 12,
                                             color: AppColors.textSecondary,
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              if (_punctualityChampions.isEmpty)
                                 Row(
                                   children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.success
-                                            .withValues(alpha: 0.15),
-                                        borderRadius:
-                                            BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        '${presentList.length} Present',
-                                        style: const TextStyle(
-                                          color: AppColors.success,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
+                                    const Icon(Iconsax.emoji_sad,
+                                        size: 16,
+                                        color: AppColors.textSecondary),
                                     const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.error
-                                            .withValues(alpha: 0.12),
-                                        borderRadius:
-                                            BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        '${absentList.length} Absent',
-                                        style: const TextStyle(
-                                          color: AppColors.error,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                                    Text(
+                                      'No champions yet this month',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: context.textSecondary,
+                                        fontStyle: FontStyle.italic,
                                       ),
                                     ),
                                   ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            // Employee list (capped height to keep cards balanced)
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxHeight: 320),
-                              child: SingleChildScrollView(
-                                physics: const ClampingScrollPhysics(),
-                                child: ListView.separated(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: allSorted.length,
-                                  separatorBuilder: (_, __) =>
-                                      Divider(height: 1, color: ctx.border),
-                                  itemBuilder: (_, i) {
-                                final emp = allSorted[i];
-                                final isPresent = emp['is_present'] == true;
-                                final name =
-                                    emp['employee_name']?.toString() ?? 'Unknown';
-                                final rawTime = emp['check_in_time']?.toString();
-                                String checkInDisplay = 'Not checked in';
-                                if (rawTime != null && rawTime.isNotEmpty) {
-                                  try {
-                                    final parts = rawTime.split(':');
-                                    final h = int.parse(parts[0]);
-                                    final m = int.parse(parts[1]);
-                                    final period = h >= 12 ? 'PM' : 'AM';
-                                    final h12 = h % 12 == 0 ? 12 : h % 12;
-                                    checkInDisplay =
-                                        '$h12:${m.toString().padLeft(2, '0')} $period';
-                                  } catch (_) {
-                                    checkInDisplay = rawTime;
-                                  }
-                                }
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 10),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          color: isPresent
-                                              ? AppColors.success
-                                                  .withValues(alpha: 0.12)
-                                              : AppColors.error
-                                                  .withValues(alpha: 0.10),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: Icon(
-                                          isPresent
-                                              ? Iconsax.tick_circle
-                                              : Iconsax.close_circle,
-                                          size: 16,
-                                          color: isPresent
-                                              ? AppColors.success
-                                              : AppColors.error,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          name,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: ctx.textPrimary,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: isPresent
-                                              ? AppColors.success
-                                                  .withValues(alpha: 0.10)
-                                              : AppColors.error
-                                                  .withValues(alpha: 0.08),
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              isPresent
-                                                  ? Iconsax.timer_1
-                                                  : Iconsax.slash,
-                                              size: 12,
-                                              color: isPresent
-                                                  ? AppColors.success
-                                                  : AppColors.error,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              isPresent
-                                                  ? checkInDisplay
-                                                  : 'Absent',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                                color: isPresent
-                                                    ? AppColors.success
-                                                    : AppColors.error,
-                                              ),
-                                            ),
+                                )
+                              else
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: _punctualityChampions.map((c) {
+                                    final name =
+                                        c['employee_name']?.toString() ??
+                                            'Unknown';
+                                    final days =
+                                        c['attended_days'] as int? ?? 0;
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            AppColors.warning
+                                                .withValues(alpha: 0.14),
+                                            AppColors.warning
+                                                .withValues(alpha: 0.06),
                                           ],
                                         ),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: AppColors.warning
+                                              .withValues(alpha: 0.35),
+                                        ),
                                       ),
-                                    ],
-                                  ),
-                                );
-                                },
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    });
-
-                    // -- Punctuality Champions card ------------------------------
-                    final punctualityCard = Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: context.surface,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: context.border, width: 1),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black
-                                .withValues(alpha: isDark ? 0.25 : 0.04),
-                            blurRadius: 20,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.warning
-                                      .withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(Iconsax.medal_star,
-                                    color: AppColors.warning, size: 18),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _championsMonthName.isNotEmpty
-                                          ? 'Punctuality Champion - $_championsMonthName'
-                                          : 'Punctuality Champions',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        color: context.textPrimary,
-                                      ),
-                                    ),
-                                    const Text(
-                                      'Perfect attendance - on-time check-ins - zero corrections',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          if (_punctualityChampions.isEmpty)
-                            Row(
-                              children: [
-                                const Icon(Iconsax.emoji_sad,
-                                    size: 16,
-                                    color: AppColors.textSecondary),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'No champions yet this month',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: context.textSecondary,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: _punctualityChampions.map((c) {
-                                final name =
-                                    c['employee_name']?.toString() ?? 'Unknown';
-                                final days = c['attended_days'] as int? ?? 0;
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        AppColors.warning
-                                            .withValues(alpha: 0.14),
-                                        AppColors.warning
-                                            .withValues(alpha: 0.06),
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: AppColors.warning
-                                          .withValues(alpha: 0.35),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text('\u{1F3C6}',
-                                          style: TextStyle(fontSize: 14)),
-                                      const SizedBox(width: 6),
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Text(
-                                            name,
-                                            style: TextStyle(
-                                              fontSize: 12.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: context.textPrimary,
-                                            ),
-                                          ),
-                                          Text(
-                                            '$days days - 100% on-time',
-                                            style: const TextStyle(
-                                              fontSize: 10.5,
-                                              color: AppColors.textSecondary,
-                                            ),
+                                          const Text('\u{1F3C6}',
+                                              style: TextStyle(fontSize: 14)),
+                                          const SizedBox(width: 6),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                name,
+                                                style: TextStyle(
+                                                  fontSize: 12.5,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: context.textPrimary,
+                                                ),
+                                              ),
+                                              Text(
+                                                '$days days - 100% on-time',
+                                                style: const TextStyle(
+                                                  fontSize: 10.5,
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                        ],
-                      ),
-                    );
+                                    );
+                                  }).toList(),
+                                ),
+                            ],
+                          ),
+                        );
 
-                    // -- Responsive layout -----------------------------------------
-                    if (isWide) {
-                      return Row(
+                        // -- Responsive layout -----------------------------------------
+                        if (isWide) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: attendanceCard),
+                              const SizedBox(width: 20),
+                              Expanded(child: punctualityCard),
+                            ],
+                          );
+                        } else {
+                          return Column(
+                            children: [
+                              attendanceCard,
+                              const SizedBox(height: 20),
+                              punctualityCard,
+                            ],
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 28),
+
+                    // -- Pending Approvals & Requests Grid -------------------------
+                    if (isDesktop) ...[
+                      Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(child: attendanceCard),
-                          const SizedBox(width: 20),
-                          Expanded(child: punctualityCard),
+                          Expanded(child: _buildLeaveRequestsSection(isDark)),
+                          const SizedBox(width: 24),
+                          Expanded(child: _buildRemoteRequestsSection(isDark)),
                         ],
-                      );
-                    } else {
-                      return Column(
-                        children: [
-                          attendanceCard,
-                          const SizedBox(height: 20),
-                          punctualityCard,
-                        ],
-                      );
-                    }
-                  },
-                ),
-                const SizedBox(height: 28),
-
-
-                // -- Pending Approvals & Requests Grid -------------------------
-                if (isDesktop) ...[
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _buildLeaveRequestsSection(isDark)),
-                      const SizedBox(width: 24),
-                      Expanded(child: _buildRemoteRequestsSection(isDark)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _buildCorrectionRequestsSection(isDark)),
-                      const SizedBox(width: 24),
-                      Expanded(child: _buildProfileRequestsSection(isDark)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  _buildFeedbackSection(isDark),
-                ] else ...[
-                  _buildLeaveRequestsSection(isDark),
-                  const SizedBox(height: 24),
-                  _buildRemoteRequestsSection(isDark),
-                  const SizedBox(height: 24),
-                  _buildCorrectionRequestsSection(isDark),
-                  const SizedBox(height: 24),
-                  _buildProfileRequestsSection(isDark),
-                  const SizedBox(height: 24),
-                  _buildFeedbackSection(isDark),
-                ],
-                const SizedBox(height: 32),
-
-                // -- Enterprise Management Modules ------------------------------─
-                Row(
-                  children: [
-                    const Icon(Iconsax.grid_5,
-                        size: 20, color: AppColors.primary),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Management Modules',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.4,
-                        color: context.textPrimary,
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                      const SizedBox(height: 24),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                              child: _buildCorrectionRequestsSection(isDark)),
+                          const SizedBox(width: 24),
+                          Expanded(child: _buildProfileRequestsSection(isDark)),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      _buildFeedbackSection(isDark),
+                    ] else ...[
+                      _buildLeaveRequestsSection(isDark),
+                      const SizedBox(height: 24),
+                      _buildRemoteRequestsSection(isDark),
+                      const SizedBox(height: 24),
+                      _buildCorrectionRequestsSection(isDark),
+                      const SizedBox(height: 24),
+                      _buildProfileRequestsSection(isDark),
+                      const SizedBox(height: 24),
+                      _buildFeedbackSection(isDark),
+                    ],
+                    const SizedBox(height: 32),
 
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    int crossAxisCount = 3;
-                    if (constraints.maxWidth < 600) {
-                      crossAxisCount = 1;
-                    } else if (constraints.maxWidth < 980) {
-                      crossAxisCount = 2;
-                    }
-
-                    final childAspectRatio = constraints.maxWidth < 600 ? 3.2 : 2.5;
-
-                    return GridView.count(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      childAspectRatio: childAspectRatio,
+                    // -- Enterprise Management Modules ------------------------------─
+                    Row(
                       children: [
-                        _ModuleTile(
-                          icon: Iconsax.people,
-                          title: 'Employees',
-                          subtitle: 'Profiles, documents & contracts',
-                          color: const Color(0xFF3B82F6),
-                          onTap: () => context.go('/employees'),
-                        ),
-                        _ModuleTile(
-                          icon: Iconsax.clock,
-                          title: 'Attendance',
-                          subtitle: 'GPS geofencing & time logs',
-                          color: const Color(0xFF10B981),
-                          onTap: () => context.go('/attendance'),
-                        ),
-                        _ModuleTile(
-                          icon: Iconsax.calendar_remove,
-                          title: 'Leaves',
-                          subtitle: 'Quota balance & requests',
-                          color: const Color(0xFFF59E0B),
-                          onTap: () => context.go('/leave'),
-                        ),
-                        _ModuleTile(
-                          icon: Iconsax.money_recive,
-                          title: 'Salary & Payroll',
-                          subtitle: 'B.S. payroll & payslips',
-                          color: const Color(0xFF14B8A6),
-                          onTap: () => context.go('/salary'),
-                        ),
-                        _ModuleTile(
-                          icon: Iconsax.task_square,
-                          title: 'Tasks & Projects',
-                          subtitle: 'Assignments & progress',
-                          color: const Color(0xFF8B5CF6),
-                          onTap: () => context.go('/tasks'),
-                        ),
-                        _ModuleTile(
-                          icon: Iconsax.star1,
-                          title: 'Performance',
-                          subtitle: 'KPIs & appraisal reports',
-                          color: const Color(0xFFF43F5E),
-                          onTap: () => context.go('/performance'),
-                        ),
-                        _ModuleTile(
-                          icon: Iconsax.message_text,
-                          title: 'Notices',
-                          subtitle: 'Broadcasts & announcements',
-                          color: const Color(0xFF6366F1),
-                          onTap: () => context.go('/noticeboard'),
-                        ),
-                        _ModuleTile(
-                          icon: Iconsax.calendar,
-                          title: 'Nepali Calendar',
-                          subtitle: 'Holidays, events & B.S. dates',
-                          color: const Color(0xFF0EA5E9),
-                          onTap: () => context.go('/calendar'),
-                        ),
-                        _ModuleTile(
-                          icon: Iconsax.message_question,
-                          title: 'Feedback',
-                          subtitle: 'Staff inquiries & grievances',
-                          color: const Color(0xFFFB923C),
-                          onTap: () => context.go('/feedback'),
+                        const Icon(Iconsax.grid_5,
+                            size: 20, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Management Modules',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                            color: context.textPrimary,
+                          ),
                         ),
                       ],
-                    );
-                  },
+                    ),
+                    const SizedBox(height: 16),
+
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        int crossAxisCount = 3;
+                        if (constraints.maxWidth < 600) {
+                          crossAxisCount = 1;
+                        } else if (constraints.maxWidth < 980) {
+                          crossAxisCount = 2;
+                        }
+
+                        final childAspectRatio =
+                            constraints.maxWidth < 600 ? 3.2 : 2.5;
+
+                        return GridView.count(
+                          crossAxisCount: crossAxisCount,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          childAspectRatio: childAspectRatio,
+                          children: [
+                            _ModuleTile(
+                              icon: Iconsax.people,
+                              title: 'Employees',
+                              subtitle: 'Profiles, documents & contracts',
+                              color: const Color(0xFF3B82F6),
+                              onTap: () => context.go('/employees'),
+                            ),
+                            _ModuleTile(
+                              icon: Iconsax.clock,
+                              title: 'Attendance',
+                              subtitle: 'GPS geofencing & time logs',
+                              color: const Color(0xFF10B981),
+                              onTap: () => context.go('/attendance'),
+                            ),
+                            _ModuleTile(
+                              icon: Iconsax.calendar_remove,
+                              title: 'Leaves',
+                              subtitle: 'Quota balance & requests',
+                              color: const Color(0xFFF59E0B),
+                              onTap: () => context.go('/leave'),
+                            ),
+                            _ModuleTile(
+                              icon: Iconsax.money_recive,
+                              title: 'Salary & Payroll',
+                              subtitle: 'B.S. payroll & payslips',
+                              color: const Color(0xFF14B8A6),
+                              onTap: () => context.go('/salary'),
+                            ),
+                            _ModuleTile(
+                              icon: Iconsax.task_square,
+                              title: 'Tasks & Projects',
+                              subtitle: 'Assignments & progress',
+                              color: const Color(0xFF8B5CF6),
+                              onTap: () => context.go('/tasks'),
+                            ),
+                            _ModuleTile(
+                              icon: Iconsax.star1,
+                              title: 'Performance',
+                              subtitle: 'KPIs & appraisal reports',
+                              color: const Color(0xFFF43F5E),
+                              onTap: () => context.go('/performance'),
+                            ),
+                            _ModuleTile(
+                              icon: Iconsax.message_text,
+                              title: 'Notices',
+                              subtitle: 'Broadcasts & announcements',
+                              color: const Color(0xFF6366F1),
+                              onTap: () => context.go('/noticeboard'),
+                            ),
+                            _ModuleTile(
+                              icon: Iconsax.calendar,
+                              title: 'Nepali Calendar',
+                              subtitle: 'Holidays, events & B.S. dates',
+                              color: const Color(0xFF0EA5E9),
+                              onTap: () => context.go('/calendar'),
+                            ),
+                            _ModuleTile(
+                              icon: Iconsax.message_question,
+                              title: 'Feedback',
+                              subtitle: 'Staff inquiries & grievances',
+                              color: const Color(0xFFFB923C),
+                              onTap: () => context.go('/feedback'),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 40),
+                  ],
                 ),
-                const SizedBox(height: 40),
-              ],
-            ),
-          ),
-        );
-      },
-    ),
-  ),
-);
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   String _getTodayAvgCheckIn() {
@@ -3676,7 +4022,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           final first = emp['first_name']?.toString() ?? '';
           final last = emp['last_name']?.toString() ?? '';
           final full = '$first $last'.trim();
-          name = full.isNotEmpty ? full : (emp['email']?.toString() ?? emp['name']?.toString() ?? '');
+          name = full.isNotEmpty
+              ? full
+              : (emp['email']?.toString() ?? emp['name']?.toString() ?? '');
           empId = emp['id'];
         } else if (emp is String) {
           name = emp;
@@ -3686,8 +4034,10 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         }
 
         final cioList = log['check_ins_outs'] as List? ?? [];
-        String? checkInTime = log['check_in_time']?.toString() ?? log['check_in']?.toString();
-        String? checkOutTime = log['check_out_time']?.toString() ?? log['check_out']?.toString();
+        String? checkInTime =
+            log['check_in_time']?.toString() ?? log['check_in']?.toString();
+        String? checkOutTime =
+            log['check_out_time']?.toString() ?? log['check_out']?.toString();
         if (cioList.isNotEmpty) {
           final firstCio = cioList.first as Map<String, dynamic>?;
           final lastCio = cioList.last as Map<String, dynamic>?;
@@ -3839,8 +4189,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               border: Border.all(color: ctx.border, width: 1.2),
               boxShadow: [
                 BoxShadow(
-                  color:
-                      Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
+                  color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
                   blurRadius: 30,
                   offset: const Offset(0, 10),
                 ),
@@ -3958,12 +4307,10 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                               const SizedBox(height: 10),
                           itemBuilder: (_, i) {
                             final emp = employees[i];
-                            final name =
-                                emp['employee_name']?.toString() ??
-                                    'Staff Member';
+                            final name = emp['employee_name']?.toString() ??
+                                'Staff Member';
                             final isPresent = emp['is_present'] == true;
-                            final rawCheckIn =
-                                emp['check_in_time']?.toString();
+                            final rawCheckIn = emp['check_in_time']?.toString();
                             final rawCheckOut =
                                 emp['check_out_time']?.toString();
                             final isRemote = emp['is_remote'] == true;
@@ -4055,8 +4402,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                                   fontWeight: FontWeight.w700,
                                                   color: ctx.textPrimary,
                                                 ),
-                                                overflow:
-                                                    TextOverflow.ellipsis,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                             if (isRemote) ...[
@@ -4076,10 +4422,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                                   'Remote',
                                                   style: TextStyle(
                                                     fontSize: 9.5,
-                                                    fontWeight:
-                                                        FontWeight.w700,
-                                                    color:
-                                                        Color(0xFF8B5CF6),
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF8B5CF6),
                                                   ),
                                                 ),
                                               ),
@@ -4127,8 +4471,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                   ),
                                   const SizedBox(width: 8),
                                   Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.end,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Container(
                                         padding: const EdgeInsets.symmetric(
@@ -4182,8 +4525,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                           'Out: ${fmtTime(rawCheckOut)}',
                                           style: const TextStyle(
                                             fontSize: 10.5,
-                                            color:
-                                                AppColors.textSecondary,
+                                            color: AppColors.textSecondary,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
@@ -4230,7 +4572,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       ],
     );
   }
-
 
   Future<void> _showReportDialog(String type) async {
     final now = NepaliDateTime.now();
@@ -4303,6 +4644,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       const SizedBox(height: 24),
                       DropdownButtonFormField<int>(
                         initialValue: selectedYear,
+                        isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Year (B.S.)',
                           prefixIcon: Icon(Iconsax.calendar_1, size: 20),
@@ -4310,7 +4652,10 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                         items: List.generate(11, (index) {
                           final y = (now.year - 5) + index;
                           return DropdownMenuItem(
-                              value: y, child: Text('$y B.S.'));
+                              value: y,
+                              child: Text('$y B.S.',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis));
                         }),
                         onChanged: (val) =>
                             setDialogState(() => selectedYear = val!),
@@ -4318,23 +4663,34 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       const SizedBox(height: 16),
                       DropdownButtonFormField<int>(
                         initialValue: selectedMonth,
+                        isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Month',
                           prefixIcon: Icon(Iconsax.calendar_2, size: 20),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 1, child: Text('Baishakh (01)')),
-                          DropdownMenuItem(value: 2, child: Text('Jestha (02)')),
-                          DropdownMenuItem(value: 3, child: Text('Ashadh (03)')),
-                          DropdownMenuItem(value: 4, child: Text('Shrawan (04)')),
-                          DropdownMenuItem(value: 5, child: Text('Bhadra (05)')),
-                          DropdownMenuItem(value: 6, child: Text('Ashwin (06)')),
-                          DropdownMenuItem(value: 7, child: Text('Kartik (07)')),
-                          DropdownMenuItem(value: 8, child: Text('Mangsir (08)')),
+                          DropdownMenuItem(
+                              value: 1, child: Text('Baishakh (01)')),
+                          DropdownMenuItem(
+                              value: 2, child: Text('Jestha (02)')),
+                          DropdownMenuItem(
+                              value: 3, child: Text('Ashadh (03)')),
+                          DropdownMenuItem(
+                              value: 4, child: Text('Shrawan (04)')),
+                          DropdownMenuItem(
+                              value: 5, child: Text('Bhadra (05)')),
+                          DropdownMenuItem(
+                              value: 6, child: Text('Ashwin (06)')),
+                          DropdownMenuItem(
+                              value: 7, child: Text('Kartik (07)')),
+                          DropdownMenuItem(
+                              value: 8, child: Text('Mangsir (08)')),
                           DropdownMenuItem(value: 9, child: Text('Poush (09)')),
                           DropdownMenuItem(value: 10, child: Text('Magh (10)')),
-                          DropdownMenuItem(value: 11, child: Text('Falgun (11)')),
-                          DropdownMenuItem(value: 12, child: Text('Chaitra (12)')),
+                          DropdownMenuItem(
+                              value: 11, child: Text('Falgun (11)')),
+                          DropdownMenuItem(
+                              value: 12, child: Text('Chaitra (12)')),
                         ],
                         onChanged: (val) =>
                             setDialogState(() => selectedMonth = val!),
@@ -4402,13 +4758,14 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 const Icon(Iconsax.document_download,
                     color: Colors.white, size: 20),
                 const SizedBox(width: 12),
-                Text('Downloading $type report for $selectedYear / $selectedMonth...'),
+                Text(
+                    'Downloading $type report for $selectedYear / $selectedMonth...'),
               ],
             ),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(20),
           ),
         );
@@ -4509,7 +4866,8 @@ class _KpiCard extends StatelessWidget {
                 ),
               ),
               if (onTap != null)
-                Icon(Iconsax.arrow_right_3, size: 16, color: context.textSecondary),
+                Icon(Iconsax.arrow_right_3,
+                    size: 16, color: context.textSecondary),
             ],
           ),
         ),

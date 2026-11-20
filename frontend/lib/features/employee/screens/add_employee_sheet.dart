@@ -1359,6 +1359,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                           else if (_availablePosts.isNotEmpty)
                             DropdownButtonFormField<int>(
                               initialValue: _selectedPostId,
+                              isExpanded: true,
                               decoration: const InputDecoration(
                                 labelText: 'Select Designation *',
                                 prefixIcon: Icon(Iconsax.briefcase, size: 18),
@@ -1366,7 +1367,11 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                               items: _availablePosts.map((post) {
                                 return DropdownMenuItem<int>(
                                   value: post['id'] as int,
-                                  child: Text(post['title']?.toString() ?? 'Designation'),
+                                  child: Text(
+                                    post['title']?.toString() ?? 'Designation',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 );
                               }).toList(),
                               onChanged: (val) {
@@ -1454,14 +1459,15 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             initialValue: _gender,
+                            isExpanded: true,
                             decoration: const InputDecoration(
                               labelText: 'Gender *',
                               prefixIcon: Icon(Iconsax.man, size: 18),
                             ),
                             items: const [
-                              DropdownMenuItem(value: 'male', child: Text('Male')),
-                              DropdownMenuItem(value: 'female', child: Text('Female')),
-                              DropdownMenuItem(value: 'others', child: Text('Others')),
+                              DropdownMenuItem(value: 'male', child: Text('Male', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                              DropdownMenuItem(value: 'female', child: Text('Female', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                              DropdownMenuItem(value: 'others', child: Text('Others', maxLines: 1, overflow: TextOverflow.ellipsis)),
                             ],
                             onChanged: (v) => setState(() => _gender = v!),
                           ),
@@ -1470,13 +1476,14 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             initialValue: _maritalStatus,
+                            isExpanded: true,
                             decoration: const InputDecoration(
                               labelText: 'Marital Status',
                               prefixIcon: Icon(Iconsax.heart, size: 18),
                             ),
                             items: const [
-                              DropdownMenuItem(value: 'single', child: Text('Single')),
-                              DropdownMenuItem(value: 'married', child: Text('Married')),
+                              DropdownMenuItem(value: 'single', child: Text('Single', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                              DropdownMenuItem(value: 'married', child: Text('Married', maxLines: 1, overflow: TextOverflow.ellipsis)),
                             ],
                             onChanged: (v) => setState(() => _maritalStatus = v!),
                           ),
@@ -1490,6 +1497,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             initialValue: _employeeType,
+                            isExpanded: true,
                             decoration: const InputDecoration(
                               labelText: 'Employment Type *',
                               prefixIcon: Icon(Iconsax.briefcase, size: 18),
@@ -1636,6 +1644,7 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             initialValue: _bloodGroup,
+                            isExpanded: true,
                             decoration: const InputDecoration(
                               labelText: 'Blood Group',
                               prefixIcon: Icon(Iconsax.health, size: 18),
@@ -1703,18 +1712,19 @@ class _AddEmployeeSheetState extends State<AddEmployeeSheet> {
 
                     DropdownButtonFormField<String>(
                       initialValue: _state,
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'State / Province',
                         prefixIcon: Icon(Iconsax.global, size: 18),
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'bagmati', child: Text('Bagmati Province')),
-                        DropdownMenuItem(value: 'gandaki', child: Text('Gandaki Province')),
-                        DropdownMenuItem(value: 'lumbini', child: Text('Lumbini Province')),
-                        DropdownMenuItem(value: 'karnali', child: Text('Karnali Province')),
-                        DropdownMenuItem(value: 'sudurpaschim', child: Text('Sudurpashchim Province')),
-                        DropdownMenuItem(value: 'province_1', child: Text('Koshi Province (Province 1)')),
-                        DropdownMenuItem(value: 'province_2', child: Text('Madhesh Province (Province 2)')),
+                        DropdownMenuItem(value: 'bagmati', child: Text('Bagmati Province', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'gandaki', child: Text('Gandaki Province', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'lumbini', child: Text('Lumbini Province', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'karnali', child: Text('Karnali Province', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'sudurpaschim', child: Text('Sudurpashchim Province', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'province_1', child: Text('Koshi Province (Province 1)', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'province_2', child: Text('Madhesh Province (Province 2)', maxLines: 1, overflow: TextOverflow.ellipsis)),
                       ],
                       onChanged: (v) => setState(() => _state = v!),
                     ),

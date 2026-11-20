@@ -622,28 +622,37 @@ class _NepaliDateFormFieldState extends State<NepaliDateFormField> {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: _ctrl,
-      enabled: widget.enabled,
-      keyboardType: TextInputType.datetime,
-      inputFormatters: [
-        LengthLimitingTextInputFormatter(10),
-      ],
-      decoration: InputDecoration(
-        labelText: widget.labelText,
-        hintText: widget.hintText,
-        prefixIcon: Icon(widget.prefixIcon, size: 18),
-        suffixIcon: IconButton(
-          icon: const Icon(Iconsax.calendar_1, size: 18, color: AppColors.primary),
-          tooltip: 'Open Nepali Calendar',
-          onPressed: _openPicker,
-        ),
-      ),
-      validator: _validateDate,
-      onChanged: (val) {
-        widget.onChanged?.call(val);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 210;
+        return TextFormField(
+          controller: _ctrl,
+          enabled: widget.enabled,
+          keyboardType: TextInputType.datetime,
+          inputFormatters: [
+            LengthLimitingTextInputFormatter(10),
+          ],
+          decoration: InputDecoration(
+            labelText: widget.labelText,
+            hintText: widget.hintText,
+            contentPadding: isCompact
+                ? const EdgeInsets.fromLTRB(12, 14, 4, 14)
+                : null,
+            prefixIcon: isCompact ? null : Icon(widget.prefixIcon, size: 18),
+            suffixIcon: IconButton(
+              icon: const Icon(Iconsax.calendar_1,
+                  size: 18, color: AppColors.primary),
+              tooltip: 'Open Nepali Calendar',
+              onPressed: _openPicker,
+            ),
+          ),
+          validator: _validateDate,
+          onChanged: (val) {
+            widget.onChanged?.call(val);
+          },
+          onSaved: widget.onSaved,
+        );
       },
-      onSaved: widget.onSaved,
     );
   }
 }
