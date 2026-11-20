@@ -187,4 +187,21 @@ class FirebaseNotificationService {
       debugPrint("Failed to register FCM token: $e");
     }
   }
+
+  Future<void> unregisterDeviceToken() async {
+    // Called on logout to stop push notifications for this device
+    if (kIsWeb) return;
+
+    try {
+      final fcmToken = await _fcm.getToken();
+      if (fcmToken != null) {
+        final api = ApiService();
+        await api.delete('/api/notifications/device-token/',
+            data: {'token': fcmToken});
+        debugPrint("FCM Token unregistered on logout");
+      }
+    } catch (e) {
+      debugPrint("Failed to unregister FCM token: $e");
+    }
+  }
 }

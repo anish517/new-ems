@@ -29,7 +29,7 @@ class MarkAllNotificationsAsReadView(APIView):
 class RegisterDeviceTokenView(APIView):
     """
     Flutter calls this on startup/login to register the FCM device token.
-    POST /api/notification/device-token/
+    POST /api/notifications/device-token/
     Body: { "token": "<FCM_token>" }
     """
     permission_classes = [IsAuthenticated]
@@ -45,6 +45,14 @@ class RegisterDeviceTokenView(APIView):
             defaults={'user': request.user}
         )
         return Response({'status': 'token registered'}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, *args, **kwargs):
+        """Remove device token on logout so push notifications stop."""
+        token = request.data.get('token')
+        if not token:
+            return Response({'error': 'token is required'}, status=status.HTTP_400_BAD_REQUEST)
+        DeviceToken.objects.filter(user=request.user, token=token).delete()
+        return Response({'status': 'token unregistered'}, status=status.HTTP_200_OK)
 
 
 class NotificationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):

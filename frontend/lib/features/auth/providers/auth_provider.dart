@@ -71,6 +71,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Unregister FCM token BEFORE clearing auth tokens (needs auth header)
+    await FirebaseNotificationService().unregisterDeviceToken();
     await _authService.logout();
     // Reset badge and clear cached notifications before state change
     _ref.read(unreadCountProvider.notifier).state = 0;
