@@ -3277,8 +3277,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
                         // -- Attendance Status card ----------------------------------
                         final attendanceCard = Builder(builder: (ctx) {
-                          if (_todayAttendanceStatus.isEmpty)
+                          if (_todayAttendanceStatus.isEmpty) {
                             return const SizedBox.shrink();
+                          }
                           final presentList = _todayAttendanceStatus
                               .where((e) => e['is_present'] == true)
                               .toList();
