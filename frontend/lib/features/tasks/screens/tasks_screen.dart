@@ -293,6 +293,121 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
               LayoutBuilder(
                 builder: (context, constraints) {
                   final isMobile = constraints.maxWidth < 650;
+                  final titleRow = Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(Iconsax.task_square,
+                            color: AppColors.primary, size: 24),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: [
+                                Text(
+                                  'Tasks & Assignments',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.4,
+                                    color: context.textPrimary,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '${_tasks.length} Total',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            const Text(
+                              'Track deliverables & project milestones',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+
+                  final actionsRow = Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                            _isKanbanView
+                                ? Iconsax.row_vertical
+                                : Iconsax.kanban,
+                            size: 20),
+                        tooltip: _isKanbanView
+                            ? 'Switch to List View'
+                            : 'Switch to Board View',
+                        onPressed: () =>
+                            setState(() => _isKanbanView = !_isKanbanView),
+                        style: IconButton.styleFrom(
+                          backgroundColor: context.card,
+                          side: BorderSide(color: context.border),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Iconsax.refresh, size: 20),
+                        tooltip: 'Refresh',
+                        onPressed: _loadTasks,
+                        style: IconButton.styleFrom(
+                          backgroundColor: context.card,
+                          side: BorderSide(color: context.border),
+                        ),
+                      ),
+                      if (isAdmin)
+                        ElevatedButton.icon(
+                          onPressed: _showCreateTaskSheet,
+                          icon: const Icon(Iconsax.add_circle,
+                              size: 18, color: Colors.white),
+                          label: const Text('New Task',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 11),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                    ],
+                  );
+
                   return Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -308,134 +423,23 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                         ),
                       ],
                     ),
-                    child: Flex(
-                      direction: isMobile ? Axis.vertical : Axis.horizontal,
-                      crossAxisAlignment: isMobile
-                          ? CrossAxisAlignment.start
-                          : CrossAxisAlignment.center,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color:
-                                    AppColors.primary.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(Iconsax.task_square,
-                                  color: AppColors.primary, size: 24),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Wrap(
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.center,
-                                    spacing: 8,
-                                    runSpacing: 4,
-                                    children: [
-                                      Text(
-                                        'Tasks & Assignments',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: -0.4,
-                                          color: context.textPrimary,
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary
-                                              .withValues(alpha: 0.12),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          '${_tasks.length} Total',
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 3),
-                                  const Text(
-                                    'Track deliverables & project milestones',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (isMobile) const SizedBox(height: 14),
-                        Row(
-                          mainAxisAlignment: isMobile
-                              ? MainAxisAlignment.end
-                              : MainAxisAlignment.start,
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                  _isKanbanView
-                                      ? Iconsax.row_vertical
-                                      : Iconsax.kanban,
-                                  size: 20),
-                              tooltip: _isKanbanView
-                                  ? 'Switch to List View'
-                                  : 'Switch to Board View',
-                              onPressed: () => setState(
-                                  () => _isKanbanView = !_isKanbanView),
-                              style: IconButton.styleFrom(
-                                backgroundColor: context.card,
-                                side: BorderSide(color: context.border),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Iconsax.refresh, size: 20),
-                              tooltip: 'Refresh',
-                              onPressed: _loadTasks,
-                              style: IconButton.styleFrom(
-                                backgroundColor: context.card,
-                                side: BorderSide(color: context.border),
-                              ),
-                            ),
-                            if (isAdmin) ...[
-                              const SizedBox(width: 8),
-                              ElevatedButton.icon(
-                                onPressed: _showCreateTaskSheet,
-                                icon: const Icon(Iconsax.add_circle,
-                                    size: 18, color: Colors.white),
-                                label: const Text('New Task',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 11),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12)),
-                                ),
-                              ),
+                    child: isMobile
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              titleRow,
+                              const SizedBox(height: 14),
+                              actionsRow,
                             ],
-                          ],
-                        ),
-                      ],
-                    ),
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(child: titleRow),
+                              const SizedBox(width: 12),
+                              actionsRow,
+                            ],
+                          ),
                   );
                 },
               ),
@@ -897,20 +901,27 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(icon, size: 18, color: color),
-                  const SizedBox(width: 8),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: context.textPrimary,
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(icon, size: 18, color: color),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: context.textPrimary,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
@@ -1149,27 +1160,35 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 10,
-                        backgroundColor:
-                            AppColors.primary.withValues(alpha: 0.12),
-                        child: const Icon(Iconsax.user,
-                            size: 10, color: AppColors.primary),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        assignedName,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 10,
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.12),
+                          child: const Icon(Iconsax.user,
+                              size: 10, color: AppColors.primary),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            assignedName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: context.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       if (hasPdf) ...[
                         const Icon(Iconsax.document_1,
