@@ -1008,23 +1008,35 @@ class _ReportsTabState extends State<_ReportsTab> {
                   ),
                 ),
                 SizedBox(
-                  width: 220,
+                  width: 240,
                   child: DropdownButtonFormField<String?>(
                     // ignore: deprecated_member_use
                     value: _selectedEmployee,
+                    isExpanded: true,
                     dropdownColor: context.surface,
                     decoration: const InputDecoration(
                       labelText: 'Staff Filter',
                       prefixIcon: Icon(Iconsax.user, size: 18),
                     ),
                     items: [
-                      const DropdownMenuItem(value: null, child: Text('All Team Members')),
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text(
+                          'All Team Members',
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
                       ..._employees.map((e) {
                         final u = e['user'] ?? {};
                         final name = '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}'.trim();
                         return DropdownMenuItem(
                           value: e['id'].toString(),
-                          child: Text(name.isEmpty ? 'Emp #${e['id']}' : name),
+                          child: Text(
+                            name.isEmpty ? 'Emp #${e['id']}' : name,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         );
                       }),
                     ],
