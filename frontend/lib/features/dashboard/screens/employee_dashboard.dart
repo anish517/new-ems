@@ -469,10 +469,7 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard> {
       padding: EdgeInsets.zero,
       minItemWidth: 150,
       itemCount: actions.length,
-      itemBuilder: (context, index) => AspectRatio(
-        aspectRatio: 1.45,
-        child: actions[index],
-      ),
+      itemBuilder: (context, index) => actions[index],
     );
   }
 }
@@ -733,6 +730,7 @@ class _QuickCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Container(
+          constraints: const BoxConstraints(minHeight: 126),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: context.surface,
@@ -748,6 +746,7 @@ class _QuickCard extends StatelessWidget {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
@@ -766,6 +765,7 @@ class _QuickCard extends StatelessWidget {
                       size: 15, color: context.textSecondary),
                 ],
               ),
+              const SizedBox(height: 14),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

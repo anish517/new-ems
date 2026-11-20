@@ -196,7 +196,7 @@ class LeaveScreen extends ConsumerStatefulWidget {
 }
 
 class _LeaveScreenState extends ConsumerState<LeaveScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tabs;
   List<dynamic> _requests = [];
   Map<String, dynamic>? _balance;
@@ -211,7 +211,8 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 3, vsync: this);
+    final isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
+    _tabs = TabController(length: isAdmin ? 3 : 2, vsync: this);
     _loadLeaves();
   }
 
@@ -726,12 +727,8 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
 
     final tabLength = isAdmin ? 3 : 2;
     if (!mounted) return const SizedBox.shrink();
-    try {
-      if (_tabs.length != tabLength) {
-        _tabs.dispose();
-        _tabs = TabController(length: tabLength, vsync: this);
-      }
-    } catch (_) {
+    if (_tabs.length != tabLength) {
+      _tabs.dispose();
       _tabs = TabController(length: tabLength, vsync: this);
     }
 

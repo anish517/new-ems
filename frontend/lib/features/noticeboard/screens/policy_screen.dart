@@ -600,7 +600,10 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: Row(
+                              child: Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 8,
+                                runSpacing: 4,
                                 children: [
                                   Text(
                                     'Company Policies',
@@ -611,7 +614,6 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
                                       color: context.textPrimary,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                     decoration: BoxDecoration(
@@ -630,6 +632,7 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
                                 ],
                               ),
                             ),
+                            const SizedBox(width: 8),
                             IconButton(
                               icon: const Icon(Iconsax.refresh, size: 18),
                               tooltip: 'Refresh',

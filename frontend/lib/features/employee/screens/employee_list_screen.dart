@@ -605,70 +605,71 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Wrap(
-                          spacing: 14,
-                          runSpacing: 14,
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: const Icon(Iconsax.people,
-                                      color: AppColors.primary, size: 22),
-                                ),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Employee Directory',
-                                          style: TextStyle(
-                                            fontSize: isTight ? 17 : 20,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: -0.4,
-                                            color: context.textPrimary,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary.withValues(alpha: 0.12),
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: Text(
-                                            '${_employees.length} Active',
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.primary,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'Manage staff profiles, contracts & CSV records',
-                                      style: TextStyle(
-                                        fontSize: isTight ? 11 : 12,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(Iconsax.people,
+                                  color: AppColors.primary, size: 22),
                             ),
-                            Wrap(
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Wrap(
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: [
+                                      Text(
+                                        'Employee Directory',
+                                        style: TextStyle(
+                                          fontSize: isTight ? 17 : 20,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: -0.4,
+                                          color: context.textPrimary,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          '${_employees.length} Active',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Manage staff profiles, contracts & CSV records',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: isTight ? 11 : 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Wrap(
                               spacing: 8,
                               runSpacing: 8,
                               crossAxisAlignment: WrapCrossAlignment.center,
@@ -750,10 +751,8 @@ class _EmployeeListScreenState extends ConsumerState<EmployeeListScreen>
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ],
-                        ),
+                                ],
+                              ),
                       ],
                     ),
                   ),
