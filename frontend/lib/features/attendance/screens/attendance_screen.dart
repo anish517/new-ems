@@ -1243,9 +1243,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // ── Top Header Card ──────────────────────────────────────────
-                Container(
+                LayoutBuilder(
+                  builder: (context, headerConstraints) {
+                    final isNarrowHeader = headerConstraints.maxWidth < 680;
+                    return Container(
                   width: double.infinity,
-                  padding: EdgeInsets.all(isMobile ? 14 : 20),
+                  padding: EdgeInsets.all(isNarrowHeader ? 14 : 20),
                   decoration: BoxDecoration(
                     color: context.surface,
                     borderRadius: BorderRadius.circular(24),
@@ -1259,7 +1262,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       ),
                     ],
                   ),
-                  child: isMobile
+                  child: isNarrowHeader
                       ? Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -1447,8 +1450,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
+                                  Wrap(
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    spacing: 8,
+                                    runSpacing: 4,
                                     children: [
                                       Text(
                                         'Attendance & Geofencing',
@@ -1459,7 +1465,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                           color: context.textPrimary,
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 2),
@@ -1574,6 +1579,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                             ),
                           ],
                         ),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 20),
