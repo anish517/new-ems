@@ -193,15 +193,48 @@ def _connect_feedback_signals():
         def on_complain_reply_saved(sender, instance, created, **kwargs):
             if kwargs.get("raw", False):
                 return  # loading a fixture (loaddata): no side effects
-            if created and instance.complain and instance.complain.owner and instance.complain.owner.user:
-                # Notify the employee who filed the complaint that a reply has been posted
-                notify_user(
-                    user=instance.complain.owner.user,
-                    title='💬 Reply on Your Complaint',
-                    body=f'Your complaint "{instance.complain.title}" has received a response.',
-                    notification_type='feedback',
-                    reference_id=instance.complain.id,
-                )
+            if not created:
+                return
+
+            complain = instance.complain
+            is_admin_reply = instance.employee is None
+
+            if is_admin_reply:
+                # Admin replied → notify the complaint owner
+                if complain and complain.owner and complain.owner.user:
+                    notify_user(
+                        user=complain.owner.user,
+                        title='💬 Reply on Your Complaint',
+                        body=f'Your complaint "{complain.title}" has received a response.',
+                        notification_type='feedback',
+                        reference_id=complain.id,
+                    )
+            else:
+                # Employee replied → notify org admins + superadmins
+                admin_user_ids = set()
+                if instance.organization:
+                    for admin_user in instance.organization.admin_users.all():
+                        if admin_user.id not in admin_user_ids:
+                            admin_user_ids.add(admin_user.id)
+                            notify_user(
+                                user=admin_user,
+                                title='💬 New Reply from Employee',
+                                body=f'{instance.employee.user.full_name} replied to complaint: "{complain.title}".',
+                                notification_type='feedback',
+                                reference_id=complain.id,
+                            )
+
+                superadmins = User.objects.filter(is_superuser=True, is_active=True)
+                for admin in superadmins:
+                    if admin.id not in admin_user_ids:
+                        admin_user_ids.add(admin.id)
+                        notify_user(
+                            user=admin,
+                            title='💬 New Reply from Employee',
+                            body=f'{instance.employee.user.full_name} replied to complaint: "{complain.title}".',
+                            notification_type='feedback',
+                            reference_id=complain.id,
+                        )
     except Exception as e:
         print(f'[Signals] Could not connect feedback signals: {e}')
 
