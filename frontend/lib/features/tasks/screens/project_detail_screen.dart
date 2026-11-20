@@ -206,57 +206,69 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Badges Row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: _statusColor(projectStatus).withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    projectStatus.toUpperCase(),
-                                    style: TextStyle(
-                                      color: _statusColor(projectStatus),
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 11,
+                        SizedBox(
+                          width: double.infinity,
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: _statusColor(projectStatus)
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      projectStatus.toUpperCase(),
+                                      style: TextStyle(
+                                        color: _statusColor(projectStatus),
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 11,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: _typeColor(projectType).withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    projectType == "monthly"
-                                        ? "MONTHLY RETAINER"
-                                        : projectType == "daily"
-                                            ? "DAILY BILLING"
-                                            : "HOURLY BILLING",
-                                    style: TextStyle(
-                                      color: _typeColor(projectType),
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 11,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: _typeColor(projectType)
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      projectType == "monthly"
+                                          ? "MONTHLY RETAINER"
+                                          : projectType == "daily"
+                                              ? "DAILY BILLING"
+                                              : "HOURLY BILLING",
+                                      style: TextStyle(
+                                        color: _typeColor(projectType),
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 11,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              "$completion% Complete",
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: context.textPrimary,
+                                ],
                               ),
-                            ),
-                          ],
+                              Text(
+                                "$completion% Complete",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
 
                         const SizedBox(height: 14),
@@ -329,35 +341,40 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
                   // ── Financial & Estimation Metrics Grid ──────────────────────
                   LayoutBuilder(
                     builder: (context, c) {
-                      final cols = c.maxWidth < 600 ? 1 : 2;
-                      return GridView.count(
-                        crossAxisCount: cols,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        childAspectRatio: cols == 1 ? 4.5 : 3.0,
+                      final budgetCard = _buildMetricCard(
+                        Iconsax.money_recive,
+                        "Total Project Budget",
+                        _project["total_budget"] != null
+                            ? "NPR ${_project["total_budget"]}${_convertedBudget != null ? ' (~$_convertedBudget)' : ''}"
+                            : "Unbudgeted",
+                        AppColors.success,
+                      );
+                      final estCard = _buildMetricCard(
+                        Iconsax.timer,
+                        projectType == "monthly"
+                            ? "Estimated Months"
+                            : projectType == "daily"
+                                ? "Estimated Days"
+                                : "Estimated Hours",
+                        _project["estimated_hours"] != null
+                            ? "${_project["estimated_hours"]} ${projectType == "monthly" ? "months" : projectType == "daily" ? "days" : "hrs"}"
+                            : "Not specified",
+                        AppColors.primary,
+                      );
+                      if (c.maxWidth < 600) {
+                        return Column(
+                          children: [
+                            budgetCard,
+                            const SizedBox(height: 12),
+                            estCard,
+                          ],
+                        );
+                      }
+                      return Row(
                         children: [
-                          _buildMetricCard(
-                            Iconsax.money_recive,
-                            "Total Project Budget",
-                            _project["total_budget"] != null
-                                ? "NPR ${_project["total_budget"]}${_convertedBudget != null ? ' (~$_convertedBudget)' : ''}"
-                                : "Unbudgeted",
-                            AppColors.success,
-                          ),
-                          _buildMetricCard(
-                            Iconsax.timer,
-                            projectType == "monthly"
-                                ? "Estimated Months"
-                                : projectType == "daily"
-                                    ? "Estimated Days"
-                                    : "Estimated Hours",
-                            _project["estimated_hours"] != null
-                                ? "${_project["estimated_hours"]} ${projectType == "monthly" ? "months" : projectType == "daily" ? "days" : "hrs"}"
-                                : "Not specified",
-                            AppColors.primary,
-                          ),
+                          Expanded(child: budgetCard),
+                          const SizedBox(width: 12),
+                          Expanded(child: estCard),
                         ],
                       );
                     },
@@ -415,93 +432,154 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
                   else
                     LayoutBuilder(
                       builder: (context, c) {
-                        final cols = c.maxWidth < 600 ? 1 : 2;
-                        return GridView.count(
-                          crossAxisCount: cols,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          childAspectRatio: cols == 1 ? 4.0 : 2.8,
-                          children: assignments.map<Widget>((a) {
-                            final isSenior = a["role"] == "senior";
-                            final earned = a["total_earned"] ?? 0;
-                            final hours = a["total_hours"] ?? 0;
-                            final days = a["total_days"] ?? 0;
+                        Widget buildMemberCard(dynamic a) {
+                          final isSenior = a["role"] == "senior";
+                          final earned = a["total_earned"] ?? 0;
+                          final hours = a["total_hours"] ?? 0;
+                          final days = a["total_days"] ?? 0;
 
-                            return Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: context.surface,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: context.border),
-                              ),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 18,
-                                    backgroundColor: isSenior
-                                        ? AppColors.primary.withValues(alpha: 0.12)
-                                        : const Color(0xFF64748B).withValues(alpha: 0.12),
-                                    child: Text(
-                                      (a["name"] ?? "?").isNotEmpty ? (a["name"] as String)[0].toUpperCase() : "?",
-                                      style: TextStyle(
-                                        color: isSenior ? AppColors.primary : const Color(0xFF64748B),
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 14,
-                                      ),
+                          return Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: context.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: context.border),
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: isSenior
+                                      ? AppColors.primary.withValues(alpha: 0.12)
+                                      : const Color(0xFF64748B)
+                                          .withValues(alpha: 0.12),
+                                  child: Text(
+                                    (a["name"] ?? "?").isNotEmpty
+                                        ? (a["name"] as String)[0].toUpperCase()
+                                        : "?",
+                                    style: TextStyle(
+                                      color: isSenior
+                                          ? AppColors.primary
+                                          : const Color(0xFF64748B),
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                a["name"] ?? "Staff Member",
-                                                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: context.textPrimary),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: isSenior ? AppColors.primary.withValues(alpha: 0.1) : context.card,
-                                                borderRadius: BorderRadius.circular(6),
-                                              ),
-                                              child: Text(
-                                                isSenior ? "SENIOR" : "JUNIOR",
-                                                style: TextStyle(
-                                                  fontSize: 9.5,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              a["name"] ?? "Staff Member",
+                                              style: TextStyle(
+                                                  fontSize: 13.5,
                                                   fontWeight: FontWeight.w800,
-                                                  color: isSenior ? AppColors.primary : AppColors.textSecondary,
-                                                ),
+                                                  color: context.textPrimary),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: isSenior
+                                                  ? AppColors.primary
+                                                      .withValues(alpha: 0.1)
+                                                  : context.card,
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              isSenior ? "SENIOR" : "JUNIOR",
+                                              style: TextStyle(
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.w800,
+                                                color: isSenior
+                                                    ? AppColors.primary
+                                                    : AppColors.textSecondary,
                                               ),
                                             ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 3),
-                                        if (a["hourly_rate"] != null)
-                                          Text("Rate: NPR ${a["hourly_rate"]}/hr", style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary))
-                                        else if (a["daily_rate"] != null)
-                                          Text("Rate: NPR ${a["daily_rate"]}/day", style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
-                                        if (earned > 0)
-                                          Text(
-                                            projectType == "hourly" ? "$hours hrs • NPR $earned earned" : "$days days • NPR $earned earned",
-                                            style: const TextStyle(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.bold),
                                           ),
+                                        ],
+                                      ),
+                                      if (a["hourly_rate"] != null) ...[
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          "Rate: NPR ${a["hourly_rate"]}/hr",
+                                          style: const TextStyle(
+                                              fontSize: 11.5,
+                                              color: AppColors.textSecondary),
+                                        ),
+                                      ] else if (a["daily_rate"] != null) ...[
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          "Rate: NPR ${a["daily_rate"]}/day",
+                                          style: const TextStyle(
+                                              fontSize: 11.5,
+                                              color: AppColors.textSecondary),
+                                        ),
                                       ],
-                                    ),
+                                      if (earned > 0) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          projectType == "hourly"
+                                              ? "$hours hrs • NPR $earned earned"
+                                              : "$days days • NPR $earned earned",
+                                          style: const TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.success,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        );
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        if (c.maxWidth < 600) {
+                          return Column(
+                            children: [
+                              for (var i = 0; i < assignments.length; i++) ...[
+                                buildMemberCard(assignments[i]),
+                                if (i < assignments.length - 1)
+                                  const SizedBox(height: 12),
+                              ],
+                            ],
+                          );
+                        }
+
+                        final rows = <Widget>[];
+                        for (var i = 0; i < assignments.length; i += 2) {
+                          rows.add(
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: buildMemberCard(assignments[i])),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: i + 1 < assignments.length
+                                      ? buildMemberCard(assignments[i + 1])
+                                      : const SizedBox.shrink(),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (i + 2 < assignments.length) {
+                            rows.add(const SizedBox(height: 12));
+                          }
+                        }
+                        return Column(children: rows);
                       },
                     ),
 
