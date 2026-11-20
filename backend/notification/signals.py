@@ -178,16 +178,31 @@ def _connect_feedback_signals():
             if kwargs.get("raw", False):
                 return  # loading a fixture (loaddata): no side effects
             if created:
-                # Notify all superadmin users
+                # Notify org admins + superadmins (deduplicated)
+                notified_ids = set()
+                if instance.organization:
+                    for admin_user in instance.organization.admin_users.all():
+                        if admin_user.id not in notified_ids:
+                            notified_ids.add(admin_user.id)
+                            notify_user(
+                                user=admin_user,
+                                title='📢 New Complaint Filed',
+                                body=f'A new complaint has been submitted: "{instance.title}".',
+                                notification_type='feedback',
+                                reference_id=instance.id,
+                            )
+
                 superadmins = User.objects.filter(is_superuser=True, is_active=True)
                 for admin in superadmins:
-                    notify_user(
-                        user=admin,
-                        title='📢 New Complaint Filed',
-                        body=f'A new complaint has been submitted: "{instance.title}".',
-                        notification_type='feedback',
-                        reference_id=instance.id,
-                    )
+                    if admin.id not in notified_ids:
+                        notified_ids.add(admin.id)
+                        notify_user(
+                            user=admin,
+                            title='📢 New Complaint Filed',
+                            body=f'A new complaint has been submitted: "{instance.title}".',
+                            notification_type='feedback',
+                            reference_id=instance.id,
+                        )
 
         @receiver(post_save, sender=ComplainReply)
         def on_complain_reply_saved(sender, instance, created, **kwargs):
