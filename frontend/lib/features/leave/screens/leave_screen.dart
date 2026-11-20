@@ -380,20 +380,23 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: ctx.border),
                   ),
-                  child: SwitchListTile(
-                    title: const Text('Paid Leave in Provision Period',
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: SwitchListTile(
+                      title: const Text('Paid Leave in Provision Period',
+                          style: TextStyle(
+                              fontSize: 13.5, fontWeight: FontWeight.w700)),
+                      subtitle: const Text(
+                        'If ON, staff in probation can take paid Casual & Sick leave. If OFF, only unpaid leave is permitted.',
                         style: TextStyle(
-                            fontSize: 13.5, fontWeight: FontWeight.w700)),
-                    subtitle: const Text(
-                      'If ON, staff in probation can take paid Casual & Sick leave. If OFF, only unpaid leave is permitted.',
-                      style: TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary),
+                            fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                      value: paidInProvision,
+                      activeThumbColor: AppColors.primary,
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (val) =>
+                          setModalState(() => paidInProvision = val),
                     ),
-                    value: paidInProvision,
-                    activeThumbColor: AppColors.primary,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (val) =>
-                        setModalState(() => paidInProvision = val),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -404,19 +407,22 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: ctx.border),
                   ),
-                  child: SwitchListTile(
-                    title: const Text('Allow Intern Leave',
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: SwitchListTile(
+                      title: const Text('Allow Intern Leave',
+                          style: TextStyle(
+                              fontSize: 13.5, fontWeight: FontWeight.w700)),
+                      subtitle: const Text(
+                        'If ON, intern employees can submit leave applications. If OFF, intern leave requests are blocked.',
                         style: TextStyle(
-                            fontSize: 13.5, fontWeight: FontWeight.w700)),
-                    subtitle: const Text(
-                      'If ON, intern employees can submit leave applications. If OFF, intern leave requests are blocked.',
-                      style: TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary),
+                            fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                      value: allowIntern,
+                      activeThumbColor: AppColors.primary,
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (val) => setModalState(() => allowIntern = val),
                     ),
-                    value: allowIntern,
-                    activeThumbColor: AppColors.primary,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (val) => setModalState(() => allowIntern = val),
                   ),
                 ),
               ],
@@ -673,21 +679,19 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
       final res = await showDialog<bool>(
         context: context,
         builder: (_) => Dialog(
-          backgroundColor: Colors.transparent,
+          backgroundColor: context.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          clipBehavior: Clip.antiAlias,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 580),
-            child: Container(
-              decoration: BoxDecoration(
-                color: context.surface,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: _ApplyLeaveSheet(
-                onSuccess: _loadLeaves,
-                balance: _balance,
-                existingRequests: _requests,
-                leaveSetting: _leaveSetting,
-                currentUser: user,
-              ),
+            child: _ApplyLeaveSheet(
+              onSuccess: _loadLeaves,
+              balance: _balance,
+              existingRequests: _requests,
+              leaveSetting: _leaveSetting,
+              currentUser: user,
             ),
           ),
         ),
@@ -3218,41 +3222,24 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
               const SizedBox(height: 12),
 
               // Paid Leave & Half Day Switches
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isMobile = constraints.maxWidth < 450;
-                  return Flex(
-                    direction: isMobile ? Axis.vertical : Axis.horizontal,
-                    children: [
-                      isMobile
-                          ? SwitchListTile(
-                              title: const Text('Paid Leave',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700)),
-                              subtitle: Text(
-                                _isProvisionRestricted
-                                    ? 'Locked: Only unpaid leave allowed in provision period'
-                                    : 'Toggle for paid vs unpaid leave',
-                                style: const TextStyle(fontSize: 11),
-                              ),
-                              value: _isPaid,
-                              onChanged: _isProvisionRestricted
-                                  ? null
-                                  : (v) => setState(() => _isPaid = v),
-                              activeThumbColor: AppColors.primary,
-                              contentPadding: EdgeInsets.zero,
-                            )
-                          : Expanded(
-                              child: SwitchListTile(
+              Material(
+                type: MaterialType.transparency,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isMobile = constraints.maxWidth < 450;
+                    return Flex(
+                      direction: isMobile ? Axis.vertical : Axis.horizontal,
+                      children: [
+                        isMobile
+                            ? SwitchListTile(
                                 title: const Text('Paid Leave',
                                     style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700)),
                                 subtitle: Text(
                                   _isProvisionRestricted
-                                      ? 'Locked: Unpaid only in provision'
-                                      : 'Toggle for paid vs unpaid',
+                                      ? 'Locked: Only unpaid leave allowed in provision period'
+                                      : 'Toggle for paid vs unpaid leave',
                                   style: const TextStyle(fontSize: 11),
                                 ),
                                 value: _isPaid,
@@ -3261,30 +3248,30 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                                     : (v) => setState(() => _isPaid = v),
                                 activeThumbColor: AppColors.primary,
                                 contentPadding: EdgeInsets.zero,
+                              )
+                            : Expanded(
+                                child: SwitchListTile(
+                                  title: const Text('Paid Leave',
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700)),
+                                  subtitle: Text(
+                                    _isProvisionRestricted
+                                        ? 'Locked: Unpaid only in provision'
+                                        : 'Toggle for paid vs unpaid',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                  value: _isPaid,
+                                  onChanged: _isProvisionRestricted
+                                      ? null
+                                      : (v) => setState(() => _isPaid = v),
+                                  activeThumbColor: AppColors.primary,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
                               ),
-                            ),
-                      if (isMobile) const Divider(height: 1),
-                      isMobile
-                          ? SwitchListTile(
-                              title: const Text('Half Day Leave',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700)),
-                              subtitle: const Text('0.5 day duration',
-                                  style: TextStyle(fontSize: 11)),
-                              value: _isHalfDay,
-                              onChanged: (v) => setState(() {
-                                _isHalfDay = v;
-                                if (v) {
-                                  _tillCtrl.text = _fromCtrl.text;
-                                  _tillDate = _fromDate;
-                                }
-                              }),
-                              activeThumbColor: AppColors.primary,
-                              contentPadding: EdgeInsets.zero,
-                            )
-                          : Expanded(
-                              child: SwitchListTile(
+                        if (isMobile) const Divider(height: 1),
+                        isMobile
+                            ? SwitchListTile(
                                 title: const Text('Half Day Leave',
                                     style: TextStyle(
                                         fontSize: 13,
@@ -3301,11 +3288,31 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                                 }),
                                 activeThumbColor: AppColors.primary,
                                 contentPadding: EdgeInsets.zero,
+                              )
+                            : Expanded(
+                                child: SwitchListTile(
+                                  title: const Text('Half Day Leave',
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700)),
+                                  subtitle: const Text('0.5 day duration',
+                                      style: TextStyle(fontSize: 11)),
+                                  value: _isHalfDay,
+                                  onChanged: (v) => setState(() {
+                                    _isHalfDay = v;
+                                    if (v) {
+                                      _tillCtrl.text = _fromCtrl.text;
+                                      _tillDate = _fromDate;
+                                    }
+                                  }),
+                                  activeThumbColor: AppColors.primary,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
                               ),
-                            ),
-                    ],
-                  );
-                },
+                      ],
+                    );
+                  },
+                ),
               ),
 
               if (_isHalfDay) ...[

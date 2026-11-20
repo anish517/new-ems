@@ -3158,63 +3158,75 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                           color: Color(0xFF10B981), size: 22),
                     ),
                     const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Attendance Enforcement Policies',
-                            style: TextStyle(
-                                fontSize: isMobile ? 15 : 17,
-                                fontWeight: FontWeight.w800,
-                                color: context.textPrimary)),
-                        const SizedBox(height: 2),
-                        const Text(
-                            'Master toggles governing how staff can clock in',
-                            style: TextStyle(
-                                fontSize: 12, color: AppColors.textSecondary)),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Attendance Enforcement Policies',
+                              style: TextStyle(
+                                  fontSize: isMobile ? 15 : 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.textPrimary)),
+                          const SizedBox(height: 2),
+                          const Text(
+                              'Master toggles governing how staff can clock in',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary)),
+                        ],
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 18),
                 Divider(color: context.border, height: 1),
                 const SizedBox(height: 8),
-                SwitchListTile(
-                  title: const Text('Enable In-Office Geofenced Attendance',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text(
-                      'Enforces GPS radius check when clocking in on-site at the office',
-                      style: TextStyle(fontSize: 12)),
-                  value: _enableInOffice,
-                  onChanged: (v) => setState(() => _enableInOffice = v),
-                  activeThumbColor: AppColors.primary,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                const Divider(),
-                SwitchListTile(
-                  title: const Text('Enable Remote / WFH Attendance',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text(
-                      'Master switch allowing staff with approved remote permissions to clock in',
-                      style: TextStyle(fontSize: 12)),
-                  value: _enableRemote,
-                  onChanged: (v) => setState(() => _enableRemote = v),
-                  activeThumbColor: AppColors.primary,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                const Divider(),
-                SwitchListTile(
-                  title: const Text('Enable Daily Performance',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text(
-                      'Controls employee performance & appraisal visibility. Administrators always retain full access.',
-                      style: TextStyle(fontSize: 12)),
-                  value: _enableDailyPerformance,
-                  onChanged: (v) => setState(() => _enableDailyPerformance = v),
-                  activeThumbColor: AppColors.primary,
-                  contentPadding: EdgeInsets.zero,
+                Material(
+                  type: MaterialType.transparency,
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        title: const Text(
+                            'Enable In-Office Geofenced Attendance',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700, fontSize: 14)),
+                        subtitle: const Text(
+                            'Enforces GPS radius check when clocking in on-site at the office',
+                            style: TextStyle(fontSize: 12)),
+                        value: _enableInOffice,
+                        onChanged: (v) => setState(() => _enableInOffice = v),
+                        activeThumbColor: AppColors.primary,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      const Divider(),
+                      SwitchListTile(
+                        title: const Text('Enable Remote / WFH Attendance',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700, fontSize: 14)),
+                        subtitle: const Text(
+                            'Master switch allowing staff with approved remote permissions to clock in',
+                            style: TextStyle(fontSize: 12)),
+                        value: _enableRemote,
+                        onChanged: (v) => setState(() => _enableRemote = v),
+                        activeThumbColor: AppColors.primary,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      const Divider(),
+                      SwitchListTile(
+                        title: const Text('Enable Daily Performance',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700, fontSize: 14)),
+                        subtitle: const Text(
+                            'Controls employee performance & appraisal visibility. Administrators always retain full access.',
+                            style: TextStyle(fontSize: 12)),
+                        value: _enableDailyPerformance,
+                        onChanged: (v) =>
+                            setState(() => _enableDailyPerformance = v),
+                        activeThumbColor: AppColors.primary,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

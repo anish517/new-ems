@@ -236,46 +236,49 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: ctx.border),
                       ),
-                      child: Column(
-                        children: [
-                          SwitchListTile(
-                            title: const Text('Mark as Important',
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: Column(
+                          children: [
+                            SwitchListTile(
+                              title: const Text('Mark as Important',
+                                  style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600)),
+                              subtitle: const Text(
+                                'Sends early push notifications to staff',
                                 style: TextStyle(
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.w600)),
-                            subtitle: const Text(
-                              'Sends early push notifications to staff',
-                              style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: AppColors.textSecondary),
+                                    fontSize: 11.5,
+                                    color: AppColors.textSecondary),
+                              ),
+                              secondary: const Icon(Iconsax.star_1,
+                                  color: AppColors.warning, size: 20),
+                              value: isImportant,
+                              activeThumbColor: AppColors.warning,
+                              onChanged: (val) =>
+                                  setDialogState(() => isImportant = val),
                             ),
-                            secondary: const Icon(Iconsax.star_1,
-                                color: AppColors.warning, size: 20),
-                            value: isImportant,
-                            activeThumbColor: AppColors.warning,
-                            onChanged: (val) =>
-                                setDialogState(() => isImportant = val),
-                          ),
-                          Divider(height: 1, color: ctx.border),
-                          SwitchListTile(
-                            title: const Text('Public Holiday',
+                            Divider(height: 1, color: ctx.border),
+                            SwitchListTile(
+                              title: const Text('Public Holiday',
+                                  style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600)),
+                              subtitle: const Text(
+                                'Officially counted in monthly payroll issuance',
                                 style: TextStyle(
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.w600)),
-                            subtitle: const Text(
-                              'Officially counted in monthly payroll issuance',
-                              style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: AppColors.textSecondary),
+                                    fontSize: 11.5,
+                                    color: AppColors.textSecondary),
+                              ),
+                              secondary: const Icon(Iconsax.sun,
+                                  color: AppColors.error, size: 20),
+                              value: isHoliday,
+                              activeThumbColor: AppColors.error,
+                              onChanged: (val) =>
+                                  setDialogState(() => isHoliday = val),
                             ),
-                            secondary: const Icon(Iconsax.sun,
-                                color: AppColors.error, size: 20),
-                            value: isHoliday,
-                            activeThumbColor: AppColors.error,
-                            onChanged: (val) =>
-                                setDialogState(() => isHoliday = val),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
