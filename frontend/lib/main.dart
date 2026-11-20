@@ -30,22 +30,22 @@ class EmsApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeProvider);
 
-    return MediaQuery(
-      // Clamp the OS text scale so Windows 125%/150% DPI settings don't
-      // produce tiny or oversized text. We allow a gentle max of 1.2× for
-      // accessibility while keeping the design looking professional.
-      data: MediaQueryData.fromView(View.of(context)).copyWith(
-        textScaler: TextScaler.noScaling,
-      ),
-      child: MaterialApp.router(
-        title: 'EMS — Employee Management',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: themeMode,
-        scrollBehavior: AppScrollBehavior(),
-        routerConfig: router,
-        builder: (context, child) => SessionInactivityListener(
+    return MaterialApp.router(
+      title: 'EMS — Employee Management',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
+      scrollBehavior: AppScrollBehavior(),
+      routerConfig: router,
+      builder: (context, child) => MediaQuery(
+        // Clamp OS text scaling inside MaterialApp.builder so Flutter's own
+        // reactive MediaQuery.fromView stays active for keyboard viewInsets,
+        // screen resizes, and orientation changes.
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.noScaling,
+        ),
+        child: SessionInactivityListener(
           child: child ?? const SizedBox.shrink(),
         ),
       ),
