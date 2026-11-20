@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/auth/screens/login_screen.dart';
+import '../features/auth/screens/reset_password_screen.dart';
 import '../features/dashboard/screens/dashboard_screen.dart';
 import '../features/attendance/screens/attendance_screen.dart';
 import '../features/leave/screens/leave_screen.dart';
@@ -37,11 +38,12 @@ class RouterNotifier extends ChangeNotifier {
     final isLoading = authState.isLoading;
     final user = authState.user;
     final onLoginPage = state.matchedLocation == '/login';
+    final onResetPage = state.matchedLocation.startsWith('/reset-password');
     final onPolicyApprovalPage = state.matchedLocation == '/policy-approval';
 
     if (isLoading) return null;
-    if (!isLoggedIn && !onLoginPage) return '/login';
-    if (!isLoggedIn && onLoginPage) return null;
+    if (!isLoggedIn && !onLoginPage && !onResetPage) return '/login';
+    if (!isLoggedIn && (onLoginPage || onResetPage)) return null;
 
     // First login Policy Approval guard for non-admin employees
     final needsPolicyApproval = user != null && !user.canManage && !user.hasApprovedPolicy;
@@ -55,6 +57,7 @@ class RouterNotifier extends ChangeNotifier {
     }
 
     if (isLoggedIn && onLoginPage) return '/';
+    if (isLoggedIn && onResetPage) return null; // allow reset even if logged in
     return null;
   }
 }
@@ -68,6 +71,13 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: notifier.redirect,
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(
+        path: '/reset-password/:uid/:token',
+        builder: (context, state) => ResetPasswordScreen(
+          uid: state.pathParameters['uid']!,
+          token: state.pathParameters['token']!,
+        ),
+      ),
       GoRoute(path: '/policy-approval', builder: (_, __) => const PolicyApprovalScreen()),
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
