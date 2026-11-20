@@ -333,7 +333,7 @@ class AppShell extends ConsumerWidget {
               _NavItem('/attendance', Iconsax.clock, 'Attendance'),
               _NavItem('/leave', Iconsax.calendar_remove, 'Leave'),
               _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
-              _NavItem('/more', Iconsax.element_plus, 'More'),
+              _NavItem('/projects', Iconsax.folder_open, 'Projects'),
             ];
 
       final bottomIndex = primaryMobileItems.indexWhere((i) {
