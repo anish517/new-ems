@@ -1086,7 +1086,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                      ],
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(20),
@@ -1159,7 +1158,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ]
 
                       // ── If Admin without Employee record: Show Admin Privileges & Account Settings ──
-                      if (emp == null && (user?.canManage == true)) ...[
                       else if (emp == null && (user?.canManage == true)) ...[
                         // ── Administrator System Privileges ──────────────────────────
                         Container(
