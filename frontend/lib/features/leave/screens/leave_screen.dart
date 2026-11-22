@@ -1745,26 +1745,24 @@ class _LeaveCard extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 4,
                         children: [
-                          Flexible(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Iconsax.calendar,
-                                    size: 14, color: AppColors.textSecondary),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    data['is_half_day'] == true
-                                        ? '${_fmtDate(data['from_date']?.toString())} (Half Day • ${data['half_day_period'] ?? 'N/A'})'
-                                        : '${_fmtDate(data['from_date']?.toString())} → ${_fmtDate(data['till_date']?.toString())}',
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Iconsax.calendar,
+                                  size: 14, color: AppColors.textSecondary),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  data['is_half_day'] == true
+                                      ? '${_fmtDate(data['from_date']?.toString())} (Half Day • ${data['half_day_period'] ?? 'N/A'})'
+                                      : '${_fmtDate(data['from_date']?.toString())} → ${_fmtDate(data['till_date']?.toString())}',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                           // Category Chip
                           Container(
@@ -1956,27 +1954,25 @@ class _AdminLeaveCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 4,
             children: [
-              Flexible(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Iconsax.calendar,
-                        size: 14, color: AppColors.textSecondary),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        leave['is_half_day'] == true
-                            ? 'Half Day (${leave['half_day_period'] ?? 'N/A'}) • ${_fmtDate(leave['from_date']?.toString())}'
-                            : '${_fmtDate(leave['from_date']?.toString())} → ${_fmtDate(leave['till_date']?.toString())} (${leave['no_days']} days)',
-                        style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                            color: context.textPrimary),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Iconsax.calendar,
+                      size: 14, color: AppColors.textSecondary),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      leave['is_half_day'] == true
+                          ? 'Half Day (${leave['half_day_period'] ?? 'N/A'}) • ${_fmtDate(leave['from_date']?.toString())}'
+                          : '${_fmtDate(leave['from_date']?.toString())} → ${_fmtDate(leave['till_date']?.toString())} (${leave['no_days']} days)',
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
