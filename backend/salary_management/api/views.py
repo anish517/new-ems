@@ -382,8 +382,11 @@ class SalaryTransactionListAPIView(generics.ListAPIView):
         
         if start_date_str and end_date_str:
             try:
+                from calendar_app.utilities import total_days_in_month
                 sy, sm, sd = map(int, start_date_str.split('-'))
                 ey, em, ed = map(int, end_date_str.split('-'))
+                sd = max(1, min(sd, total_days_in_month(sy, sm)))
+                ed = max(1, min(ed, total_days_in_month(ey, em)))
                 start_date = nepali_datetime.date(sy, sm, sd)
                 end_date = nepali_datetime.date(ey, em, ed)
                 for transaction in qs:
@@ -422,8 +425,11 @@ class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
         end_date_str = self.request.GET.get('end_date')
         if start_date_str and end_date_str:
             try:
+                from calendar_app.utilities import total_days_in_month
                 sy, sm, sd = map(int, start_date_str.split('-'))
                 ey, em, ed = map(int, end_date_str.split('-'))
+                sd = max(1, min(sd, total_days_in_month(sy, sm)))
+                ed = max(1, min(ed, total_days_in_month(ey, em)))
                 qs = qs.filter(date__gte=nepali_datetime.date(sy, sm, sd), date__lte=nepali_datetime.date(ey, em, ed))
             except Exception:
                 pass
@@ -702,8 +708,13 @@ class GenerateSalaryReportAPIView(generics.GenericAPIView):
         if start_date_str and end_date_str:
             # New Advanced Report (Date Range filtered by issued transactions)
             try:
+                from calendar_app.utilities import total_days_in_month
                 sy, sm, sd = map(int, start_date_str.split('-'))
                 ey, em, ed = map(int, end_date_str.split('-'))
+                if not (1 <= sm <= 12 and 1 <= em <= 12 and 1 <= sd <= 32 and 1 <= ed <= 32):
+                    raise ValueError('Out of bounds')
+                sd = min(sd, total_days_in_month(sy, sm))
+                ed = min(ed, total_days_in_month(ey, em))
                 start_date = nepali_datetime.date(sy, sm, sd)
                 end_date = nepali_datetime.date(ey, em, ed)
             except Exception:

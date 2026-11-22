@@ -23,7 +23,8 @@ class AccountsScreen extends ConsumerStatefulWidget {
   ConsumerState<AccountsScreen> createState() => _AccountsScreenState();
 }
 
-class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProviderStateMixin {
+class _AccountsScreenState extends ConsumerState<AccountsScreen>
+    with TickerProviderStateMixin {
   late TabController _tabController;
   int _tabLength = 1;
 
@@ -73,22 +74,41 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
       return const SalaryScreen();
     }
 
-    final desiredLength = _computeTabLength(isAdmin: isAdmin, isFinance: isFinance);
+    final desiredLength =
+        _computeTabLength(isAdmin: isAdmin, isFinance: isFinance);
     _syncTabController(desiredLength);
 
     final tabs = isFinance
         ? const [
-            Tab(icon: Icon(Iconsax.chart_2, size: 18), text: 'Analytics & Charts'),
-            Tab(icon: Icon(Iconsax.money_send, size: 18), text: 'Payroll Operations'),
-            Tab(icon: Icon(Iconsax.receipt, size: 18), text: 'Tax Bands & Brackets'),
-            Tab(icon: Icon(Iconsax.chart, size: 18), text: 'Audit Reports & CSV'),
+            Tab(
+                icon: Icon(Iconsax.chart_2, size: 18),
+                text: 'Analytics & Charts'),
+            Tab(
+                icon: Icon(Iconsax.money_send, size: 18),
+                text: 'Payroll Operations'),
+            Tab(
+                icon: Icon(Iconsax.receipt, size: 18),
+                text: 'Tax Bands & Brackets'),
+            Tab(
+                icon: Icon(Iconsax.chart, size: 18),
+                text: 'Audit Reports & CSV'),
           ]
         : const [
-            Tab(icon: Icon(Iconsax.money_send, size: 18), text: 'Payroll Operations'),
-            Tab(icon: Icon(Iconsax.chart_2, size: 18), text: 'Analytics & Charts'),
-            Tab(icon: Icon(Iconsax.receipt, size: 18), text: 'Tax Bands & Brackets'),
-            Tab(icon: Icon(Iconsax.chart, size: 18), text: 'Audit Reports & CSV'),
-            Tab(icon: Icon(Iconsax.security_user, size: 18), text: 'Finance Users'),
+            Tab(
+                icon: Icon(Iconsax.money_send, size: 18),
+                text: 'Payroll Operations'),
+            Tab(
+                icon: Icon(Iconsax.chart_2, size: 18),
+                text: 'Analytics & Charts'),
+            Tab(
+                icon: Icon(Iconsax.receipt, size: 18),
+                text: 'Tax Bands & Brackets'),
+            Tab(
+                icon: Icon(Iconsax.chart, size: 18),
+                text: 'Audit Reports & CSV'),
+            Tab(
+                icon: Icon(Iconsax.security_user, size: 18),
+                text: 'Finance Users'),
           ];
 
     final tabViews = isFinance
@@ -124,7 +144,8 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
                   border: Border.all(color: context.border),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                      color:
+                          Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
@@ -142,10 +163,12 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(14),
                               ),
-                              child: const Icon(Iconsax.wallet_3, color: AppColors.primary, size: 24),
+                              child: const Icon(Iconsax.wallet_3,
+                                  color: AppColors.primary, size: 24),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -172,18 +195,26 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
                                       ),
                                       const SizedBox(width: 8),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 7, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: (isFinance ? AppColors.success : AppColors.primary)
+                                          color: (isFinance
+                                                  ? AppColors.success
+                                                  : AppColors.primary)
                                               .withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(6),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
                                         ),
                                         child: Text(
-                                          isFinance ? 'Finance Console' : 'Admin Console',
+                                          isFinance
+                                              ? 'Finance Console'
+                                              : 'Admin Console',
                                           style: TextStyle(
                                             fontSize: 10,
                                             fontWeight: FontWeight.bold,
-                                            color: isFinance ? AppColors.success : AppColors.primary,
+                                            color: isFinance
+                                                ? AppColors.success
+                                                : AppColors.primary,
                                           ),
                                         ),
                                       ),
@@ -192,7 +223,9 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
                                   const SizedBox(height: 3),
                                   const Text(
                                     'Manage company payroll, monthly & yearly analytics, statutory tax bands & audit logs',
-                                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -201,17 +234,26 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
                             ),
                             const SizedBox(width: 12),
                             ElevatedButton.icon(
-                              onPressed: () => _showFiscalYearManagementDialog(context),
+                              onPressed: () =>
+                                  _showFiscalYearManagementDialog(context),
                               icon: const Icon(Iconsax.calendar_add, size: 16),
-                              label: Text(isTight ? 'FY' : 'Fiscal Years', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                              label: Text(isTight ? 'FY' : 'Fiscal Years',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12)),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                                backgroundColor:
+                                    AppColors.primary.withValues(alpha: 0.12),
                                 foregroundColor: AppColors.primary,
                                 elevation: 0,
-                                padding: EdgeInsets.symmetric(horizontal: isTight ? 10 : 14, vertical: 10),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: isTight ? 10 : 14,
+                                    vertical: 10),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                                  side: BorderSide(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.3)),
                                 ),
                               ),
                             ),
@@ -234,7 +276,8 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
                         indicatorColor: AppColors.primary,
                         labelColor: AppColors.primary,
                         unselectedLabelColor: AppColors.textSecondary,
-                        labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                        labelStyle: const TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 13),
                         indicatorSize: TabBarIndicatorSize.tab,
                         dividerColor: Colors.transparent,
                         tabs: tabs,
@@ -277,7 +320,8 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
               final res = await ApiService().get('/api/fiscal-year/');
               if (dialogCtx.mounted) {
                 setDialogState(() {
-                  fiscalYears = res.data is List ? res.data : (res.data['results'] ?? []);
+                  fiscalYears =
+                      res.data is List ? res.data : (res.data['results'] ?? []);
                   loading = false;
                 });
               }
@@ -292,7 +336,8 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
 
           return AlertDialog(
             backgroundColor: dialogCtx.surface,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
             title: Row(
               children: [
                 Container(
@@ -301,10 +346,13 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
                     color: AppColors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Iconsax.calendar_tick, color: AppColors.primary, size: 22),
+                  child: const Icon(Iconsax.calendar_tick,
+                      color: AppColors.primary, size: 22),
                 ),
                 const SizedBox(width: 12),
-                const Text('Fiscal Years Management', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+                const Text('Fiscal Years Management',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
               ],
             ),
             content: SizedBox(
@@ -315,7 +363,8 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
                 children: [
                   const Text(
                     'Add or review statutory fiscal years used across payroll and tax reporting.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style:
+                        TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -326,11 +375,14 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
                           decoration: InputDecoration(
                             labelText: 'New Fiscal Year Title',
                             hintText: 'e.g. 2084/85',
-                            prefixIcon: const Icon(Iconsax.calendar_add, size: 18),
+                            prefixIcon:
+                                const Icon(Iconsax.calendar_add, size: 18),
                             filled: true,
                             fillColor: dialogCtx.surface,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 12),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
@@ -340,14 +392,18 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
                           final val = titleCtrl.text.trim();
                           if (val.isEmpty) return;
                           try {
-                            await ApiService().post('/api/fiscal-year/', data: {'title': val});
+                            await ApiService().post('/api/fiscal-year/',
+                                data: {'title': val});
                             titleCtrl.clear();
                             setDialogState(() => loading = true);
                             await loadFys();
                           } catch (e) {
                             if (dialogCtx.mounted) {
                               ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                                SnackBar(content: Text('Error: ${ApiService.getErrorMessage(e)}'), backgroundColor: AppColors.error),
+                                SnackBar(
+                                    content: Text(
+                                        'Error: ${ApiService.getErrorMessage(e)}'),
+                                    backgroundColor: AppColors.error),
                               );
                             }
                           }
@@ -355,24 +411,36 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('Add', style: TextStyle(fontWeight: FontWeight.w700)),
+                        child: const Text('Add',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   const Divider(),
                   const SizedBox(height: 8),
-                  const Text('Registered Fiscal Years:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  const Text('Registered Fiscal Years:',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                   const SizedBox(height: 8),
                   if (loading)
-                    const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
+                    const Center(
+                        child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: CircularProgressIndicator()))
                   else if (fiscalYears.isEmpty)
                     const Padding(
                       padding: EdgeInsets.all(16),
-                      child: Center(child: Text('No fiscal years found.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
+                      child: Center(
+                          child: Text('No fiscal years found.',
+                              style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13))),
                     )
                   else
                     ConstrainedBox(
@@ -385,20 +453,29 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
                           final fy = fiscalYears[idx];
                           return ListTile(
                             dense: true,
-                            leading: const Icon(Iconsax.calendar_1, size: 18, color: AppColors.primary),
-                            title: Text(fy['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                            leading: const Icon(Iconsax.calendar_1,
+                                size: 18, color: AppColors.primary),
+                            title: Text(fy['title'] ?? '',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700, fontSize: 14)),
                             trailing: IconButton(
-                              icon: const Icon(Iconsax.trash, size: 16, color: AppColors.error),
+                              icon: const Icon(Iconsax.trash,
+                                  size: 16, color: AppColors.error),
                               onPressed: () async {
                                 final fyId = fy['id'];
                                 try {
-                                  await ApiService().delete('/api/fiscal-year/$fyId/');
+                                  await ApiService()
+                                      .delete('/api/fiscal-year/$fyId/');
                                   setDialogState(() => loading = true);
                                   await loadFys();
                                 } catch (e) {
                                   if (dialogCtx.mounted) {
-                                    ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                                      SnackBar(content: Text('Could not delete: ${ApiService.getErrorMessage(e)}'), backgroundColor: AppColors.error),
+                                    ScaffoldMessenger.of(dialogCtx)
+                                        .showSnackBar(
+                                      SnackBar(
+                                          content: Text(
+                                              'Could not delete: ${ApiService.getErrorMessage(e)}'),
+                                          backgroundColor: AppColors.error),
                                     );
                                   }
                                 }
@@ -414,7 +491,8 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProv
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('Close', style: TextStyle(color: dialogCtx.textSecondary)),
+                child: Text('Close',
+                    style: TextStyle(color: dialogCtx.textSecondary)),
               ),
             ],
           );
@@ -434,7 +512,8 @@ class _TaxManagementTab extends ConsumerStatefulWidget {
   ConsumerState<_TaxManagementTab> createState() => _TaxManagementTabState();
 }
 
-class _TaxManagementTabState extends ConsumerState<_TaxManagementTab> with SingleTickerProviderStateMixin {
+class _TaxManagementTabState extends ConsumerState<_TaxManagementTab>
+    with SingleTickerProviderStateMixin {
   late TabController _inner;
   List<dynamic> _salaryBandsSingle = [];
   List<dynamic> _salaryBandsMarried = [];
@@ -458,17 +537,28 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab> with Singl
   Future<void> _loadBands() async {
     setState(() => _loading = true);
     try {
-      final salaryRes = await ApiService().get('${AppConstants.salaryBase}/tax-bands/salary/');
-      final incentiveRes = await ApiService().get('${AppConstants.salaryBase}/tax-bands/incentive/');
-      final bonusRes = await ApiService().get('${AppConstants.salaryBase}/tax-bands/bonus/');
+      final salaryRes = await ApiService()
+          .get('${AppConstants.salaryBase}/tax-bands/salary/');
+      final incentiveRes = await ApiService()
+          .get('${AppConstants.salaryBase}/tax-bands/incentive/');
+      final bonusRes =
+          await ApiService().get('${AppConstants.salaryBase}/tax-bands/bonus/');
 
-      final allSalary = salaryRes.data is List ? salaryRes.data : (salaryRes.data['results'] ?? []);
-      final allIncentive = incentiveRes.data is List ? incentiveRes.data : (incentiveRes.data['results'] ?? []);
-      final allBonus = bonusRes.data is List ? bonusRes.data : (bonusRes.data['results'] ?? []);
+      final allSalary = salaryRes.data is List
+          ? salaryRes.data
+          : (salaryRes.data['results'] ?? []);
+      final allIncentive = incentiveRes.data is List
+          ? incentiveRes.data
+          : (incentiveRes.data['results'] ?? []);
+      final allBonus = bonusRes.data is List
+          ? bonusRes.data
+          : (bonusRes.data['results'] ?? []);
 
       setState(() {
-        _salaryBandsSingle = allSalary.where((b) => b['marital_status'] == 'single').toList();
-        _salaryBandsMarried = allSalary.where((b) => b['marital_status'] == 'married').toList();
+        _salaryBandsSingle =
+            allSalary.where((b) => b['marital_status'] == 'single').toList();
+        _salaryBandsMarried =
+            allSalary.where((b) => b['marital_status'] == 'married').toList();
         _incentiveBands = allIncentive;
         _bonusBands = allBonus;
         _loading = false;
@@ -497,13 +587,17 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab> with Singl
       _loadBands();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tax band added successfully'), backgroundColor: AppColors.success),
+          const SnackBar(
+              content: Text('Tax band added successfully'),
+              backgroundColor: AppColors.success),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${ApiService.getErrorMessage(e)}'), backgroundColor: AppColors.error),
+          SnackBar(
+              content: Text('Error: ${ApiService.getErrorMessage(e)}'),
+              backgroundColor: AppColors.error),
         );
       }
     }
@@ -514,12 +608,16 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab> with Singl
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Tax Band'),
-        content: const Text('Are you sure you want to remove this statutory tax bracket?'),
+        content: const Text(
+            'Are you sure you want to remove this statutory tax bracket?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+            child:
+                const Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -540,13 +638,17 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab> with Singl
       _loadBands();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tax band deleted'), backgroundColor: AppColors.success),
+          const SnackBar(
+              content: Text('Tax band deleted'),
+              backgroundColor: AppColors.success),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${ApiService.getErrorMessage(e)}'), backgroundColor: AppColors.error),
+          SnackBar(
+              content: Text('Error: ${ApiService.getErrorMessage(e)}'),
+              backgroundColor: AppColors.error),
         );
       }
     }
@@ -570,7 +672,8 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab> with Singl
               indicatorColor: AppColors.primary,
               labelColor: AppColors.primary,
               unselectedLabelColor: AppColors.textSecondary,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+              labelStyle:
+                  const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
               indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
               tabs: const [
@@ -581,10 +684,10 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab> with Singl
             ),
           ),
           const SizedBox(height: 16),
-
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary))
                 : TabBarView(
                     controller: _inner,
                     children: [
@@ -630,7 +733,8 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab> with Singl
               indicatorColor: Color(0xFF10B981),
               labelColor: Color(0xFF10B981),
               unselectedLabelColor: AppColors.textSecondary,
-              labelStyle: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+              labelStyle:
+                  TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
               dividerColor: Colors.transparent,
               tabs: [
                 Tab(text: 'Unmarried Individual Status'),
@@ -681,7 +785,9 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab> with Singl
         backgroundColor: AppColors.primary,
         elevation: 6,
         icon: const Icon(Iconsax.add_circle, color: Colors.white, size: 20),
-        label: Text('Add $label Bracket', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+        label: Text('Add $label Bracket',
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w800)),
       ),
       body: bands.isEmpty
           ? Container(
@@ -695,16 +801,21 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab> with Singl
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Iconsax.receipt_2, size: 48, color: AppColors.textSecondary),
+                  const Icon(Iconsax.receipt_2,
+                      size: 48, color: AppColors.textSecondary),
                   const SizedBox(height: 12),
                   Text(
                     'No $label tax brackets defined.',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: context.textPrimary),
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: context.textPrimary),
                   ),
                   const SizedBox(height: 4),
                   const Text(
                     'Configure statutory brackets to automatically calculate TDS on payroll.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style:
+                        TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -729,7 +840,8 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab> with Singl
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(14),
@@ -758,13 +870,16 @@ class _TaxManagementTabState extends ConsumerState<_TaxManagementTab> with Singl
                             ),
                             const Text(
                               'Tax rate applies to earnings within this band',
-                              style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                              style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: AppColors.textSecondary),
                             ),
                           ],
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Iconsax.trash, color: AppColors.error, size: 18),
+                        icon: const Icon(Iconsax.trash,
+                            color: AppColors.error, size: 18),
                         tooltip: 'Delete bracket',
                         onPressed: () => _deleteBand(type, b['id'] as int),
                       ),
@@ -808,8 +923,11 @@ class _TaxBandDialogState extends State<_TaxBandDialog> {
   @override
   Widget build(BuildContext context) {
     final isSalary = widget.type == 'salary';
-    final label1 = isSalary ? 'Min Annual Salary (NPR) *' : 'Min Amount (NPR) *';
-    final label2 = isSalary ? 'Max Annual Salary (NPR, leave blank for ∞)' : 'Max Amount (NPR, leave blank for ∞)';
+    final label1 =
+        isSalary ? 'Min Annual Salary (NPR) *' : 'Min Amount (NPR) *';
+    final label2 = isSalary
+        ? 'Max Annual Salary (NPR, leave blank for ∞)'
+        : 'Max Amount (NPR, leave blank for ∞)';
 
     return AlertDialog(
       backgroundColor: context.surface,
@@ -822,12 +940,16 @@ class _TaxBandDialogState extends State<_TaxBandDialog> {
               color: AppColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Iconsax.receipt_2, color: AppColors.primary, size: 20),
+            child: const Icon(Iconsax.receipt_2,
+                color: AppColors.primary, size: 20),
           ),
           const SizedBox(width: 10),
           Text(
             'Add ${widget.type[0].toUpperCase()}${widget.type.substring(1)} Tax Bracket',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.textPrimary),
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: context.textPrimary),
           ),
         ],
       ),
@@ -837,7 +959,8 @@ class _TaxBandDialogState extends State<_TaxBandDialog> {
           children: [
             TextField(
               controller: _min,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 labelText: label1,
                 prefixIcon: const Icon(Iconsax.money, size: 18),
@@ -846,7 +969,8 @@ class _TaxBandDialogState extends State<_TaxBandDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _max,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 labelText: label2,
                 prefixIcon: const Icon(Iconsax.money_recive, size: 18),
@@ -855,7 +979,8 @@ class _TaxBandDialogState extends State<_TaxBandDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _pct,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
                 labelText: 'Statutory Tax Rate (%) *',
                 hintText: 'e.g. 1, 10, 20, 30, 36',
@@ -873,7 +998,8 @@ class _TaxBandDialogState extends State<_TaxBandDialog> {
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           onPressed: () {
             final minV = double.tryParse(_min.text) ?? 0;
@@ -888,7 +1014,9 @@ class _TaxBandDialogState extends State<_TaxBandDialog> {
             };
             Navigator.pop(context, data);
           },
-          child: const Text('Save Bracket', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          child: const Text('Save Bracket',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         ),
       ],
     );
@@ -918,8 +1046,10 @@ class _ReportsTabState extends State<_ReportsTab> {
   void initState() {
     super.initState();
     final now = NepaliDateTime.now();
-    _startDateController.text = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
-    _endDateController.text = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.month > 6 ? 30 : 31}';
+    _startDateController.text =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+    _endDateController.text =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.totalDays.toString().padLeft(2, '0')}';
     _loadInitialData();
   }
 
@@ -954,7 +1084,9 @@ class _ReportsTabState extends State<_ReportsTab> {
     try {
       String url =
           '/api/salary-management/transactions/organization/?start_date=${_startDateController.text.trim()}&end_date=${_endDateController.text.trim()}';
-      if (_selectedEmployee != null && _selectedEmployee!.isNotEmpty && _selectedEmployee != 'null') {
+      if (_selectedEmployee != null &&
+          _selectedEmployee!.isNotEmpty &&
+          _selectedEmployee != 'null') {
         url += '&employee=$_selectedEmployee';
       }
       final res = await ApiService().get(url);
@@ -972,7 +1104,9 @@ class _ReportsTabState extends State<_ReportsTab> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load data: ${ApiService.getErrorMessage(e)}')),
+          SnackBar(
+              content: Text(
+                  'Failed to load data: ${ApiService.getErrorMessage(e)}')),
         );
       }
     } finally {
@@ -985,7 +1119,9 @@ class _ReportsTabState extends State<_ReportsTab> {
     try {
       String url =
           '/api/salary-management/generate-report/?start_date=${_startDateController.text.trim()}&end_date=${_endDateController.text.trim()}';
-      if (_selectedEmployee != null && _selectedEmployee!.isNotEmpty && _selectedEmployee != 'null') {
+      if (_selectedEmployee != null &&
+          _selectedEmployee!.isNotEmpty &&
+          _selectedEmployee != 'null') {
         url += '&employee=$_selectedEmployee';
       }
       final res = await ApiService().get(url);
@@ -996,13 +1132,15 @@ class _ReportsTabState extends State<_ReportsTab> {
         final blob = html.Blob([bytes]);
         final urlObj = html.Url.createObjectUrlFromBlob(blob);
         html.AnchorElement(href: urlObj)
-          ..setAttribute("download", "salary_report_${_startDateController.text}_to_${_endDateController.text}.csv")
+          ..setAttribute("download",
+              "salary_report_${_startDateController.text}_to_${_endDateController.text}.csv")
           ..click();
         html.Url.revokeObjectUrl(urlObj);
       } else {
         String? outputFile = await FilePicker.platform.saveFile(
           dialogTitle: 'Save Salary Report',
-          fileName: 'salary_report_${_startDateController.text}_to_${_endDateController.text}.csv',
+          fileName:
+              'salary_report_${_startDateController.text}_to_${_endDateController.text}.csv',
           type: FileType.custom,
           allowedExtensions: ['csv'],
         );
@@ -1014,13 +1152,17 @@ class _ReportsTabState extends State<_ReportsTab> {
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Report generated successfully.'), backgroundColor: AppColors.success),
+          const SnackBar(
+              content: Text('Report generated successfully.'),
+              backgroundColor: AppColors.success),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate report: ${ApiService.getErrorMessage(e)}')),
+          SnackBar(
+              content: Text(
+                  'Failed to generate report: ${ApiService.getErrorMessage(e)}')),
         );
       }
     } finally {
@@ -1088,7 +1230,9 @@ class _ReportsTabState extends State<_ReportsTab> {
                       ),
                       ..._employees.map((e) {
                         final u = e['user'] ?? {};
-                        final name = '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}'.trim();
+                        final name =
+                            '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}'
+                                .trim();
                         return DropdownMenuItem(
                           value: e['id'].toString(),
                           child: Text(
@@ -1104,24 +1248,38 @@ class _ReportsTabState extends State<_ReportsTab> {
                 ),
                 ElevatedButton.icon(
                   onPressed: _loading ? null : _fetchData,
-                  icon: const Icon(Iconsax.filter, size: 16, color: Colors.white),
-                  label: const Text('Filter Audit Log', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                  icon:
+                      const Icon(Iconsax.filter, size: 16, color: Colors.white),
+                  label: const Text('Filter Audit Log',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w800)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
                 ElevatedButton.icon(
                   onPressed: _downloading ? null : _downloadReport,
                   icon: _downloading
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Icon(Iconsax.document_download, size: 16, color: Colors.white),
-                  label: Text(_downloading ? 'Exporting...' : 'Export CSV', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : const Icon(Iconsax.document_download,
+                          size: 16, color: Colors.white),
+                  label: Text(_downloading ? 'Exporting...' : 'Export CSV',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w800)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF10B981),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ],
@@ -1139,22 +1297,30 @@ class _ReportsTabState extends State<_ReportsTab> {
                 border: Border.all(color: context.border),
               ),
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                  ? const Center(
+                      child:
+                          CircularProgressIndicator(color: AppColors.primary))
                   : _transactions.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Iconsax.document_text, size: 48, color: AppColors.textSecondary),
+                              const Icon(Iconsax.document_text,
+                                  size: 48, color: AppColors.textSecondary),
                               const SizedBox(height: 12),
                               Text(
                                 'No payroll transactions found for selected filters.',
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: context.textPrimary),
+                                style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: context.textPrimary),
                               ),
                               const SizedBox(height: 4),
                               const Text(
                                 'Adjust the date range or select all members to view disbursements.',
-                                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary),
                               ),
                             ],
                           ),
@@ -1166,9 +1332,14 @@ class _ReportsTabState extends State<_ReportsTab> {
                             child: SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: DataTable(
-                                headingRowColor: WidgetStateProperty.all(context.card),
-                                headingTextStyle: TextStyle(fontWeight: FontWeight.w900, color: context.textPrimary, fontSize: 13),
-                                dataTextStyle: TextStyle(color: context.textPrimary, fontSize: 13),
+                                headingRowColor:
+                                    WidgetStateProperty.all(context.card),
+                                headingTextStyle: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    color: context.textPrimary,
+                                    fontSize: 13),
+                                dataTextStyle: TextStyle(
+                                    color: context.textPrimary, fontSize: 13),
                                 horizontalMargin: 20,
                                 columnSpacing: 28,
                                 columns: const [
@@ -1183,10 +1354,19 @@ class _ReportsTabState extends State<_ReportsTab> {
                                 rows: _transactions.map((t) {
                                   return DataRow(
                                     cells: [
-                                      DataCell(Text(t['date']?.toString() ?? '')),
-                                      DataCell(Text(t['employee_name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w700))),
-                                      DataCell(Text('NPR ${t['net_salary'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary))),
-                                      DataCell(Text('NPR ${t['incentive'] ?? 0}')),
+                                      DataCell(
+                                          Text(t['date']?.toString() ?? '')),
+                                      DataCell(Text(
+                                          t['employee_name']?.toString() ?? '',
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w700))),
+                                      DataCell(Text(
+                                          'NPR ${t['net_salary'] ?? 0}',
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.primary))),
+                                      DataCell(
+                                          Text('NPR ${t['incentive'] ?? 0}')),
                                       DataCell(Text('NPR ${t['bonus'] ?? 0}')),
                                       DataCell(Text(
                                         t['transaction_tds'] != null
@@ -1194,9 +1374,12 @@ class _ReportsTabState extends State<_ReportsTab> {
                                                 ? 'NPR ${(t['transaction_tds'] as num).toStringAsFixed(2)}'
                                                 : 'NPR ${t['transaction_tds']}')
                                             : 'NPR 0',
-                                        style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w600),
+                                        style: const TextStyle(
+                                            color: AppColors.error,
+                                            fontWeight: FontWeight.w600),
                                       )),
-                                      DataCell(Text('${t['transaction_ssf'] ?? 0} / ${t['transaction_epf'] ?? 0}')),
+                                      DataCell(Text(
+                                          '${t['transaction_ssf'] ?? 0} / ${t['transaction_epf'] ?? 0}')),
                                     ],
                                   );
                                 }).toList(),
