@@ -976,8 +976,9 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                   : (_allSalaries.length / 8).ceilToDouble(),
               getTitlesWidget: (value, meta) {
                 final i = value.toInt();
-                if (i < 0 || i >= _allSalaries.length)
+                if (i < 0 || i >= _allSalaries.length) {
                   return const SizedBox.shrink();
+                }
                 final empId = _allSalaries[i]['employee'] as int? ?? 0;
                 final name = _empName(empId);
                 final shortName = name.split(' ').first;
@@ -1660,8 +1661,9 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                             );
                           }
                         } finally {
-                          if (context.mounted)
+                          if (context.mounted) {
                             setStateModal(() => saving = false);
+                          }
                         }
                       },
                 style: ElevatedButton.styleFrom(
@@ -1923,18 +1925,24 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
     try {
       String url =
           '/api/salary-management/net-salary/$_selSalaryId/?date=$_date';
-      if (_holidaysController.text.trim().isNotEmpty)
+      if (_holidaysController.text.trim().isNotEmpty) {
         url += '&holidays=${_holidaysController.text.trim()}';
-      if (_ssfController.text.trim().isNotEmpty)
+      }
+      if (_ssfController.text.trim().isNotEmpty) {
         url += '&ssf=${_ssfController.text.trim()}';
-      if (_epfController.text.trim().isNotEmpty)
+      }
+      if (_epfController.text.trim().isNotEmpty) {
         url += '&epf=${_epfController.text.trim()}';
-      if (_tdsController.text.trim().isNotEmpty)
+      }
+      if (_tdsController.text.trim().isNotEmpty) {
         url += '&tds=${_tdsController.text.trim()}';
-      if (_incentiveController.text.trim().isNotEmpty)
+      }
+      if (_incentiveController.text.trim().isNotEmpty) {
         url += '&incentive=${_incentiveController.text.trim()}';
-      if (_bonusController.text.trim().isNotEmpty)
+      }
+      if (_bonusController.text.trim().isNotEmpty) {
         url += '&bonus=${_bonusController.text.trim()}';
+      }
       final res = await ApiService().get(url);
       if (mounted) {
         setState(() {
@@ -2113,8 +2121,9 @@ class _CreateSalarySheetState extends State<_CreateSalarySheet> {
                     isExpanded: true,
                     items: _fiscalYears
                         .fold<List<dynamic>>([], (prev, curr) {
-                          if (!prev.any((e) => e['id'] == curr['id']))
+                          if (!prev.any((e) => e['id'] == curr['id'])) {
                             prev.add(curr);
+                          }
                           return prev;
                         })
                         .map((f) => DropdownMenuItem<int>(
