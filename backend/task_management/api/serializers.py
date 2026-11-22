@@ -1,6 +1,7 @@
 import datetime
 from rest_framework import serializers
 
+from organization.models import Employee
 from task_management.models import Project, ProjectAssignment, ProjectFile, Task, TaskProgressReport
 
 
@@ -192,7 +193,7 @@ class TaskProgressReportSerializer(serializers.ModelSerializer):
         return None
 
     def get_earned_amount(self, obj):
-        if not obj.task_id or not obj.submitted_by_id:
+        if not obj.task_id or not obj.task.project_id or not obj.submitted_by_id:
             return None
         try:
             assignment = ProjectAssignment.objects.get(
@@ -209,18 +210,72 @@ class TaskProgressReportSerializer(serializers.ModelSerializer):
 
 
 class TaskSerializer(serializers.ModelSerializer):
+    project = serializers.PrimaryKeyRelatedField(
+        queryset=Project.objects.all(), required=False, allow_null=True
+    )
+    assigned_to = serializers.PrimaryKeyRelatedField(
+        queryset=Employee.objects.all(), required=False, allow_null=True
+    )
     planned_start_date = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     planned_end_date = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    is_personal = serializers.BooleanField(required=False)
+    position = serializers.IntegerField(required=False, min_value=0)
     progress_reports = TaskProgressReportSerializer(many=True, read_only=True)
+    progress_count = serializers.SerializerMethodField()
+    can_edit = serializers.SerializerMethodField()
+    can_delete = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
         fields = [
-            "id", "project", "assigned_to", "title", "task_type",
+            "id", "project", "assigned_to", "created_by", "title", "task_type",
             "description", "description_pdf", "status", "priority",
+            "is_personal", "position",
             "planned_start_date", "planned_end_date", "rating",
-            "progress_reports",
+            "progress_reports", "progress_count", "can_edit", "can_delete",
         ]
+        read_only_fields = ["created_by", "progress_count", "can_edit", "can_delete"]
+
+    def _actor_permissions(self, obj):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+        is_admin = bool(
+            getattr(user, "is_superuser", False)
+            or getattr(user, "is_admin", False)
+            or getattr(user, "is_hr", False)
+            or (hasattr(user, "organization") and user.organization.exists())
+        )
+        if is_admin:
+            return True
+        try:
+            employee = user.employee
+        except Exception:
+            employee = None
+        if employee and obj.created_by_id == employee.id and (obj.is_personal or obj.project_id is None):
+            return True
+        return False
+
+    def get_progress_count(self, obj):
+        return obj.progress_reports.count()
+
+    def get_can_edit(self, obj):
+        return self._actor_permissions(obj)
+
+    def get_can_delete(self, obj):
+        return self._actor_permissions(obj)
+
+    def _extract_employee_name(self, emp):
+        if not emp or not getattr(emp, "user", None):
+            return None
+        user = emp.user
+        name = None
+        if hasattr(user, "first_name"):
+            name = f"{getattr(user, 'first_name', '')} {getattr(user, 'last_name', '')}".strip()
+        if not name:
+            name = getattr(user, "full_name", None) or getattr(user, "username", "Unknown")
+        return name
 
     def create(self, validated_data):
         import nepali_datetime
@@ -231,6 +286,13 @@ class TaskSerializer(serializers.ModelSerializer):
             validated_data["planned_end_date"] = today
         return super().create(validated_data)
 
+    def update(self, instance, validated_data):
+        if "planned_start_date" in validated_data and not validated_data["planned_start_date"]:
+            validated_data.pop("planned_start_date")
+        if "planned_end_date" in validated_data and not validated_data["planned_end_date"]:
+            validated_data.pop("planned_end_date")
+        return super().update(instance, validated_data)
+
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         rep["project"] = {
@@ -238,20 +300,13 @@ class TaskSerializer(serializers.ModelSerializer):
             "name": instance.project.title if instance.project else None,
             "project_type": instance.project.project_type if instance.project else None,
         }
-        # Safe extraction for assigned_to
-        assigned_name = None
-        if instance.assigned_to and instance.assigned_to.user:
-            user = instance.assigned_to.user
-            if hasattr(user, 'first_name'):
-                assigned_name = f"{getattr(user, 'first_name', '')} {getattr(user, 'last_name', '')}".strip()
-            else:
-                assigned_name = getattr(user, 'full_name', 'Unknown')
-                
-            if not assigned_name:
-                assigned_name = getattr(user, 'username', 'Unknown')
-
         rep["assigned_to"] = {
             "id": instance.assigned_to.id if instance.assigned_to else None,
-            "name": assigned_name,
+            "name": self._extract_employee_name(instance.assigned_to),
         }
+        rep["created_by"] = {
+            "id": instance.created_by.id if instance.created_by else None,
+            "name": self._extract_employee_name(instance.created_by),
+        }
+        rep["is_personal"] = bool(instance.is_personal or instance.project_id is None)
         return rep

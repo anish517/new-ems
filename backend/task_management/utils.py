@@ -30,7 +30,7 @@ def get_employee_task_summary(employee: Employee, year: int = None, month: int =
     filtered_tasks_id = []
 
     for task in tasks:
-        if task.planned_start_date.year == year and task.planned_start_date.month == month:
+        if getattr(task.planned_start_date, 'year', None) == year and getattr(task.planned_start_date, 'month', None) == month:
             filtered_tasks_id.append(task.pk)
 
     tasks = tasks.filter(id__in=filtered_tasks_id)
@@ -58,11 +58,15 @@ def get_employee_task_summary(employee: Employee, year: int = None, month: int =
 
 
 def get_organization_task_summary(organization: Organization, year: int = None, month: int = None):
+    from django.db.models import Q
     today = nepali_datetime.date.today()
     year = today.year if year is None else year
     month = today.month if month is None else month
     tasks = Task.objects.filter(
-        created_by__post__department__organization=organization)
+        Q(project__organization=organization)
+        | Q(project__isnull=True, created_by__post__department__organization=organization)
+        | Q(project__isnull=True, assigned_to__post__department__organization=organization)
+    ).distinct()
         
     filtered_tasks_id = []
     for task in tasks:

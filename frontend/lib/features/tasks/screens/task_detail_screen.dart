@@ -411,9 +411,13 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         ? (assignedTo["name"] ?? "Unassigned")
         : "Unassigned";
     final proj = _task["project"];
-    final projName = proj is Map
-        ? (proj["name"] ?? proj["title"] ?? "Project")
-        : "General Project";
+    final projId = proj is Map ? proj["id"] : null;
+    final isPersonal = _task["is_personal"] == true || projId == null;
+    final projName = isPersonal
+        ? "Personal Task"
+        : (proj is Map
+            ? (proj["name"] ?? proj["title"] ?? "Project").toString()
+            : "Project");
     final rating = _task["rating"];
     final hasPdf = _task["description_pdf"] != null &&
         _task["description_pdf"].toString().isNotEmpty;
@@ -520,15 +524,30 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.1),
+                                color: (isPersonal
+                                        ? const Color(0xFF8B5CF6)
+                                        : AppColors.primary)
+                                    .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(
-                                projName,
-                                style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isPersonal) ...[
+                                    const Icon(Iconsax.user_tag,
+                                        size: 12, color: Color(0xFF8B5CF6)),
+                                    const SizedBox(width: 4),
+                                  ],
+                                  Text(
+                                    projName,
+                                    style: TextStyle(
+                                        color: isPersonal
+                                            ? const Color(0xFF8B5CF6)
+                                            : AppColors.primary,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700),
+                                  ),
+                                ],
                               ),
                             ),
                             Container(

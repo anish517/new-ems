@@ -9,6 +9,7 @@ from task_management.api.views import (
     ProjectRetrieveUpdateDestroyAPIView,
     ProjectTaskSummaryAPIView,
     TaskListCreateAPIView,
+    TaskMoveAPIView,
     TaskProgressReportApproveDeletionAPIView,
     TaskProgressReportDestroyAPIView,
     TaskProgressReportListCreateAPIView,
@@ -28,6 +29,7 @@ urlpatterns = [
     # Tasks
     path("tasks/", TaskListCreateAPIView.as_view()),
     path("tasks/<int:pk>/", TaskRetrieveUpdateDestroyView.as_view()),
+    path("tasks/<int:pk>/move/", TaskMoveAPIView.as_view()),
     path("tasks/employee-summary/<int:employee_id>/", EmployeeTaskSummaryAPIView.as_view()),
     path("tasks/organization-summary/<int:organization_id>/", OrganizationTaskSummaryAPIView.as_view()),
     path("tasks/project-summary/<int:project_id>/", ProjectTaskSummaryAPIView.as_view()),

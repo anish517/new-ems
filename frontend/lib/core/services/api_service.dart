@@ -132,6 +132,33 @@ class ApiService {
     return _dio.post(path, data: formData);
   }
 
+  /// Update fields + optional files as multipart/form-data via PATCH.
+  Future<Response> patchMultipart(
+    String path, {
+    required Map<String, String> fields,
+    Map<String, PlatformFile>? files,
+  }) async {
+    final formData = FormData.fromMap(fields);
+
+    if (files != null) {
+      for (final entry in files.entries) {
+        final file = entry.value;
+        if (file.bytes != null) {
+          formData.files.add(MapEntry(
+            entry.key,
+            MultipartFile.fromBytes(file.bytes!, filename: file.name),
+          ));
+        } else if (file.path != null) {
+          formData.files.add(MapEntry(
+            entry.key,
+            await MultipartFile.fromFile(file.path!, filename: file.name),
+          ));
+        }
+      }
+    }
+    return _dio.patch(path, data: formData);
+  }
+
   static String getErrorMessage(dynamic e) {
     if (e is DioException) {
       if (e.response?.data != null) {

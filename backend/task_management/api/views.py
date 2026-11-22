@@ -1,5 +1,7 @@
+from django.db.models import Max, Q
 from django.utils import timezone
 from rest_framework import status, generics, permissions
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -152,11 +154,54 @@ class ProjectFileUploadAPIView(APIView):
         return Response(status=204)
 
 
+def _is_task_admin(user):
+    if not user or not user.is_authenticated:
+        return False
+    return bool(
+        getattr(user, "is_superuser", False)
+        or getattr(user, "is_admin", False)
+        or getattr(user, "is_hr", False)
+        or (hasattr(user, "organization") and user.organization.exists())
+    )
+
+
+def _get_accessible_tasks_queryset(user, employee=None, org=None):
+    if employee is None:
+        employee = _get_employee(user)
+    if org is None:
+        org = _get_org(user, employee)
+    if not org:
+        return Task.objects.none()
+
+    base_qs = Task.objects.filter(
+        Q(project__organization=org)
+        | Q(project__isnull=True, created_by__post__department__organization=org)
+        | Q(project__isnull=True, assigned_to__post__department__organization=org)
+    ).distinct()
+
+    if _is_task_admin(user):
+        return base_qs
+    if employee:
+        return base_qs.filter(Q(assigned_to=employee) | Q(created_by=employee)).distinct()
+    return Task.objects.none()
+
+
+def _employee_can_access_project(employee, project, org):
+    if not employee or not project or not org:
+        return False
+    if project.organization_id != org.id:
+        return False
+    return Project.objects.filter(pk=project.pk, organization=org).filter(
+        Q(assignments__employee=employee) | Q(created_by=employee)
+    ).exists()
+
+
 # ─── Task CRUD ───────────────────────────────────────────────────────────────
 
 class TaskListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     nepali_date_filter_field = "planned_start_date"
 
     def get_queryset(self):
@@ -166,23 +211,27 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
         if not org:
             return Task.objects.none()
 
-        projects = Project.objects.filter(organization=org)
-        all_tasks = Task.objects.filter(project__in=projects)
-        is_admin = user.organization.exists() or user.is_superuser or getattr(user, "is_hr", False)
+        all_tasks = _get_accessible_tasks_queryset(user, employee, org)
+        is_admin = _is_task_admin(user)
 
         # Optional filters
         assigned_to_id = self.request.GET.get("assigned_to")
         project_id = self.request.GET.get("project")
+        scope = (self.request.GET.get("scope") or "all").strip().lower()
         start_date_str = self.request.GET.get("start_date")
         end_date_str = self.request.GET.get("end_date")
 
         if project_id:
             all_tasks = all_tasks.filter(project_id=project_id)
 
+        if scope == "project":
+            all_tasks = all_tasks.filter(project__isnull=False)
+        elif scope == "personal":
+            all_tasks = all_tasks.filter(Q(is_personal=True) | Q(project__isnull=True))
+
         if start_date_str and end_date_str:
             try:
                 import nepali_datetime
-                from django.db.models import Q
                 sy, sm, sd = map(int, start_date_str.split("-"))
                 ey, em, ed = map(int, end_date_str.split("-"))
                 start_date = nepali_datetime.date(sy, sm, sd)
@@ -194,20 +243,60 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
             except Exception:
                 pass
 
-        if is_admin:
-            if assigned_to_id:
-                return all_tasks.filter(assigned_to_id=assigned_to_id).order_by("-id")
-            return all_tasks.order_by("-id")
+        if is_admin and assigned_to_id:
+            all_tasks = all_tasks.filter(assigned_to_id=assigned_to_id)
 
-        if employee:
-            return all_tasks.filter(assigned_to=employee).order_by("-id")
-        return Task.objects.none()
+        return all_tasks.order_by("position", "-id")
 
     def perform_create(self, serializer):
         import nepali_datetime
         today = nepali_datetime.date.today()
-        employee = _get_employee(self.request.user)
-        serializer.save(created_by=employee, created_at=today, updated_at=today)
+        user = self.request.user
+        employee = _get_employee(user)
+        org = _get_org(user, employee)
+        is_admin = _is_task_admin(user)
+
+        if not org:
+            raise PermissionDenied("No organization found for this account.")
+
+        project = serializer.validated_data.get("project")
+        if project and project.organization_id != org.id:
+            raise PermissionDenied("Selected project does not belong to your organization.")
+
+        target_status = serializer.validated_data.get("status") or "to-do"
+
+        if not is_admin:
+            if not employee:
+                raise PermissionDenied("Only organization employees can create task cards.")
+            if project and not _employee_can_access_project(employee, project, org):
+                raise PermissionDenied("You can only create tasks under projects assigned to you.")
+            assigned_to = employee
+            is_personal = project is None
+            extra_kwargs = {"rating": None}
+        else:
+            assigned_to = serializer.validated_data.get("assigned_to") or employee
+            if assigned_to and assigned_to.organization != org:
+                raise PermissionDenied("Assignee must belong to your organization.")
+            if project is None and assigned_to is None:
+                raise ValidationError({"assigned_to": "Please select an employee or a project for this task."})
+            is_personal = True if project is None else bool(serializer.validated_data.get("is_personal", False))
+            extra_kwargs = {}
+
+        position = serializer.validated_data.get("position")
+        if position is None:
+            siblings = _get_accessible_tasks_queryset(user, employee, org).filter(status=target_status)
+            max_pos = siblings.aggregate(max_p=Max("position"))["max_p"]
+            position = 0 if max_pos is None else max_pos + 1
+
+        serializer.save(
+            created_by=employee,
+            assigned_to=assigned_to,
+            is_personal=is_personal,
+            position=position,
+            created_at=today,
+            updated_at=today,
+            **extra_kwargs,
+        )
 
 
 class TaskRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
@@ -216,12 +305,115 @@ class TaskRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
-        employee = _get_employee(self.request.user)
-        org = _get_org(self.request.user, employee)
-        if not org:
-            return Task.objects.none()
-        projects = Project.objects.filter(organization=org)
-        return Task.objects.filter(project__in=projects)
+        return _get_accessible_tasks_queryset(self.request.user)
+
+    def perform_update(self, serializer):
+        import nepali_datetime
+        task = self.get_object()
+        user = self.request.user
+        employee = _get_employee(user)
+        org = _get_org(user, employee)
+        is_admin = _is_task_admin(user)
+        today = nepali_datetime.date.today()
+
+        if not is_admin:
+            is_own_personal = bool(
+                employee and task.created_by_id == employee.id and (task.is_personal or task.project_id is None)
+            )
+            if is_own_personal:
+                if "assigned_to" in serializer.validated_data and serializer.validated_data["assigned_to"] != employee:
+                    raise PermissionDenied("You cannot reassign a personal task to another employee.")
+                if "rating" in serializer.validated_data:
+                    serializer.validated_data.pop("rating", None)
+                if "project" in serializer.validated_data:
+                    new_project = serializer.validated_data["project"]
+                    if new_project is not None and not _employee_can_access_project(employee, new_project, org):
+                        raise PermissionDenied("You can only link your card to a project assigned to you.")
+                    serializer.validated_data["is_personal"] = new_project is None
+            else:
+                changed_keys = set(serializer.validated_data.keys())
+                disallowed = changed_keys - {"status", "position"}
+                if disallowed:
+                    raise PermissionDenied(
+                        "You can only update the status or position of admin-assigned or project tasks."
+                    )
+        else:
+            if "project" in serializer.validated_data:
+                new_project = serializer.validated_data["project"]
+                if new_project is not None and new_project.organization_id != org.id:
+                    raise PermissionDenied("Selected project does not belong to your organization.")
+                if "is_personal" not in serializer.validated_data:
+                    serializer.validated_data["is_personal"] = new_project is None
+            if "assigned_to" in serializer.validated_data:
+                new_assignee = serializer.validated_data["assigned_to"]
+                if new_assignee is not None and new_assignee.organization != org:
+                    raise PermissionDenied("Assignee must belong to your organization.")
+
+        serializer.save(updated_by=employee, updated_at=today)
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+        if not _is_task_admin(user):
+            employee = _get_employee(user)
+            is_own_personal = bool(
+                employee and instance.created_by_id == employee.id and (instance.is_personal or instance.project_id is None)
+            )
+            if not is_own_personal:
+                raise PermissionDenied("You can only delete your own personal task cards.")
+        instance.delete()
+
+
+class TaskMoveAPIView(APIView):
+    """Move a Trello task card across columns and/or reorder its position."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk):
+        import nepali_datetime
+        user = request.user
+        employee = _get_employee(user)
+        org = _get_org(user, employee)
+        accessible = _get_accessible_tasks_queryset(user, employee, org)
+        task = accessible.filter(pk=pk).first()
+        if not task:
+            return Response({"error": "Task not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        valid_statuses = {choice[0] for choice in Task.STATUS_CHOICES}
+        new_status = request.data.get("status", task.status)
+        if new_status not in valid_statuses:
+            return Response(
+                {"error": f"Invalid status. Must be one of: {', '.join(sorted(valid_statuses))}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        raw_position = request.data.get("position")
+        siblings = list(
+            accessible.filter(status=new_status).exclude(pk=task.pk).order_by("position", "-id")
+        )
+        if raw_position is None or raw_position == "":
+            target_idx = len(siblings)
+        else:
+            try:
+                target_idx = int(raw_position)
+                if target_idx < 0:
+                    raise ValueError()
+            except (TypeError, ValueError):
+                return Response({"error": "position must be a non-negative integer."}, status=status.HTTP_400_BAD_REQUEST)
+            target_idx = min(target_idx, len(siblings))
+
+        siblings.insert(target_idx, task)
+        today = nepali_datetime.date.today()
+
+        task.status = new_status
+        task.position = target_idx
+        task.updated_by = employee
+        task.updated_at = today
+        task.save()
+
+        for idx, sibling in enumerate(siblings):
+            if sibling.pk != task.pk and sibling.position != idx:
+                Task.objects.filter(pk=sibling.pk).update(position=idx)
+
+        return Response(TaskSerializer(task, context={"request": request}).data)
 
 
 # ─── Task Progress Reports ────────────────────────────────────────────────────
@@ -232,18 +424,16 @@ class TaskProgressReportListCreateAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request, task_id):
-        try:
-            task = Task.objects.get(pk=task_id)
-        except Task.DoesNotExist:
+        task = _get_accessible_tasks_queryset(request.user).filter(pk=task_id).first()
+        if not task:
             return Response({"error": "Task not found"}, status=404)
         reports = task.progress_reports.all()
         serializer = TaskProgressReportSerializer(reports, many=True, context={"request": request})
         return Response(serializer.data)
 
     def post(self, request, task_id):
-        try:
-            task = Task.objects.get(pk=task_id)
-        except Task.DoesNotExist:
+        task = _get_accessible_tasks_queryset(request.user).filter(pk=task_id).first()
+        if not task:
             return Response({"error": "Task not found"}, status=404)
 
         employee = _get_employee(request.user)

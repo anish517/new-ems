@@ -112,7 +112,7 @@ class Task(SoftDeleteModel):
     PRIORITY_CHOICES = (("high", "High"), ("medium", "Medium"), ("low", "Low"))
     TYPE_CHOICES = (("hourly", "Hourly"), ("daily", "Daily"))
 
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="tasks", null=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="tasks", null=True, blank=True)
     created_by = models.ForeignKey(Employee, on_delete=models.CASCADE, null=True, related_name="created_tasks")
     updated_by = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, related_name="updated_tasks")
     assigned_to = models.ForeignKey(Employee, on_delete=models.CASCADE, null=True, related_name="assigned_tasks")
@@ -122,6 +122,8 @@ class Task(SoftDeleteModel):
     description_pdf = models.FileField(upload_to="task_description_pdfs/", null=True, blank=True)
     status = models.CharField(max_length=255, choices=STATUS_CHOICES, null=True, default="to-do")
     priority = models.CharField(max_length=255, choices=PRIORITY_CHOICES, null=True, default="low")
+    is_personal = models.BooleanField(default=False)
+    position = models.PositiveIntegerField(default=0)
     created_at = NepaliDateField(null=True)
     updated_at = NepaliDateField(null=True)
     planned_start_date = NepaliDateField()

@@ -26,7 +26,7 @@ def _connect_task_signals():
             assignee_user = instance.assigned_to.user if (instance.assigned_to and hasattr(instance.assigned_to, 'user')) else None
 
             if created:
-                if assignee_user:
+                if assignee_user and assignee_user != creator_user:
                     notify_user(
                         user=assignee_user,
                         title='📋 New Task Assigned',
@@ -44,7 +44,7 @@ def _connect_task_signals():
                         reference_id=instance.id,
                     )
             elif instance.status == 'done':
-                if creator_user:
+                if creator_user and creator_user != assignee_user:
                     notify_user(
                         user=creator_user,
                         title='✅ Task Completed',

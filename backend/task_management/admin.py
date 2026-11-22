@@ -1,4 +1,4 @@
-﻿from django.contrib import admin
+from django.contrib import admin
 from .models import Project, ProjectAssignment, ProjectFile, Task, TaskFile, TaskProgressReport
 
 
@@ -31,9 +31,9 @@ class TaskFileInline(admin.TabularInline):
 
 
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ("title", "project", "task_type", "assigned_to", "status", "priority", "created_at")
+    list_display = ("title", "project", "is_personal", "task_type", "assigned_to", "status", "priority", "position", "created_at")
     search_fields = ("title", "project__title")
-    list_filter = ("task_type", "status", "priority", "created_at")
+    list_filter = ("is_personal", "task_type", "status", "priority", "created_at")
     inlines = (TaskFileInline, TaskProgressReportInline)
 
 
