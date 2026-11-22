@@ -387,7 +387,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             ),
                             const SizedBox(height: 6),
                             const Text(
-                              'Columns: Title, Category, Start Date (BS), End Date (BS), Location, Is Holiday (Yes/No), Is Important (Yes/No), Description.',
+                              'Columns: Title, Start Date (BS), End Date (BS), Is Holiday (Yes/No), Is Important (Yes/No).',
                               style: TextStyle(
                                 fontSize: 11.5,
                                 color: AppColors.textSecondary,

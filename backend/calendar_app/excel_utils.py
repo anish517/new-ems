@@ -7,25 +7,19 @@ from calendar_app.utilities import total_days_in_month
 
 EXCEL_HEADERS = [
     "Title",
-    "Category",
     "Start Date (BS)",
     "End Date (BS)",
-    "Location",
     "Is Holiday (Yes/No)",
     "Is Important (Yes/No)",
-    "Description",
 ]
 
 INSTRUCTION_ROWS = [
     ["Column", "Required?", "Format / Allowed Values", "Notes"],
     ["Title", "Yes", "Text (e.g. Dashain Holiday)", "Event or holiday title."],
-    ["Category", "No", "Text (e.g. Festival, Meeting)", "Auto-matches or creates a category in your organization."],
     ["Start Date (BS)", "Yes", "YYYY-MM-DD (e.g. 2083-08-15)", "Must be a valid Nepali Bikram Sambat (B.S.) date."],
     ["End Date (BS)", "No", "YYYY-MM-DD (e.g. 2083-08-18)", "Defaults to Start Date (BS) if left blank. Must be >= Start Date."],
-    ["Location", "No", "Text (e.g. Head Office)", "Optional event venue or location."],
     ["Is Holiday (Yes/No)", "No", "Yes / No (or True / False, 1 / 0)", "Set Yes for official public/company holidays."],
     ["Is Important (Yes/No)", "No", "Yes / No (or True / False, 1 / 0)", "Set Yes to highlight as an important event."],
-    ["Description", "No", "Text", "Additional details or agenda notes."],
 ]
 
 

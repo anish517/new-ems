@@ -1,4 +1,3 @@
-import io
 import nepali_datetime
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -7,7 +6,7 @@ from rest_framework.test import APIClient
 
 from authentication.models import Account
 from calendar_app.excel_utils import EXCEL_HEADERS, build_events_xlsx, parse_events_xlsx
-from calendar_app.models import Category, Event
+from calendar_app.models import Event
 from organization.models import Department, Employee, Organization, Post
 
 
@@ -33,32 +32,21 @@ class CalendarExcelExportImportTests(TestCase):
         )
         self.emp = Employee.objects.create(user=self.emp_user, post=self.post)
 
-        self.cat = Category.objects.create(
-            organization=self.org,
-            name="Festival",
-            color=Category.COLORS_CHOICES.DANGER,
-        )
         self.event1 = Event.objects.create(
             organization=self.org,
             title="Udhauli Parba",
-            category=self.cat,
             start=nepali_datetime.date(2083, 8, 10),
             end=nepali_datetime.date(2083, 8, 10),
-            location="Kathmandu",
             is_holiday=True,
             is_important=True,
-            description="Public festival holiday",
         )
         self.event2 = Event.objects.create(
             organization=self.org,
             title="New Year Celebration",
-            category=self.cat,
             start=nepali_datetime.date(2083, 1, 1),
             end=nepali_datetime.date(2083, 1, 1),
-            location="Office",
             is_holiday=True,
             is_important=False,
-            description="Nepali New Year 2083",
         )
 
     def test_employee_can_view_events_but_cannot_export_template_or_import(self):
@@ -77,7 +65,7 @@ class CalendarExcelExportImportTests(TestCase):
         self.assertEqual(tpl_res.status_code, status.HTTP_403_FORBIDDEN)
 
         xlsx_bytes = build_events_xlsx([
-            ["Unauthorized Event", "Meeting", "2083-08-15", "2083-08-15", "Office", "No", "No", "Desc"],
+            ["Unauthorized Event", "2083-08-15", "2083-08-15", "No", "No"],
         ])
         upload = SimpleUploadedFile(
             "events.xlsx",
@@ -111,8 +99,8 @@ class CalendarExcelExportImportTests(TestCase):
         m_rows = parse_events_xlsx(m_res.content)
         self.assertEqual(len(m_rows), 2)  # header + 1 event
         self.assertEqual(m_rows[1][0], "Udhauli Parba")
-        self.assertEqual(m_rows[1][2], "2083-08-10")
-        self.assertEqual(m_rows[1][5], "Yes")
+        self.assertEqual(m_rows[1][1], "2083-08-10")
+        self.assertEqual(m_rows[1][3], "Yes")
 
         # Year scope (2083 -> 2 events)
         y_res = self.client.get("/api/calendar/events/export/?year=2083&scope=year")
@@ -124,16 +112,16 @@ class CalendarExcelExportImportTests(TestCase):
         self.client.force_authenticate(user=self.admin_user)
 
         rows = [
-            # Valid new holiday with new category "National"
-            ["Constitution Day", "National", "2083-06-03", "2083-06-03", "Nepal", "Yes", "Yes", "National holiday"],
-            # Valid multi-day event with blank End Date (defaults to Start Date) and blank Category
-            ["Sprint Planning", "", "2083-08-18", "", "Room B", "No", "Yes", "Q3 planning"],
+            # Valid new holiday
+            ["Constitution Day", "2083-06-03", "2083-06-03", "Yes", "Yes"],
+            # Valid event with blank End Date (defaults to Start Date)
+            ["Sprint Planning", "2083-08-18", "", "No", "Yes"],
             # Duplicate of existing event1 ("Udhauli Parba", 2083-08-10 -> 2083-08-10)
-            ["Udhauli Parba", "Festival", "2083-08-10", "2083-08-10", "Kathmandu", "Yes", "True", "Duplicate"],
+            ["Udhauli Parba", "2083-08-10", "2083-08-10", "Yes", "True"],
             # Invalid B.S. date (Mangsir 2083 only has 29 days -> 2083-08-30 is invalid)
-            ["Bad Date Event", "Meeting", "2083-08-30", "2083-08-30", "Office", "No", "No", "Invalid BS day"],
+            ["Bad Date Event", "2083-08-30", "2083-08-30", "No", "No"],
             # End date earlier than Start date
-            ["Backwards Event", "Meeting", "2083-08-20", "2083-08-15", "Office", "No", "No", "End < Start"],
+            ["Backwards Event", "2083-08-20", "2083-08-15", "No", "No"],
         ]
         xlsx_bytes = build_events_xlsx(rows)
         upload = SimpleUploadedFile(
@@ -148,10 +136,9 @@ class CalendarExcelExportImportTests(TestCase):
         self.assertEqual(res.data["skipped"], 1)
         self.assertEqual(len(res.data["errors"]), 2)
 
-        # Verify created events & auto-created Category
+        # Verify created events
         self.assertTrue(Event.objects.filter(organization=self.org, title="Constitution Day", is_holiday=True).exists())
         self.assertTrue(Event.objects.filter(organization=self.org, title="Sprint Planning", is_important=True).exists())
-        self.assertTrue(Category.objects.filter(organization=self.org, name="National").exists())
 
         # Re-importing the exact same file skips the 2 newly created events too
         upload2 = SimpleUploadedFile(

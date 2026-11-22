@@ -252,13 +252,10 @@ class EventViewSet(viewsets.ViewSet):
         for ev in filtered_events:
             rows.append([
                 ev.title or '',
-                ev.category.name if ev.category else '',
                 str(ev.start) if ev.start else '',
                 str(ev.end) if ev.end else (str(ev.start) if ev.start else ''),
-                ev.location or '',
                 'Yes' if ev.is_holiday else 'No',
                 'Yes' if ev.is_important else 'No',
-                ev.description or '',
             ])
 
         xlsx_bytes = build_events_xlsx(rows, sheet_title='Calendar Events', include_instructions=False)
@@ -289,23 +286,17 @@ class EventViewSet(viewsets.ViewSet):
         sample_rows = [
             [
                 'Dashain Festival Holiday',
-                'Festival',
                 f'{y}-{m:02d}-10',
                 f'{y}-{m:02d}-12',
-                'Nationwide',
                 'Yes',
                 'Yes',
-                'Official public holiday for all staff',
             ],
             [
                 'Monthly All-Hands Review',
-                'Meeting',
                 f'{y}-{m:02d}-15',
                 f'{y}-{m:02d}-15',
-                'Head Office Conference Room',
                 'No',
                 'Yes',
-                'Monthly product & engineering sync',
             ],
         ]
         xlsx_bytes = build_events_xlsx(
@@ -381,12 +372,12 @@ class EventViewSet(viewsets.ViewSet):
         for idx in range(start_row_idx, len(raw_rows)):
             row_number = idx + 1
             row = raw_rows[idx]
-            # Pad to 8 columns
+            # Pad to 5 columns
             padded = [(row[i] if i < len(row) else '').strip() for i in range(len(EXCEL_HEADERS))]
             if not any(padded):
                 continue
 
-            title, category_name, start_raw, end_raw, location, holiday_raw, important_raw, description = padded
+            title, start_raw, end_raw, holiday_raw, important_raw = padded
 
             if not title:
                 errors.append({'row': row_number, 'error': 'Title is required.'})
@@ -423,31 +414,13 @@ class EventViewSet(viewsets.ViewSet):
                 skipped_count += 1
                 continue
 
-            category_obj = None
-            if category_name:
-                category_obj = Category.objects.filter(
-                    organization=org,
-                    name__iexact=category_name,
-                ).first()
-                if not category_obj:
-                    category_obj = Category.objects.create(
-                        organization=org,
-                        name=category_name,
-                        color=Category.COLORS_CHOICES.DANGER
-                        if is_holiday
-                        else Category.COLORS_CHOICES.PRIMARY,
-                    )
-
             Event.objects.create(
                 organization=org,
                 title=title,
-                category=category_obj,
                 start=start_date,
                 end=end_date,
-                location=location or None,
                 is_holiday=is_holiday,
                 is_important=is_important,
-                description=description or None,
             )
             created_count += 1
 
