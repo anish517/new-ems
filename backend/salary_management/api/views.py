@@ -1035,9 +1035,12 @@ def _extract_tx_metrics(tx):
     )
 
     dept_name = 'Unassigned'
+    designation_name = 'Unassigned'
     try:
-        if sal and sal.employee and sal.employee.post and sal.employee.post.department:
-            dept_name = sal.employee.post.department.department_name or 'Unassigned'
+        if sal and sal.employee and sal.employee.post:
+            designation_name = sal.employee.post.title or 'Unassigned'
+            if sal.employee.post.department:
+                dept_name = sal.employee.post.department.department_name or 'Unassigned'
     except Exception:
         pass
 
@@ -1053,6 +1056,7 @@ def _extract_tx_metrics(tx):
         'bonus': round(bonus, 2),
         'total_expense': round(total_expense, 2),
         'department': dept_name,
+        'designation': designation_name,
     }
 
 
@@ -1130,6 +1134,7 @@ class SalaryAnalyticsSummaryAPIView(APIView):
             'bonus': 0.0,
         }
         dept_totals = {}
+        designation_totals = {}
         kpis = {
             'total_expense': 0.0,
             'total_net': 0.0,
@@ -1209,6 +1214,20 @@ class SalaryAnalyticsSummaryAPIView(APIView):
                     dept_totals[dept]['tds'] += metrics['tds']
                     dept_totals[dept]['payout_count'] += 1
 
+                    desig = metrics['designation']
+                    if desig not in designation_totals:
+                        designation_totals[desig] = {
+                            'designation': desig,
+                            'total_expense': 0.0,
+                            'net': 0.0,
+                            'tds': 0.0,
+                            'payout_count': 0,
+                        }
+                    designation_totals[desig]['total_expense'] += metrics['total_expense']
+                    designation_totals[desig]['net'] += metrics['net']
+                    designation_totals[desig]['tds'] += metrics['tds']
+                    designation_totals[desig]['payout_count'] += 1
+
         # Ensure selected_year appears in yearly array even if 0 payouts yet
         if selected_year not in yearly_buckets:
             yearly_buckets[selected_year] = {
@@ -1240,6 +1259,11 @@ class SalaryAnalyticsSummaryAPIView(APIView):
             key=lambda x: x['total_expense'],
             reverse=True,
         )
+        by_designation_list = sorted(
+            [_round_dict(d) for d in designation_totals.values()],
+            key=lambda x: x['total_expense'],
+            reverse=True,
+        )
 
         return Response({
             'selected_year': selected_year,
@@ -1250,4 +1274,5 @@ class SalaryAnalyticsSummaryAPIView(APIView):
             'yearly': yearly_list,
             'deduction_breakdown': _round_dict(breakdown),
             'by_department': by_dept_list,
+            'by_designation': by_designation_list,
         }, status=status.HTTP_200_OK)

@@ -494,19 +494,25 @@ class FinanceRoleAndAnalyticsTests(TestCase):
         self.assertEqual(data['kpis']['total_tds'], 5500.0)
         self.assertEqual(data['kpis']['payout_count'], 2)
 
-        # Department breakdown
+        # Department & Designation breakdown
         depts = {d['department']: d for d in data['by_department']}
         self.assertIn('Engineering', depts)
         self.assertIn('Sales', depts)
         self.assertEqual(depts['Engineering']['net'], 46000.0)
         self.assertEqual(depts['Sales']['net'], 36000.0)
 
-        # Month-scoped KPIs & department breakdown (Month 1 only)
+        desigs = {d['designation']: d for d in data['by_designation']}
+        self.assertIn('Developer', desigs)
+        self.assertIn('Executive', desigs)
+        self.assertEqual(desigs['Developer']['net'], 46000.0)
+        self.assertEqual(desigs['Executive']['net'], 36000.0)
+
+        # Month-scoped KPIs & designation breakdown (Month 1 only)
         res_m1 = self.client.get('/api/salary-management/analytics/summary/?year=2083&month=1')
         self.assertEqual(res_m1.status_code, status.HTTP_200_OK)
         self.assertEqual(res_m1.data['kpis']['total_net'], 46000.0)
-        self.assertEqual(len(res_m1.data['by_department']), 1)
-        self.assertEqual(res_m1.data['by_department'][0]['department'], 'Engineering')
+        self.assertEqual(len(res_m1.data['by_designation']), 1)
+        self.assertEqual(res_m1.data['by_designation'][0]['designation'], 'Developer')
 
     def test_me_endpoint_returns_finance_role(self):
         from rest_framework import status

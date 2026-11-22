@@ -122,7 +122,9 @@ class _FinanceChartsTabState extends ConsumerState<FinanceChartsTab> {
     final breakdown = (_data['deduction_breakdown'] is Map)
         ? Map<String, dynamic>.from(_data['deduction_breakdown'] as Map)
         : <String, dynamic>{};
-    final byDept = (_data['by_department'] as List?) ?? const [];
+    final byDesignation = (_data['by_designation'] as List?) ??
+        (_data['by_department'] as List?) ??
+        const [];
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(isTight ? 14 : 20),
@@ -164,7 +166,8 @@ class _FinanceChartsTabState extends ConsumerState<FinanceChartsTab> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _modePill('monthly', 'Monthly Chart', Iconsax.chart_2),
+                          _modePill(
+                              'monthly', 'Monthly Chart', Iconsax.chart_2),
                           const SizedBox(width: 4),
                           _modePill('yearly', 'Yearly Chart', Iconsax.trend_up),
                         ],
@@ -308,7 +311,7 @@ class _FinanceChartsTabState extends ConsumerState<FinanceChartsTab> {
 
             const SizedBox(height: 16),
 
-            // ── Secondary Breakdown Row (Deduction Donut + Department Cost) ─
+            // ── Secondary Breakdown Row (Deduction Donut + Designation Cost) ─
             if (isWide)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,14 +323,14 @@ class _FinanceChartsTabState extends ConsumerState<FinanceChartsTab> {
                   const SizedBox(width: 16),
                   Expanded(
                     flex: 6,
-                    child: _buildDepartmentCard(byDept, isDark),
+                    child: _buildDesignationCard(byDesignation, isDark),
                   ),
                 ],
               )
             else ...[
               _buildDeductionDonutCard(breakdown, isDark),
               const SizedBox(height: 16),
-              _buildDepartmentCard(byDept, isDark),
+              _buildDesignationCard(byDesignation, isDark),
             ],
             const SizedBox(height: 40),
           ],
@@ -421,9 +424,8 @@ class _FinanceChartsTabState extends ConsumerState<FinanceChartsTab> {
         return Wrap(
           spacing: spacing,
           runSpacing: spacing,
-          children: cards
-              .map((c) => SizedBox(width: itemWidth, child: c))
-              .toList(),
+          children:
+              cards.map((c) => SizedBox(width: itemWidth, child: c)).toList(),
         );
       },
     );
@@ -582,8 +584,8 @@ class _FinanceChartsTabState extends ConsumerState<FinanceChartsTab> {
                   const SizedBox(height: 2),
                   const Text(
                     '12-month comparison across Baishakh to Chaitra',
-                    style:
-                        TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                    style: TextStyle(
+                        fontSize: 11.5, color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -651,7 +653,8 @@ class _FinanceChartsTabState extends ConsumerState<FinanceChartsTab> {
                                   return const SizedBox.shrink();
                                 }
                                 final label =
-                                    (monthly[idx]['short_label'] ?? '').toString();
+                                    (monthly[idx]['short_label'] ?? '')
+                                        .toString();
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 6),
                                   child: Text(
@@ -791,8 +794,8 @@ class _FinanceChartsTabState extends ConsumerState<FinanceChartsTab> {
                   const SizedBox(height: 2),
                   const Text(
                     'Annual comparison across Nepali fiscal years',
-                    style:
-                        TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                    style: TextStyle(
+                        fontSize: 11.5, color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -809,7 +812,8 @@ class _FinanceChartsTabState extends ConsumerState<FinanceChartsTab> {
           ),
           const SizedBox(height: 18),
           if (!hasData)
-            _emptyChartPlaceholder('No yearly payroll transactions recorded yet.')
+            _emptyChartPlaceholder(
+                'No yearly payroll transactions recorded yet.')
           else ...[
             SizedBox(
               height: 260,
@@ -1060,7 +1064,8 @@ class _FinanceChartsTabState extends ConsumerState<FinanceChartsTab> {
             _selectedMonth == null
                 ? 'Full year $_selectedYear BS'
                 : '${_monthNames[_selectedMonth!]} $_selectedYear BS',
-            style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+            style:
+                const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
           if (total <= 0)
@@ -1136,8 +1141,8 @@ class _FinanceChartsTabState extends ConsumerState<FinanceChartsTab> {
     );
   }
 
-  Widget _buildDepartmentCard(List byDept, bool isDark) {
-    final totalAll = byDept.fold<double>(
+  Widget _buildDesignationCard(List byDesignation, bool isDark) {
+    final totalAll = byDesignation.fold<double>(
       0,
       (sum, item) => sum + ((item['total_expense'] as num?)?.toDouble() ?? 0),
     );
@@ -1162,7 +1167,7 @@ class _FinanceChartsTabState extends ConsumerState<FinanceChartsTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Department Payroll Cost',
+            'Designation Payroll Cost',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
@@ -1172,17 +1177,20 @@ class _FinanceChartsTabState extends ConsumerState<FinanceChartsTab> {
           const SizedBox(height: 2),
           Text(
             _selectedMonth == null
-                ? 'Ranked by total employer cost ($_selectedYear BS)'
-                : 'Ranked by cost (${_monthNames[_selectedMonth!]} $_selectedYear BS)',
-            style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                ? 'Ranked by designation employer cost ($_selectedYear BS)'
+                : 'Ranked by designation (${_monthNames[_selectedMonth!]} $_selectedYear BS)',
+            style:
+                const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
-          if (byDept.isEmpty || totalAll <= 0)
-            _emptyChartPlaceholder('No department payroll data for this period.')
+          if (byDesignation.isEmpty || totalAll <= 0)
+            _emptyChartPlaceholder(
+                'No designation payroll data for this period.')
           else
-            ...List.generate(byDept.length, (i) {
-              final d = byDept[i] as Map;
-              final name = (d['department'] ?? 'Unassigned').toString();
+            ...List.generate(byDesignation.length, (i) {
+              final d = byDesignation[i] as Map;
+              final name = (d['designation'] ?? d['department'] ?? 'Unassigned')
+                  .toString();
               final exp = (d['total_expense'] as num?)?.toDouble() ?? 0;
               final tds = (d['tds'] as num?)?.toDouble() ?? 0;
               final count = (d['payout_count'] as num?)?.toInt() ?? 0;
