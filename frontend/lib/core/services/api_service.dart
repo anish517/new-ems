@@ -85,6 +85,18 @@ class ApiService {
     return _dio.get(path, queryParameters: params);
   }
 
+  /// Download binary file bytes (e.g. .xlsx exports and templates).
+  Future<Response<List<int>>> getBytes(
+    String path, {
+    Map<String, dynamic>? queryParams,
+  }) {
+    return _dio.get<List<int>>(
+      path,
+      queryParameters: queryParams,
+      options: Options(responseType: ResponseType.bytes),
+    );
+  }
+
   Future<Response> post(String path, {dynamic data}) {
     return _dio.post(path, data: data);
   }

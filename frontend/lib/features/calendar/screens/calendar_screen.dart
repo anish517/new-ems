@@ -1,6 +1,10 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:universal_html/html.dart' as html;
 import 'package:nepali_utils/nepali_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
@@ -18,6 +22,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   late final NepaliDateTime _today;
   List<dynamic> _events = [];
   bool _loading = false;
+  bool _excelBusy = false;
   String? _error;
   int? _selectedDay;
 
@@ -155,6 +160,522 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   List<dynamic> _getEventsForDay(int day) {
     return _events.where((e) => _matchesBsDay(e, day)).toList();
+  }
+
+  Future<void> _saveExcelBytes(List<int> bytes, String filename) async {
+    final uint8 = Uint8List.fromList(bytes);
+    if (kIsWeb) {
+      final blob = html.Blob([
+        uint8
+      ], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      final urlObj = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: urlObj)
+        ..setAttribute('download', filename)
+        ..click();
+      html.Url.revokeObjectUrl(urlObj);
+    } else {
+      final outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save Excel File',
+        fileName: filename,
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+      );
+      if (outputFile != null) {
+        final file = File(outputFile);
+        await file.writeAsBytes(uint8);
+      }
+    }
+  }
+
+  Future<void> _exportEventsExcel({required String scope}) async {
+    if (_excelBusy) {
+      return;
+    }
+    setState(() => _excelBusy = true);
+    try {
+      final y = _viewedMonth.year;
+      final m = _viewedMonth.month;
+      final monthName = _monthNames[m];
+      final res = await ApiService().getBytes(
+        '${AppConstants.calendarBase}/events/export/',
+        queryParams: {
+          'year': y,
+          'month': m,
+          'scope': scope,
+        },
+      );
+      final bytes = res.data;
+      if (bytes == null || bytes.isEmpty) {
+        throw Exception('Received empty Excel file from server.');
+      }
+
+      String filename;
+      if (scope == 'all') {
+        filename = 'calendar_events_all.xlsx';
+      } else if (scope == 'year') {
+        filename = 'calendar_events_${y}_BS.xlsx';
+      } else {
+        filename = 'calendar_events_${y}_${monthName}_BS.xlsx';
+      }
+
+      await _saveExcelBytes(bytes, filename);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Exported $filename successfully!'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: ${ApiService.getErrorMessage(e)}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _excelBusy = false);
+      }
+    }
+  }
+
+  Future<void> _downloadExcelTemplate() async {
+    if (_excelBusy) {
+      return;
+    }
+    setState(() => _excelBusy = true);
+    try {
+      final res = await ApiService().getBytes(
+        '${AppConstants.calendarBase}/events/template/',
+      );
+      final bytes = res.data;
+      if (bytes == null || bytes.isEmpty) {
+        throw Exception('Received empty template file from server.');
+      }
+      await _saveExcelBytes(bytes, 'calendar_events_template.xlsx');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Downloaded calendar_events_template.xlsx!'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Template download failed: ${ApiService.getErrorMessage(e)}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _excelBusy = false);
+      }
+    }
+  }
+
+  void _showImportExcelDialog() {
+    PlatformFile? selectedFile;
+    bool uploading = false;
+    Map<String, dynamic>? importResult;
+    String? importError;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final errorsList = (importResult?['errors'] as List?) ?? [];
+
+          return Dialog(
+            backgroundColor: ctx.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(color: ctx.border),
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Iconsax.document_upload,
+                                color: AppColors.primary, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Import Calendar Events (.xlsx)',
+                                  style: TextStyle(
+                                    fontSize: 16.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: ctx.textPrimary,
+                                  ),
+                                ),
+                                const Text(
+                                  'Bulk upload events & public holidays from Excel',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed:
+                                uploading ? null : () => Navigator.pop(ctx),
+                            icon: const Icon(Iconsax.close_circle, size: 20),
+                            color: AppColors.textSecondary,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Step 1: Download Template Card
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: ctx.card,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: ctx.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Iconsax.document_download,
+                                    size: 17, color: AppColors.primary),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Step 1: Use the Official Excel Template',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: ctx.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Columns: Title, Category, Start Date (BS), End Date (BS), Location, Is Holiday (Yes/No), Is Important (Yes/No), Description.',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.textSecondary,
+                                height: 1.35,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _excelBusy
+                                    ? null
+                                    : () => _downloadExcelTemplate(),
+                                icon: const Icon(Iconsax.document_download,
+                                    size: 16),
+                                label: const Text(
+                                  'Download Excel Template (.xlsx)',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12.5),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                  side: const BorderSide(
+                                      color: AppColors.primary),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Step 2: Pick .xlsx File
+                      OutlinedButton.icon(
+                        onPressed: uploading
+                            ? null
+                            : () async {
+                                final picked =
+                                    await FilePicker.platform.pickFiles(
+                                  type: FileType.custom,
+                                  allowedExtensions: ['xlsx'],
+                                  withData: true,
+                                );
+                                if (picked != null &&
+                                    picked.files.isNotEmpty) {
+                                  setDialogState(() {
+                                    selectedFile = picked.files.first;
+                                    importError = null;
+                                  });
+                                }
+                              },
+                        icon: const Icon(Iconsax.folder_open, size: 17),
+                        label: Text(
+                          selectedFile == null
+                              ? 'Step 2: Select .xlsx File to Import'
+                              : 'Selected: ${selectedFile!.name}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 44),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+
+                      if (importError != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: AppColors.error.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            importError!,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.error,
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      if (importResult != null) ...[
+                        const SizedBox(height: 14),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: AppColors.success.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Iconsax.tick_circle,
+                                      size: 17, color: AppColors.success),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Import Summary',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.success,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: [
+                                  _buildImportStatChip(
+                                    'Created: ${importResult!['created'] ?? 0}',
+                                    AppColors.success,
+                                  ),
+                                  _buildImportStatChip(
+                                    'Skipped Duplicates: ${importResult!['skipped'] ?? 0}',
+                                    AppColors.primary,
+                                  ),
+                                  if (errorsList.isNotEmpty)
+                                    _buildImportStatChip(
+                                      'Row Errors: ${errorsList.length}',
+                                      AppColors.error,
+                                    ),
+                                ],
+                              ),
+                              if (errorsList.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxHeight: 130),
+                                  child: SingleChildScrollView(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: errorsList.map((err) {
+                                        final rowNum = err is Map
+                                            ? err['row']
+                                            : '?';
+                                        final msg = err is Map
+                                            ? err['error']
+                                            : err.toString();
+                                        return Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 4),
+                                          child: Text(
+                                            '• Row $rowNum: $msg',
+                                            style: const TextStyle(
+                                              fontSize: 11.5,
+                                              color: AppColors.error,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: uploading
+                                  ? null
+                                  : () => Navigator.pop(ctx),
+                              style: OutlinedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                  importResult != null ? 'Close' : 'Cancel'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: (uploading || selectedFile == null)
+                                  ? null
+                                  : () async {
+                                      setDialogState(() {
+                                        uploading = true;
+                                        importError = null;
+                                      });
+                                      try {
+                                        final res =
+                                            await ApiService().postMultipart(
+                                          '${AppConstants.calendarBase}/events/import/',
+                                          fields: const {},
+                                          files: {'file': selectedFile!},
+                                        );
+                                        final data = res.data is Map
+                                            ? Map<String, dynamic>.from(
+                                                res.data as Map)
+                                            : <String, dynamic>{};
+                                        if (ctx.mounted) {
+                                          setDialogState(() {
+                                            uploading = false;
+                                            importResult = data;
+                                          });
+                                        }
+                                        _loadEvents();
+                                      } catch (e) {
+                                        if (ctx.mounted) {
+                                          setDialogState(() {
+                                            uploading = false;
+                                            importError =
+                                                ApiService.getErrorMessage(e);
+                                          });
+                                        }
+                                      }
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: uploading
+                                  ? const SizedBox(
+                                      width: 15,
+                                      height: 15,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Iconsax.import, size: 16),
+                              label: Text(
+                                uploading ? 'Importing...' : 'Upload & Import',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildImportStatChip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
+      ),
+    );
   }
 
   void _showAddEventDialog({int? day}) {
@@ -525,16 +1046,160 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                               ],
                             ),
                             if (isAdmin)
-                              ElevatedButton.icon(
-                                onPressed: () => _showAddEventDialog(),
-                                icon: const Icon(Iconsax.add, size: 16, color: Colors.white),
-                                label: const Text('Add Event',
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                ),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  PopupMenuButton<String>(
+                                    enabled: !_excelBusy,
+                                    tooltip: 'Export or Download Excel Template',
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    onSelected: (val) {
+                                      if (val == 'template') {
+                                        _downloadExcelTemplate();
+                                      } else {
+                                        _exportEventsExcel(scope: val);
+                                      }
+                                    },
+                                    itemBuilder: (_) => [
+                                      PopupMenuItem(
+                                        value: 'month',
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                                Iconsax.document_download,
+                                                size: 16,
+                                                color: AppColors.primary),
+                                            const SizedBox(width: 8),
+                                            Flexible(
+                                              child: Text(
+                                                'Export ${_monthNames[_viewedMonth.month]} ${_viewedMonth.year} (.xlsx)',
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'year',
+                                        child: Row(
+                                          children: [
+                                            const Icon(Iconsax.calendar_tick,
+                                                size: 16,
+                                                color: AppColors.primary),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                                'Export Full Year ${_viewedMonth.year} (.xlsx)'),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'all',
+                                        child: Row(
+                                          children: [
+                                            Icon(Iconsax.archive_book,
+                                                size: 16,
+                                                color: AppColors.primary),
+                                            SizedBox(width: 8),
+                                            Text('Export All Events (.xlsx)'),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuDivider(),
+                                      const PopupMenuItem(
+                                        value: 'template',
+                                        child: Row(
+                                          children: [
+                                            Icon(Iconsax.document_text,
+                                                size: 16,
+                                                color: Color(0xFF10B981)),
+                                            SizedBox(width: 8),
+                                            Text(
+                                                'Download Import Template (.xlsx)'),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF10B981)
+                                            .withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: const Color(0xFF10B981)
+                                              .withValues(alpha: 0.4),
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Iconsax.document_download,
+                                              size: 15,
+                                              color: Color(0xFF10B981)),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Export / Template',
+                                            style: TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xFF10B981),
+                                            ),
+                                          ),
+                                          SizedBox(width: 2),
+                                          Icon(Icons.arrow_drop_down,
+                                              size: 16,
+                                              color: Color(0xFF10B981)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  OutlinedButton.icon(
+                                    onPressed: _excelBusy
+                                        ? null
+                                        : _showImportExcelDialog,
+                                    icon: const Icon(Iconsax.document_upload,
+                                        size: 15),
+                                    label: const Text(
+                                      'Import Excel',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12.5),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.primary,
+                                      side: const BorderSide(
+                                          color: AppColors.primary, width: 1.2),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 8),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10)),
+                                    ),
+                                  ),
+                                  ElevatedButton.icon(
+                                    onPressed: () => _showAddEventDialog(),
+                                    icon: const Icon(Iconsax.add,
+                                        size: 16, color: Colors.white),
+                                    label: const Text('Add Event',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 14, vertical: 9),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10)),
+                                    ),
+                                  ),
+                                ],
                               ),
                           ],
                         ),

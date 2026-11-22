@@ -1,12 +1,22 @@
 import nepali_datetime
 import datetime
+from django.http import HttpResponse
 from rest_framework import viewsets
 from rest_framework import status
 from datetime import timedelta
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from calendar_app.models import Event, Category
+from calendar_app.excel_utils import (
+    EXCEL_HEADERS,
+    build_events_xlsx,
+    parse_bool_cell,
+    parse_events_xlsx,
+    parse_nepali_date_cell,
+)
+from organization.models import Organization
 from .serializers import EventSerializer, CategorySerializer
 from rest_framework.permissions import IsAuthenticated
 
@@ -70,9 +80,16 @@ class EventViewSet(viewsets.ViewSet):
 
     def _get_org(self, user):
         try:
-            return user.employee.post.department.organization
+            org = user.employee.post.department.organization
+            if org:
+                return org
         except Exception:
+            pass
+        if hasattr(user, 'organization') and user.organization.exists():
             return user.organization.first()
+        if getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False):
+            return Organization.objects.first()
+        return None
 
     def list(self, request):
         now_np = nepali_datetime.datetime.now()
@@ -195,6 +212,254 @@ class EventViewSet(viewsets.ViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Event.DoesNotExist:
             return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['get'], url_path='export')
+    def export_excel(self, request):
+        if not self._is_admin(request.user):
+            return Response(
+                {'detail': 'Only administrators can export calendar events.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        org = self._get_org(request.user)
+        now_np = nepali_datetime.datetime.now()
+        try:
+            year_np = int(request.query_params.get('year', now_np.year))
+        except (TypeError, ValueError):
+            year_np = now_np.year
+        try:
+            month_np = int(request.query_params.get('month', now_np.month))
+        except (TypeError, ValueError):
+            month_np = now_np.month
+
+        scope = (request.query_params.get('scope') or 'month').strip().lower()
+        events = Event.objects.filter(organization=org).select_related('category').order_by('start', 'id')
+
+        filtered_events = []
+        for ev in events:
+            if not ev.start:
+                continue
+            if scope == 'all':
+                filtered_events.append(ev)
+            elif scope == 'year':
+                if ev.start.year == year_np:
+                    filtered_events.append(ev)
+            else:
+                if ev.start.year == year_np and ev.start.month == month_np:
+                    filtered_events.append(ev)
+
+        rows = []
+        for ev in filtered_events:
+            rows.append([
+                ev.title or '',
+                ev.category.name if ev.category else '',
+                str(ev.start) if ev.start else '',
+                str(ev.end) if ev.end else (str(ev.start) if ev.start else ''),
+                ev.location or '',
+                'Yes' if ev.is_holiday else 'No',
+                'Yes' if ev.is_important else 'No',
+                ev.description or '',
+            ])
+
+        xlsx_bytes = build_events_xlsx(rows, sheet_title='Calendar Events', include_instructions=False)
+        if scope == 'all':
+            filename = 'calendar_events_all.xlsx'
+        elif scope == 'year':
+            filename = f'calendar_events_{year_np}_BS.xlsx'
+        else:
+            filename = f'calendar_events_{year_np}_{month_np:02d}_BS.xlsx'
+
+        response = HttpResponse(
+            xlsx_bytes,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=False, methods=['get'], url_path='template')
+    def download_template(self, request):
+        if not self._is_admin(request.user):
+            return Response(
+                {'detail': 'Only administrators can download the calendar import template.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        today = nepali_datetime.date.today()
+        y, m = today.year, today.month
+        sample_rows = [
+            [
+                'Dashain Festival Holiday',
+                'Festival',
+                f'{y}-{m:02d}-10',
+                f'{y}-{m:02d}-12',
+                'Nationwide',
+                'Yes',
+                'Yes',
+                'Official public holiday for all staff',
+            ],
+            [
+                'Monthly All-Hands Review',
+                'Meeting',
+                f'{y}-{m:02d}-15',
+                f'{y}-{m:02d}-15',
+                'Head Office Conference Room',
+                'No',
+                'Yes',
+                'Monthly product & engineering sync',
+            ],
+        ]
+        xlsx_bytes = build_events_xlsx(
+            sample_rows,
+            sheet_title='Events Template',
+            include_instructions=True,
+        )
+        response = HttpResponse(
+            xlsx_bytes,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = 'attachment; filename="calendar_events_template.xlsx"'
+        return response
+
+    @action(
+        detail=False,
+        methods=['post'],
+        url_path='import',
+        parser_classes=[MultiPartParser, FormParser, JSONParser],
+    )
+    def import_excel(self, request):
+        if not self._is_admin(request.user):
+            return Response(
+                {'detail': 'Only administrators can import calendar events.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        org = self._get_org(request.user)
+        if not org:
+            return Response(
+                {'error': 'No organization found for this account.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        uploaded = request.FILES.get('file')
+        if not uploaded:
+            return Response(
+                {'error': 'Please upload an Excel (.xlsx) file in the "file" field.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        filename = (uploaded.name or '').lower()
+        if filename and not filename.endswith('.xlsx'):
+            return Response(
+                {'error': 'Only .xlsx Excel files are supported. Please download the template and upload an .xlsx file.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            raw_rows = parse_events_xlsx(uploaded.read())
+        except Exception as e:
+            return Response(
+                {'error': f'Could not read Excel (.xlsx) file: {e}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not raw_rows:
+            return Response(
+                {'error': 'The uploaded Excel file is empty.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Detect header row if present
+        start_row_idx = 0
+        first_row_lower = [c.strip().lower() for c in raw_rows[0]]
+        if any(h in first_row_lower for h in ['title', 'event title', 'start date (bs)', 'start date', 'start']):
+            start_row_idx = 1
+
+        created_count = 0
+        skipped_count = 0
+        errors = []
+
+        for idx in range(start_row_idx, len(raw_rows)):
+            row_number = idx + 1
+            row = raw_rows[idx]
+            # Pad to 8 columns
+            padded = [(row[i] if i < len(row) else '').strip() for i in range(len(EXCEL_HEADERS))]
+            if not any(padded):
+                continue
+
+            title, category_name, start_raw, end_raw, location, holiday_raw, important_raw, description = padded
+
+            if not title:
+                errors.append({'row': row_number, 'error': 'Title is required.'})
+                continue
+
+            try:
+                start_date = parse_nepali_date_cell(start_raw, 'Start Date (BS)')
+                end_date = (
+                    parse_nepali_date_cell(end_raw, 'End Date (BS)')
+                    if end_raw
+                    else start_date
+                )
+            except ValueError as ve:
+                errors.append({'row': row_number, 'error': str(ve)})
+                continue
+
+            if end_date < start_date:
+                errors.append({
+                    'row': row_number,
+                    'error': f'End Date (BS) ({end_date}) cannot be earlier than Start Date (BS) ({start_date}).',
+                })
+                continue
+
+            is_holiday = parse_bool_cell(holiday_raw)
+            is_important = parse_bool_cell(important_raw)
+
+            # Duplicate check within organization
+            if Event.objects.filter(
+                organization=org,
+                title__iexact=title,
+                start=start_date,
+                end=end_date,
+            ).exists():
+                skipped_count += 1
+                continue
+
+            category_obj = None
+            if category_name:
+                category_obj = Category.objects.filter(
+                    organization=org,
+                    name__iexact=category_name,
+                ).first()
+                if not category_obj:
+                    category_obj = Category.objects.create(
+                        organization=org,
+                        name=category_name,
+                        color=Category.COLORS_CHOICES.DANGER
+                        if is_holiday
+                        else Category.COLORS_CHOICES.PRIMARY,
+                    )
+
+            Event.objects.create(
+                organization=org,
+                title=title,
+                category=category_obj,
+                start=start_date,
+                end=end_date,
+                location=location or None,
+                is_holiday=is_holiday,
+                is_important=is_important,
+                description=description or None,
+            )
+            created_count += 1
+
+        return Response(
+            {
+                'created': created_count,
+                'skipped': skipped_count,
+                'total_processed': created_count + skipped_count + len(errors),
+                'errors': errors,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
