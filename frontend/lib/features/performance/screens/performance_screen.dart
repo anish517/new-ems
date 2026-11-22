@@ -36,16 +36,20 @@ class PerformanceScreen extends ConsumerStatefulWidget {
 }
 
 class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
-  int _selectedTab = 0; // 0: Reviews & Appraisals, 1: Review Categories
+  int _selectedTab = 0; // 0: Reviews & Appraisals, 1: Review Categories, 2: Reviewers (Admin)
   List<dynamic> _reviews = [];
   List<dynamic> _categories = [];
+  List<dynamic> _reviewers = [];
   bool _loading = true;
   String _scoreFilter = 'all';
   String _categoryFilter = 'all';
+  bool _onlyMyReviews = false;
   String _searchQuery = '';
   String _catSearchQuery = '';
+  String _reviewerSearchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _catSearchController = TextEditingController();
+  final TextEditingController _reviewerSearchController = TextEditingController();
 
   @override
   void initState() {
@@ -57,22 +61,40 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   void dispose() {
     _searchController.dispose();
     _catSearchController.dispose();
+    _reviewerSearchController.dispose();
     super.dispose();
   }
 
   Future<void> _loadAll() async {
     setState(() => _loading = true);
     try {
-      final results = await Future.wait([
+      final user = ref.read(currentUserProvider);
+      final isAdmin = user?.canManage ?? false;
+      final isReviewer = (user?.isPerformanceReviewerRole ?? false) && !isAdmin;
+
+      final futures = <Future<dynamic>>[
         ApiService().get('/api/performance/reviews/'),
-        ApiService().get('/api/performance/categories/'),
-      ]);
+        ApiService().get(
+          isReviewer
+              ? '/api/performance/my-categories/'
+              : '/api/performance/categories/',
+        ),
+        if (isAdmin) ApiService().get('/api/performance/reviewers/'),
+      ];
+
+      final results = await Future.wait(futures);
       if (!mounted) return;
       setState(() {
         final res = results[0];
         _reviews = res.data is List ? res.data as List : ((res.data['results'] ?? res.data) as List);
         final catRes = results[1];
         _categories = catRes.data is List ? catRes.data as List : ((catRes.data['results'] ?? catRes.data) as List);
+        if (isAdmin && results.length > 2) {
+          final revRes = results[2];
+          _reviewers = revRes.data is List ? revRes.data as List : ((revRes.data['results'] ?? revRes.data) as List);
+        } else {
+          _reviewers = [];
+        }
         _loading = false;
       });
     } catch (_) {
@@ -80,8 +102,30 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
     }
   }
 
-  void _showCreateReview(BuildContext context) async {
+  void _showCreateReview(
+    BuildContext context, {
+    required bool isReviewer,
+    Map? existingReview,
+  }) async {
+    if (isReviewer && _categories.isEmpty && existingReview == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No performance categories assigned yet. Ask your administrator to assign categories.'),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final isDesktop = MediaQuery.of(context).size.width >= 768;
+
+    final sheet = _CreateReviewSheet(
+      onSuccess: _loadAll,
+      categories: _categories,
+      isReviewer: isReviewer,
+      existingReview: existingReview,
+    );
 
     if (isDesktop) {
       await showDialog(
@@ -95,7 +139,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                 color: context.surface,
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: _CreateReviewSheet(onSuccess: _loadAll, categories: _categories),
+              child: sheet,
             ),
           ),
         ),
@@ -109,8 +153,202 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        builder: (_) => _CreateReviewSheet(onSuccess: _loadAll, categories: _categories),
+        builder: (_) => sheet,
       );
+    }
+  }
+
+  Future<void> _deleteReview(Map review) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Iconsax.trash, color: AppColors.error, size: 20),
+            SizedBox(width: 8),
+            Text('Delete Appraisal', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to delete this performance appraisal for ${review['employee_name'] ?? 'this employee'}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ApiService().delete('/api/performance/reviews/${review['id']}/');
+        _loadAll();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Performance appraisal deleted.'),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(ApiService.getErrorMessage(e)),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _showReviewerForm(BuildContext context, {Map? existing}) async {
+    final isDesktop = MediaQuery.of(context).size.width >= 768;
+    final sheet = _ReviewerFormSheet(
+      categories: _categories,
+      existing: existing,
+      onSuccess: _loadAll,
+    );
+
+    if (isDesktop) {
+      await showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Container(
+              decoration: BoxDecoration(
+                color: context.surface,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: sheet,
+            ),
+          ),
+        ),
+      );
+    } else {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: context.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (_) => sheet,
+      );
+    }
+  }
+
+  Future<void> _toggleReviewerActive(Map reviewer) async {
+    final current = reviewer['is_active'] == true;
+    try {
+      await ApiService().patch(
+        '/api/performance/reviewers/${reviewer['id']}/',
+        data: {'is_active': !current},
+      );
+      _loadAll();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              !current
+                  ? 'Reviewer account activated.'
+                  : 'Reviewer account deactivated.',
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ApiService.getErrorMessage(e)),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteReviewer(Map reviewer) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Iconsax.user_remove, color: AppColors.error, size: 20),
+            SizedBox(width: 8),
+            Text('Remove Reviewer', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: Text(
+          'Remove performance reviewer access for "${reviewer['full_name'] ?? reviewer['email']}"? '
+          'Their previously submitted reviews will remain preserved.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ApiService().delete('/api/performance/reviewers/${reviewer['id']}/');
+        _loadAll();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Performance reviewer removed.'),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(ApiService.getErrorMessage(e)),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -361,12 +599,14 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(nepaliDateProvider, (_, __) => _loadAll());
-    final isAdmin = ref.watch(currentUserProvider)?.canManage ?? false;
+    final currentUser = ref.watch(currentUserProvider);
+    final isAdmin = currentUser?.canManage ?? false;
+    final isReviewer = (currentUser?.isPerformanceReviewerRole ?? false) && !isAdmin;
     final orgSettings = ref.watch(orgSettingsProvider);
     final isDark = context.isDark;
     final isTight = MediaQuery.of(context).size.width < 650;
 
-    if (!isAdmin && !orgSettings.enableDailyPerformance) {
+    if (!isAdmin && !isReviewer && !orgSettings.enableDailyPerformance) {
       return Scaffold(
         backgroundColor: context.bg,
         body: Center(
@@ -411,26 +651,50 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
       );
     }
 
+    Widget? fab;
+    if (isAdmin) {
+      fab = FloatingActionButton.extended(
+        onPressed: _selectedTab == 0
+            ? () => _showCreateReview(context, isReviewer: false)
+            : _selectedTab == 1
+                ? () => _showAddCategoryDialog()
+                : () => _showReviewerForm(context),
+        backgroundColor: AppColors.primary,
+        elevation: 6,
+        icon: Icon(
+          _selectedTab == 0
+              ? Iconsax.add_circle
+              : _selectedTab == 1
+                  ? Iconsax.folder_add
+                  : Iconsax.user_cirlce_add,
+          color: Colors.white,
+          size: 20,
+        ),
+        label: Text(
+          _selectedTab == 0
+              ? 'New Appraisal'
+              : _selectedTab == 1
+                  ? 'Add Category'
+                  : 'Add Reviewer',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+        ),
+      );
+    } else if (isReviewer) {
+      fab = FloatingActionButton.extended(
+        onPressed: () => _showCreateReview(context, isReviewer: true),
+        backgroundColor: AppColors.primary,
+        elevation: 6,
+        icon: const Icon(Iconsax.add_circle, color: Colors.white, size: 20),
+        label: const Text(
+          'New Appraisal',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: context.bg,
-      floatingActionButton: isAdmin
-          ? FloatingActionButton.extended(
-              onPressed: _selectedTab == 0
-                  ? () => _showCreateReview(context)
-                  : () => _showAddCategoryDialog(),
-              backgroundColor: AppColors.primary,
-              elevation: 6,
-              icon: Icon(
-                _selectedTab == 0 ? Iconsax.add_circle : Iconsax.folder_add,
-                color: Colors.white,
-                size: 20,
-              ),
-              label: Text(
-                _selectedTab == 0 ? 'New Appraisal' : 'Add Category',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
-              ),
-            )
-          : null,
+      floatingActionButton: fab,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.symmetric(
@@ -481,7 +745,9 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                                 children: [
                                   Flexible(
                                     child: Text(
-                                      'Performance & Appraisals',
+                                      isReviewer
+                                          ? 'Reviewer Workspace'
+                                          : 'Performance & Appraisals',
                                       style: TextStyle(
                                         fontSize: isTight ? 17 : 20,
                                         fontWeight: FontWeight.w800,
@@ -514,8 +780,10 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 isAdmin
-                                    ? 'Employee evaluations, scoring, KPI reviews & category management'
-                                    : 'Your evaluations, performance scoring, feedback & career growth goals',
+                                    ? 'Employee evaluations, scoring, categories & reviewer access control'
+                                    : isReviewer
+                                        ? 'Score organization employees in your admin-assigned categories'
+                                        : 'Your evaluations, performance scoring, feedback & career growth goals',
                                 style: TextStyle(fontSize: isTight ? 11 : 12, color: AppColors.textSecondary),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -535,6 +803,68 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                       ],
                     ),
 
+                    // ── Assigned Categories Banner (Performance Reviewer) ───
+                    if (isReviewer) ...[
+                      const SizedBox(height: 12),
+                      const Divider(height: 1),
+                      const SizedBox(height: 12),
+                      if (_categories.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Iconsax.info_circle, size: 16, color: AppColors.warning),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'No categories assigned yet. Ask an administrator to grant you review categories.',
+                                  style: TextStyle(fontSize: 12, color: AppColors.warning, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const Text(
+                              'Assigned Categories:',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            ..._categories.map(
+                              (c) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                                ),
+                                child: Text(
+                                  c['name'] ?? '',
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+
                     // ── Segmented Tab Switcher (Admins Only) ────────────────
                     if (isAdmin) ...[
                       const SizedBox(height: 16),
@@ -552,7 +882,9 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                             Expanded(
                               child: _buildSegmentButton(
                                 index: 0,
-                                label: 'Appraisals & Reviews (${_reviews.length})',
+                                label: isTight
+                                    ? 'Reviews (${_reviews.length})'
+                                    : 'Appraisals & Reviews (${_reviews.length})',
                                 icon: Iconsax.document_text,
                                 isSelected: _selectedTab == 0,
                               ),
@@ -560,9 +892,19 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                             Expanded(
                               child: _buildSegmentButton(
                                 index: 1,
-                                label: 'Review Categories (${_categories.length})',
+                                label: isTight
+                                    ? 'Categories (${_categories.length})'
+                                    : 'Categories (${_categories.length})',
                                 icon: Iconsax.category,
                                 isSelected: _selectedTab == 1,
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildSegmentButton(
+                                index: 2,
+                                label: 'Reviewers (${_reviewers.length})',
+                                icon: Iconsax.security_user,
+                                isSelected: _selectedTab == 2,
                               ),
                             ),
                           ],
@@ -577,9 +919,11 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
 
               // ── Active Tab View ──────────────────────────────────────────
               if (!isAdmin || _selectedTab == 0)
-                _buildReviewsTab(isAdmin, isDark, isTight)
+                _buildReviewsTab(isAdmin, isReviewer, currentUser?.id, isDark, isTight)
+              else if (_selectedTab == 1)
+                _buildCategoriesTab(isAdmin, isDark, isTight)
               else
-                _buildCategoriesTab(isAdmin, isDark, isTight),
+                _buildReviewersTab(isDark, isTight),
 
               const SizedBox(height: 60),
             ],
@@ -643,8 +987,18 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
   // TAB 1: REVIEWS & APPRAISALS VIEW
   // ═══════════════════════════════════════════════════════════════════════════
-  Widget _buildReviewsTab(bool isAdmin, bool isDark, bool isTight) {
+  Widget _buildReviewsTab(
+    bool isAdmin,
+    bool isReviewer,
+    int? currentUserId,
+    bool isDark,
+    bool isTight,
+  ) {
     final filteredReviews = _reviews.where((r) {
+      if (isReviewer && _onlyMyReviews && r['reviewer'] != currentUserId) {
+        return false;
+      }
+
       final score = (r['score'] as num?)?.toDouble() ?? 0;
       if (_scoreFilter == 'high' && score < 8) return false;
       if (_scoreFilter == 'medium' && (score < 5 || score >= 8)) return false;
@@ -745,6 +1099,55 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
+                    if (isReviewer) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => setState(() => _onlyMyReviews = !_onlyMyReviews),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: _onlyMyReviews
+                                    ? AppColors.primary.withValues(alpha: 0.14)
+                                    : context.card,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _onlyMyReviews ? AppColors.primary : context.border,
+                                  width: _onlyMyReviews ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Iconsax.user_tick,
+                                    size: 14,
+                                    color: _onlyMyReviews
+                                        ? AppColors.primary
+                                        : AppColors.textSecondary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'My Reviews Only',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: _onlyMyReviews ? FontWeight.w800 : FontWeight.w600,
+                                      color: _onlyMyReviews
+                                          ? AppColors.primary
+                                          : context.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                     _buildScoreFilterChip('all', 'All Scores', AppColors.primary, Iconsax.category),
                     _buildScoreFilterChip('high', '🌟 High (8-10)', AppColors.success, Iconsax.star_1),
                     _buildScoreFilterChip('medium', '⚡ Average (5-7)', AppColors.warning, Iconsax.flash),
@@ -803,11 +1206,26 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: filteredReviews.length,
             separatorBuilder: (_, __) => const SizedBox(height: 14),
-            itemBuilder: (ctx, i) => _ReviewCard(
-              review: filteredReviews[i],
-              isAdmin: isAdmin,
-              onUpdate: _loadAll,
-            ),
+            itemBuilder: (ctx, i) {
+              final review = filteredReviews[i];
+              final canEditOrDelete =
+                  isAdmin || (isReviewer && review['reviewer'] == currentUserId);
+              return _ReviewCard(
+                review: review,
+                isAdmin: isAdmin,
+                isReviewer: isReviewer,
+                canEditOrDelete: canEditOrDelete,
+                onUpdate: _loadAll,
+                onEdit: canEditOrDelete
+                    ? () => _showCreateReview(
+                          context,
+                          isReviewer: isReviewer,
+                          existingReview: review,
+                        )
+                    : null,
+                onDelete: canEditOrDelete ? () => _deleteReview(review) : null,
+              );
+            },
           ),
       ],
     );
@@ -1269,6 +1687,346 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
       ),
     );
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TAB 3: PERFORMANCE REVIEWERS MANAGEMENT (ADMIN ONLY)
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _buildReviewersTab(bool isDark, bool isTight) {
+    final filtered = _reviewers.where((r) {
+      if (_reviewerSearchQuery.isEmpty) return true;
+      final q = _reviewerSearchQuery.toLowerCase();
+      final name = (r['full_name'] ?? '').toString().toLowerCase();
+      final email = (r['email'] ?? '').toString().toLowerCase();
+      final linked = (r['linked_employee_name'] ?? '').toString().toLowerCase();
+      final cats = ((r['categories'] as List?) ?? [])
+          .map((c) => (c['name'] ?? '').toString().toLowerCase())
+          .join(' ');
+      return name.contains(q) || email.contains(q) || linked.contains(q) || cats.contains(q);
+    }).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: context.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: context.border, width: 1),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _reviewerSearchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search reviewers by name, email, or assigned category...',
+                        prefixIcon: const Icon(Iconsax.search_normal, size: 20),
+                        suffixIcon: _reviewerSearchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Iconsax.close_circle, size: 18),
+                                onPressed: () {
+                                  _reviewerSearchController.clear();
+                                  setState(() => _reviewerSearchQuery = '');
+                                },
+                              )
+                            : null,
+                      ),
+                      onChanged: (v) => setState(() => _reviewerSearchQuery = v),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Performance Reviewer logins can score organization employees strictly in the categories assigned below (self-review is always blocked).',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 60),
+            child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          )
+        else if (filtered.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(36),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: context.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: context.border),
+            ),
+            child: Column(
+              children: [
+                const Icon(Iconsax.security_user, size: 46, color: AppColors.textSecondary),
+                const SizedBox(height: 12),
+                Text(
+                  _reviewerSearchQuery.isNotEmpty
+                      ? 'No reviewers matching "$_reviewerSearchQuery"'
+                      : 'No Performance Reviewers Added Yet',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: context.textPrimary),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Create a separate reviewer login and assign which performance categories they are allowed to evaluate.',
+                  style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => _showReviewerForm(context),
+                  icon: const Icon(Iconsax.user_cirlce_add, size: 18, color: Colors.white),
+                  label: const Text('Add Performance Reviewer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: filtered.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (ctx, i) {
+              final r = filtered[i] as Map;
+              final name = (r['full_name'] ?? r['email'] ?? 'Reviewer').toString();
+              final email = (r['email'] ?? '').toString();
+              final isActive = r['is_active'] == true;
+              final linkedEmp = r['linked_employee_name']?.toString();
+              final cats = (r['categories'] as List?) ?? [];
+              final reviewsCount = r['reviews_given_count'] ?? 0;
+
+              return Container(
+                padding: EdgeInsets.all(isTight ? 14 : 18),
+                decoration: BoxDecoration(
+                  color: context.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isActive ? context.border : AppColors.error.withValues(alpha: 0.3),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          radius: 21,
+                          backgroundColor: (isActive ? AppColors.primary : AppColors.textSecondary)
+                              .withValues(alpha: 0.14),
+                          child: Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : 'R',
+                            style: TextStyle(
+                              color: isActive ? AppColors.primary : AppColors.textSecondary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  Text(
+                                    name,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: context.textPrimary,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: (isActive ? AppColors.success : AppColors.error)
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      isActive ? 'Active' : 'Inactive',
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: isActive ? AppColors.success : AppColors.error,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                email,
+                                style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: context.card,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: context.border),
+                                    ),
+                                    child: Text(
+                                      '$reviewsCount review${reviewsCount == 1 ? '' : 's'} given',
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                                    ),
+                                  ),
+                                  if (linkedEmp != null && linkedEmp.isNotEmpty)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'Linked Employee: $linkedEmp (Self-review blocked)',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF6366F1),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Divider(color: context.border, height: 1),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        const Text(
+                          'Allowed Categories:',
+                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                        ),
+                        if (cats.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'None assigned',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.warning),
+                            ),
+                          )
+                        else
+                          ...cats.map(
+                            (c) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                (c['name'] ?? '').toString(),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.end,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => _showReviewerForm(context, existing: r),
+                          icon: const Icon(Iconsax.edit_2, size: 15),
+                          label: const Text('Edit Access', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => _toggleReviewerActive(r),
+                          icon: Icon(
+                            isActive ? Iconsax.pause_circle : Iconsax.play_circle,
+                            size: 15,
+                            color: isActive ? AppColors.warning : AppColors.success,
+                          ),
+                          label: Text(
+                            isActive ? 'Deactivate' : 'Activate',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: isActive ? AppColors.warning : AppColors.success,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: (isActive ? AppColors.warning : AppColors.success).withValues(alpha: 0.4),
+                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => _deleteReviewer(r),
+                          icon: const Icon(Iconsax.trash, size: 17, color: AppColors.error),
+                          tooltip: 'Remove Reviewer',
+                          style: IconButton.styleFrom(
+                            backgroundColor: AppColors.error.withValues(alpha: 0.08),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
 }
 
 
@@ -1276,14 +2034,28 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
 class _ReviewCard extends StatelessWidget {
   final Map review;
   final bool isAdmin;
+  final bool isReviewer;
+  final bool canEditOrDelete;
   final VoidCallback onUpdate;
-  const _ReviewCard({required this.review, required this.isAdmin, required this.onUpdate});
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
+  const _ReviewCard({
+    required this.review,
+    required this.isAdmin,
+    required this.isReviewer,
+    required this.canEditOrDelete,
+    required this.onUpdate,
+    this.onEdit,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
     final score = (review['score'] as num?)?.toDouble() ?? 0;
     final hasReply = review['reply'] != null && review['reply'].toString().trim().isNotEmpty;
     final isDark = context.isDark;
+    final isManagerView = isAdmin || isReviewer;
 
     final scoreColor = score >= 8
         ? AppColors.success
@@ -1292,7 +2064,8 @@ class _ReviewCard extends StatelessWidget {
             : AppColors.error;
 
     final empName = review['employee_name'] ?? 'Employee';
-    final reviewerName = review['reviewer_name'] ?? 'Management';
+    final reviewerName = review['reviewer_name']?.toString();
+    final categoryName = review['category_name']?.toString();
 
     final isMobile = MediaQuery.of(context).size.width < 600;
 
@@ -1321,7 +2094,11 @@ class _ReviewCard extends StatelessWidget {
                   radius: 20,
                   backgroundColor: AppColors.primary.withValues(alpha: 0.12),
                   child: Text(
-                    empName.isNotEmpty ? empName[0].toUpperCase() : 'E',
+                    isManagerView
+                        ? (empName.isNotEmpty ? empName[0].toUpperCase() : 'E')
+                        : (categoryName != null && categoryName.isNotEmpty
+                            ? categoryName[0].toUpperCase()
+                            : 'P'),
                     style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 14),
                   ),
                 ),
@@ -1330,23 +2107,28 @@ class _ReviewCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Employees never see reviewer_name; show category or generic title
                       Text(
-                        isAdmin ? empName : 'Evaluation from $reviewerName',
+                        isManagerView
+                            ? empName
+                            : (categoryName ?? 'Performance Evaluation'),
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 15,
                           color: context.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Row(
+                      const SizedBox(height: 3),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             _fmtDate(review['created_at']),
                             style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
                           ),
-                          if (review['category_name'] != null) ...[
-                            const SizedBox(width: 8),
+                          if (categoryName != null)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
@@ -1354,7 +2136,7 @@ class _ReviewCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                review['category_name'],
+                                categoryName,
                                 style: const TextStyle(
                                   fontSize: 10,
                                   color: AppColors.primary,
@@ -1362,29 +2144,79 @@ class _ReviewCard extends StatelessWidget {
                                 ),
                               ),
                             ),
-                          ],
+                          if (isManagerView && reviewerName != null && reviewerName.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: context.card,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: context.border),
+                              ),
+                              child: Text(
+                                'By $reviewerName',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: scoreColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Iconsax.star1, size: 14, color: scoreColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${score.toInt()} / 10',
-                        style: TextStyle(color: scoreColor, fontWeight: FontWeight.w900, fontSize: 12.5),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: scoreColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Iconsax.star1, size: 14, color: scoreColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${score.toInt()} / 10',
+                            style: TextStyle(color: scoreColor, fontWeight: FontWeight.w900, fontSize: 12.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (canEditOrDelete) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (onEdit != null)
+                            IconButton(
+                              onPressed: onEdit,
+                              icon: const Icon(Iconsax.edit_2, size: 16, color: AppColors.primary),
+                              tooltip: 'Edit Appraisal',
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          if (onDelete != null) ...[
+                            const SizedBox(width: 4),
+                            IconButton(
+                              onPressed: onDelete,
+                              icon: const Icon(Iconsax.trash, size: 16, color: AppColors.error),
+                              tooltip: 'Delete Appraisal',
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
+                        ],
                       ),
                     ],
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -1454,7 +2286,7 @@ class _ReviewCard extends StatelessWidget {
                         const Icon(Iconsax.message_text, size: 14, color: AppColors.primary),
                         const SizedBox(width: 6),
                         Text(
-                          isAdmin ? 'Employee Response' : 'Your Response',
+                          isManagerView ? 'Employee Response' : 'Your Response',
                           style: const TextStyle(fontSize: 11.5, color: AppColors.primary, fontWeight: FontWeight.w800),
                         ),
                       ],
@@ -1467,7 +2299,7 @@ class _ReviewCard extends StatelessWidget {
                   ],
                 ),
               ),
-            ] else if (!isAdmin) ...[
+            ] else if (!isManagerView) ...[
               const SizedBox(height: 10),
               Align(
                 alignment: Alignment.centerRight,
@@ -1581,11 +2413,19 @@ class _ReviewCard extends StatelessWidget {
   }
 }
 
-// ─── Create Review Sheet ─────────────────────────────────────────────────────
+// ─── Create / Edit Review Sheet ──────────────────────────────────────────────
 class _CreateReviewSheet extends StatefulWidget {
   final VoidCallback onSuccess;
   final List categories;
-  const _CreateReviewSheet({required this.onSuccess, required this.categories});
+  final bool isReviewer;
+  final Map? existingReview;
+
+  const _CreateReviewSheet({
+    required this.onSuccess,
+    required this.categories,
+    required this.isReviewer,
+    this.existingReview,
+  });
 
   @override
   State<_CreateReviewSheet> createState() => _CreateReviewSheetState();
@@ -1602,10 +2442,22 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
   final _feedbackCtrl = TextEditingController();
   final _suggCtrl = TextEditingController();
 
+  bool get _isEditing => widget.existingReview != null;
+
   @override
   void initState() {
     super.initState();
     _localCategories = List.from(widget.categories);
+    if (_isEditing) {
+      final ex = widget.existingReview!;
+      _selEmployee = ex['employee'] as int?;
+      _selCategory = ex['category'] as int?;
+      _score = ((ex['score'] as num?)?.toDouble() ?? 8).clamp(1, 10);
+      _feedbackCtrl.text = (ex['feedback'] ?? '').toString();
+      _suggCtrl.text = (ex['suggestion'] ?? '').toString();
+    } else if (widget.isReviewer && _localCategories.length == 1) {
+      _selCategory = _localCategories.first['id'] as int?;
+    }
     _loadEmployees();
   }
 
@@ -1618,10 +2470,18 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
 
   Future<void> _loadEmployees() async {
     try {
-      final res = await ApiService().get('/api/organization/employees/');
+      final res = await ApiService().get('/api/performance/reviewable-employees/');
       if (mounted) {
+        final list = res.data is List ? List.from(res.data as List) : List.from((res.data['results'] ?? []) as List);
+        // Ensure existing employee stays selectable while editing even if deactivated later
+        if (_isEditing && _selEmployee != null && !list.any((e) => e['id'] == _selEmployee)) {
+          list.insert(0, {
+            'id': _selEmployee,
+            'full_name': widget.existingReview!['employee_name'] ?? 'Employee #$_selEmployee',
+          });
+        }
         setState(() {
-          _employees = res.data is List ? res.data as List : ((res.data['results'] ?? []) as List);
+          _employees = list;
           _loading = false;
         });
       }
@@ -1701,25 +2561,43 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
       );
       return;
     }
+    if (widget.isReviewer && _selCategory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select one of your assigned performance categories'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
-      await ApiService().post('/api/performance/reviews/', data: {
+      final payload = <String, dynamic>{
         'employee': _selEmployee,
         if (_selCategory != null) 'category': _selCategory,
         'score': _score.toInt(),
         'feedback': _feedbackCtrl.text.trim(),
         'suggestion': _suggCtrl.text.trim(),
-      });
+      };
+      if (_isEditing) {
+        await ApiService().patch(
+          '/api/performance/reviews/${widget.existingReview!['id']}/',
+          data: payload,
+        );
+      } else {
+        await ApiService().post('/api/performance/reviews/', data: payload);
+      }
       if (mounted) {
         Navigator.pop(context);
         widget.onSuccess();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
-                Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
-                SizedBox(width: 10),
-                Text('Performance review submitted!'),
+                const Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Text(_isEditing ? 'Performance review updated!' : 'Performance review submitted!'),
               ],
             ),
             backgroundColor: AppColors.success,
@@ -1789,7 +2667,7 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'New Performance Review',
+                              _isEditing ? 'Edit Performance Review' : 'New Performance Review',
                               style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: context.textPrimary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1827,11 +2705,16 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
               ),
               items: _employees.map((e) {
                 final user = e['user'] ?? {};
-                final name = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
+                final userName = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
+                final name = (e['full_name'] ?? userName).toString().trim();
+                final post = e['post_title']?.toString();
+                final label = name.isNotEmpty
+                    ? (post != null && post.isNotEmpty ? '$name · $post' : name)
+                    : 'Employee #${e['id']}';
                 return DropdownMenuItem<int>(
                   value: e['id'],
                   child: Text(
-                    name.isNotEmpty ? name : 'Employee #${e['id']}',
+                    label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1845,9 +2728,17 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<int>(
-                    initialValue: _selCategory,
+                    initialValue: _localCategories.any((c) => c['id'] == _selCategory)
+                        ? _selCategory
+                        : null,
                     isExpanded: true,
-                    hint: const Text('Evaluation Category (Optional)', maxLines: 1, overflow: TextOverflow.ellipsis),
+                    hint: Text(
+                      widget.isReviewer
+                          ? 'Select Assigned Category *'
+                          : 'Evaluation Category (Optional)',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Iconsax.category, size: 18),
                     ),
@@ -1864,16 +2755,18 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
                     onChanged: (v) => setState(() => _selCategory = v),
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton.filledTonal(
-                  onPressed: _quickAddCategory,
-                  icon: const Icon(Iconsax.add, size: 20),
-                  tooltip: 'Add New Category',
-                  style: IconButton.styleFrom(
-                    padding: const EdgeInsets.all(14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                if (!widget.isReviewer) ...[
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    onPressed: _quickAddCategory,
+                    icon: const Icon(Iconsax.add, size: 20),
+                    tooltip: 'Add New Category',
+                    style: IconButton.styleFrom(
+                      padding: const EdgeInsets.all(14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
             const SizedBox(height: 18),
@@ -1956,12 +2849,15 @@ class _CreateReviewSheetState extends State<_CreateReviewSheet> {
                 ),
                 child: _saving
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Row(
+                    : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Iconsax.send_1, size: 16, color: Colors.white),
-                          SizedBox(width: 8),
-                          Text('Submit Appraisal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                          const Icon(Iconsax.send_1, size: 16, color: Colors.white),
+                          const SizedBox(width: 8),
+                          Text(
+                            _isEditing ? 'Update Appraisal' : 'Submit Appraisal',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                          ),
                         ],
                       ),
               ),
@@ -2286,6 +3182,494 @@ class _ManageCategoriesSheetState extends State<_ManageCategoriesSheet> {
                 );
               }),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+
+// ─── Create / Edit Performance Reviewer Sheet (Admin Only) ──────────────────
+class _ReviewerFormSheet extends StatefulWidget {
+  final List categories;
+  final Map? existing;
+  final VoidCallback onSuccess;
+
+  const _ReviewerFormSheet({
+    required this.categories,
+    required this.onSuccess,
+    this.existing,
+  });
+
+  @override
+  State<_ReviewerFormSheet> createState() => _ReviewerFormSheetState();
+}
+
+class _ReviewerFormSheetState extends State<_ReviewerFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _firstNameCtrl = TextEditingController();
+  final _lastNameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+
+  List _employees = [];
+  bool _loadingEmployees = true;
+  bool _saving = false;
+  bool _obscurePassword = true;
+  bool _isActive = true;
+  int? _linkedEmployeeId;
+  final Set<int> _selectedCategoryIds = {};
+
+  bool get _isEditing => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditing) {
+      final ex = widget.existing!;
+      _firstNameCtrl.text = (ex['first_name'] ?? '').toString();
+      _lastNameCtrl.text = (ex['last_name'] ?? '').toString();
+      _emailCtrl.text = (ex['email'] ?? '').toString();
+      _isActive = ex['is_active'] == true;
+      _linkedEmployeeId = ex['linked_employee'] as int?;
+      final cats = (ex['categories'] as List?) ?? [];
+      for (final c in cats) {
+        if (c is Map && c['id'] is int) {
+          _selectedCategoryIds.add(c['id'] as int);
+        }
+      }
+    }
+    _loadEmployees();
+  }
+
+  @override
+  void dispose() {
+    _firstNameCtrl.dispose();
+    _lastNameCtrl.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadEmployees() async {
+    try {
+      final res = await ApiService().get('/api/organization/employees/');
+      if (mounted) {
+        setState(() {
+          _employees = res.data is List
+              ? res.data as List
+              : ((res.data['results'] ?? []) as List);
+          _loadingEmployees = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingEmployees = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _saving = true);
+    try {
+      final payload = <String, dynamic>{
+        'first_name': _firstNameCtrl.text.trim(),
+        'last_name': _lastNameCtrl.text.trim(),
+        'email': _emailCtrl.text.trim().toLowerCase(),
+        'linked_employee': _linkedEmployeeId,
+        'category_ids': _selectedCategoryIds.toList(),
+        'is_active': _isActive,
+      };
+      final pwd = _passwordCtrl.text.trim();
+      if (!_isEditing || pwd.isNotEmpty) {
+        payload['password'] = pwd;
+      }
+
+      if (_isEditing) {
+        await ApiService().patch(
+          '/api/performance/reviewers/${widget.existing!['id']}/',
+          data: payload,
+        );
+      } else {
+        await ApiService().post('/api/performance/reviewers/', data: payload);
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onSuccess();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _isEditing
+                        ? 'Performance reviewer updated!'
+                        : 'Performance reviewer account created!',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${ApiService.getErrorMessage(e)}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final hasValidLinkedEmp = _linkedEmployeeId == null ||
+        _employees.any((e) => e['id'] == _linkedEmployeeId);
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: isMobile ? 18 : 24,
+        right: isMobile ? 18 : 24,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Iconsax.security_user, color: AppColors.primary, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _isEditing ? 'Edit Reviewer Access' : 'New Performance Reviewer',
+                          style: TextStyle(
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.w800,
+                            color: context.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const Text(
+                          'Separate login with admin-controlled category permissions',
+                          style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Iconsax.close_circle, size: 20),
+                    color: AppColors.textSecondary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Divider(color: context.border),
+              const SizedBox(height: 14),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _firstNameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'First Name *',
+                        prefixIcon: Icon(Iconsax.user, size: 18),
+                      ),
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _lastNameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Last Name *',
+                      ),
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              TextFormField(
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Reviewer Login Email *',
+                  hintText: 'reviewer@company.com',
+                  prefixIcon: Icon(Iconsax.sms, size: 18),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Email is required';
+                  if (!v.contains('@')) return 'Enter a valid email';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+
+              TextFormField(
+                controller: _passwordCtrl,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  labelText: _isEditing
+                      ? 'New Password (optional)'
+                      : 'Login Password *',
+                  hintText: _isEditing ? 'Leave blank to keep existing' : 'Min 6 characters',
+                  prefixIcon: const Icon(Iconsax.lock, size: 18),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Iconsax.eye_slash : Iconsax.eye,
+                      size: 18,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+                validator: (v) {
+                  final text = (v ?? '').trim();
+                  if (!_isEditing && text.isEmpty) return 'Password is required';
+                  if (text.isNotEmpty && text.length < 6) {
+                    return 'Min 6 characters';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+
+              // Optional Linked Employee (Two-Account Self-Review Exclusion)
+              if (_loadingEmployees)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: LinearProgressIndicator(color: AppColors.primary),
+                )
+              else
+                DropdownButtonFormField<int?>(
+                  initialValue: hasValidLinkedEmp ? _linkedEmployeeId : null,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Linked Employee (Blocks Self-Review)',
+                    helperText:
+                        'Optional: link if this reviewer also has a separate Employee login',
+                    helperMaxLines: 2,
+                    prefixIcon: Icon(Iconsax.user_minus, size: 18),
+                  ),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text(
+                        'None (Standalone Reviewer)',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    ..._employees.map((e) {
+                      final user = e['user'] ?? {};
+                      final name =
+                          '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
+                      return DropdownMenuItem<int?>(
+                        value: e['id'] as int?,
+                        child: Text(
+                          name.isNotEmpty ? name : 'Employee #${e['id']}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }),
+                  ],
+                  onChanged: (v) => setState(() => _linkedEmployeeId = v),
+                ),
+              const SizedBox(height: 16),
+
+              // Allowed Performance Categories Multi-Select
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: context.card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: context.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Flexible(
+                          child: Text(
+                            'Allowed Performance Categories',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (widget.categories.isNotEmpty)
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                if (_selectedCategoryIds.length == widget.categories.length) {
+                                  _selectedCategoryIds.clear();
+                                } else {
+                                  for (final c in widget.categories) {
+                                    if (c['id'] is int) {
+                                      _selectedCategoryIds.add(c['id'] as int);
+                                    }
+                                  }
+                                }
+                              });
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(
+                              _selectedCategoryIds.length == widget.categories.length
+                                  ? 'Clear All'
+                                  : 'Select All',
+                              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (widget.categories.isEmpty)
+                      const Text(
+                        'No performance categories exist yet. Create categories in the Categories tab first.',
+                        style: TextStyle(fontSize: 12, color: AppColors.warning),
+                      )
+                    else
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: widget.categories.map((c) {
+                          final id = c['id'] as int;
+                          final name = (c['name'] ?? '').toString();
+                          final selected = _selectedCategoryIds.contains(id);
+                          return FilterChip(
+                            label: Text(
+                              name,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                                color: selected ? AppColors.primary : context.textPrimary,
+                              ),
+                            ),
+                            selected: selected,
+                            selectedColor: AppColors.primary.withValues(alpha: 0.14),
+                            checkmarkColor: AppColors.primary,
+                            side: BorderSide(
+                              color: selected ? AppColors.primary : context.border,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            onSelected: (val) {
+                              setState(() {
+                                if (val) {
+                                  _selectedCategoryIds.add(id);
+                                } else {
+                                  _selectedCategoryIds.remove(id);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Active Toggle (wrapped in transparent Material to prevent ListTile DecoratedBox assertion)
+              Container(
+                decoration: BoxDecoration(
+                  color: context.card,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: context.border),
+                ),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: SwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                    title: const Text(
+                      'Active Reviewer Access',
+                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: const Text(
+                      'Inactive reviewers cannot sign in or submit scores',
+                      style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                    ),
+                    value: _isActive,
+                    activeThumbColor: AppColors.primary,
+                    onChanged: (v) => setState(() => _isActive = v),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryDark],
+                  ),
+                ),
+                child: ElevatedButton(
+                  onPressed: _saving ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: _saving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(
+                          _isEditing ? 'Save Reviewer Access' : 'Create Reviewer Account',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

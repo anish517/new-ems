@@ -103,16 +103,37 @@ class MeSerializer(serializers.ModelSerializer):
     has_approved_policy = serializers.SerializerMethodField()
     employee_type = serializers.SerializerMethodField()
     is_in_provision = serializers.SerializerMethodField()
+    is_performance_reviewer = serializers.SerializerMethodField()
+    performance_category_ids = serializers.SerializerMethodField()
 
     class Meta:
         model = Account
         fields = ['id', 'email', 'first_name', 'last_name', 'full_name',
                   'profile_picture', 'is_staff', 'is_superuser',
                   'role', 'employee_id', 'organization_id', 'has_approved_policy',
-                  'employee_type', 'is_in_provision']
+                  'employee_type', 'is_in_provision',
+                  'is_performance_reviewer', 'performance_category_ids']
 
     def get_full_name(self, obj):
         return obj.full_name
+
+    def _get_active_reviewer_access(self, obj):
+        if not getattr(obj, 'is_performance_reviewer', False):
+            return None
+        try:
+            access = obj.performance_access
+            return access if access and access.is_active else None
+        except Exception:
+            return None
+
+    def get_is_performance_reviewer(self, obj):
+        return self._get_active_reviewer_access(obj) is not None
+
+    def get_performance_category_ids(self, obj):
+        access = self._get_active_reviewer_access(obj)
+        if access is None:
+            return []
+        return list(access.categories.values_list('id', flat=True))
 
     def get_role(self, obj):
         if obj.is_superuser:
@@ -125,6 +146,10 @@ class MeSerializer(serializers.ModelSerializer):
                 return 'org_admin'
         except Exception:
             pass
+        if obj.organization.exists():
+            return 'org_admin'
+        if self._get_active_reviewer_access(obj) is not None:
+            return 'performance_reviewer'
         return 'employee'
 
     def get_employee_id(self, obj):
@@ -135,9 +160,20 @@ class MeSerializer(serializers.ModelSerializer):
 
     def get_organization_id(self, obj):
         try:
-            return obj.employee.organization.id if obj.employee.organization else None
+            if obj.employee.organization:
+                return obj.employee.organization.id
         except Exception:
-            return None
+            pass
+        access = self._get_active_reviewer_access(obj)
+        if access and access.organization_id:
+            return access.organization_id
+        try:
+            org = obj.organization.first()
+            if org:
+                return org.id
+        except Exception:
+            pass
+        return None
 
     def get_employee_type(self, obj):
         try:
@@ -152,7 +188,15 @@ class MeSerializer(serializers.ModelSerializer):
             return False
 
     def get_has_approved_policy(self, obj):
-        if obj.is_superuser or obj.is_staff or getattr(obj, 'is_hr', False) or getattr(obj, 'role', '') in ('admin', 'org_admin', 'super_admin'):
+        if (
+            obj.is_superuser
+            or obj.is_staff
+            or getattr(obj, 'is_hr', False)
+            or getattr(obj, 'role', '') in ('admin', 'org_admin', 'super_admin')
+        ):
+            return True
+        # Standalone performance reviewer accounts (without an employee profile) skip policy approval
+        if self._get_active_reviewer_access(obj) is not None and not hasattr(obj, 'employee'):
             return True
         try:
             from noticeboard.models import PolicyApproval, CompanyPolicy

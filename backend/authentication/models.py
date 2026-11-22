@@ -49,6 +49,7 @@ class Account(AbstractBaseUser):
     is_active = models.BooleanField(default=True, null=True, blank=True)
     is_superuser = models.BooleanField(default=False, null=True, blank=True)
     is_hr = models.BooleanField(default=False, null=True, blank=True)
+    is_performance_reviewer = models.BooleanField(default=False, null=True, blank=True)
     profile_picture = models.ImageField(
         upload_to='users/', null=True, blank=True)
 

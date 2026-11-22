@@ -45,6 +45,19 @@ class RouterNotifier extends ChangeNotifier {
     if (!isLoggedIn && !onLoginPage && !onResetPage) return '/login';
     if (!isLoggedIn && (onLoginPage || onResetPage)) return null;
 
+    // Dedicated Performance Reviewer role guard: only Performance, Notifications, Profile
+    final isPerformanceReviewer =
+        user != null && user.isPerformanceReviewerRole && !user.canManage;
+    if (isPerformanceReviewer) {
+      const allowedReviewerRoutes = {'/performance', '/notifications', '/profile'};
+      if (onLoginPage) return '/performance';
+      if (onResetPage) return null;
+      if (!allowedReviewerRoutes.contains(state.matchedLocation)) {
+        return '/performance';
+      }
+      return null;
+    }
+
     // First login Policy Approval guard for non-admin employees
     final needsPolicyApproval = user != null && !user.canManage && !user.hasApprovedPolicy;
     if (needsPolicyApproval) {

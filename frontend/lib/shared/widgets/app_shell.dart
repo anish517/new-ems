@@ -20,7 +20,13 @@ class AppShell extends ConsumerWidget {
     final unreadCount = ref.watch(unreadCountProvider);
     final location = GoRouterState.of(context).matchedLocation;
     final isAdmin = user?.canManage ?? false;
+    final isReviewer = (user?.isPerformanceReviewerRole ?? false) && !isAdmin;
     final orgSettings = ref.watch(orgSettingsProvider);
+
+    final reviewerNav = [
+      _NavItem('/performance', Iconsax.star1, 'Performance'),
+      _NavItem('/profile', Iconsax.user, 'Profile'),
+    ];
 
     final employeeNav = [
       _NavItem('/', Iconsax.home_2, 'Home'),
@@ -54,7 +60,11 @@ class AppShell extends ConsumerWidget {
       _NavItem('/profile', Iconsax.user, 'Profile'),
     ];
 
-    final navItems = isAdmin ? adminNav : employeeNav;
+    final navItems = isAdmin
+        ? adminNav
+        : isReviewer
+            ? reviewerNav
+            : employeeNav;
     final currentIndex = navItems.indexWhere((i) {
       if (i.route == '/') return location == '/';
       return location.startsWith(i.route);
@@ -283,7 +293,11 @@ class AppShell extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            isAdmin ? 'Administrator' : 'Team Member',
+                            isAdmin
+                                ? 'Administrator'
+                                : isReviewer
+                                    ? 'Performance Reviewer'
+                                    : 'Team Member',
                             style: const TextStyle(
                               fontSize: 10.5,
                               color: AppColors.textSecondary,
@@ -328,13 +342,19 @@ class AppShell extends ConsumerWidget {
               _NavItem('/salary', Iconsax.wallet_3, 'Accounts'),
               _NavItem('/more', Iconsax.element_plus, 'More'),
             ]
-          : [
-              _NavItem('/', Iconsax.home_2, 'Home'),
-              _NavItem('/attendance', Iconsax.clock, 'Attendance'),
-              _NavItem('/leave', Iconsax.calendar_remove, 'Leave'),
-              _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
-              _NavItem('/projects', Iconsax.folder_open, 'Projects'),
-            ];
+          : isReviewer
+              ? [
+                  _NavItem('/performance', Iconsax.star1, 'Performance'),
+                  _NavItem('/notifications', Iconsax.notification, 'Alerts'),
+                  _NavItem('/profile', Iconsax.user, 'Profile'),
+                ]
+              : [
+                  _NavItem('/', Iconsax.home_2, 'Home'),
+                  _NavItem('/attendance', Iconsax.clock, 'Attendance'),
+                  _NavItem('/leave', Iconsax.calendar_remove, 'Leave'),
+                  _NavItem('/tasks', Iconsax.task_square, 'Tasks'),
+                  _NavItem('/projects', Iconsax.folder_open, 'Projects'),
+                ];
 
       final bottomIndex = primaryMobileItems.indexWhere((i) {
         if (i.route == '/more') return false;

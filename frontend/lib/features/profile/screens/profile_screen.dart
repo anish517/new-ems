@@ -36,8 +36,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
-    // If user is a super admin / admin without an employee profile, don't load other employees' records
-    if (user.employeeId == null && user.canManage) {
+    // If user is a super admin / admin / standalone performance reviewer without an employee profile,
+    // don't load employee records
+    if (user.employeeId == null &&
+        (user.canManage || user.isPerformanceReviewerRole)) {
       if (mounted) setState(() => _employeeDetails = null);
       return;
     }
@@ -126,7 +128,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _loadChangeRequests() async {
     final user = ref.read(currentUserProvider);
-    if (user?.canManage == true) return;
+    if (user?.canManage == true ||
+        (user?.isPerformanceReviewerRole == true && user?.employeeId == null)) {
+      return;
+    }
     try {
       final res =
           await ApiService().get('/api/organization/profile-change-requests/');
@@ -787,7 +792,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                                 (user?.canManage == true &&
                                                         emp == null)
                                                     ? 'System Administrator · Full Platform Control'
-                                                    : '$designation · ${empType == 'full_time' ? 'Full-Time' : empType == 'part_time' ? 'Part-Time' : 'Intern'}',
+                                                    : (user?.isPerformanceReviewerRole ==
+                                                                true &&
+                                                            emp == null)
+                                                        ? 'Performance Reviewer · Category-Scoped Access'
+                                                        : '$designation · ${empType == 'full_time' ? 'Full-Time' : empType == 'part_time' ? 'Part-Time' : 'Intern'}',
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   fontWeight: FontWeight.w600,
@@ -894,8 +903,133 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                       const SizedBox(height: 24),
 
+                      // ── If standalone Performance Reviewer without Employee record ──
+                      if (emp == null &&
+                          (user?.isPerformanceReviewerRole == true) &&
+                          (user?.canManage != true)) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: context.border, width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF59E0B)
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Iconsax.star_1,
+                                        color: Color(0xFFF59E0B), size: 18),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Performance Reviewer Privileges',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: context.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Assigned Categories: ${user?.performanceCategoryIds.length ?? 0} active category permission(s). '
+                                'You can score organization employees strictly within the categories granted by your administrator.',
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: AppColors.textSecondary,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: context.border, width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Iconsax.lock,
+                                        color: AppColors.primary, size: 18),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Account & Security Overview',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: context.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              LayoutBuilder(
+                                builder: (context, c) {
+                                  final cols = c.maxWidth < 650 ? 1 : 3;
+                                  return GridView.count(
+                                    crossAxisCount: cols,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    childAspectRatio: cols == 1 ? 4.5 : 2.5,
+                                    children: [
+                                      _buildInfoTile(
+                                          Iconsax.sms,
+                                          'Primary Email',
+                                          user?.email ?? 'N/A'),
+                                      _buildInfoTile(
+                                          Iconsax.user,
+                                          'Account Name',
+                                          user?.fullName ?? 'N/A'),
+                                      _buildInfoTile(
+                                          Iconsax.shield_tick,
+                                          'Account Role',
+                                          'Performance Reviewer'),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ]
+
                       // ── If Admin without Employee record: Show Admin Privileges & Account Settings ──
-                      if (emp == null && (user?.canManage == true)) ...[
+                      else if (emp == null && (user?.canManage == true)) ...[
                         // ── Administrator System Privileges ──────────────────────────
                         Container(
                           width: double.infinity,
@@ -1083,8 +1217,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     decoration: BoxDecoration(
                                       color: AppColors.primary
                                           .withValues(alpha: 0.12),
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: const Icon(Iconsax.call_calling,
                                         color: AppColors.primary, size: 18),
