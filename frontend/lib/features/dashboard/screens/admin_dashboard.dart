@@ -111,14 +111,14 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       // If year is > 2050 (e.g. 2083 BS), it is ALREADY a Nepali Bikram Sambat date
       if (dt.year > 2050) {
         final nepaliDt = NepaliDateTime(dt.year, dt.month, dt.day);
-        return NepaliDateFormat('dd MMM yyyy').format(nepaliDt);
+        return NepaliDateFormat('dd MMMM yyyy').format(nepaliDt);
       }
       final nepaliDt = dt.toNepaliDateTime();
-      return NepaliDateFormat('dd MMM yyyy').format(nepaliDt);
+      return NepaliDateFormat('dd MMMM yyyy').format(nepaliDt);
     } catch (_) {
       try {
         final nepaliDt = NepaliDateTime.parse(str.split('T').first);
-        return NepaliDateFormat('dd MMM yyyy').format(nepaliDt);
+        return NepaliDateFormat('dd MMMM yyyy').format(nepaliDt);
       } catch (_) {
         return str.split('T').first;
       }
@@ -325,7 +325,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     String fmtNepali(String raw) {
       if (raw.isEmpty) return '-';
       try {
-        return NepaliDateFormat('dd MMM yyyy')
+        return NepaliDateFormat('dd MMMM yyyy')
             .format(NepaliDateTime.parse(raw));
       } catch (_) {
         return raw;
@@ -1138,7 +1138,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     String fmtNepali(String raw) {
       if (raw.isEmpty) return '-';
       try {
-        return NepaliDateFormat('dd MMM yyyy')
+        return NepaliDateFormat('dd MMMM yyyy')
             .format(NepaliDateTime.parse(raw));
       } catch (_) {
         return raw;

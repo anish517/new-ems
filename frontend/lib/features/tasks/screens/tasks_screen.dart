@@ -20,10 +20,10 @@ String _fmtDate(String? raw, {String? fallback}) {
   final s = raw ?? fallback!;
   try {
     if (s.contains('T')) {
-      return NepaliDateFormat('dd MMM yyyy')
+      return NepaliDateFormat('dd MMMM yyyy')
           .format(DateTime.parse(s).toNepaliDateTime());
     }
-    return NepaliDateFormat('dd MMM yyyy').format(NepaliDateTime.parse(s));
+    return NepaliDateFormat('dd MMMM yyyy').format(NepaliDateTime.parse(s));
   } catch (_) {
     try {
       return DateFormat('dd MMM yyyy').format(DateTime.parse(s));
