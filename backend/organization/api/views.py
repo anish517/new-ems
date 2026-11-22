@@ -541,7 +541,18 @@ class OrganizationSettingsView(RetrieveUpdateDestroyAPIView):
                 settings.save(update_fields=['office_latitude', 'office_longitude'])
         return settings
 
+    def _ensure_settings_admin(self, user):
+        if not (
+            getattr(user, 'is_superuser', False)
+            or getattr(user, 'is_admin', False)
+            or getattr(user, 'is_hr', False)
+            or user.organization.exists()
+        ):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only administrators can modify organization settings.')
+
     def perform_update(self, serializer):
+        self._ensure_settings_admin(self.request.user)
         instance = serializer.save()
         if instance.office_latitude is not None and instance.office_longitude is not None:
             # Sync to primary OrganizationAddress as well

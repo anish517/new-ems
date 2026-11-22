@@ -29,6 +29,7 @@ urlpatterns = [
 
     # Attendance Correction Requests
     path('correction-requests/', views.CorrectionRequestListCreateAPIView.as_view(), name='correction-requests'),
+    path('correction-requests/monthly-summary/', views.CorrectionMonthlySummaryAPIView.as_view(), name='correction-monthly-summary'),
     path('correction-requests/<int:pk>/action/', views.AdminCorrectionRequestActionAPIView.as_view(), name='correction-request-action'),
 
     path('generate-report/', views.GenerateAttendanceReportAPIView.as_view(), name='generate-report'),

@@ -366,3 +366,138 @@ class NepaliCalendarAttendanceDateTests(TestCase):
         })
         self.assertEqual(reject_res.status_code, status.HTTP_200_OK)
 
+
+class AttendanceCorrectionPerformancePolicyTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.org = Organization.objects.create(name="Policy Test Org")
+        self.dept = Department.objects.create(organization=self.org, department_name="Engineering")
+        self.post = Post.objects.create(department=self.dept, title="Developer")
+
+        self.admin_user = Account.objects.create(
+            email="policy.admin@test.com", first_name="Policy", last_name="Admin", is_superuser=True
+        )
+        self.org.admin_users.add(self.admin_user)
+
+        self.emp_user = Account.objects.create(
+            email="policy.emp@test.com", first_name="Policy", last_name="Emp"
+        )
+        self.emp = Employee.objects.create(user=self.emp_user, post=self.post)
+
+    def test_org_settings_correction_policy_defaults_and_admin_update(self):
+        self.client.force_authenticate(user=self.emp_user)
+        get_res = self.client.get('/api/organization/settings/')
+        self.assertEqual(get_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(get_res.data['max_free_corrections_per_month'], 2)
+        self.assertEqual(get_res.data['correction_penalty_points'], 0.5)
+        self.assertFalse(get_res.data['count_rejected_corrections'])
+
+        # Non-admin employee cannot PATCH settings
+        emp_patch = self.client.patch('/api/organization/settings/', {
+            'max_free_corrections_per_month': 10,
+        }, format='json')
+        self.assertEqual(emp_patch.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Admin can update settings
+        self.client.force_authenticate(user=self.admin_user)
+        admin_patch = self.client.patch('/api/organization/settings/', {
+            'max_free_corrections_per_month': 3,
+            'correction_penalty_points': 1.0,
+            'count_rejected_corrections': True,
+        }, format='json')
+        self.assertEqual(admin_patch.status_code, status.HTTP_200_OK)
+        self.assertEqual(admin_patch.data['max_free_corrections_per_month'], 3)
+        self.assertEqual(admin_patch.data['correction_penalty_points'], 1.0)
+        self.assertTrue(admin_patch.data['count_rejected_corrections'])
+
+    def test_monthly_summary_and_warning_trigger_threshold(self):
+        self.client.force_authenticate(user=self.emp_user)
+
+        # 0 requests in Mangsir 2083 (month 8)
+        s0 = self.client.get('/api/attendance/correction-requests/monthly-summary/?nepali_year=2083&nepali_month=8')
+        self.assertEqual(s0.status_code, status.HTTP_200_OK)
+        self.assertEqual(s0.data['count'], 0)
+        self.assertEqual(s0.data['max_free'], 2)
+        self.assertFalse(s0.data['will_exceed_on_next'])
+        self.assertFalse(s0.data['exceeds_limit'])
+        self.assertIsNone(s0.data['warning_message'])
+
+        # 1st request
+        r1 = self.client.post('/api/attendance/correction-requests/', {
+            'requested_date': '2083-08-01',
+            'requested_check_in': '09:30:00',
+            'requested_check_out': '17:30:00',
+            'reason': 'Correction 1',
+        })
+        self.assertEqual(r1.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(r1.data['monthly_correction_count'], 1)
+        self.assertFalse(r1.data['exceeds_monthly_limit'])
+        self.assertIsNone(r1.data['performance_warning'])
+
+        # 2nd request (reaches free limit = 2)
+        r2 = self.client.post('/api/attendance/correction-requests/', {
+            'requested_date': '2083-08-02',
+            'requested_check_in': '09:30:00',
+            'requested_check_out': '17:30:00',
+            'reason': 'Correction 2',
+        })
+        self.assertEqual(r2.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(r2.data['monthly_correction_count'], 2)
+        self.assertFalse(r2.data['exceeds_monthly_limit'])
+
+        # Summary before 3rd request MUST warn (will_exceed_on_next = True)
+        s2 = self.client.get('/api/attendance/correction-requests/monthly-summary/?nepali_year=2083&nepali_month=8')
+        self.assertEqual(s2.data['count'], 2)
+        self.assertTrue(s2.data['will_exceed_on_next'])
+        self.assertFalse(s2.data['exceeds_limit'])
+        self.assertEqual(s2.data['next_estimated_penalty'], 0.5)
+        self.assertIsNotNone(s2.data['warning_message'])
+        self.assertIn('performance score', s2.data['warning_message'].lower())
+
+        # 3rd request (exceeds limit)
+        r3 = self.client.post('/api/attendance/correction-requests/', {
+            'requested_date': '2083-08-03',
+            'requested_check_in': '09:30:00',
+            'requested_check_out': '17:30:00',
+            'reason': 'Correction 3',
+        })
+        self.assertEqual(r3.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(r3.data['monthly_correction_count'], 3)
+        self.assertTrue(r3.data['exceeds_monthly_limit'])
+        self.assertEqual(r3.data['estimated_penalty'], 0.5)
+        self.assertIsNotNone(r3.data['performance_warning'])
+
+        # Different month (Kartik 2083, month 7) is isolated with count = 0
+        s_other = self.client.get('/api/attendance/correction-requests/monthly-summary/?nepali_year=2083&nepali_month=7')
+        self.assertEqual(s_other.data['count'], 0)
+        self.assertFalse(s_other.data['will_exceed_on_next'])
+
+    def test_rejected_corrections_excluded_by_default_and_included_when_enabled(self):
+        req1 = AttendanceCorrectionRequest.objects.create(
+            employee=self.emp,
+            requested_date=nepali_date(2083, 8, 1),
+            reason='Pending req',
+            status='pending',
+        )
+        req2 = AttendanceCorrectionRequest.objects.create(
+            employee=self.emp,
+            requested_date=nepali_date(2083, 8, 2),
+            reason='Rejected req',
+            status='rejected',
+        )
+
+        self.client.force_authenticate(user=self.emp_user)
+        s_default = self.client.get('/api/attendance/correction-requests/monthly-summary/?nepali_year=2083&nepali_month=8')
+        self.assertEqual(s_default.data['count'], 1)
+        self.assertFalse(s_default.data['will_exceed_on_next'])
+
+        # Enable count_rejected_corrections as Admin
+        self.client.force_authenticate(user=self.admin_user)
+        self.client.patch('/api/organization/settings/', {'count_rejected_corrections': True}, format='json')
+
+        self.client.force_authenticate(user=self.emp_user)
+        s_included = self.client.get('/api/attendance/correction-requests/monthly-summary/?nepali_year=2083&nepali_month=8')
+        self.assertEqual(s_included.data['count'], 2)
+        self.assertTrue(s_included.data['will_exceed_on_next'])
+
+

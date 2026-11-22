@@ -257,7 +257,20 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
             "enable_in_office_attendance",
             "enable_remote_attendance",
             "enable_daily_performance",
+            "max_free_corrections_per_month",
+            "correction_penalty_points",
+            "count_rejected_corrections",
         ]
+
+    def validate_max_free_corrections_per_month(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Monthly free corrections limit cannot be negative.")
+        return value
+
+    def validate_correction_penalty_points(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Correction penalty points cannot be negative.")
+        return value
 
 
 class EmployeeProfileChangeRequestSerializer(serializers.ModelSerializer):

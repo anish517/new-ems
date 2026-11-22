@@ -9,7 +9,13 @@ import csv
 from attendance.models import Attendance, CheckInOut, RemoteWorkPermission, RemoteWorkRequest, AttendanceCorrectionRequest
 from attendance.utils import is_within_radius
 from organization.models import Employee, OrganizationAddress, OrganizationSettings
-from .serializers import AttendanceSerializer, RemoteWorkPermissionSerializer, RemoteWorkRequestSerializer, AttendanceCorrectionRequestSerializer
+from .serializers import (
+    AttendanceSerializer,
+    RemoteWorkPermissionSerializer,
+    RemoteWorkRequestSerializer,
+    AttendanceCorrectionRequestSerializer,
+    get_monthly_correction_stats,
+)
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from django.contrib.auth import get_user_model
@@ -1113,4 +1119,54 @@ class AdminCorrectionRequestActionAPIView(APIView):
 
         serializer = AttendanceCorrectionRequestSerializer(req_obj)
         return Response(serializer.data)
+
+
+class CorrectionMonthlySummaryAPIView(APIView):
+    """
+    GET /api/attendance/correction-requests/monthly-summary/?nepali_year=2083&nepali_month=8
+    Returns monthly attendance correction usage, free threshold, and performance drop warning info.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        nepali_year = request.query_params.get('nepali_year')
+        nepali_month = request.query_params.get('nepali_month')
+        employee_id = request.query_params.get('employee_id')
+
+        is_admin = bool(
+            getattr(user, 'is_superuser', False)
+            or user.organization.exists()
+            or getattr(user, 'is_hr', False)
+        )
+
+        target_employee = None
+        org_settings = None
+
+        if is_admin and employee_id:
+            target_employee = Employee.objects.filter(pk=employee_id).first()
+            if not target_employee:
+                return Response({'error': 'Employee not found.'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            try:
+                target_employee = Employee.objects.get(user=user)
+            except Employee.DoesNotExist:
+                target_employee = None
+
+        if target_employee is None:
+            org = user.organization.first()
+            if not org and getattr(user, 'is_superuser', False):
+                from organization.models import Organization
+                org = Organization.objects.first()
+            if org:
+                org_settings = OrganizationSettings.objects.filter(organization=org).first()
+
+        stats = get_monthly_correction_stats(
+            employee=target_employee,
+            nepali_year=nepali_year,
+            nepali_month=nepali_month,
+            org_settings=org_settings,
+        )
+        return Response(stats, status=status.HTTP_200_OK)
+
 

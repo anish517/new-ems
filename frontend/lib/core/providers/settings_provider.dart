@@ -9,6 +9,9 @@ class OrgSettings {
   final double? officeLatitude;
   final double? officeLongitude;
   final int allowedAttendanceRadius;
+  final int maxFreeCorrectionsPerMonth;
+  final double correctionPenaltyPoints;
+  final bool countRejectedCorrections;
 
   const OrgSettings({
     this.enableDailyPerformance = true,
@@ -17,6 +20,9 @@ class OrgSettings {
     this.officeLatitude,
     this.officeLongitude,
     this.allowedAttendanceRadius = 100,
+    this.maxFreeCorrectionsPerMonth = 2,
+    this.correctionPenaltyPoints = 0.5,
+    this.countRejectedCorrections = false,
   });
 
   factory OrgSettings.fromJson(Map<String, dynamic> json) {
@@ -31,6 +37,11 @@ class OrgSettings {
           ? double.tryParse(json['office_longitude'].toString())
           : null,
       allowedAttendanceRadius: json['allowed_attendance_radius'] ?? 100,
+      maxFreeCorrectionsPerMonth:
+          (json['max_free_corrections_per_month'] as num?)?.toInt() ?? 2,
+      correctionPenaltyPoints:
+          (json['correction_penalty_points'] as num?)?.toDouble() ?? 0.5,
+      countRejectedCorrections: json['count_rejected_corrections'] ?? false,
     );
   }
 }

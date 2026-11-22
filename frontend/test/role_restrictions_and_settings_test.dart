@@ -42,6 +42,21 @@ void main() {
       expect(settings.enableDailyPerformance, isTrue);
       expect(settings.enableInOfficeAttendance, isTrue);
       expect(settings.enableRemoteAttendance, isTrue);
+      expect(settings.maxFreeCorrectionsPerMonth, 2);
+      expect(settings.correctionPenaltyPoints, 0.5);
+      expect(settings.countRejectedCorrections, isFalse);
+    });
+
+    test('Should parse attendance correction policy fields from OrgSettings JSON', () {
+      final json = <String, dynamic>{
+        'max_free_corrections_per_month': 3,
+        'correction_penalty_points': 1.25,
+        'count_rejected_corrections': true,
+      };
+      final settings = OrgSettings.fromJson(json);
+      expect(settings.maxFreeCorrectionsPerMonth, 3);
+      expect(settings.correctionPenaltyPoints, 1.25);
+      expect(settings.countRejectedCorrections, isTrue);
     });
   });
 

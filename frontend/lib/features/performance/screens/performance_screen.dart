@@ -40,6 +40,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   List<dynamic> _reviews = [];
   List<dynamic> _categories = [];
   List<dynamic> _reviewers = [];
+  Map<String, dynamic>? _correctionImpact;
   bool _loading = true;
   String _scoreFilter = 'all';
   String _categoryFilter = 'all';
@@ -82,9 +83,21 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
         if (isAdmin) ApiService().get('/api/performance/reviewers/'),
       ];
 
+      Map<String, dynamic>? impactData;
+      if (!isAdmin && !isReviewer) {
+        try {
+          final impRes = await ApiService()
+              .get('/api/attendance/correction-requests/monthly-summary/');
+          if (impRes.data is Map) {
+            impactData = Map<String, dynamic>.from(impRes.data as Map);
+          }
+        } catch (_) {}
+      }
+
       final results = await Future.wait(futures);
       if (!mounted) return;
       setState(() {
+        _correctionImpact = impactData;
         final res = results[0];
         _reviews = res.data is List ? res.data as List : ((res.data['results'] ?? res.data) as List);
         final catRes = results[1];
@@ -863,6 +876,60 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                             ),
                           ],
                         ),
+                    ],
+
+                    // ── Attendance Correction Impact Banner (Employees) ─────
+                    if (!isAdmin &&
+                        !isReviewer &&
+                        _correctionImpact != null &&
+                        _correctionImpact!['exceeds_limit'] == true) ...[
+                      const SizedBox(height: 12),
+                      const Divider(height: 1),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 11),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: AppColors.error.withValues(alpha: 0.32)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Iconsax.warning_2,
+                                size: 18, color: AppColors.error),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Attendance Correction Impact (${_correctionImpact!['count']} / ${_correctionImpact!['max_free']} free this month)',
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.error,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'You have exceeded the monthly free attendance correction limit (${_correctionImpact!['max_free']}). Multiple attendance corrections reduce your performance score'
+                                    '${((_correctionImpact!['estimated_penalty'] as num?)?.toDouble() ?? 0) > 0 ? ' (Est. impact: -${_correctionImpact!['estimated_penalty']} pts)' : ''}.',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: context.textPrimary,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
 
                     // ── Segmented Tab Switcher (Admins Only) ────────────────

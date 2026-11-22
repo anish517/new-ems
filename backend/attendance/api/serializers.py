@@ -74,6 +74,75 @@ class RemoteWorkRequestSerializer(serializers.ModelSerializer):
         return ''
 
 
+def get_monthly_correction_stats(employee, nepali_year=None, nepali_month=None, org_settings=None):
+    from calendar_app.utilities import total_days_in_month
+    from organization.models import OrganizationSettings
+
+    today = nepali_datetime.date.today()
+    try:
+        year = int(nepali_year) if nepali_year is not None else today.year
+    except (TypeError, ValueError):
+        year = today.year
+    try:
+        month = int(nepali_month) if nepali_month is not None else today.month
+    except (TypeError, ValueError):
+        month = today.month
+    if not (1 <= month <= 12):
+        month = today.month
+
+    if org_settings is None and employee is not None:
+        org = getattr(employee, 'organization', None)
+        if org:
+            org_settings = OrganizationSettings.objects.filter(organization=org).first()
+
+    max_free = getattr(org_settings, 'max_free_corrections_per_month', 2) if org_settings else 2
+    penalty_per_extra = float(getattr(org_settings, 'correction_penalty_points', 0.5)) if org_settings else 0.5
+    count_rejected = bool(getattr(org_settings, 'count_rejected_corrections', False)) if org_settings else False
+
+    count = 0
+    if employee is not None:
+        last_day = total_days_in_month(year, month)
+        start_bs = nepali_datetime.date(year, month, 1)
+        end_bs = nepali_datetime.date(year, month, last_day)
+        qs = AttendanceCorrectionRequest.objects.filter(
+            employee=employee,
+            requested_date__gte=start_bs,
+            requested_date__lte=end_bs,
+        )
+        if not count_rejected:
+            qs = qs.exclude(status='rejected')
+        count = qs.count()
+
+    will_exceed_on_next = count >= max_free
+    exceeds_limit = count > max_free
+    excess_count = max(0, count - max_free)
+    next_excess_count = max(0, (count + 1) - max_free)
+    estimated_penalty = round(excess_count * penalty_per_extra, 2)
+    next_estimated_penalty = round(next_excess_count * penalty_per_extra, 2)
+
+    warning_message = None
+    if will_exceed_on_next:
+        warning_message = (
+            f"You have already submitted {count} attendance correction(s) this month "
+            f"(free limit: {max_free}). Submitting multiple attendance corrections will decrease your performance score."
+        )
+
+    return {
+        "nepali_year": year,
+        "nepali_month": month,
+        "count": count,
+        "max_free": max_free,
+        "will_exceed_on_next": will_exceed_on_next,
+        "exceeds_limit": exceeds_limit,
+        "excess_count": excess_count,
+        "penalty_per_extra": penalty_per_extra,
+        "estimated_penalty": estimated_penalty,
+        "next_estimated_penalty": next_estimated_penalty,
+        "count_rejected_corrections": count_rejected,
+        "warning_message": warning_message,
+    }
+
+
 class AttendanceCorrectionRequestSerializer(serializers.ModelSerializer):
     employee_name = serializers.SerializerMethodField()
     employee_email = serializers.SerializerMethodField()
@@ -81,6 +150,11 @@ class AttendanceCorrectionRequestSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     reviewed_by_name = serializers.SerializerMethodField()
     requested_date = serializers.CharField()
+    monthly_correction_count = serializers.SerializerMethodField()
+    max_free_corrections = serializers.SerializerMethodField()
+    exceeds_monthly_limit = serializers.SerializerMethodField()
+    estimated_penalty = serializers.SerializerMethodField()
+    performance_warning = serializers.SerializerMethodField()
 
     class Meta:
         model = AttendanceCorrectionRequest
@@ -89,9 +163,52 @@ class AttendanceCorrectionRequestSerializer(serializers.ModelSerializer):
             'requested_date', 'requested_check_in', 'requested_check_out',
             'reason', 'status', 'status_display',
             'admin_note', 'reviewed_by', 'reviewed_by_name',
+            'monthly_correction_count', 'max_free_corrections',
+            'exceeds_monthly_limit', 'estimated_penalty', 'performance_warning',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['employee', 'status', 'admin_note', 'reviewed_by', 'created_at', 'updated_at']
+        read_only_fields = [
+            'employee', 'status', 'admin_note', 'reviewed_by',
+            'monthly_correction_count', 'max_free_corrections',
+            'exceeds_monthly_limit', 'estimated_penalty', 'performance_warning',
+            'created_at', 'updated_at',
+        ]
+
+    def _get_obj_monthly_stats(self, obj):
+        today = nepali_datetime.date.today()
+        y, m = today.year, today.month
+        req_date = getattr(obj, 'requested_date', None)
+        if isinstance(req_date, nepali_datetime.date):
+            y, m = req_date.year, req_date.month
+        elif req_date:
+            try:
+                parts = str(req_date).strip().split('-')
+                if len(parts) >= 2:
+                    y, m = int(parts[0]), int(parts[1])
+            except (TypeError, ValueError):
+                pass
+        return get_monthly_correction_stats(obj.employee, y, m)
+
+    def get_monthly_correction_count(self, obj):
+        return self._get_obj_monthly_stats(obj)["count"]
+
+    def get_max_free_corrections(self, obj):
+        return self._get_obj_monthly_stats(obj)["max_free"]
+
+    def get_exceeds_monthly_limit(self, obj):
+        return self._get_obj_monthly_stats(obj)["exceeds_limit"]
+
+    def get_estimated_penalty(self, obj):
+        return self._get_obj_monthly_stats(obj)["estimated_penalty"]
+
+    def get_performance_warning(self, obj):
+        stats = self._get_obj_monthly_stats(obj)
+        if stats["exceeds_limit"]:
+            return (
+                f"Multiple attendance corrections ({stats['count']}/{stats['max_free']} free this month). "
+                "Excessive corrections decrease performance score."
+            )
+        return None
 
     def get_employee_name(self, obj):
         if not obj.employee:

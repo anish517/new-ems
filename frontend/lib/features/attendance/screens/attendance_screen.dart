@@ -87,9 +87,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   final _officeLatCtrl = TextEditingController();
   final _officeLngCtrl = TextEditingController();
   final _officeRadiusCtrl = TextEditingController(text: '100');
+  final _maxFreeCorrectionsCtrl = TextEditingController(text: '2');
+  final _correctionPenaltyCtrl = TextEditingController(text: '0.5');
   bool _enableInOffice = true;
   bool _enableRemote = true;
   bool _enableDailyPerformance = true;
+  bool _countRejectedCorrections = false;
   bool _geofenceLoading = false;
   bool _geofenceSaving = false;
   bool _detectingOfficeLocation = false;
@@ -129,6 +132,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     _officeLatCtrl.dispose();
     _officeLngCtrl.dispose();
     _officeRadiusCtrl.dispose();
+    _maxFreeCorrectionsCtrl.dispose();
+    _correctionPenaltyCtrl.dispose();
     super.dispose();
   }
 
@@ -482,6 +487,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           _enableInOffice = d['enable_in_office_attendance'] ?? true;
           _enableRemote = d['enable_remote_attendance'] ?? true;
           _enableDailyPerformance = d['enable_daily_performance'] ?? true;
+          _maxFreeCorrectionsCtrl.text =
+              '${d['max_free_corrections_per_month'] ?? 2}';
+          _correctionPenaltyCtrl.text =
+              '${d['correction_penalty_points'] ?? 0.5}';
+          _countRejectedCorrections =
+              d['count_rejected_corrections'] ?? false;
           _geofenceLoading = false;
         });
       }
@@ -519,6 +530,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         'enable_in_office_attendance': _enableInOffice,
         'enable_remote_attendance': _enableRemote,
         'enable_daily_performance': _enableDailyPerformance,
+        'max_free_corrections_per_month':
+            int.tryParse(_maxFreeCorrectionsCtrl.text.trim()) ?? 2,
+        'correction_penalty_points':
+            double.tryParse(_correctionPenaltyCtrl.text.trim()) ?? 0.5,
+        'count_rejected_corrections': _countRejectedCorrections,
       };
       await ApiService().patch(
         '${AppConstants.organizationBase}/settings/',
@@ -593,15 +609,269 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     }
   }
 
+  Map<String, dynamic> _computeLocalMonthlyCorrectionStats(
+      int nepaliYear, int nepaliMonth) {
+    final orgSettings = ref.read(orgSettingsProvider);
+    final maxFree = orgSettings.maxFreeCorrectionsPerMonth;
+    final penalty = orgSettings.correctionPenaltyPoints;
+    final countRejected = orgSettings.countRejectedCorrections;
+    final monthPrefix =
+        '$nepaliYear-${nepaliMonth.toString().padLeft(2, '0')}-';
+
+    int count = 0;
+    for (final req in _myCorrectionRequests) {
+      if (req is! Map) {
+        continue;
+      }
+      final reqDate = (req['requested_date'] ?? '').toString();
+      final status = (req['status'] ?? 'pending').toString().toLowerCase();
+      if (!reqDate.startsWith(monthPrefix)) {
+        continue;
+      }
+      if (!countRejected && status == 'rejected') {
+        continue;
+      }
+      count++;
+    }
+
+    final willExceedOnNext = count >= maxFree;
+    final exceedsLimit = count > maxFree;
+    final excessCount = (count - maxFree) > 0 ? (count - maxFree) : 0;
+    final nextExcessCount =
+        ((count + 1) - maxFree) > 0 ? ((count + 1) - maxFree) : 0;
+
+    return {
+      'nepali_year': nepaliYear,
+      'nepali_month': nepaliMonth,
+      'count': count,
+      'max_free': maxFree,
+      'will_exceed_on_next': willExceedOnNext,
+      'exceeds_limit': exceedsLimit,
+      'excess_count': excessCount,
+      'penalty_per_extra': penalty,
+      'estimated_penalty':
+          double.parse((excessCount * penalty).toStringAsFixed(2)),
+      'next_estimated_penalty':
+          double.parse((nextExcessCount * penalty).toStringAsFixed(2)),
+    };
+  }
+
+  Future<Map<String, dynamic>> _fetchMonthlyCorrectionStats(
+      int nepaliYear, int nepaliMonth) async {
+    try {
+      final res = await ApiService().get(
+        '${AppConstants.attendanceBase}/correction-requests/monthly-summary/?nepali_year=$nepaliYear&nepali_month=$nepaliMonth',
+      );
+      if (res.data is Map<String, dynamic>) {
+        return res.data as Map<String, dynamic>;
+      }
+      if (res.data is Map) {
+        return Map<String, dynamic>.from(res.data as Map);
+      }
+    } catch (_) {}
+    return _computeLocalMonthlyCorrectionStats(nepaliYear, nepaliMonth);
+  }
+
+  Future<bool> _showMultipleCorrectionWarningDialog(
+      Map<String, dynamic> stats) async {
+    final count = (stats['count'] as num?)?.toInt() ?? 0;
+    final maxFree = (stats['max_free'] as num?)?.toInt() ?? 2;
+    final nextPenalty =
+        (stats['next_estimated_penalty'] as num?)?.toDouble() ?? 0.0;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dCtx) => AlertDialog(
+        backgroundColor: dCtx.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: BorderSide(color: AppColors.warning.withValues(alpha: 0.45)),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+        contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Iconsax.warning_2,
+                  color: AppColors.warning, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Performance Drop Warning',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: dCtx.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'You have already submitted $count attendance correction request(s) in this Nepali month (free limit: $maxFree).',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: dCtx.textPrimary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border:
+                      Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Iconsax.trend_down,
+                        color: AppColors.error, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Multiple attendance corrections will decrease your performance score and are flagged for administrator review.',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.error,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: dCtx.card,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: dCtx.border),
+                    ),
+                    child: Text(
+                      'This Month: $count used',
+                      style: const TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: dCtx.card,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: dCtx.border),
+                    ),
+                    child: Text(
+                      'Free Limit: $maxFree',
+                      style: const TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Request #${count + 1}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.warning,
+                      ),
+                    ),
+                  ),
+                  if (nextPenalty > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Est. Impact: -$nextPenalty pts',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.error,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dCtx, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.warning,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+            onPressed: () => Navigator.pop(dCtx, true),
+            icon: const Icon(Iconsax.send_1, size: 16),
+            label: const Text(
+              'Submit Anyway',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
   void _showCorrectionRequestSheet(
       {String? initialDate, String? initialCheckIn, String? initialCheckOut}) {
-    final dateCtrl = TextEditingController(text: initialDate ?? '');
+    final todayNow = NepaliDateTime.now();
+    final defaultDateStr = initialDate ??
+        '${todayNow.year}-${todayNow.month.toString().padLeft(2, '0')}-${todayNow.day.toString().padLeft(2, '0')}';
+    final dateCtrl = TextEditingController(text: defaultDateStr);
     final checkInCtrl = TextEditingController(text: initialCheckIn ?? '');
     final checkOutCtrl = TextEditingController(text: initialCheckOut ?? '');
     final reasonCtrl = TextEditingController();
     final isMobile = MediaQuery.of(context).size.width < 600;
+    bool checkingStats = false;
 
-    final todayNow = NepaliDateTime.now();
     final maxCorrectionDate =
         NepaliDateTime(todayNow.year, todayNow.month, todayNow.day);
 
@@ -613,190 +883,295 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       backgroundColor: context.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          isMobile ? 18 : 24,
-          20,
-          isMobile ? 18 : 24,
-          MediaQuery.of(ctx).viewInsets.bottom + 24,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final parsedForStats =
+              parseNepaliDateString(dateCtrl.text) ?? todayNow;
+          final liveStats = _computeLocalMonthlyCorrectionStats(
+            parsedForStats.year,
+            parsedForStats.month,
+          );
+          final usedCount = (liveStats['count'] as num?)?.toInt() ?? 0;
+          final maxFree = (liveStats['max_free'] as num?)?.toInt() ?? 2;
+          final willExceed = liveStats['will_exceed_on_next'] == true;
+
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              isMobile ? 18 : 24,
+              20,
+              isMobile ? 18 : 24,
+              MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Iconsax.calendar_edit,
+                            color: AppColors.primary, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Request Attendance Correction',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: context.textPrimary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                          icon: const Icon(Iconsax.close_circle, size: 20),
+                          onPressed: () => Navigator.pop(ctx)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Submit a request if you missed clocking in/out due to technical or network issues.',
+                    style:
+                        TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Live Monthly Correction Usage Banner
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
+                      color: (willExceed
+                              ? AppColors.warning
+                              : AppColors.primary)
+                          .withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: (willExceed
+                                ? AppColors.warning
+                                : AppColors.primary)
+                            .withValues(alpha: 0.35),
+                      ),
                     ),
-                    child: const Icon(Iconsax.calendar_edit,
-                        color: AppColors.primary, size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Request Attendance Correction',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: context.textPrimary),
-                      overflow: TextOverflow.ellipsis,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          willExceed ? Iconsax.warning_2 : Iconsax.info_circle,
+                          size: 17,
+                          color: willExceed
+                              ? AppColors.warning
+                              : AppColors.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            willExceed
+                                ? 'Monthly free limit reached ($usedCount/$maxFree used). Submitting another correction will decrease your performance score.'
+                                : 'Corrections used this month: $usedCount / $maxFree free (multiple corrections above $maxFree reduce performance).',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: willExceed
+                                  ? AppColors.warning
+                                  : context.textPrimary,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  IconButton(
-                      icon: const Icon(Iconsax.close_circle, size: 20),
-                      onPressed: () => Navigator.pop(ctx)),
+
+                  const SizedBox(height: 14),
+                  NepaliDateFormField(
+                    controller: dateCtrl,
+                    labelText: 'Target Date (B.S.) *',
+                    prefixIcon: Iconsax.calendar_1,
+                    isRequired: true,
+                    maxDate: maxCorrectionDate,
+                    onChanged: (_) => setSheetState(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: checkInCtrl,
+                          readOnly: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Check-In Time',
+                            hintText: 'e.g. 10:00 AM',
+                            prefixIcon: Icon(Iconsax.login, size: 18),
+                            suffixIcon: Icon(Iconsax.clock, size: 16),
+                          ),
+                          onTap: () async {
+                            final picked = await showTimePicker(
+                              context: ctx,
+                              initialTime: const TimeOfDay(hour: 10, minute: 0),
+                            );
+                            if (picked != null) {
+                              checkInCtrl.text =
+                                  '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}:00';
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: checkOutCtrl,
+                          readOnly: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Check-Out Time',
+                            hintText: 'e.g. 05:30 PM (17:30)',
+                            prefixIcon: Icon(Iconsax.logout, size: 18),
+                            suffixIcon: Icon(Iconsax.clock, size: 16),
+                          ),
+                          onTap: () async {
+                            final picked = await showTimePicker(
+                              context: ctx,
+                              initialTime:
+                                  const TimeOfDay(hour: 17, minute: 30),
+                            );
+                            if (picked != null) {
+                              checkOutCtrl.text =
+                                  '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}:00';
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: reasonCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Reason & Remarks *',
+                      hintText:
+                          'Explain why attendance was missed or requires correction...',
+                      prefixIcon: Icon(Iconsax.note_text, size: 18),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 46),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: checkingStats
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Iconsax.send_1, size: 18),
+                    label: Text(
+                      checkingStats
+                          ? 'Checking monthly limit...'
+                          : 'Submit Correction Request',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    onPressed: checkingStats
+                        ? null
+                        : () async {
+                            if (dateCtrl.text.trim().isEmpty ||
+                                reasonCtrl.text.trim().isEmpty) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(
+                                    content:
+                                        Text('Date and Reason are required.'),
+                                    backgroundColor: AppColors.error),
+                              );
+                              return;
+                            }
+                            final parsedDate =
+                                parseNepaliDateString(dateCtrl.text);
+                            if (parsedDate == null) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        'Please enter a valid Nepali date (YYYY-MM-DD).'),
+                                    backgroundColor: AppColors.error),
+                              );
+                              return;
+                            }
+                            if (parsedDate.isAfter(maxCorrectionDate)) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        'Attendance correction cannot be requested for a future date.'),
+                                    backgroundColor: AppColors.error),
+                              );
+                              return;
+                            }
+                            String inVal = checkInCtrl.text.trim();
+                            String outVal = checkOutCtrl.text.trim();
+
+                            // Smart auto-normalization if user typed 12-hour format manually
+                            if (inVal.isNotEmpty && outVal.isNotEmpty) {
+                              try {
+                                final inParts =
+                                    inVal.split(':').map(int.parse).toList();
+                                final outParts =
+                                    outVal.split(':').map(int.parse).toList();
+                                if (outParts[0] < inParts[0] &&
+                                    outParts[0] < 12 &&
+                                    inParts[0] >= 8) {
+                                  outVal =
+                                      '${(outParts[0] + 12).toString().padLeft(2, '0')}:${outParts.length > 1 ? outParts[1].toString().padLeft(2, '0') : '00'}:00';
+                                }
+                              } catch (_) {}
+                            }
+
+                            setSheetState(() => checkingStats = true);
+                            final stats = await _fetchMonthlyCorrectionStats(
+                              parsedDate.year,
+                              parsedDate.month,
+                            );
+                            if (ctx.mounted) {
+                              setSheetState(() => checkingStats = false);
+                            }
+
+                            if (stats['will_exceed_on_next'] == true) {
+                              final proceed =
+                                  await _showMultipleCorrectionWarningDialog(
+                                      stats);
+                              if (!proceed) {
+                                return;
+                              }
+                            }
+
+                            if (ctx.mounted) {
+                              Navigator.pop(ctx);
+                            }
+                            _submitCorrectionRequest(
+                              date: formatNepaliDate(parsedDate),
+                              checkIn: inVal,
+                              checkOut: outVal,
+                              reason: reasonCtrl.text.trim(),
+                            );
+                          },
+                  ),
                 ],
               ),
-              const SizedBox(height: 6),
-              const Text(
-                'Submit a request if you missed clocking in/out due to technical or network issues.',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-              ),
-              const SizedBox(height: 16),
-              NepaliDateFormField(
-                controller: dateCtrl,
-                labelText: 'Target Date (B.S.) *',
-                prefixIcon: Iconsax.calendar_1,
-                isRequired: true,
-                maxDate: maxCorrectionDate,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: checkInCtrl,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Check-In Time',
-                        hintText: 'e.g. 10:00 AM',
-                        prefixIcon: Icon(Iconsax.login, size: 18),
-                        suffixIcon: Icon(Iconsax.clock, size: 16),
-                      ),
-                      onTap: () async {
-                        final picked = await showTimePicker(
-                          context: ctx,
-                          initialTime: const TimeOfDay(hour: 10, minute: 0),
-                        );
-                        if (picked != null) {
-                          checkInCtrl.text =
-                              '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}:00';
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: checkOutCtrl,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Check-Out Time',
-                        hintText: 'e.g. 05:30 PM (17:30)',
-                        prefixIcon: Icon(Iconsax.logout, size: 18),
-                        suffixIcon: Icon(Iconsax.clock, size: 16),
-                      ),
-                      onTap: () async {
-                        final picked = await showTimePicker(
-                          context: ctx,
-                          initialTime: const TimeOfDay(hour: 17, minute: 30),
-                        );
-                        if (picked != null) {
-                          checkOutCtrl.text =
-                              '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}:00';
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: reasonCtrl,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Reason & Remarks *',
-                  hintText:
-                      'Explain why attendance was missed or requires correction...',
-                  prefixIcon: Icon(Iconsax.note_text, size: 18),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 46),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                icon: const Icon(Iconsax.send_1, size: 18),
-                label: const Text('Submit Correction Request',
-                    style: TextStyle(fontWeight: FontWeight.w800)),
-                onPressed: () {
-                  if (dateCtrl.text.trim().isEmpty ||
-                      reasonCtrl.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(
-                          content: Text('Date and Reason are required.'),
-                          backgroundColor: AppColors.error),
-                    );
-                    return;
-                  }
-                  final parsedDate = parseNepaliDateString(dateCtrl.text);
-                  if (parsedDate == null) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(
-                          content: Text(
-                              'Please enter a valid Nepali date (YYYY-MM-DD).'),
-                          backgroundColor: AppColors.error),
-                    );
-                    return;
-                  }
-                  if (parsedDate.isAfter(maxCorrectionDate)) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(
-                          content: Text(
-                              'Attendance correction cannot be requested for a future date.'),
-                          backgroundColor: AppColors.error),
-                    );
-                    return;
-                  }
-                  String inVal = checkInCtrl.text.trim();
-                  String outVal = checkOutCtrl.text.trim();
-
-                  // Smart auto-normalization if user typed 12-hour format manually
-                  if (inVal.isNotEmpty && outVal.isNotEmpty) {
-                    try {
-                      final inParts = inVal.split(':').map(int.parse).toList();
-                      final outParts =
-                          outVal.split(':').map(int.parse).toList();
-                      if (outParts[0] < inParts[0] &&
-                          outParts[0] < 12 &&
-                          inParts[0] >= 8) {
-                        outVal =
-                            '${(outParts[0] + 12).toString().padLeft(2, '0')}:${outParts.length > 1 ? outParts[1].toString().padLeft(2, '0') : '00'}:00';
-                      }
-                    } catch (_) {}
-                  }
-
-                  Navigator.pop(ctx);
-                  _submitCorrectionRequest(
-                    date: formatNepaliDate(parsedDate),
-                    checkIn: inVal,
-                    checkOut: outVal,
-                    reason: reasonCtrl.text.trim(),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -3225,6 +3600,101 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                         activeThumbColor: AppColors.primary,
                         contentPadding: EdgeInsets.zero,
                       ),
+                      const Divider(height: 24),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                            child: const Icon(Iconsax.warning_2,
+                                color: AppColors.warning, size: 17),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Attendance Correction & Performance Policy',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                    color: context.textPrimary,
+                                  ),
+                                ),
+                                const Text(
+                                  'Warns employees when monthly corrections exceed the free threshold',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      LayoutBuilder(
+                        builder: (context, c) {
+                          final narrow = c.maxWidth < 500;
+                          final maxFreeField = TextField(
+                            controller: _maxFreeCorrectionsCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Monthly Free Corrections Limit',
+                              hintText: 'e.g. 2',
+                              prefixIcon: Icon(Iconsax.calendar_edit, size: 18),
+                            ),
+                          );
+                          final penaltyField = TextField(
+                            controller: _correctionPenaltyCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'Impact Points per Extra Correction',
+                              hintText: 'e.g. 0.5',
+                              prefixIcon: Icon(Iconsax.trend_down, size: 18),
+                            ),
+                          );
+                          if (narrow) {
+                            return Column(
+                              children: [
+                                maxFreeField,
+                                const SizedBox(height: 12),
+                                penaltyField,
+                              ],
+                            );
+                          }
+                          return Row(
+                            children: [
+                              Expanded(child: maxFreeField),
+                              const SizedBox(width: 12),
+                              Expanded(child: penaltyField),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        title: const Text(
+                          'Count Rejected Corrections Toward Monthly Limit',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 13.5),
+                        ),
+                        subtitle: const Text(
+                          'When off, only pending and approved correction requests count toward the monthly warning threshold.',
+                          style: TextStyle(fontSize: 11.5),
+                        ),
+                        value: _countRejectedCorrections,
+                        onChanged: (v) =>
+                            setState(() => _countRejectedCorrections = v),
+                        activeThumbColor: AppColors.primary,
+                        contentPadding: EdgeInsets.zero,
+                      ),
                     ],
                   ),
                 ),
@@ -3771,22 +4241,75 @@ class _CorrectionRequestTileState extends State<_CorrectionRequestTile> {
                       ],
                     ),
                     const SizedBox(height: 3),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 5,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Icon(Iconsax.calendar_1,
-                            size: 14, color: AppColors.textSecondary),
-                        const SizedBox(width: 5),
-                        Flexible(
-                          child: Text(
-                            'Target Date: $requestedDate',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12.5,
-                                color: context.textPrimary),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Iconsax.calendar_1,
+                                size: 14, color: AppColors.textSecondary),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                'Target Date: $requestedDate',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12.5,
+                                    color: context.textPrimary),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
+                        if (widget.req['exceeds_monthly_limit'] == true)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(7),
+                              border: Border.all(
+                                color: AppColors.error.withValues(alpha: 0.35),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Iconsax.warning_2,
+                                    size: 12, color: AppColors.error),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${widget.req['monthly_correction_count'] ?? 0} corrections this mo (Limit: ${widget.req['max_free_corrections'] ?? 2})',
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.error,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else if (widget.isAdmin &&
+                            widget.req['monthly_correction_count'] != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.09),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${widget.req['monthly_correction_count']}/${widget.req['max_free_corrections'] ?? 2} this mo',
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ],

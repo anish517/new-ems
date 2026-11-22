@@ -473,6 +473,20 @@ class OrganizationSettings(models.Model):
     # Performance feature toggle
     enable_daily_performance = models.BooleanField(default=True, verbose_name="Enable Daily Performance")
 
+    # Attendance correction & performance impact policy
+    max_free_corrections_per_month = models.PositiveIntegerField(
+        default=2,
+        help_text="Monthly free attendance corrections before performance warning applies",
+    )
+    correction_penalty_points = models.FloatField(
+        default=0.5,
+        help_text="Estimated performance score impact per extra correction",
+    )
+    count_rejected_corrections = models.BooleanField(
+        default=False,
+        help_text="Whether rejected correction requests count toward the monthly limit",
+    )
+
     def __str__(self):
         return f"Settings for {self.organization.name}"
 
