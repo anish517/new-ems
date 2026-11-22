@@ -3,6 +3,8 @@ import nepali_datetime
 import time
 from rest_framework import status
 from rest_framework import generics
+from rest_framework.views import APIView
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import permissions
@@ -19,42 +21,72 @@ from attendance.models import Attendance
 from calendar_app.utilities import count_holidays, count_saturdays, total_days_in_month
 from leave_management.models import LeaveRequest
 from organization.models import Employee, Organization
-from salary_management.models import Salary, SalaryTransaction, SalaryTaxBand, IncentiveTaxBand, BonusTaxBand, get_tax_from_bands
+from salary_management.models import (
+    Salary, SalaryTransaction, SalaryTaxBand, IncentiveTaxBand, BonusTaxBand,
+    FinanceAccess, get_tax_from_bands,
+)
 
-from .serializers import SalarySerializer, SalaryTransactionSerializer, NetSalarySerializer, SalaryTaxBandSerializer, IncentiveTaxBandSerializer, BonusTaxBandSerializer
+from .serializers import (
+    SalarySerializer, SalaryTransactionSerializer, NetSalarySerializer,
+    SalaryTaxBandSerializer, IncentiveTaxBandSerializer, BonusTaxBandSerializer,
+    FinanceAccessSerializer, FinanceAccessCreateSerializer,
+)
+
+
+def _get_active_finance_access(user):
+    if not user or not user.is_authenticated:
+        return None
+    if not getattr(user, 'is_finance', False):
+        return None
+    try:
+        access = user.finance_access
+        return access if access and access.is_active else None
+    except Exception:
+        return None
+
+
+def _is_strict_salary_admin(user):
+    return bool(
+        user
+        and user.is_authenticated
+        and (user.is_superuser or user.organization.exists())
+    )
+
+
+def _is_finance_or_admin(user):
+    return _is_strict_salary_admin(user) or _get_active_finance_access(user) is not None
+
+
+class IsStrictSalaryAdmin(permissions.BasePermission):
+    """Only Super Admin / Org Admin (used for managing Finance user accounts)."""
+    def has_permission(self, request, view):
+        return _is_strict_salary_admin(request.user)
+
 
 class IsSalaryAdmin(permissions.BasePermission):
+    """Super Admin, Org Admin, or active Finance account."""
     def has_permission(self, request, view):
-        user = request.user
-        if not user or not user.is_authenticated:
-            return False
-        if user.is_superuser:
-            return True
-        if user.organization.exists():
-            return True
-        return False
+        return _is_finance_or_admin(request.user)
+
 
 class IsSalaryAdminOrHR(permissions.BasePermission):
+    """Super Admin, Org Admin, HR, or active Finance account."""
     def has_permission(self, request, view):
         user = request.user
         if not user or not user.is_authenticated:
             return False
-        if user.is_superuser:
+        if _is_finance_or_admin(user):
             return True
         if getattr(user, 'is_hr', False):
             return True
-        if user.organization.exists():
-            return True
         return False
+
 
 def _get_org(user):
     """Resolve the tenant for the salary views.
 
-    Employees resolve through their post; organization admins through admin_users.
-    Production's admin account has neither -- it is a superuser with no Employee row,
-    and admin_users is empty -- so superusers and HR fall back to the first
-    organization, the same rule EmployeeExportCSVAPIView applies. Anyone else
-    resolves to None and the calling view fails closed.
+    Checks Employee post, Organization admin_users, active FinanceAccess,
+    and falls back to first Organization for superusers / HR.
     """
     try:
         return user.employee.post.department.organization
@@ -62,6 +94,9 @@ def _get_org(user):
         pass
     if user.organization.exists():
         return user.organization.first()
+    finance_access = _get_active_finance_access(user)
+    if finance_access and finance_access.organization:
+        return finance_access.organization
     if getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False):
         return Organization.objects.first()
     return None
@@ -80,13 +115,18 @@ class BasicSalaryCreateAPIView(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         employee = serializer.validated_data.get('employee')
+
+        org = _get_org(request.user)
+        emp_org = getattr(employee, 'organization', None)
+        if org and emp_org and emp_org.id != org.id:
+            return Response({'error': 'Employee does not belong to your organization.'}, status=status.HTTP_403_FORBIDDEN)
         
         salary, created = Salary.objects.update_or_create(
             employee=employee,
             defaults={
                 'basic_salary': serializer.validated_data.get('basic_salary', 0),
                 'remote_salary': serializer.validated_data.get('remote_salary', 0),
-                'organization': employee.organization if hasattr(employee, 'organization') else None
+                'organization': emp_org or org
             }
         )
         return Response(self.get_serializer(salary).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
@@ -94,16 +134,16 @@ class BasicSalaryCreateAPIView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         
-        # If admin, return all salaries in org
+        # If admin or finance, return all salaries in org
         if IsSalaryAdmin().has_permission(self.request, self):
             organization = _get_org(user)
             if not organization:
                 return Salary.objects.none()
-            return Salary.objects.filter(organization=organization)
+            return Salary.objects.filter(organization=organization).order_by('-id')
             
         # If employee, return only their salary
         if hasattr(user, 'employee'):
-            return Salary.objects.filter(employee=user.employee)
+            return Salary.objects.filter(employee=user.employee).order_by('-id')
             
         return Salary.objects.none()
 
@@ -143,8 +183,12 @@ class NetSalaryAPIView(generics.RetrieveAPIView):
             return Response({'error': 'Salary details not found'}, status=status.HTTP_404_NOT_FOUND)
             
         user = request.user
-        is_admin = user.is_superuser or user.organization.exists()
-        if not is_admin and salary.employee != getattr(user, 'employee', None):
+        is_payroll_manager = _is_finance_or_admin(user)
+        if is_payroll_manager:
+            org = _get_org(user)
+            if org and salary.organization_id and salary.organization_id != org.id:
+                return Response({'error': 'You do not have permission to view this salary.'}, status=status.HTTP_403_FORBIDDEN)
+        elif salary.employee != getattr(user, 'employee', None):
             return Response({'error': 'You do not have permission to view this salary.'}, status=status.HTTP_403_FORBIDDEN)
 
         # Use the same year/month for all calculations for consistency
@@ -274,8 +318,23 @@ class SalaryTransactionRetrieveAPIView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        organization = _get_org(self.request.user)
-        return SalaryTransaction.objects.filter(organization=organization)
+        user = self.request.user
+        if _is_finance_or_admin(user):
+            organization = _get_org(user)
+            return SalaryTransaction.objects.filter(organization=organization) if organization else SalaryTransaction.objects.none()
+        if hasattr(user, 'employee'):
+            return SalaryTransaction.objects.filter(salary__employee=user.employee)
+        return SalaryTransaction.objects.none()
+
+    def perform_update(self, serializer):
+        if not _is_finance_or_admin(self.request.user):
+            raise PermissionDenied('Only administrators or finance users can update salary transactions.')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if not _is_finance_or_admin(self.request.user):
+            raise PermissionDenied('Only administrators or finance users can delete salary transactions.')
+        instance.delete()
 
 
 class SalaryTransactionListAPIView(generics.ListAPIView):
@@ -287,8 +346,8 @@ class SalaryTransactionListAPIView(generics.ListAPIView):
         user = self.request.user
         employee_id = self.request.GET.get('employee')
         
-        is_admin = user.is_superuser or user.organization.exists()
-        if not is_admin:
+        is_payroll_manager = _is_finance_or_admin(user)
+        if not is_payroll_manager:
             try:
                 employee_id = user.employee.id
             except Exception:
@@ -304,6 +363,12 @@ class SalaryTransactionListAPIView(generics.ListAPIView):
             employee = Employee.objects.get(id=employee_id)
         except Employee.DoesNotExist:
             return SalaryTransaction.objects.none()
+
+        if is_payroll_manager:
+            org = _get_org(user)
+            emp_org = employee.organization
+            if org and emp_org and emp_org.id != org.id:
+                return SalaryTransaction.objects.none()
 
         return SalaryTransaction.objects.filter(salary__employee=employee).order_by('date')
 
@@ -377,8 +442,19 @@ class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
         from salary_management.models import Salary
         from fiscal_year.models import FiscalYear
         
-        salary = Salary.objects.get(id=salary_id)
-        fiscal_year = FiscalYear.objects.get(id=fiscal_year_id)
+        try:
+            salary = Salary.objects.get(id=salary_id)
+        except Salary.DoesNotExist:
+            return Response({'error': 'Salary record not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if organization and salary.organization_id and salary.organization_id != organization.id:
+            return Response({'error': 'Salary record does not belong to your organization.'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            fiscal_year = FiscalYear.objects.get(id=fiscal_year_id)
+        except FiscalYear.DoesNotExist:
+            return Response({'error': 'Fiscal year not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if organization and fiscal_year.organization_id and fiscal_year.organization_id != organization.id:
+            return Response({'error': 'Fiscal year does not belong to your organization.'}, status=status.HTTP_403_FORBIDDEN)
         
         # Parse nepali date
         if date_str:
@@ -792,8 +868,7 @@ class SalaryTaxBandListCreateView(generics.ListCreateAPIView):
     nepali_date_filter_field = False
 
     def get_queryset(self):
-        user = self.request.user
-        org = user.organization.first() if user.organization.exists() else None
+        org = _get_org(self.request.user)
         if not org:
             return SalaryTaxBand.objects.none()
         marital = self.request.GET.get('marital_status')
@@ -803,8 +878,7 @@ class SalaryTaxBandListCreateView(generics.ListCreateAPIView):
         return qs
 
     def perform_create(self, serializer):
-        user = self.request.user
-        org = user.organization.first() if user.organization.exists() else None
+        org = _get_org(self.request.user)
         serializer.save(organization=org)
 
 
@@ -814,9 +888,8 @@ class SalaryTaxBandDetailView(generics.RetrieveUpdateDestroyAPIView):
     nepali_date_filter_field = False
 
     def get_queryset(self):
-        user = self.request.user
-        org = user.organization.first() if user.organization.exists() else None
-        return SalaryTaxBand.objects.filter(organization=org)
+        org = _get_org(self.request.user)
+        return SalaryTaxBand.objects.filter(organization=org) if org else SalaryTaxBand.objects.none()
 
 
 class IncentiveTaxBandListCreateView(generics.ListCreateAPIView):
@@ -825,12 +898,11 @@ class IncentiveTaxBandListCreateView(generics.ListCreateAPIView):
     nepali_date_filter_field = False
 
     def get_queryset(self):
-        user = self.request.user
-        org = user.organization.first() if user.organization.exists() else None
+        org = _get_org(self.request.user)
         return IncentiveTaxBand.objects.filter(organization=org) if org else IncentiveTaxBand.objects.none()
 
     def perform_create(self, serializer):
-        org = self.request.user.organization.first()
+        org = _get_org(self.request.user)
         serializer.save(organization=org)
 
 
@@ -840,8 +912,8 @@ class IncentiveTaxBandDetailView(generics.RetrieveUpdateDestroyAPIView):
     nepali_date_filter_field = False
 
     def get_queryset(self):
-        org = self.request.user.organization.first()
-        return IncentiveTaxBand.objects.filter(organization=org)
+        org = _get_org(self.request.user)
+        return IncentiveTaxBand.objects.filter(organization=org) if org else IncentiveTaxBand.objects.none()
 
 
 class BonusTaxBandListCreateView(generics.ListCreateAPIView):
@@ -850,12 +922,11 @@ class BonusTaxBandListCreateView(generics.ListCreateAPIView):
     nepali_date_filter_field = False
 
     def get_queryset(self):
-        user = self.request.user
-        org = user.organization.first() if user.organization.exists() else None
+        org = _get_org(self.request.user)
         return BonusTaxBand.objects.filter(organization=org) if org else BonusTaxBand.objects.none()
 
     def perform_create(self, serializer):
-        org = self.request.user.organization.first()
+        org = _get_org(self.request.user)
         serializer.save(organization=org)
 
 
@@ -865,5 +936,318 @@ class BonusTaxBandDetailView(generics.RetrieveUpdateDestroyAPIView):
     nepali_date_filter_field = False
 
     def get_queryset(self):
-        org = self.request.user.organization.first()
-        return BonusTaxBand.objects.filter(organization=org)
+        org = _get_org(self.request.user)
+        return BonusTaxBand.objects.filter(organization=org) if org else BonusTaxBand.objects.none()
+
+
+# ──────────────────────────────────────────────────────────────
+# Finance Account Management (Super Admin / Org Admin Only)
+# ──────────────────────────────────────────────────────────────
+
+class FinanceUserListCreateAPIView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated, IsStrictSalaryAdmin]
+    serializer_class = FinanceAccessSerializer
+    nepali_date_filter_field = False
+
+    def get_queryset(self):
+        org = _get_org(self.request.user)
+        qs = FinanceAccess.objects.select_related('user', 'organization')
+        return qs.filter(organization=org) if org else FinanceAccess.objects.none()
+
+    def create(self, request, *args, **kwargs):
+        org = _get_org(request.user)
+        if not org:
+            return Response(
+                {'error': 'No organization found for this administrator.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = FinanceAccessCreateSerializer(
+            data=request.data, context={'request': request, 'organization': org}
+        )
+        serializer.is_valid(raise_exception=True)
+        access = serializer.save()
+        out = FinanceAccessSerializer(access, context={'request': request})
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+
+class FinanceUserDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated, IsStrictSalaryAdmin]
+    serializer_class = FinanceAccessSerializer
+    nepali_date_filter_field = False
+
+    def get_queryset(self):
+        org = _get_org(self.request.user)
+        qs = FinanceAccess.objects.select_related('user', 'organization')
+        return qs.filter(organization=org) if org else FinanceAccess.objects.none()
+
+    def perform_destroy(self, instance):
+        account = instance.user
+        instance.delete()
+        account.is_finance = False
+        update_fields = ['is_finance']
+        if not hasattr(account, 'employee') and not account.is_superuser:
+            account.is_active = False
+            update_fields.append('is_active')
+        account.save(update_fields=update_fields)
+
+
+# ──────────────────────────────────────────────────────────────
+# Monthly & Yearly Financial Analytics Summary
+# ──────────────────────────────────────────────────────────────
+
+NEPALI_MONTH_NAMES = [
+    '', 'Baishakh', 'Jestha', 'Ashadh', 'Shrawan',
+    'Bhadra', 'Ashwin', 'Kartik', 'Mangsir',
+    'Poush', 'Magh', 'Falgun', 'Chaitra',
+]
+NEPALI_MONTH_SHORT = [
+    '', 'Bai', 'Jes', 'Ash', 'Shr',
+    'Bha', 'Asw', 'Kar', 'Man',
+    'Pou', 'Mag', 'Fal', 'Cha',
+]
+
+
+def _extract_tx_metrics(tx):
+    """Compute consistent payroll numbers for a single SalaryTransaction."""
+    sal = tx.salary
+    gross = float(tx.gross_salary or 0) if sal else 0.0
+    net = float(tx.net_salary or 0)
+    incentive = float(tx.incentive or 0)
+    bonus = float(tx.bonus or 0)
+
+    if tx.transaction_tds is not None:
+        tds = float(tx.transaction_tds)
+    elif sal:
+        tax_rate = float(sal.tax_rate or 0)
+        tds = float(round((gross * tax_rate) / 100)) if tax_rate > 0 else float(sal.tds or 0)
+    else:
+        tds = 0.0
+
+    ssf = float(tx.transaction_ssf) if tx.transaction_ssf is not None else float(sal.ssf or 0 if sal else 0)
+    epf = float(tx.transaction_epf) if tx.transaction_epf is not None else float(sal.epf or 0 if sal else 0)
+    cit = float(sal.citizen_investment_trust or 0) if sal else 0.0
+    insurance = float(sal.insurance or 0) if sal else 0.0
+
+    total_expense = (
+        float(tx.total_expense)
+        if tx.total_expense is not None
+        else float(round(net + tds + ssf + epf + cit + insurance))
+    )
+
+    dept_name = 'Unassigned'
+    try:
+        if sal and sal.employee and sal.employee.post and sal.employee.post.department:
+            dept_name = sal.employee.post.department.department_name or 'Unassigned'
+    except Exception:
+        pass
+
+    return {
+        'gross': round(gross, 2),
+        'net': round(net, 2),
+        'tds': round(tds, 2),
+        'ssf': round(ssf, 2),
+        'epf': round(epf, 2),
+        'cit': round(cit, 2),
+        'insurance': round(insurance, 2),
+        'incentive': round(incentive, 2),
+        'bonus': round(bonus, 2),
+        'total_expense': round(total_expense, 2),
+        'department': dept_name,
+    }
+
+
+class SalaryAnalyticsSummaryAPIView(APIView):
+    """
+    Returns organization-wide Monthly (12 BS months) and Yearly payroll
+    analytics for Finance Charts (Expense, Net Paid, TDS, SSF, EPF,
+    Deduction Breakdown, and Department Cost).
+    """
+    permission_classes = [IsAuthenticated, IsSalaryAdminOrHR]
+    nepali_date_filter_field = False
+
+    def get(self, request):
+        org = _get_org(request.user)
+        if not org:
+            return Response({'error': 'No organization found.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        today_np = nepali_datetime.date.today()
+        year_param = request.GET.get('year') or request.GET.get('nepali_year')
+        month_param = request.GET.get('month') or request.GET.get('nepali_month')
+        department_filter = request.GET.get('department')
+
+        try:
+            selected_year = int(year_param) if year_param else today_np.year
+        except (TypeError, ValueError):
+            selected_year = today_np.year
+
+        selected_month = None
+        if month_param and str(month_param).lower() not in ('all', 'none', ''):
+            try:
+                m_int = int(month_param)
+                if 1 <= m_int <= 12:
+                    selected_month = m_int
+            except (TypeError, ValueError):
+                selected_month = None
+
+        qs = (
+            SalaryTransaction.objects.filter(organization=org)
+            .select_related('salary__employee__post__department', 'fiscal_year')
+            .order_by('date')
+        )
+
+        # Initialize 12 BS month buckets for selected_year
+        monthly_buckets = {
+            m: {
+                'month': m,
+                'label': NEPALI_MONTH_NAMES[m],
+                'short_label': NEPALI_MONTH_SHORT[m],
+                'gross': 0.0,
+                'net': 0.0,
+                'tds': 0.0,
+                'ssf': 0.0,
+                'epf': 0.0,
+                'cit': 0.0,
+                'insurance': 0.0,
+                'incentive': 0.0,
+                'bonus': 0.0,
+                'total_expense': 0.0,
+                'payout_count': 0,
+            }
+            for m in range(1, 13)
+        }
+        yearly_buckets = {}
+        available_years = {selected_year}
+
+        # Breakdown + department accumulators (for selected_year, optionally narrowed to selected_month)
+        breakdown = {
+            'net': 0.0,
+            'tds': 0.0,
+            'ssf': 0.0,
+            'epf': 0.0,
+            'cit': 0.0,
+            'insurance': 0.0,
+            'incentive': 0.0,
+            'bonus': 0.0,
+        }
+        dept_totals = {}
+        kpis = {
+            'total_expense': 0.0,
+            'total_net': 0.0,
+            'total_gross': 0.0,
+            'total_tds': 0.0,
+            'total_ssf': 0.0,
+            'total_epf': 0.0,
+            'total_bonus_incentive': 0.0,
+            'payout_count': 0,
+        }
+
+        for tx in qs:
+            if not tx.date:
+                continue
+            tx_year = tx.date.year
+            tx_month = tx.date.month
+            metrics = _extract_tx_metrics(tx)
+
+            if department_filter and department_filter.lower() != 'all':
+                if metrics['department'].lower() != department_filter.lower():
+                    continue
+
+            available_years.add(tx_year)
+
+            # Yearly bucket
+            if tx_year not in yearly_buckets:
+                yearly_buckets[tx_year] = {
+                    'year': tx_year,
+                    'label': str(tx_year),
+                    'gross': 0.0,
+                    'net': 0.0,
+                    'tds': 0.0,
+                    'ssf': 0.0,
+                    'epf': 0.0,
+                    'incentive': 0.0,
+                    'bonus': 0.0,
+                    'total_expense': 0.0,
+                    'payout_count': 0,
+                }
+            yb = yearly_buckets[tx_year]
+            for key in ('gross', 'net', 'tds', 'ssf', 'epf', 'incentive', 'bonus', 'total_expense'):
+                yb[key] += metrics[key]
+            yb['payout_count'] += 1
+
+            # Monthly bucket (for selected_year)
+            if tx_year == selected_year and 1 <= tx_month <= 12:
+                mb = monthly_buckets[tx_month]
+                for key in ('gross', 'net', 'tds', 'ssf', 'epf', 'cit', 'insurance', 'incentive', 'bonus', 'total_expense'):
+                    mb[key] += metrics[key]
+                mb['payout_count'] += 1
+
+                # KPIs + breakdown + department (filtered by selected_month if provided)
+                if selected_month is None or tx_month == selected_month:
+                    kpis['total_expense'] += metrics['total_expense']
+                    kpis['total_net'] += metrics['net']
+                    kpis['total_gross'] += metrics['gross']
+                    kpis['total_tds'] += metrics['tds']
+                    kpis['total_ssf'] += metrics['ssf']
+                    kpis['total_epf'] += metrics['epf']
+                    kpis['total_bonus_incentive'] += metrics['incentive'] + metrics['bonus']
+                    kpis['payout_count'] += 1
+
+                    for key in breakdown:
+                        breakdown[key] += metrics[key]
+
+                    dept = metrics['department']
+                    if dept not in dept_totals:
+                        dept_totals[dept] = {
+                            'department': dept,
+                            'total_expense': 0.0,
+                            'net': 0.0,
+                            'tds': 0.0,
+                            'payout_count': 0,
+                        }
+                    dept_totals[dept]['total_expense'] += metrics['total_expense']
+                    dept_totals[dept]['net'] += metrics['net']
+                    dept_totals[dept]['tds'] += metrics['tds']
+                    dept_totals[dept]['payout_count'] += 1
+
+        # Ensure selected_year appears in yearly array even if 0 payouts yet
+        if selected_year not in yearly_buckets:
+            yearly_buckets[selected_year] = {
+                'year': selected_year,
+                'label': str(selected_year),
+                'gross': 0.0,
+                'net': 0.0,
+                'tds': 0.0,
+                'ssf': 0.0,
+                'epf': 0.0,
+                'incentive': 0.0,
+                'bonus': 0.0,
+                'total_expense': 0.0,
+                'payout_count': 0,
+            }
+
+        active_months = sum(1 for m in monthly_buckets.values() if m['payout_count'] > 0)
+        kpis['avg_monthly_expense'] = round(
+            kpis['total_expense'] / active_months, 2
+        ) if (selected_month is None and active_months > 0) else round(kpis['total_expense'], 2)
+
+        def _round_dict(d):
+            return {k: (round(v, 2) if isinstance(v, float) else v) for k, v in d.items()}
+
+        monthly_list = [_round_dict(monthly_buckets[m]) for m in range(1, 13)]
+        yearly_list = [_round_dict(yearly_buckets[y]) for y in sorted(yearly_buckets.keys())]
+        by_dept_list = sorted(
+            [_round_dict(d) for d in dept_totals.values()],
+            key=lambda x: x['total_expense'],
+            reverse=True,
+        )
+
+        return Response({
+            'selected_year': selected_year,
+            'selected_month': selected_month,
+            'available_years': sorted(available_years, reverse=True),
+            'kpis': _round_dict(kpis),
+            'monthly': monthly_list,
+            'yearly': yearly_list,
+            'deduction_breakdown': _round_dict(breakdown),
+            'by_department': by_dept_list,
+        }, status=status.HTTP_200_OK)

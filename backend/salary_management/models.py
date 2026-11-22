@@ -492,3 +492,23 @@ def get_tax_from_bands(bands, amount):
         tax += (taxable_in_band * band.tax_percentage) / 100
         
     return round(tax)
+
+
+class FinanceAccess(models.Model):
+    """
+    Grants a dedicated Finance login full payroll, tax band, fiscal year,
+    audit report, and financial analytics access for an organization.
+    """
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name='finance_users')
+    user = models.OneToOneField(
+        'authentication.Account', on_delete=models.CASCADE, related_name='finance_access')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'FinanceAccess({self.user.email} — {self.organization})'

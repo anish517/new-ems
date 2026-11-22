@@ -41,9 +41,30 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     serializer_class = EmployeeSerializer
     permission_classes = [IsAuthenticated]
 
+    def _is_finance_only(self, user):
+        if user.is_superuser or user.organization.exists() or getattr(user, 'is_hr', False):
+            return False
+        if getattr(user, 'is_finance', False):
+            try:
+                access = user.finance_access
+                return bool(access and access.is_active)
+            except Exception:
+                return False
+        return False
+
+    def _deny_if_finance_only(self, request):
+        if self._is_finance_only(request.user):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Finance accounts have read-only access to the employee directory.')
+
     def get_queryset(self):
+        user = self.request.user
         # For retrieve/update/destroy: use all_objects so archived employees are accessible
         if self.action in ('retrieve', 'update', 'partial_update', 'destroy'):
+            if self._is_finance_only(user):
+                return Employee.all_objects.filter(
+                    post__department__organization=user.finance_access.organization
+                )
             return Employee.all_objects.all()
             
         # Determine base manager based on time-travel or archived status request
@@ -52,10 +73,13 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         base_manager = Employee.all_objects if (is_time_travel or is_archived) else Employee.objects
         
         # For list: filtered by org securely
-        user = self.request.user
         if user.organization.exists():
             return base_manager.filter(
                 post__department__organization=user.organization.first()
+            )
+        if self._is_finance_only(user):
+            return base_manager.filter(
+                post__department__organization=user.finance_access.organization
             )
         try:
             return base_manager.filter(
@@ -64,7 +88,21 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         except Exception:
             return base_manager.all()
 
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        if request.method not in ('GET', 'HEAD', 'OPTIONS'):
+            self._deny_if_finance_only(request)
+
+    def perform_create(self, serializer):
+        self._deny_if_finance_only(self.request)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        self._deny_if_finance_only(self.request)
+        serializer.save()
+
     def perform_destroy(self, instance):
+        self._deny_if_finance_only(self.request)
         user = instance.user
         if instance.is_deleted:
             # If already soft-deleted, perform a hard delete
@@ -80,6 +118,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def reset_password(self, request, pk=None):
+        self._deny_if_finance_only(request)
         employee = self.get_object()
         new_password = request.data.get('password')
         if not new_password:
@@ -92,6 +131,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def toggle_active(self, request, pk=None):
+        self._deny_if_finance_only(request)
         employee = self.get_object()
         new_status = not employee.is_active
         employee.is_active = new_status

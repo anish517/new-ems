@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.http import HttpRequest
-from .models import SalaryTransaction, Salary, SalaryTransactionReview
+from .models import SalaryTransaction, Salary, SalaryTransactionReview, FinanceAccess
 
 
 class SalaryTransactionReviewAdmin(admin.ModelAdmin):
@@ -24,3 +24,10 @@ class SalaryAdmin(admin.ModelAdmin):
 admin.site.register(Salary, SalaryAdmin)
 admin.site.register(SalaryTransaction, SalaryTransactionAdmin)
 admin.site.register(SalaryTransactionReview)
+
+
+@admin.register(FinanceAccess)
+class FinanceAccessAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'organization', 'is_active', 'created_at')
+    list_filter = ('organization', 'is_active')
+    search_fields = ('user__email', 'user__first_name', 'user__last_name')

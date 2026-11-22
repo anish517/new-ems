@@ -416,8 +416,9 @@ flowchart LR
 1. **Feature 1 (Performance Reviewer) — ✅ Confirmed:**
    - **Reviewer identity:** Hidden from employees (`reviewer` & `reviewer_name` masked to `null` for employees; visible to Admins & Reviewers).
    - **Employee scope:** Category-based — once Admin assigns categories to a reviewer, the reviewer can score **any active org employee** (except themselves / `linked_employee`) **only in those assigned categories**.
-2. **Feature 2 (Finance Login):**
-   - Is Finance always a **standalone login account** (not an Employee with attendance/leave), or can an existing Employee also hold Finance access (two accounts like Performance, or one toggle)?
+2. **Feature 2 & 3 (Finance Login & Charts) — ✅ Confirmed & Implemented:**
+   - **Account model:** Standalone Finance login account (`is_finance` + `FinanceAccess`) managed by Admin in **Accounts → Finance Users**.
+   - **Landing workspace:** Finance logs straight into **Accounts → Analytics & Charts** (Monthly & Yearly overview), followed by Payroll Operations, Tax Bands & Brackets, and Audit Reports & CSV.
 3. **Feature 4 (Trello Tasks):**
    - Should employee self-created tasks under a project count directly toward the project's `% Complete` progress, or stay separate / require admin approval?
 4. **Feature 5 (Attendance Correction Dialog):**

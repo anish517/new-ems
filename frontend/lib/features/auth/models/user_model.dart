@@ -7,7 +7,7 @@ class UserProfile {
   final String? profilePicture;
   final bool isStaff;
   final bool isSuperuser;
-  final String role; // 'super_admin' | 'org_admin' | 'hr' | 'performance_reviewer' | 'employee'
+  final String role; // 'super_admin' | 'org_admin' | 'hr' | 'finance' | 'performance_reviewer' | 'employee'
   final int? employeeId;
   final int? organizationId;
   final bool hasApprovedPolicy;
@@ -15,6 +15,7 @@ class UserProfile {
   final bool isInProvision;
   final bool isPerformanceReviewer;
   final List<int> performanceCategoryIds;
+  final bool isFinance;
 
   const UserProfile({
     required this.id,
@@ -33,6 +34,7 @@ class UserProfile {
     this.isInProvision = false,
     this.isPerformanceReviewer = false,
     this.performanceCategoryIds = const [],
+    this.isFinance = false,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
@@ -58,15 +60,21 @@ class UserProfile {
                 .where((id) => id > 0)
                 .toList() ??
             const [],
+        isFinance: json['is_finance'] as bool? ?? false,
       );
 
   bool get isOrgAdmin => role == 'org_admin' || role == 'admin';
   bool get isSuperAdmin => role == 'super_admin' || isSuperuser;
   bool get isHr => role == 'hr';
+  bool get isFinanceRole => role == 'finance' || isFinance;
   bool get isPerformanceReviewerRole =>
       role == 'performance_reviewer' || isPerformanceReviewer;
   bool get canManage =>
       isOrgAdmin || isSuperAdmin || isHr || isStaff || isSuperuser;
+  bool get canManagePayroll => canManage || isFinanceRole;
   bool get isEmployee =>
-      role == 'employee' && !canManage && !isPerformanceReviewerRole;
+      role == 'employee' &&
+      !canManage &&
+      !isFinanceRole &&
+      !isPerformanceReviewerRole;
 }

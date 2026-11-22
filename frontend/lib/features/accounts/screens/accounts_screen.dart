@@ -12,6 +12,8 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../salary/screens/salary_screen.dart';
+import '../widgets/finance_charts_tab.dart';
+import '../widgets/finance_users_tab.dart';
 import '../../../shared/widgets/nepali_date_picker.dart';
 
 class AccountsScreen extends ConsumerStatefulWidget {
@@ -21,15 +23,36 @@ class AccountsScreen extends ConsumerStatefulWidget {
   ConsumerState<AccountsScreen> createState() => _AccountsScreenState();
 }
 
-class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTickerProviderStateMixin {
+class _AccountsScreenState extends ConsumerState<AccountsScreen> with TickerProviderStateMixin {
   late TabController _tabController;
-  bool _isAdmin = false;
+  int _tabLength = 1;
+
+  int _computeTabLength({required bool isAdmin, required bool isFinance}) {
+    if (isAdmin) return 5;
+    if (isFinance) return 4;
+    return 1;
+  }
 
   @override
   void initState() {
     super.initState();
-    _isAdmin = ref.read(currentUserProvider)?.canManage ?? false;
-    _tabController = TabController(length: _isAdmin ? 3 : 1, vsync: this);
+    final user = ref.read(currentUserProvider);
+    final isAdmin = user?.canManage ?? false;
+    final isFinance = (user?.isFinanceRole ?? false) && !isAdmin;
+    _tabLength = _computeTabLength(isAdmin: isAdmin, isFinance: isFinance);
+    _tabController = TabController(length: _tabLength, vsync: this);
+  }
+
+  void _syncTabController(int desiredLength) {
+    if (_tabLength == desiredLength) return;
+    final prevIndex = _tabController.index;
+    _tabController.dispose();
+    _tabLength = desiredLength;
+    _tabController = TabController(
+      length: _tabLength,
+      vsync: this,
+      initialIndex: prevIndex.clamp(0, _tabLength - 1),
+    );
   }
 
   @override
@@ -41,10 +64,47 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     final isDark = context.isDark;
+    final user = ref.watch(currentUserProvider);
+    final isAdmin = user?.canManage ?? false;
+    final isFinance = (user?.isFinanceRole ?? false) && !isAdmin;
+    final canManagePayroll = isAdmin || isFinance;
 
-    if (!_isAdmin) {
+    if (!canManagePayroll) {
       return const SalaryScreen();
     }
+
+    final desiredLength = _computeTabLength(isAdmin: isAdmin, isFinance: isFinance);
+    _syncTabController(desiredLength);
+
+    final tabs = isFinance
+        ? const [
+            Tab(icon: Icon(Iconsax.chart_2, size: 18), text: 'Analytics & Charts'),
+            Tab(icon: Icon(Iconsax.money_send, size: 18), text: 'Payroll Operations'),
+            Tab(icon: Icon(Iconsax.receipt, size: 18), text: 'Tax Bands & Brackets'),
+            Tab(icon: Icon(Iconsax.chart, size: 18), text: 'Audit Reports & CSV'),
+          ]
+        : const [
+            Tab(icon: Icon(Iconsax.money_send, size: 18), text: 'Payroll Operations'),
+            Tab(icon: Icon(Iconsax.chart_2, size: 18), text: 'Analytics & Charts'),
+            Tab(icon: Icon(Iconsax.receipt, size: 18), text: 'Tax Bands & Brackets'),
+            Tab(icon: Icon(Iconsax.chart, size: 18), text: 'Audit Reports & CSV'),
+            Tab(icon: Icon(Iconsax.security_user, size: 18), text: 'Finance Users'),
+          ];
+
+    final tabViews = isFinance
+        ? const [
+            FinanceChartsTab(),
+            SalaryScreen(),
+            _TaxManagementTab(),
+            _ReportsTab(),
+          ]
+        : const [
+            SalaryScreen(),
+            FinanceChartsTab(),
+            _TaxManagementTab(),
+            _ReportsTab(),
+            FinanceUsersTab(),
+          ];
 
     return Scaffold(
       backgroundColor: context.bg,
@@ -98,7 +158,9 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
                                     children: [
                                       Flexible(
                                         child: Text(
-                                          'Financial Accounts & Governance',
+                                          isFinance
+                                              ? 'Finance & Payroll Workspace'
+                                              : 'Financial Accounts & Governance',
                                           style: TextStyle(
                                             fontSize: isTight ? 16 : 20,
                                             fontWeight: FontWeight.w800,
@@ -112,19 +174,24 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(alpha: 0.1),
+                                          color: (isFinance ? AppColors.success : AppColors.primary)
+                                              .withValues(alpha: 0.1),
                                           borderRadius: BorderRadius.circular(6),
                                         ),
-                                        child: const Text(
-                                          'Admin Console',
-                                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                        child: Text(
+                                          isFinance ? 'Finance Console' : 'Admin Console',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: isFinance ? AppColors.success : AppColors.primary,
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 3),
                                   const Text(
-                                    'Manage company payroll, statutory tax bands & audit logs',
+                                    'Manage company payroll, monthly & yearly analytics, statutory tax bands & audit logs',
                                     style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -170,11 +237,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
                         labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                         indicatorSize: TabBarIndicatorSize.tab,
                         dividerColor: Colors.transparent,
-                        tabs: const [
-                          Tab(icon: Icon(Iconsax.money_send, size: 18), text: 'Payroll Operations'),
-                          Tab(icon: Icon(Iconsax.receipt, size: 18), text: 'Tax Bands & Brackets'),
-                          Tab(icon: Icon(Iconsax.chart, size: 18), text: 'Audit Reports & CSV'),
-                        ],
+                        tabs: tabs,
                       ),
                     ),
                   ],
@@ -186,11 +249,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> with SingleTick
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: const [
-                  SalaryScreen(),
-                  _TaxManagementTab(),
-                  _ReportsTab(),
-                ],
+                children: tabViews,
               ),
             ),
           ],

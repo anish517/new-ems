@@ -241,3 +241,281 @@ class SalaryCalculationTests(TestCase):
         self.assertEqual(res_m5.data['holidays'], saturdays_16_to_31)
 
 
+class FinanceRoleAndAnalyticsTests(TestCase):
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from fiscal_year.models import FiscalYear
+        from salary_management.models import FinanceAccess, SalaryTransaction
+        import nepali_datetime
+
+        self.client = APIClient()
+        self.org = Organization.objects.create(name="OmWay Finance Org")
+        self.other_org = Organization.objects.create(name="Other Org")
+
+        self.dept_eng = Department.objects.create(organization=self.org, department_name="Engineering")
+        self.dept_sales = Department.objects.create(organization=self.org, department_name="Sales")
+        self.post_eng = Post.objects.create(department=self.dept_eng, title="Developer")
+        self.post_sales = Post.objects.create(department=self.dept_sales, title="Executive")
+
+        self.other_dept = Department.objects.create(organization=self.other_org, department_name="External")
+        self.other_post = Post.objects.create(department=self.other_dept, title="Staff")
+
+        self.admin_user = Account.objects.create_superuser(
+            email="admin@finance.test", first_name="Super", last_name="Admin", password="password123"
+        )
+        self.org.admin_users.add(self.admin_user)
+
+        self.finance_user = Account.objects.create_user(
+            email="finance@finance.test", first_name="Maya", last_name="Finance", password="password123"
+        )
+        self.finance_user.is_finance = True
+        self.finance_user.save()
+        self.finance_access = FinanceAccess.objects.create(
+            organization=self.org, user=self.finance_user, is_active=True
+        )
+
+        self.emp1_user = Account.objects.create_user(
+            email="dev@finance.test", first_name="Dev", last_name="One", password="password123"
+        )
+        self.emp1 = Employee.objects.create(
+            user=self.emp1_user, post=self.post_eng, date_of_joining=nepali_datetime.date(2081, 1, 1)
+        )
+        self.sal1 = Salary.objects.filter(employee=self.emp1).first()
+        self.sal1.organization = self.org
+        self.sal1.basic_salary = 50000
+        self.sal1.ssf = 2000
+        self.sal1.epf = 1500
+        self.sal1.tds = 3000
+        self.sal1.save()
+
+        self.emp2_user = Account.objects.create_user(
+            email="sales@finance.test", first_name="Sales", last_name="Two", password="password123"
+        )
+        self.emp2 = Employee.objects.create(
+            user=self.emp2_user, post=self.post_sales, date_of_joining=nepali_datetime.date(2081, 1, 1)
+        )
+        self.sal2 = Salary.objects.filter(employee=self.emp2).first()
+        self.sal2.organization = self.org
+        self.sal2.basic_salary = 40000
+        self.sal2.ssf = 1000
+        self.sal2.epf = 1000
+        self.sal2.tds = 2000
+        self.sal2.save()
+
+        self.other_emp_user = Account.objects.create_user(
+            email="other@other.test", first_name="Other", last_name="Emp", password="password123"
+        )
+        self.other_emp = Employee.objects.create(
+            user=self.other_emp_user, post=self.other_post, date_of_joining=nepali_datetime.date(2081, 1, 1)
+        )
+
+        self.fy_82 = FiscalYear.objects.create(organization=self.org, title="2082/83")
+        self.fy_83 = FiscalYear.objects.create(organization=self.org, title="2083/84")
+
+        # Transactions across 2082 and 2083 for Monthly + Yearly analytics
+        self.tx_82 = SalaryTransaction.objects.create(
+            organization=self.org, salary=self.sal1, fiscal_year=self.fy_82,
+            date=nepali_datetime.date(2082, 12, 1), manual_net_salary=45000,
+            transaction_tds=3000, transaction_ssf=2000, transaction_epf=1500,
+            incentive=1000, bonus=0,
+        )
+        self.tx_83_m1_eng = SalaryTransaction.objects.create(
+            organization=self.org, salary=self.sal1, fiscal_year=self.fy_83,
+            date=nepali_datetime.date(2083, 1, 1), manual_net_salary=46000,
+            transaction_tds=3500, transaction_ssf=2000, transaction_epf=1500,
+            incentive=2000, bonus=1000,
+        )
+        self.tx_83_m2_sales = SalaryTransaction.objects.create(
+            organization=self.org, salary=self.sal2, fiscal_year=self.fy_83,
+            date=nepali_datetime.date(2083, 2, 1), manual_net_salary=36000,
+            transaction_tds=2000, transaction_ssf=1000, transaction_epf=1000,
+            incentive=0, bonus=500,
+        )
+
+    def test_admin_can_crud_finance_users_and_non_admins_blocked(self):
+        from rest_framework import status
+        # Admin creates Finance account
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.post('/api/salary-management/finance-users/', {
+            'email': 'payroll2@finance.test',
+            'first_name': 'Account',
+            'last_name': 'Officer',
+            'password': 'password123',
+        }, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        fin_id = res.data['id']
+        self.assertEqual(res.data['email'], 'payroll2@finance.test')
+        self.assertTrue(res.data['is_active'])
+
+        # List
+        list_res = self.client.get('/api/salary-management/finance-users/')
+        self.assertEqual(list_res.status_code, status.HTTP_200_OK)
+        items = list_res.data if isinstance(list_res.data, list) else list_res.data.get('results', [])
+        self.assertEqual(len(items), 2)
+
+        # Update
+        patch_res = self.client.patch(f'/api/salary-management/finance-users/{fin_id}/', {
+            'is_active': False, 'first_name': 'Senior'
+        }, format='json')
+        self.assertEqual(patch_res.status_code, status.HTTP_200_OK)
+        self.assertFalse(patch_res.data['is_active'])
+        self.assertEqual(patch_res.data['first_name'], 'Senior')
+
+        # Delete deactivates standalone account
+        del_res = self.client.delete(f'/api/salary-management/finance-users/{fin_id}/')
+        self.assertEqual(del_res.status_code, status.HTTP_204_NO_CONTENT)
+        acc = Account.objects.get(email='payroll2@finance.test')
+        self.assertFalse(acc.is_finance)
+        self.assertFalse(acc.is_active)
+
+        # Finance user and Employee blocked from managing finance users
+        for u in (self.finance_user, self.emp1_user):
+            self.client.force_authenticate(user=u)
+            self.assertEqual(self.client.get('/api/salary-management/finance-users/').status_code, status.HTTP_403_FORBIDDEN)
+            self.assertEqual(
+                self.client.post('/api/salary-management/finance-users/', {
+                    'email': 'hack@finance.test', 'first_name': 'A', 'last_name': 'B', 'password': 'password123'
+                }).status_code,
+                status.HTTP_403_FORBIDDEN,
+            )
+
+    def test_finance_user_has_full_payroll_tax_fiscal_and_report_access(self):
+        from rest_framework import status
+        self.client.force_authenticate(user=self.finance_user)
+
+        # Base salaries list & update
+        self.assertEqual(self.client.get('/api/salary-management/salary/').status_code, status.HTTP_200_OK)
+        upd = self.client.patch(f'/api/salary-management/salary/{self.sal1.id}/', {'basic_salary': 55000})
+        self.assertEqual(upd.status_code, status.HTTP_200_OK)
+
+        # Net salary calc for any org employee
+        net = self.client.get(f'/api/salary-management/net-salary/{self.sal1.id}/?year=2083&month=1')
+        self.assertEqual(net.status_code, status.HTTP_200_OK)
+
+        # Org transactions list & employee transactions list
+        self.assertEqual(self.client.get('/api/salary-management/transactions/organization/').status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.get(f'/api/salary-management/transactions/?employee={self.emp1.id}&year=2083').status_code, status.HTTP_200_OK)
+
+        # Tax bands CRUD
+        tb = self.client.post('/api/salary-management/tax-bands/salary/', {
+            'marital_status': 'single', 'min_salary': 0, 'max_salary': 500000, 'tax_percentage': 1, 'order': 1
+        })
+        self.assertEqual(tb.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(self.client.get('/api/salary-management/tax-bands/salary/').status_code, status.HTTP_200_OK)
+
+        # Fiscal years CRUD
+        fy = self.client.post('/api/fiscal-year/', {'title': '2084/85'})
+        self.assertEqual(fy.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(self.client.delete(f"/api/fiscal-year/{fy.data['id']}/").status_code, status.HTTP_204_NO_CONTENT)
+
+        # CSV export
+        csv_res = self.client.get('/api/salary-management/generate-report/?start_date=2083-01-01&end_date=2083-12-30')
+        self.assertEqual(csv_res.status_code, status.HTTP_200_OK)
+
+    def test_finance_user_has_readonly_org_scoped_employee_directory(self):
+        from rest_framework import status
+        self.client.force_authenticate(user=self.finance_user)
+
+        # Can GET employees strictly in own org (not other_org)
+        res = self.client.get('/api/organization/employees/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        items = res.data if isinstance(res.data, list) else res.data.get('results', [])
+        ids = {e['id'] for e in items}
+        self.assertIn(self.emp1.id, ids)
+        self.assertIn(self.emp2.id, ids)
+        self.assertNotIn(self.other_emp.id, ids)
+
+        # Blocked on write / custom actions
+        self.assertEqual(self.client.post('/api/organization/employees/', {}).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.patch(f'/api/organization/employees/{self.emp1.id}/', {}).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.delete(f'/api/organization/employees/{self.emp1.id}/').status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            self.client.post(f'/api/organization/employees/{self.emp1.id}/reset_password/', {'password': 'newpassword'}).status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.assertEqual(
+            self.client.post(f'/api/organization/employees/{self.emp1.id}/toggle_active/').status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_deactivated_finance_and_employee_blocked_from_admin_salary_endpoints(self):
+        from rest_framework import status
+        # Deactivated finance user
+        self.finance_access.is_active = False
+        self.finance_access.save()
+        self.client.force_authenticate(user=self.finance_user)
+        self.assertEqual(self.client.get('/api/salary-management/transactions/organization/').status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.get('/api/salary-management/analytics/summary/').status_code, status.HTTP_403_FORBIDDEN)
+
+        # Regular employee blocked from analytics, tax bands, fiscal year writes, transaction edits
+        self.client.force_authenticate(user=self.emp1_user)
+        self.assertEqual(self.client.get('/api/salary-management/analytics/summary/').status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.get('/api/salary-management/tax-bands/salary/').status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.post('/api/fiscal-year/', {'title': '2090/91'}).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            self.client.patch(f'/api/salary-management/transactions/{self.tx_83_m1_eng.id}/', {'bonus': 99999}).status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_monthly_and_yearly_analytics_summary(self):
+        from rest_framework import status
+        self.client.force_authenticate(user=self.finance_user)
+
+        res = self.client.get('/api/salary-management/analytics/summary/?year=2083')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        data = res.data
+
+        self.assertEqual(data['selected_year'], 2083)
+        self.assertEqual(len(data['monthly']), 12)
+        self.assertEqual(data['available_years'], [2083, 2082])
+
+        # Month 1 (Baishakh): emp1 net 46000, tds 3500
+        m1 = data['monthly'][0]
+        self.assertEqual(m1['label'], 'Baishakh')
+        self.assertEqual(m1['net'], 46000.0)
+        self.assertEqual(m1['tds'], 3500.0)
+        self.assertEqual(m1['payout_count'], 1)
+
+        # Month 2 (Jestha): emp2 net 36000, tds 2000
+        m2 = data['monthly'][1]
+        self.assertEqual(m2['net'], 36000.0)
+        self.assertEqual(m2['tds'], 2000.0)
+
+        # Yearly: 2082 and 2083 both aggregated
+        yearly_map = {y['year']: y for y in data['yearly']}
+        self.assertIn(2082, yearly_map)
+        self.assertIn(2083, yearly_map)
+        self.assertEqual(yearly_map[2082]['net'], 45000.0)
+        self.assertEqual(yearly_map[2083]['net'], 82000.0)
+        self.assertEqual(yearly_map[2083]['tds'], 5500.0)
+
+        # KPIs for 2083 full year
+        self.assertEqual(data['kpis']['total_net'], 82000.0)
+        self.assertEqual(data['kpis']['total_tds'], 5500.0)
+        self.assertEqual(data['kpis']['payout_count'], 2)
+
+        # Department breakdown
+        depts = {d['department']: d for d in data['by_department']}
+        self.assertIn('Engineering', depts)
+        self.assertIn('Sales', depts)
+        self.assertEqual(depts['Engineering']['net'], 46000.0)
+        self.assertEqual(depts['Sales']['net'], 36000.0)
+
+        # Month-scoped KPIs & department breakdown (Month 1 only)
+        res_m1 = self.client.get('/api/salary-management/analytics/summary/?year=2083&month=1')
+        self.assertEqual(res_m1.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_m1.data['kpis']['total_net'], 46000.0)
+        self.assertEqual(len(res_m1.data['by_department']), 1)
+        self.assertEqual(res_m1.data['by_department'][0]['department'], 'Engineering')
+
+    def test_me_endpoint_returns_finance_role(self):
+        from rest_framework import status
+        self.client.force_authenticate(user=self.finance_user)
+        res = self.client.get('/api/auth/me/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['role'], 'finance')
+        self.assertTrue(res.data['is_finance'])
+        self.assertTrue(res.data['has_approved_policy'])
+        self.assertEqual(res.data['organization_id'], self.org.id)
+
+

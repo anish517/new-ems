@@ -45,6 +45,18 @@ class RouterNotifier extends ChangeNotifier {
     if (!isLoggedIn && !onLoginPage && !onResetPage) return '/login';
     if (!isLoggedIn && (onLoginPage || onResetPage)) return null;
 
+    // Dedicated Finance role guard: only Accounts/Payroll, Notifications, Profile
+    final isFinance = user != null && user.isFinanceRole && !user.canManage;
+    if (isFinance) {
+      const allowedFinanceRoutes = {'/salary', '/notifications', '/profile'};
+      if (onLoginPage) return '/salary';
+      if (onResetPage) return null;
+      if (!allowedFinanceRoutes.contains(state.matchedLocation)) {
+        return '/salary';
+      }
+      return null;
+    }
+
     // Dedicated Performance Reviewer role guard: only Performance, Notifications, Profile
     final isPerformanceReviewer =
         user != null && user.isPerformanceReviewerRole && !user.canManage;

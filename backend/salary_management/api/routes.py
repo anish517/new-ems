@@ -20,4 +20,9 @@ urlpatterns = [
     path('tax-bands/incentive/<int:pk>/', views.IncentiveTaxBandDetailView.as_view(), name='incentive-tax-band-detail'),
     path('tax-bands/bonus/', views.BonusTaxBandListCreateView.as_view(), name='bonus-tax-bands'),
     path('tax-bands/bonus/<int:pk>/', views.BonusTaxBandDetailView.as_view(), name='bonus-tax-band-detail'),
+
+    # Finance Login Management (Admin Only) & Monthly/Yearly Analytics
+    path('finance-users/', views.FinanceUserListCreateAPIView.as_view(), name='finance-users-list'),
+    path('finance-users/<int:pk>/', views.FinanceUserDetailAPIView.as_view(), name='finance-users-detail'),
+    path('analytics/summary/', views.SalaryAnalyticsSummaryAPIView.as_view(), name='salary-analytics-summary'),
 ]

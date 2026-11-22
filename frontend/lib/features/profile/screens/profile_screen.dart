@@ -36,10 +36,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
-    // If user is a super admin / admin / standalone performance reviewer without an employee profile,
-    // don't load employee records
+    // If user is a super admin / admin / standalone finance / standalone performance reviewer
+    // without an employee profile, don't load employee records
     if (user.employeeId == null &&
-        (user.canManage || user.isPerformanceReviewerRole)) {
+        (user.canManage || user.isFinanceRole || user.isPerformanceReviewerRole)) {
       if (mounted) setState(() => _employeeDetails = null);
       return;
     }
@@ -129,7 +129,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _loadChangeRequests() async {
     final user = ref.read(currentUserProvider);
     if (user?.canManage == true ||
-        (user?.isPerformanceReviewerRole == true && user?.employeeId == null)) {
+        ((user?.isFinanceRole == true || user?.isPerformanceReviewerRole == true) &&
+            user?.employeeId == null)) {
       return;
     }
     try {
@@ -792,11 +793,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                                 (user?.canManage == true &&
                                                         emp == null)
                                                     ? 'System Administrator · Full Platform Control'
-                                                    : (user?.isPerformanceReviewerRole ==
+                                                    : (user?.isFinanceRole ==
                                                                 true &&
                                                             emp == null)
-                                                        ? 'Performance Reviewer · Category-Scoped Access'
-                                                        : '$designation · ${empType == 'full_time' ? 'Full-Time' : empType == 'part_time' ? 'Part-Time' : 'Intern'}',
+                                                        ? 'Finance Manager · Payroll & Financial Analytics'
+                                                        : (user?.isPerformanceReviewerRole ==
+                                                                    true &&
+                                                                emp == null)
+                                                            ? 'Performance Reviewer · Category-Scoped Access'
+                                                            : '$designation · ${empType == 'full_time' ? 'Full-Time' : empType == 'part_time' ? 'Part-Time' : 'Intern'}',
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   fontWeight: FontWeight.w600,
@@ -903,8 +908,132 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                       const SizedBox(height: 24),
 
-                      // ── If standalone Performance Reviewer without Employee record ──
+                      // ── If standalone Finance account without Employee record ──
                       if (emp == null &&
+                          (user?.isFinanceRole == true) &&
+                          (user?.canManage != true)) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: context.border, width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.success
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Iconsax.wallet_3,
+                                        color: AppColors.success, size: 18),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Finance & Payroll Privileges',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: context.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'This account has dedicated access to organization payroll processing, salary structures, statutory tax bands, fiscal years, audit exports, and monthly/yearly financial analytics.',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: AppColors.textSecondary,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: context.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: context.border, width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Iconsax.lock,
+                                        color: AppColors.primary, size: 18),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Account & Security Overview',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: context.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              LayoutBuilder(
+                                builder: (context, c) {
+                                  final cols = c.maxWidth < 650 ? 1 : 3;
+                                  return GridView.count(
+                                    crossAxisCount: cols,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    childAspectRatio: cols == 1 ? 4.5 : 2.5,
+                                    children: [
+                                      _buildInfoTile(
+                                          Iconsax.sms,
+                                          'Primary Email',
+                                          user?.email ?? 'N/A'),
+                                      _buildInfoTile(
+                                          Iconsax.user,
+                                          'Account Name',
+                                          user?.fullName ?? 'N/A'),
+                                      _buildInfoTile(
+                                          Iconsax.shield_tick,
+                                          'Account Role',
+                                          'Finance Manager'),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ]
+
+                      // ── If standalone Performance Reviewer without Employee record ──
+                      else if (emp == null &&
                           (user?.isPerformanceReviewerRole == true) &&
                           (user?.canManage != true)) ...[
                         Container(
@@ -957,6 +1086,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
+                      ],
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(20),
@@ -1029,6 +1159,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ]
 
                       // ── If Admin without Employee record: Show Admin Privileges & Account Settings ──
+                      if (emp == null && (user?.canManage == true)) ...[
                       else if (emp == null && (user?.canManage == true)) ...[
                         // ── Administrator System Privileges ──────────────────────────
                         Container(
