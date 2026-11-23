@@ -2289,7 +2289,6 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                   controller: _titleCtrl,
                   decoration: const InputDecoration(
                     labelText: 'Task Title *',
-                    hintText: 'e.g. Implement OAuth login screen',
                     prefixIcon: Icon(Iconsax.text, size: 18),
                   ),
                 ),
