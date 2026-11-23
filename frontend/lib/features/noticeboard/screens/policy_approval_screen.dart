@@ -276,15 +276,21 @@ class _PolicyApprovalScreenState extends ConsumerState<PolicyApprovalScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Iconsax.finger_scan, color: AppColors.primary, size: 20),
+                            const Padding(
+                              padding: EdgeInsets.only(top: 1),
+                              child: Icon(Iconsax.finger_scan, color: AppColors.primary, size: 20),
+                            ),
                             const SizedBox(width: 8),
-                            Text(
-                              'Acknowledgment & Digital Audit Record',
-                              style: TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w800,
-                                color: context.textPrimary,
+                            Expanded(
+                              child: Text(
+                                'Acknowledgment & Digital Audit Record',
+                                style: TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.textPrimary,
+                                ),
                               ),
                             ),
                           ],
@@ -396,15 +402,19 @@ class _PolicyApprovalScreenState extends ConsumerState<PolicyApprovalScreen> {
                                     children: [
                                       const Icon(Iconsax.tick_circle, color: Colors.white, size: 20),
                                       const SizedBox(width: 8),
-                                      Text(
-                                        _policies.isEmpty
-                                            ? 'Proceed to Dashboard'
-                                            : 'Accept & Proceed to Dashboard',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: -0.2,
+                                      Flexible(
+                                        child: Text(
+                                          _policies.isEmpty
+                                              ? 'Proceed to Dashboard'
+                                              : 'Accept & Proceed to Dashboard',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: -0.2,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -443,13 +453,30 @@ class _PolicyApprovalScreenState extends ConsumerState<PolicyApprovalScreen> {
         children: [
           Icon(icon, size: 14, color: AppColors.primary),
           const SizedBox(width: 6),
-          Text(
-            '$label: ',
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
-          ),
-          Text(
-            value,
-            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: context.textPrimary),
+          Flexible(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '$label: ',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  TextSpan(
+                    text: value,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              softWrap: true,
+            ),
           ),
         ],
       ),
@@ -476,21 +503,26 @@ class _PolicyApprovalScreenState extends ConsumerState<PolicyApprovalScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  category,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    category,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
               const Icon(Iconsax.verify, color: AppColors.success, size: 18),
             ],
           ),
