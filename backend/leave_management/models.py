@@ -165,7 +165,7 @@ class LeaveRequest(SoftDeleteModel):
     def files(self):
         return self.leave_requests.all()
 
-    def days_in_month_range(self, year: int, month: int, start_day: int = 1, end_day: int = None, exclude_dates: set = None) -> float:
+    def days_in_month_range(self, year: int, month: int, start_day: int = 1, end_day: int | None = None, exclude_dates: set | None = None) -> float:
         """
         Returns how many working leave days of this LeaveRequest fall within
         the given (year, month) and [start_day..end_day], excluding Saturdays
@@ -176,10 +176,10 @@ class LeaveRequest(SoftDeleteModel):
         from calendar_app.utilities import total_days_in_month
         import datetime as py_dt
 
-        year_i, month_i = int(year), int(month)
+        year_i, month_i = year, month
         m_days = total_days_in_month(year_i, month_i)
-        s_day = max(1, min(int(start_day), m_days))
-        e_day = m_days if end_day is None else max(1, min(int(end_day), m_days))
+        s_day = max(1, min(start_day, m_days))
+        e_day = m_days if end_day is None else max(1, min(end_day, m_days))
         if s_day > e_day:
             return 0.0
 
@@ -216,20 +216,20 @@ class LeaveRequest(SoftDeleteModel):
         return days
 
     @staticmethod
-    def get_total_paid_leaves(employee: Employee, year: int, month: int, start_day: int = 1, exclude_dates: set = None):
+    def get_total_paid_leaves(employee: Employee, year: int, month: int, start_day: int = 1, exclude_dates: set | None = None):
         leave_requests = LeaveRequest.objects.filter(
             employee=employee, is_paid=True, is_approved=True
         )
         if exclude_dates is None:
             from calendar_app.utilities import get_holiday_dates
             org = getattr(employee, 'organization', None)
-            exclude_dates = get_holiday_dates(org, int(year), int(month), start_day=start_day) if org else set()
+            exclude_dates = get_holiday_dates(org, year, month, start_day=start_day) if org else set()
 
         total_days = 0.0
         for leave_request in leave_requests:
             total_days += leave_request.days_in_month_range(
-                year=int(year),
-                month=int(month),
+                year=year,
+                month=month,
                 start_day=start_day,
                 exclude_dates=exclude_dates,
             )
@@ -237,20 +237,20 @@ class LeaveRequest(SoftDeleteModel):
         return total_days
 
     @staticmethod
-    def get_total_unpaid_leaves(employee: Employee, year: int, month: int, start_day: int = 1, exclude_dates: set = None):
+    def get_total_unpaid_leaves(employee: Employee, year: int, month: int, start_day: int = 1, exclude_dates: set | None = None):
         leave_requests = LeaveRequest.objects.filter(
             employee=employee, is_paid=False, is_approved=True
         )
         if exclude_dates is None:
             from calendar_app.utilities import get_holiday_dates
             org = getattr(employee, 'organization', None)
-            exclude_dates = get_holiday_dates(org, int(year), int(month), start_day=start_day) if org else set()
+            exclude_dates = get_holiday_dates(org, year, month, start_day=start_day) if org else set()
 
         total_days = 0.0
         for leave_request in leave_requests:
             total_days += leave_request.days_in_month_range(
-                year=int(year),
-                month=int(month),
+                year=year,
+                month=month,
                 start_day=start_day,
                 exclude_dates=exclude_dates,
             )
@@ -262,7 +262,7 @@ class LeaveRequest(SoftDeleteModel):
         leave_requests = LeaveRequest.objects.filter(employee=employee, is_half_day=True, is_approved=True)
         total_half_days = 0
         for leave_request in leave_requests:
-            if leave_request.from_date and leave_request.from_date.year == int(year) and leave_request.from_date.month == int(month):
+            if leave_request.from_date and leave_request.from_date.year == year and leave_request.from_date.month == month:
                 total_half_days += 1
         return total_half_days
 

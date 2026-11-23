@@ -113,7 +113,7 @@ def get_leave_balance_by_employee(organization):
     return result
 
 
-def get_employees_on_leave(organization: Organization, year: int = None, month: int = None, day: int = None) -> QuerySet[LeaveRequest]:
+def get_employees_on_leave(organization: Organization, year: int | None = None, month: int | None = None, day: int | None = None) -> QuerySet[LeaveRequest]:
     if year and month and day:
         date = nepali_datetime.date(year=year, month=month, day=day)
     else:
@@ -126,12 +126,12 @@ def get_employees_on_leave(organization: Organization, year: int = None, month: 
     return filtered_qs
 
 
-def get_employee_leave_days(employee: Employee, year: int = None, month: int = None) -> int:
+def get_employee_leave_days(employee: Employee, year: int | None = None, month: int | None = None) -> float:
     today = nepali_datetime.date.today()
     year = today.year if year is None else year
     month = today.month if month is None else month
 
-    no_of_days = 0
+    no_of_days = 0.0
 
     leave_requests = LeaveRequest.objects.filter(
         employee=employee, is_approved=True)
@@ -246,16 +246,17 @@ def ensure_default_leave_types_and_settings(organization):
         )
 
 
-def get_employee_leave_breakdown(employee: Employee, year: int = None, month: int = None):
+def get_employee_leave_breakdown(employee: Employee, year: int | None = None, month: int | None = None):
     """
     Calculates detailed leave breakdown for Casual & Sick leaves with monthly accumulation,
     carry-forward, and multi-metric staff quota tracking.
     """
     from .models import LeaveType, LeaveBalance
-    if not year or not month:
-        today = nepali_datetime.date.today()
-        year = year or today.year
-        month = month or today.month
+    today = nepali_datetime.date.today()
+    resolved_year: int = today.year if (year is None or year == 0) else year
+    resolved_month: int = today.month if (month is None or month == 0) else month
+    year = resolved_year
+    month = resolved_month
 
     organization = employee.organization
     if organization:
@@ -410,16 +411,16 @@ def get_employee_leave_breakdown(employee: Employee, year: int = None, month: in
             'leave_type': {
                 'id': lt.id,
                 'name': lt.name,
-                'quota': int(round(annual_quota)),
-                'base_quota': int(round(configured_quota)),
+                'quota': round(annual_quota),
+                'base_quota': round(configured_quota),
                 'is_sick_leave': lt.is_sick_leave,
                 'is_casual_leave': lt.is_casual_leave,
             },
             'is_casual_leave': is_casual,
             'is_sick_leave': is_sick,
             'annual_quota': annual_quota,
-            'base_quota': int(round(configured_quota)),
-            'quota': int(round(annual_quota)),
+            'base_quota': round(configured_quota),
+            'quota': round(annual_quota),
             'accrued_to_date': accrued_to_date,
             'available_this_month': available_this_month,
             'leaves_taken': paid_taken,
@@ -434,7 +435,7 @@ def get_employee_leave_breakdown(employee: Employee, year: int = None, month: in
     return breakdown
 
 
-def get_employee_leave_request(employee: Employee, year: int = None, month: int = None) -> int:
+def get_employee_leave_request(employee: Employee, year: int | None = None, month: int | None = None) -> QuerySet[LeaveRequest]:
     today = nepali_datetime.date.today()
     year = today.year if year is None else year
     month = today.month if month is None else month

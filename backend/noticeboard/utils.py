@@ -3,7 +3,7 @@ from organization.models import Organization
 from .models import Notice
 
 
-def get_notices(organization: Organization, year: int = None, month: int = None):
+def get_notices(organization: Organization, year: int | None = None, month: int | None = None):
     today = nepali_datetime.date.today()
     year = today.year if year is None else year
     month = today.month if month is None else month

@@ -449,7 +449,7 @@ class Attendance(SoftDeleteModel):
         return formatted_hours, int(percentage)
 
     @staticmethod
-    def get_attendance_of_selected_month(employee: Employee, year: int = None,  month: int = None):
+    def get_attendance_of_selected_month(employee: Employee, year: int | None = None, month: int | None = None):
         """
             Retrieves all attendance records for a given employee for the specified month and year.
 
@@ -484,7 +484,7 @@ class Attendance(SoftDeleteModel):
         return Attendance.objects.filter(id__in=filter_attendance_id_list).order_by('date')
 
     @staticmethod
-    def get_no_of_present_days(employee: Employee, year: int = None, month: int = None) -> int:
+    def get_no_of_present_days(employee: Employee, year: int | None = None, month: int | None = None) -> int:
         if year is None:
             year = datetime.today().year
         if month is None:

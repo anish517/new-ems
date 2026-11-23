@@ -22,7 +22,7 @@ def get_employees_list_with_task(organization: Organization) -> list:
     return result
 
 
-def get_employee_task_summary(employee: Employee, year: int = None, month: int = None):
+def get_employee_task_summary(employee: Employee, year: int | None = None, month: int | None = None):
     today = nepali_datetime.date.today()
     year = today.year if year is None else year
     month = today.month if month is None else month
@@ -57,7 +57,7 @@ def get_employee_task_summary(employee: Employee, year: int = None, month: int =
     return data
 
 
-def get_organization_task_summary(organization: Organization, year: int = None, month: int = None):
+def get_organization_task_summary(organization: Organization, year: int | None = None, month: int | None = None):
     from django.db.models import Q
     today = nepali_datetime.date.today()
     year = today.year if year is None else year
@@ -83,7 +83,7 @@ def get_organization_task_summary(organization: Organization, year: int = None, 
     return data
 
 
-def get_project_task_summary(project: Project, year: int = None, month: int = None):
+def get_project_task_summary(project: Project, year: int | None = None, month: int | None = None):
     today = nepali_datetime.date.today()
     year = today.year if year is None else year
     month = today.month if month is None else month

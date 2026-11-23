@@ -24,7 +24,7 @@ def _remove_token(device_token: str):
         pass
 
 
-def send_push_notification(device_token: str, title: str, body: str, data: dict = None):
+def send_push_notification(device_token: str, title: str, body: str, data: dict | None = None):
     """
     Send a real FCM push notification to a device.
     Returns True on success, False on failure.
@@ -77,7 +77,7 @@ def send_push_notification(device_token: str, title: str, body: str, data: dict 
         return False
 
 
-def notify_user(user, title: str, body: str, notification_type: str = 'general', reference_id: int = None):
+def notify_user(user, title: str, body: str, notification_type: str = 'general', reference_id: int | None = None):
     """
     Create a DB Notification record and send FCM push to all user devices.
     """

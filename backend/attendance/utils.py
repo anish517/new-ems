@@ -8,7 +8,7 @@ from calendar_app.utilities import total_days_in_month
 from .models import Attendance, CheckInOut
 from organization.models import Employee, Organization
 
-def get_checked_employees(organization: Organization, year: int = None, month: int = None, day: int = None) -> QuerySet[Attendance]:
+def get_checked_employees(organization: Organization, year: int | None = None, month: int | None = None, day: int | None = None) -> QuerySet[Attendance]:
     """
     Returns queryset of Attendances that has checked in time.
     """
@@ -24,7 +24,7 @@ def get_checked_employees(organization: Organization, year: int = None, month: i
     return Attendance.objects.filter(id__in=attendance_ids)
 
 
-def get_absent_employees(organization: Organization, year: int = None, month: int = None, day: int = None) -> QuerySet[Attendance]:
+def get_absent_employees(organization: Organization, year: int | None = None, month: int | None = None, day: int | None = None) -> QuerySet[Employee]:
     """
     Returns queryset of Attendances that has checked in time.
     """
@@ -71,7 +71,7 @@ def get_employees_attendance_list(organization: Organization,):
     return attendance_list
 
 
-def get_attendance(employee: Employee, year: int = None, month: int = None):
+def get_attendance(employee: Employee, year: int | None = None, month: int | None = None):
     today = nepali_datetime.date.today()
     year = today.year if year is None else year
     month = today.month if month is None else month
@@ -91,7 +91,7 @@ def get_attendance(employee: Employee, year: int = None, month: int = None):
     return attendance_qs
 
 
-def get_working_hour(employee: Employee, year: int = None, month: int = None, day: int = None):
+def get_working_hour(employee: Employee, year: int | None = None, month: int | None = None, day: int | None = None):
     today = nepali_datetime.date.today()
     year = today.year if year is None else year
     month = today.month if month is None else month
@@ -119,7 +119,7 @@ def get_working_hour(employee: Employee, year: int = None, month: int = None, da
     return attendance.formated_working_hour(), round(percentage)
 
 
-def average_working_hour(employee: Employee, year: int = None, month: int = None):
+def average_working_hour(employee: Employee, year: int | None = None, month: int | None = None):
     today = nepali_datetime.date.today()
     year = today.year if year is None else year
     month = today.month if month is None else month

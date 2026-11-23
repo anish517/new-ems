@@ -43,7 +43,7 @@ def send_welcome_email(employee: Employee, redirect_link: str):
     email.send()
 
 
-def get_analysis_report(employee: Employee, year: int = None, month: int = None) -> EmployeeAnalysisReport:
+def get_analysis_report(employee: Employee, year: int | None = None, month: int | None = None) -> EmployeeAnalysisReport:
     today = nepali_datetime.date.today()
     year = today.year if year is None else year
     month = today.month if month is None else month
