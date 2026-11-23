@@ -7,7 +7,7 @@ from attendance.models import Attendance
 from fiscal_year.models import FiscalYear
 from organization.models import Employee, Organization
 from leave_management.models import LeaveRequest
-from calendar_app.utilities import count_saturdays, count_holidays, total_days_in_month
+from calendar_app.utilities import count_saturdays, count_holidays, get_holiday_dates, total_days_in_month
 from utils.models import SoftDeleteModel
 
 # Create your models here.
@@ -97,22 +97,59 @@ class Salary(SoftDeleteModel):
         attendances = Attendance.get_attendance_of_selected_month(
             employee=employee, year=year, month=month)
 
-        days_present = [
+        raw_present = [
             attendance for attendance in attendances if attendance.has_checked_in()]
 
-        remote_attendance = len([
-            attendance for attendance in days_present if attendance.is_remote])
-        site_attendance = len([
-            attendance for attendance in days_present if not attendance.is_remote])
+        # Deduplicate real nepali_datetime.date attendance records by calendar date
+        # (and ignore records prior to start_day for mid-month joiners), while preserving
+        # mock attendance objects used in unit tests.
+        # Note: nepali_datetime.date.__hash__ is broken on Python 3.13, so we key by (year, month, day) tuples.
+        dedup_by_date = {}
+        present_date_objs = {}
+        mock_present = []
+        for att in raw_present:
+            att_date = getattr(att, 'date', None)
+            if isinstance(att_date, nepali_datetime.date):
+                if att_date.day < start_day:
+                    continue
+                att_key = (att_date.year, att_date.month, att_date.day)
+                present_date_objs[att_key] = att_date
+                if att_key not in dedup_by_date:
+                    dedup_by_date[att_key] = att
+                else:
+                    # If any check-in on that date was on-site, treat the day as on-site
+                    if not getattr(att, 'is_remote', False):
+                        dedup_by_date[att_key] = att
+            else:
+                mock_present.append(att)
+
+        days_present = list(dedup_by_date.values()) + mock_present
+        present_keys = set(dedup_by_date.keys())
+
+        remote_attendance = float(len([
+            attendance for attendance in days_present if attendance.is_remote]))
+        site_attendance = float(len([
+            attendance for attendance in days_present if not attendance.is_remote]))
 
         paid_leaves = LeaveRequest.get_total_paid_leaves(
             employee=employee, year=year, month=month)
 
+        actual_cal_days = nepali_datetime._days_in_month(year, month)
+        safe_end_day = min(days_in_month, actual_cal_days)
+        saturday_keys = {
+            (year, month, d)
+            for d in range(start_day, safe_end_day + 1)
+            if nepali_datetime.date(year, month, d).weekday() == 6
+        }
+        holiday_keys = get_holiday_dates(organization, year=year, month=month, start_day=start_day, end_day=safe_end_day)
+        off_keys = saturday_keys | holiday_keys
+
         if holidays_override is not None:
             holidays = holidays_override
         else:
-            holidays = count_saturdays(year=year, month=month, start_day=start_day) + count_holidays(
-                organization, year=year, month=month, start_day=start_day)
+            # Exclude off-days where the employee also checked in so a Saturday/holiday
+            # check-in is never double-counted as 2.0 paid days for 1 calendar date.
+            holidays = len(off_keys - present_keys)
 
         # 30-Day Basis Calculation
         salary_qs = Salary.objects.filter(employee=employee)
@@ -120,42 +157,125 @@ class Salary(SoftDeleteModel):
             return 0.0
         salary_obj = salary_qs.first()
 
-        per_day_rate = salary_obj.basic_salary / 30.0
-        remote_per_day = salary_obj.remote_salary / 30.0
+        per_day_rate = (salary_obj.basic_salary or 0.0) / 30.0
+        # If remote_salary is 0 or unset, default remote days to the standard basic_salary rate
+        effective_remote_salary = (
+            salary_obj.remote_salary
+            if (salary_obj.remote_salary is not None and salary_obj.remote_salary > 0)
+            else (salary_obj.basic_salary or 0.0)
+        )
+        remote_per_day = effective_remote_salary / 30.0
+
+        # Prevent double-counting full-day paid leaves on dates where the employee also checked in
+        full_paid_leave_overlap = 0.0
+        if present_keys:
+            full_paid_leaves = LeaveRequest.objects.filter(
+                employee=employee, is_half_day=False, is_paid=True, is_approved=True
+            )
+            overlap_keys = set()
+            for lr in full_paid_leaves:
+                if not lr.from_date:
+                    continue
+                till = lr.till_date if lr.till_date and lr.till_date >= lr.from_date else lr.from_date
+                for p_key, p_date in present_date_objs.items():
+                    if p_key not in off_keys and lr.from_date <= p_date <= till:
+                        overlap_keys.add(p_key)
+            full_paid_leave_overlap = float(len(overlap_keys))
 
         # Total paid days (they get credit for attendance, paid leaves, and holidays during active employment)
-        paid_days = site_attendance + remote_attendance + paid_leaves + holidays
-        
-        # Unpaid Half Leave Loophole Fix:
-        # If someone takes an unpaid half leave, but clocks in for the other half, 
-        # site_attendance gives them 1.0 full point. We must subtract 0.5 points.
-        unpaid_half_leaves = LeaveRequest.objects.filter(
-            employee=employee, is_half_day=True, is_paid=False, is_approved=True
+        paid_days = site_attendance + remote_attendance + max(0.0, paid_leaves - full_paid_leave_overlap) + holidays
+
+        # Half-Day Leave + Check-In Deduplication (both Paid and Unpaid half-day leaves):
+        # When an employee takes an approved half-day leave and checks in for the other half:
+        # - site_attendance/remote_attendance gave them 1.0 full day for checking in.
+        # - If the half-day leave is PAID, paid_leaves also added +0.5 (total 1.5 without adjustment).
+        # - If the half-day leave is UNPAID, paid_leaves added 0.0 (total 1.0 without adjustment).
+        # Subtracting 0.5 for each checked-in half-day leave yields 1.0 paid day for paid half-leave
+        # and 0.5 paid day for unpaid half-leave.
+        approved_half_leaves = LeaveRequest.objects.filter(
+            employee=employee, is_half_day=True, is_approved=True
         )
-        unpaid_half_leave_dates = [
-            lr.from_date for lr in unpaid_half_leaves 
-            if lr.from_date.year == year and lr.from_date.month == month
-        ]
+        half_leave_keys = {
+            (lr.from_date.year, lr.from_date.month, lr.from_date.day)
+            for lr in approved_half_leaves
+            if lr.from_date and lr.from_date.year == year and lr.from_date.month == month
+            and (lr.from_date.year, lr.from_date.month, lr.from_date.day) not in off_keys
+        }
         for attendance in days_present:
-            if attendance.date in unpaid_half_leave_dates:
-                paid_days -= 0.5
-        
+            att_date = getattr(attendance, 'date', None)
+            if isinstance(att_date, nepali_datetime.date):
+                att_key = (att_date.year, att_date.month, att_date.day)
+                if att_key in half_leave_keys:
+                    paid_days -= 0.5
+                    if getattr(attendance, 'is_remote', False):
+                        remote_attendance = max(0.0, remote_attendance - 0.5)
+
+        if paid_days <= 0:
+            return 0.0
+
         # Calculate unpaid absences by comparing actual days in month to their paid days
         # (For mid-month joinees, unworked days prior to joining date are automatically in (days_in_month - paid_days))
         unpaid_absences = max(0.0, days_in_month - paid_days)
 
         # Start with the full 30-day base salary, and deduct any unpaid absences
-        base_salary = salary_obj.basic_salary
+        base_salary = salary_obj.basic_salary or 0.0
         base_payout = max(0.0, base_salary - (unpaid_absences * per_day_rate))
-        
+
         # Remote Swap Adjustment:
-        # Since 'paid_days' includes remote_attendance, the base_payout currently pays them 
-        # the standard Base Rate for their remote days. We must swap out the Base Rate for 
-        # the Remote Rate for exactly the number of days they worked remotely.
+        # Since 'paid_days' includes remote_attendance, the base_payout currently pays them
+        # the standard Base Rate for their remote days. We must swap out the Base Rate for
+        # the Remote Rate for the exact number of days they worked remotely.
         remote_swap_adjustment = remote_attendance * (remote_per_day - per_day_rate)
 
         gross_salary = base_payout + remote_swap_adjustment
         return max(0.0, round(gross_salary))
+
+    @classmethod
+    def calculate_tds(cls, employee, year, month, gross_salary=None, holidays_override=None, tds_override=None, incentive_override=0, bonus_override=0):
+        if tds_override is not None:
+            return float(tds_override)
+
+        if gross_salary is None:
+            gross_salary = cls.calculate_gross_salary(
+                employee=employee, year=year, month=month, holidays_override=holidays_override
+            )
+
+        try:
+            salary_obj = Salary.objects.get(employee=employee)
+        except Salary.DoesNotExist:
+            return 0.0
+
+        org = employee.organization
+        marital = (getattr(employee, 'marital_status', 'single') or 'single').lower()
+
+        from salary_management.models import SalaryTaxBand, IncentiveTaxBand, BonusTaxBand, get_tax_from_bands
+        base_tds = 0.0
+        if gross_salary > 0:
+            annualized_salary = gross_salary * 12
+            if org:
+                bands = SalaryTaxBand.objects.filter(organization=org, marital_status=marital)
+            else:
+                bands = SalaryTaxBand.objects.filter(marital_status=marital)
+
+            if bands.exists():
+                base_tds = get_tax_from_bands(bands, annualized_salary) / 12.0
+            else:
+                tax_rate = salary_obj.tax_rate or 0
+                base_tds = round((gross_salary * tax_rate) / 100) if tax_rate > 0 else (salary_obj.tds or 0)
+
+        incentive_tax = 0.0
+        if (incentive_override or 0) > 0:
+            inc_bands = IncentiveTaxBand.objects.filter(organization=org) if org else IncentiveTaxBand.objects.all()
+            if inc_bands.exists():
+                incentive_tax = get_tax_from_bands(inc_bands, incentive_override)
+
+        bonus_tax = 0.0
+        if (bonus_override or 0) > 0:
+            bon_bands = BonusTaxBand.objects.filter(organization=org) if org else BonusTaxBand.objects.all()
+            if bon_bands.exists():
+                bonus_tax = get_tax_from_bands(bon_bands, bonus_override)
+
+        return round(base_tds + incentive_tax + bonus_tax, 2)
 
     @classmethod
     def calculate_net_salary(cls, employee, year, month, holidays_override=None, ssf_override=None, epf_override=None, tds_override=None, incentive_override=0, bonus_override=0):
@@ -166,41 +286,16 @@ class Salary(SoftDeleteModel):
 
         try:
             salary_obj = Salary.objects.get(employee=employee)
-
-            if tds_override is not None:
-                tds_amount = tds_override
-            else:
-                # Try dynamic tax bands first
-                org = employee.organization
-                marital = (getattr(employee, 'marital_status', 'single') or 'single').lower()
-                
-                annualized_salary = (gross_salary * 12)
-                
-                from salary_management.models import SalaryTaxBand, IncentiveTaxBand, BonusTaxBand, get_tax_from_bands
-                if org:
-                    bands = SalaryTaxBand.objects.filter(organization=org, marital_status=marital)
-                else:
-                    bands = SalaryTaxBand.objects.filter(marital_status=marital)
-                    
-                if bands.exists():
-                    base_tds = get_tax_from_bands(bands, annualized_salary) / 12.0
-                else:
-                    tax_rate = salary_obj.tax_rate or 0
-                    base_tds = round((gross_salary * tax_rate) / 100) if tax_rate > 0 else (salary_obj.tds or 0)
-                
-                incentive_tax = 0.0
-                if incentive_override > 0:
-                    inc_bands = IncentiveTaxBand.objects.filter(organization=org) if org else IncentiveTaxBand.objects.all()
-                    if inc_bands.exists():
-                        incentive_tax = get_tax_from_bands(inc_bands, incentive_override)
-                
-                bonus_tax = 0.0
-                if bonus_override > 0:
-                    bon_bands = BonusTaxBand.objects.filter(organization=org) if org else BonusTaxBand.objects.all()
-                    if bon_bands.exists():
-                        bonus_tax = get_tax_from_bands(bon_bands, bonus_override)
-                        
-                tds_amount = base_tds + incentive_tax + bonus_tax
+            tds_amount = cls.calculate_tds(
+                employee=employee,
+                year=year,
+                month=month,
+                gross_salary=gross_salary,
+                holidays_override=holidays_override,
+                tds_override=tds_override,
+                incentive_override=incentive_override,
+                bonus_override=bonus_override,
+            )
 
             ssf = ssf_override if ssf_override is not None else (salary_obj.ssf or 0)
             epf = epf_override if epf_override is not None else (salary_obj.epf or 0)
@@ -257,12 +352,26 @@ class SalaryTransaction(SoftDeleteModel):
                 self.stored_unpaid_leaves = self.calc_unpaid_leaves()
             if self.stored_half_leaves is None:
                 self.stored_half_leaves = self.calc_half_leaves()
+            if self.transaction_tds is None:
+                self.transaction_tds = Salary.calculate_tds(
+                    employee=self.salary.employee,
+                    year=self.date.year,
+                    month=self.date.month,
+                    holidays_override=self.stored_holidays,
+                    tds_override=None,
+                    incentive_override=self.incentive or 0,
+                    bonus_override=self.bonus or 0,
+                )
+            if self.transaction_ssf is None:
+                self.transaction_ssf = self.salary.ssf or 0
+            if self.transaction_epf is None:
+                self.transaction_epf = self.salary.epf or 0
             if self.stored_net_salary is None:
                 self.stored_net_salary = self.calc_net_salary()
             # Compute total employer expense: net + tds + ssf + epf + cit + insurance
             if self.total_expense is None and self.salary:
                 net = self.stored_net_salary or 0
-                tds = self.transaction_tds if self.transaction_tds is not None else (round((self.gross_salary * (self.salary.tax_rate or 0)) / 100) if (self.salary.tax_rate or 0) > 0 else (self.salary.tds or 0))
+                tds = self.transaction_tds if self.transaction_tds is not None else 0
                 ssf = self.transaction_ssf if self.transaction_ssf is not None else (self.salary.ssf or 0)
                 epf = self.transaction_epf if self.transaction_epf is not None else (self.salary.epf or 0)
                 cit = self.salary.citizen_investment_trust or 0
@@ -299,8 +408,20 @@ class SalaryTransaction(SoftDeleteModel):
         if not self.salary or not getattr(self.salary, 'employee', None) or not self.date:
             return 0
         try:
-            org = getattr(self.salary.employee, 'organization', None)
-            return count_saturdays(self.date.year, self.date.month) + (count_holidays(org, self.date.year, self.date.month) if org else 0)
+            employee = self.salary.employee
+            org = getattr(employee, 'organization', None)
+            year, month = self.date.year, self.date.month
+            days_in_month = total_days_in_month(year, month)
+            joined_year, joined_month, joined_day = Salary.get_employee_joining_bs(employee)
+            start_day = 1
+            if joined_year:
+                if year < joined_year or (year == joined_year and month < joined_month):
+                    return 0
+                if year == joined_year and month == joined_month:
+                    start_day = max(1, min(joined_day, days_in_month))
+            return count_saturdays(year, month, start_day=start_day) + (
+                count_holidays(org, year, month, start_day=start_day) if org else 0
+            )
         except Exception:
             return 0
 

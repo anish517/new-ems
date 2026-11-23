@@ -240,6 +240,271 @@ class SalaryCalculationTests(TestCase):
         saturdays_16_to_31 = sum(1 for d in range(16, 32) if nepali_datetime.date(2083, 5, d).weekday() == 6)
         self.assertEqual(res_m5.data['holidays'], saturdays_16_to_31)
 
+    @patch('salary_management.models.total_days_in_month')
+    @patch('attendance.models.Attendance.get_attendance_of_selected_month')
+    @patch('leave_management.models.LeaveRequest.get_total_paid_leaves')
+    def test_29_30_31_32_day_months_strict_30_day_basis_and_zero_paid_days(
+        self, mock_leaves, mock_attendance, mock_days_in_month
+    ):
+        """
+        Verify strict 30-day basis across 29, 30, 31, and 32-day B.S. months:
+        - Full attendance (0 absences) -> 100% basic_salary (30,000)
+        - 2 unpaid absences -> 30,000 - 2 * (30,000 / 30) = 28,000 in every month length
+        - 0 paid days in a 29-day month -> 0.0 (never 1 phantom day from 30 - 29)
+        """
+        mock_leaves.return_value = 0
+        mock_attendance.return_value = []
+
+        for m_len in (29, 30, 31, 32):
+            mock_days_in_month.return_value = m_len
+            # Full attendance
+            full_gross = Salary.calculate_gross_salary(
+                employee=self.emp1, year=2083, month=1, holidays_override=m_len
+            )
+            self.assertEqual(full_gross, 30000)
+
+            # 2 unpaid absences
+            two_abs_gross = Salary.calculate_gross_salary(
+                employee=self.emp1, year=2083, month=1, holidays_override=m_len - 2
+            )
+            self.assertEqual(two_abs_gross, 28000)
+
+            # 0 paid days -> must be strictly 0.0 even in a 29-day month
+            zero_gross = Salary.calculate_gross_salary(
+                employee=self.emp1, year=2083, month=1, holidays_override=0
+            )
+            self.assertEqual(zero_gross, 0.0)
+
+    def test_paid_and_unpaid_half_day_leave_with_checkin_no_double_count(self):
+        """
+        Verify that:
+        - Approved PAID half-day leave + check-in on that date credits 1.0 day total (not 1.5 days).
+        - Approved UNPAID half-day leave + check-in on that date credits 0.5 day total (not 1.0 day).
+        """
+        import datetime as py_dt
+        import nepali_datetime
+        from attendance.models import Attendance, CheckInOut
+        from leave_management.models import LeaveRequest, LeaveType
+
+        casual = LeaveType.objects.create(organization=self.org, name="Casual Leave", quota=12, is_casual_leave=True)
+        # Find two non-Saturday working days in 2083-08 (Mangsir 2083 = 29 days)
+        work_days = [
+            nepali_datetime.date(2083, 8, d)
+            for d in range(1, 30)
+            if nepali_datetime.date(2083, 8, d).weekday() != 6
+        ]
+        paid_half_day = work_days[0]
+        unpaid_half_day = work_days[1]
+
+        # Check in on all working days except work_days[2] (1 full day unpaid absence)
+        absent_day = work_days[2]
+        for wd in work_days:
+            if wd == absent_day:
+                continue
+            att = Attendance.objects.create(
+                organization=self.org, employee=self.emp1, date=wd, is_remote=False
+            )
+            CheckInOut.objects.create(attendance=att, check_in=py_dt.time(9, 30), check_out=py_dt.time(17, 30))
+
+        # 1. Paid half-day leave on paid_half_day (where emp1 also checked in for the other half)
+        LeaveRequest.objects.create(
+            organization=self.org,
+            employee=self.emp1,
+            type=casual,
+            from_date=paid_half_day,
+            till_date=paid_half_day,
+            subject="Paid Half Day",
+            is_half_day=True,
+            is_paid=True,
+            is_approved=True,
+        )
+        # Paid half-day + check-in should NOT cancel out absent_day (still 1.0 day unpaid absence -> 29,000)
+        gross_with_paid_half = Salary.calculate_gross_salary(self.emp1, year=2083, month=8)
+        self.assertEqual(gross_with_paid_half, 29000)
+
+        # 2. Unpaid half-day leave on unpaid_half_day (where emp1 also checked in for the other half)
+        LeaveRequest.objects.create(
+            organization=self.org,
+            employee=self.emp1,
+            type=casual,
+            from_date=unpaid_half_day,
+            till_date=unpaid_half_day,
+            subject="Unpaid Half Day",
+            is_half_day=True,
+            is_paid=False,
+            is_approved=True,
+        )
+        # Now total unpaid absences = 1.0 (absent_day) + 0.5 (unpaid_half_day) = 1.5 days -> 28,500
+        gross_with_both = Salary.calculate_gross_salary(self.emp1, year=2083, month=8)
+        self.assertEqual(gross_with_both, 28500)
+
+    def test_holiday_saturday_and_checkin_overlap_deduplication(self):
+        """
+        Verify that:
+        - A holiday event falling on a Saturday is not double-counted with count_saturdays.
+        - Checking in on a Saturday or Public Holiday does not erase a weekday absence.
+        - Cross-month multi-day leaves clip strictly to each month's boundaries.
+        """
+        import datetime as py_dt
+        import nepali_datetime
+        from attendance.models import Attendance, CheckInOut
+        from calendar_app.models import Event
+        from calendar_app.utilities import count_holidays, count_saturdays
+        from leave_management.models import LeaveRequest, LeaveType
+
+        saturdays = [
+            nepali_datetime.date(2083, 8, d)
+            for d in range(1, 30)
+            if nepali_datetime.date(2083, 8, d).weekday() == 6
+        ]
+        work_days = [
+            nepali_datetime.date(2083, 8, d)
+            for d in range(1, 30)
+            if nepali_datetime.date(2083, 8, d).weekday() != 6
+        ]
+
+        # Create a holiday event on a Saturday and another on work_days[0]
+        Event.objects.create(
+            organization=self.org,
+            title="Saturday Festival",
+            start=saturdays[0],
+            end=saturdays[0],
+            is_holiday=True,
+        )
+        Event.objects.create(
+            organization=self.org,
+            title="Weekday Holiday",
+            start=work_days[0],
+            end=work_days[0],
+            is_holiday=True,
+        )
+        # Duplicate holiday on same weekday should also be deduplicated
+        Event.objects.create(
+            organization=self.org,
+            title="Duplicate Weekday Holiday",
+            start=work_days[0],
+            end=work_days[0],
+            is_holiday=True,
+        )
+
+        self.assertEqual(count_saturdays(2083, 8), len(saturdays))
+        self.assertEqual(count_holidays(self.org, 2083, 8), 1)
+
+        # Employee checks in on saturdays[0] and work_days[0] (the holiday),
+        # and is absent on work_days[1] and work_days[2], present on all other working days
+        for wd in work_days[3:]:
+            att = Attendance.objects.create(
+                organization=self.org, employee=self.emp1, date=wd, is_remote=False
+            )
+            CheckInOut.objects.create(attendance=att, check_in=py_dt.time(9, 0), check_out=py_dt.time(17, 0))
+
+        for extra_day in (saturdays[0], work_days[0]):
+            att = Attendance.objects.create(
+                organization=self.org, employee=self.emp1, date=extra_day, is_remote=False
+            )
+            CheckInOut.objects.create(attendance=att, check_in=py_dt.time(10, 0), check_out=py_dt.time(14, 0))
+
+        # Even though employee checked in on a Saturday and a Public Holiday,
+        # they still missed work_days[1] and work_days[2] (2 unpaid absences -> 28,000)
+        gross = Salary.calculate_gross_salary(self.emp1, year=2083, month=8)
+        self.assertEqual(gross, 28000)
+
+        # Cross-month leave from 2083-08-28 to 2083-09-02
+        casual = LeaveType.objects.create(organization=self.org, name="Casual", quota=12)
+        LeaveRequest.objects.create(
+            organization=self.org,
+            employee=self.emp1,
+            type=casual,
+            from_date=nepali_datetime.date(2083, 8, 28),
+            till_date=nepali_datetime.date(2083, 9, 2),
+            subject="Cross Month Leave",
+            is_paid=True,
+            is_approved=True,
+        )
+        m8_paid = LeaveRequest.get_total_paid_leaves(self.emp1, 2083, 8)
+        m9_paid = LeaveRequest.get_total_paid_leaves(self.emp1, 2083, 9)
+        self.assertLessEqual(m8_paid, 2.0)
+        self.assertGreater(m9_paid, 0.0)
+
+    def test_remote_salary_zero_defaults_to_basic_rate(self):
+        """
+        When remote_salary is 0 (not separately configured), remote attendance days
+        must be paid at the employee's standard basic_salary rate instead of 0.
+        """
+        import datetime as py_dt
+        import nepali_datetime
+        from attendance.models import Attendance, CheckInOut
+
+        Salary.objects.filter(employee=self.emp1).update(basic_salary=30000, remote_salary=0)
+        work_days = [
+            nepali_datetime.date(2083, 8, d)
+            for d in range(1, 30)
+            if nepali_datetime.date(2083, 8, d).weekday() != 6
+        ]
+        for wd in work_days:
+            att = Attendance.objects.create(
+                organization=self.org, employee=self.emp1, date=wd, is_remote=True
+            )
+            CheckInOut.objects.create(attendance=att, check_in=py_dt.time(9, 0), check_out=py_dt.time(17, 0))
+
+        gross = Salary.calculate_gross_salary(self.emp1, year=2083, month=8)
+        self.assertEqual(gross, 30000)
+
+    def test_transaction_creation_combines_base_tds_with_incentive_and_bonus_tds(self):
+        """
+        Verify Finding #1 fix: Creating a SalaryTransaction with incentive/bonus
+        and no manual TDS override combines base salary progressive-band TDS with
+        IncentiveTaxBand and BonusTaxBand TDS and saves transaction_tds.
+        """
+        from rest_framework import status
+        from rest_framework.test import APIClient
+        from fiscal_year.models import FiscalYear
+        from salary_management.models import BonusTaxBand, IncentiveTaxBand, SalaryTransaction
+
+        admin = Account.objects.create_superuser(
+            email="tdsadmin@test.com", first_name="TDS", last_name="Admin", password="password123"
+        )
+        self.org.admin_users.add(admin)
+        fy = FiscalYear.objects.create(organization=self.org, title="2083/84")
+
+        # 1% base salary tax band -> 30,000 * 12 = 360,000 @ 1% = 3,600/yr = 300/month
+        SalaryTaxBand.objects.create(
+            organization=self.org, marital_status="single",
+            min_salary=0, max_salary=500000, tax_percentage=1, order=1,
+        )
+        # 10% incentive tax band -> 10,000 @ 10% = 1,000
+        IncentiveTaxBand.objects.create(
+            organization=self.org, min_amount=0, max_amount=100000, tax_percentage=10, order=1,
+        )
+        # 15% bonus tax band -> 20,000 @ 15% = 3,000
+        BonusTaxBand.objects.create(
+            organization=self.org, min_amount=0, max_amount=100000, tax_percentage=15, order=1,
+        )
+
+        sal = Salary.objects.get(employee=self.emp1)
+        client = APIClient()
+        client.force_authenticate(user=admin)
+
+        # Full month attendance via holidays_override=29 in Mangsir 2083 (29 days) -> Gross = 30,000
+        res = client.post('/api/salary-management/transactions/organization/', {
+            'salary': sal.id,
+            'fiscal_year': fy.id,
+            'date': '2083-08-29',
+            'holidays': 29,
+            'incentive': 10000,
+            'bonus': 20000,
+            'email_preference': 'none',
+        }, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        tx = SalaryTransaction.objects.get(id=res.data['id'])
+        # Base TDS (300) + Incentive TDS (1000) + Bonus TDS (3000) = 4300
+        self.assertEqual(tx.transaction_tds, 4300.0)
+        # Net = (30,000 - 4,300) + 10,000 + 20,000 = 55,700
+        self.assertEqual(tx.net_salary, 55700.0)
+        # Total expense = Net (55,700) + TDS (4,300) = 60,000
+        self.assertEqual(tx.total_expense, 60000.0)
+
 
 class FinanceRoleAndAnalyticsTests(TestCase):
     def setUp(self):

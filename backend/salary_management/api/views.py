@@ -121,13 +121,18 @@ class BasicSalaryCreateAPIView(generics.ListCreateAPIView):
         if org and emp_org and emp_org.id != org.id:
             return Response({'error': 'Employee does not belong to your organization.'}, status=status.HTTP_403_FORBIDDEN)
         
+        defaults = {
+            'basic_salary': serializer.validated_data.get('basic_salary', 0),
+            'remote_salary': serializer.validated_data.get('remote_salary', 0),
+            'organization': emp_org or org,
+        }
+        for optional_field in ('ssf', 'tds', 'epf', 'citizen_investment_trust', 'insurance', 'tax_rate'):
+            if optional_field in serializer.validated_data:
+                defaults[optional_field] = serializer.validated_data.get(optional_field) or 0
+
         salary, created = Salary.objects.update_or_create(
             employee=employee,
-            defaults={
-                'basic_salary': serializer.validated_data.get('basic_salary', 0),
-                'remote_salary': serializer.validated_data.get('remote_salary', 0),
-                'organization': emp_org or org
-            }
+            defaults=defaults,
         )
         return Response(self.get_serializer(salary).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
@@ -262,37 +267,16 @@ class NetSalaryAPIView(generics.RetrieveAPIView):
 
         gross_salary = Salary.calculate_gross_salary(
             employee=salary.employee, year=year, month=month, holidays_override=holidays_override)
-        if tds_override is not None:
-            tds_amount = tds_override
-        else:
-            annualized_salary = (gross_salary * 12)
-            from salary_management.models import SalaryTaxBand, IncentiveTaxBand, BonusTaxBand, get_tax_from_bands
-            marital = (getattr(salary.employee, 'marital_status', 'single') or 'single').lower()
-            org = salary.employee.organization
-            if org:
-                bands = SalaryTaxBand.objects.filter(organization=org, marital_status=marital)
-            else:
-                bands = SalaryTaxBand.objects.filter(marital_status=marital)
-            
-            if bands.exists():
-                base_tds = get_tax_from_bands(bands, annualized_salary) / 12.0
-            else:
-                tax_rate = salary.tax_rate or 0
-                base_tds = round((gross_salary * tax_rate) / 100) if tax_rate > 0 else (salary.tds or 0)
-                
-            incentive_tax = 0.0
-            if incentive_override > 0:
-                inc_bands = IncentiveTaxBand.objects.filter(organization=org) if org else IncentiveTaxBand.objects.all()
-                if inc_bands.exists():
-                    incentive_tax = get_tax_from_bands(inc_bands, incentive_override)
-            
-            bonus_tax = 0.0
-            if bonus_override > 0:
-                bon_bands = BonusTaxBand.objects.filter(organization=org) if org else BonusTaxBand.objects.all()
-                if bon_bands.exists():
-                    bonus_tax = get_tax_from_bands(bon_bands, bonus_override)
-                    
-            tds_amount = base_tds + incentive_tax + bonus_tax
+        tds_amount = Salary.calculate_tds(
+            employee=salary.employee,
+            year=year,
+            month=month,
+            gross_salary=gross_salary,
+            holidays_override=holidays_override,
+            tds_override=tds_override,
+            incentive_override=incentive_override,
+            bonus_override=bonus_override,
+        )
         ssf = ssf_override if ssf_override is not None else (salary.ssf or 0)
         epf = epf_override if epf_override is not None else (salary.epf or 0)
 
@@ -506,31 +490,14 @@ class OrganizationSalaryTransactionListAPIView(generics.ListCreateAPIView):
             epf_val = None
 
         try:
-            tds_val = float(request.data.get('tds')) if request.data.get('tds') is not None else None
-        except ValueError:
+            raw_tds = request.data.get('tds')
+            tds_val = float(raw_tds) if (raw_tds is not None and str(raw_tds).strip() != '') else None
+        except (ValueError, TypeError):
             tds_val = None
 
-        # ── Dynamic Incentive & Bonus tax calculation ─────────────────────────
-        # Calculate additional TDS from incentive/bonus using dynamic tax bands
-        org_for_tax = organization
-        incentive_tax = 0.0
-        bonus_tax = 0.0
-        if incentive > 0:
-            incentive_bands = IncentiveTaxBand.objects.filter(organization=org_for_tax)
-            if incentive_bands.exists():
-                incentive_tax = get_tax_from_bands(incentive_bands, incentive)
-        if bonus > 0:
-            bonus_bands = BonusTaxBand.objects.filter(organization=org_for_tax)
-            if bonus_bands.exists():
-                bonus_tax = get_tax_from_bands(bonus_bands, bonus)
-
-        # Add incentive_tax + bonus_tax to the transaction TDS
-        if tds_val is None:
-            # Will be calculated in model, but pre-add extra taxes
-            extra_tds = incentive_tax + bonus_tax
-            if extra_tds > 0:
-                # We store this addition; the base salary tds is auto-calculated in model
-                tds_val = extra_tds  # Will be combined with salary-band TDS in calc_net_salary
+        # Note: When tds_val is None, SalaryTransaction.save() automatically calls
+        # Salary.calculate_tds() which combines base salary progressive-band TDS
+        # with IncentiveTaxBand and BonusTaxBand TDS.
 
         st = SalaryTransaction.objects.create(
             organization=organization,

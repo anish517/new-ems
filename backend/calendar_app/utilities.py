@@ -23,37 +23,57 @@ def count_saturdays(year: int, month: int, start_day: int = 1, end_day: int = No
     return saturdays
 
 
-def count_holidays(organization: Organization, year: int, month: int, start_day: int = 1, end_day: int = None) -> int:
+def get_holiday_dates(organization: Organization, year: int, month: int, start_day: int = 1, end_day: int = None) -> set:
     """
-    Counts the total number of holiday days in a specific month (or day range) for a given organization.
+    Returns the deduplicated set of non-Saturday public holiday (year, month, day) tuples
+    in a specific month (or day range) for a given organization.
+    Handles single-day, multi-day, overlapping, and cross-month holiday events.
     """
     if not organization:
-        return 0
+        return set()
 
     days_in_month = total_days_in_month(year, month)
     if end_day is None or end_day > days_in_month:
         end_day = days_in_month
     start_day = max(1, start_day)
     if start_day > end_day:
-        return 0
+        return set()
+
+    range_start = nepali_datetime.date(year, month, start_day)
+    range_end = nepali_datetime.date(year, month, end_day)
 
     events = Event.objects.filter(
         organization=organization,
         is_holiday=True,
     ).order_by('start')
 
-    holidays = 0
-
+    holiday_dates = set()
     for event in events:
-        if event.start.year == year and event.start.month == month:
-            ev_start = event.start.day
-            ev_end = ev_start + event.duration - 1
-            overlap_start = max(start_day, ev_start)
-            overlap_end = min(end_day, ev_end)
-            if overlap_start <= overlap_end:
-                holidays += (overlap_end - overlap_start + 1)
+        if not event.start:
+            continue
+        ev_start = event.start
+        ev_end = event.end if event.end and event.end >= ev_start else ev_start
+        if ev_end < range_start or ev_start > range_end:
+            continue
+        curr = max(ev_start, range_start)
+        clip_end = min(ev_end, range_end)
+        while curr <= clip_end:
+            # Exclude Saturdays because count_saturdays() already counts all Saturdays.
+            # Store (year, month, day) integer tuples because nepali_datetime.date.__hash__
+            # returns a non-int on Python 3.13.
+            if curr.weekday() != 6:
+                holiday_dates.add((curr.year, curr.month, curr.day))
+            curr += datetime.timedelta(days=1)
 
-    return holidays
+    return holiday_dates
+
+
+def count_holidays(organization: Organization, year: int, month: int, start_day: int = 1, end_day: int = None) -> int:
+    """
+    Counts the total number of distinct non-Saturday holiday days in a specific month (or day range)
+    for a given organization.
+    """
+    return len(get_holiday_dates(organization, year, month, start_day=start_day, end_day=end_day))
 
 
 def total_days_in_month(year: int, month: int):

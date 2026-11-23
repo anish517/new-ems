@@ -18,6 +18,10 @@ class _AddSalarySheetState extends State<AddSalarySheet> {
 
   double _basicSalary = 0;
   double _remoteSalary = 0;
+  double _ssf = 0;
+  double _epf = 0;
+  double _cit = 0;
+  double _insurance = 0;
   bool _isLoading = false;
 
   Future<void> _submit() async {
@@ -32,6 +36,10 @@ class _AddSalarySheetState extends State<AddSalarySheet> {
           'employee': widget.employeeId,
           'basic_salary': _basicSalary,
           'remote_salary': _remoteSalary,
+          'ssf': _ssf,
+          'epf': _epf,
+          'citizen_investment_trust': _cit,
+          'insurance': _insurance,
         },
       );
       if (mounted) {
@@ -141,6 +149,62 @@ class _AddSalarySheetState extends State<AddSalarySheet> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 initialValue: '0',
                 onSaved: (v) => _remoteSalary = double.tryParse(v ?? '0') ?? 0,
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'Default SSF (NPR)',
+                        prefixIcon: Icon(Iconsax.shield_tick, size: 18),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      initialValue: '0',
+                      onSaved: (v) => _ssf = double.tryParse(v ?? '0') ?? 0,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'Default EPF (NPR)',
+                        prefixIcon: Icon(Iconsax.wallet_check, size: 18),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      initialValue: '0',
+                      onSaved: (v) => _epf = double.tryParse(v ?? '0') ?? 0,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'Default CIT (NPR)',
+                        prefixIcon: Icon(Iconsax.bank, size: 18),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      initialValue: '0',
+                      onSaved: (v) => _cit = double.tryParse(v ?? '0') ?? 0,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'Insurance (NPR)',
+                        prefixIcon: Icon(Iconsax.health, size: 18),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      initialValue: '0',
+                      onSaved: (v) => _insurance = double.tryParse(v ?? '0') ?? 0,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 22),
 

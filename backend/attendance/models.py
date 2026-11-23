@@ -269,10 +269,12 @@ class Attendance(SoftDeleteModel):
         if not attendance:
             raise ValueError("No attendance record found for today.")
 
-        # Update check-out location details
+        # Update check-out location details (preserve check-in's is_remote classification
+        # unless it wasn't set on check-in)
         attendance.check_out_lat = lat
         attendance.check_out_lng = lng
-        attendance.is_remote = not within_radius
+        if attendance.is_remote is None:
+            attendance.is_remote = not within_radius
         if photo:
             attendance.check_out_photo = photo
         attendance.save()

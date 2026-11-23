@@ -1573,9 +1573,17 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
 
   void _showEditBaseSalarySheet(BuildContext ctx, Map salaryRecord) {
     final basicCtrl =
-        TextEditingController(text: salaryRecord['basic_salary'].toString());
+        TextEditingController(text: (salaryRecord['basic_salary'] ?? 0).toString());
     final remoteCtrl =
-        TextEditingController(text: salaryRecord['remote_salary'].toString());
+        TextEditingController(text: (salaryRecord['remote_salary'] ?? 0).toString());
+    final ssfCtrl =
+        TextEditingController(text: (salaryRecord['ssf'] ?? 0).toString());
+    final epfCtrl =
+        TextEditingController(text: (salaryRecord['epf'] ?? 0).toString());
+    final citCtrl = TextEditingController(
+        text: (salaryRecord['citizen_investment_trust'] ?? 0).toString());
+    final insuranceCtrl =
+        TextEditingController(text: (salaryRecord['insurance'] ?? 0).toString());
     bool saving = false;
 
     showModalBottomSheet(
@@ -1587,7 +1595,7 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetCtx) => StatefulBuilder(builder: (context, setStateModal) {
-        return Padding(
+        return SingleChildScrollView(
           padding: EdgeInsets.only(
             left: 24,
             right: 24,
@@ -1632,6 +1640,58 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                   prefixIcon: Icon(Iconsax.buildings, size: 18),
                 ),
               ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: ssfCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Default SSF (NPR)',
+                        prefixIcon: Icon(Iconsax.shield_tick, size: 18),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: epfCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Default EPF (NPR)',
+                        prefixIcon: Icon(Iconsax.wallet_check, size: 18),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: citCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Default CIT (NPR)',
+                        prefixIcon: Icon(Iconsax.bank, size: 18),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: insuranceCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Insurance (NPR)',
+                        prefixIcon: Icon(Iconsax.health, size: 18),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: saving
@@ -1647,6 +1707,13 @@ class _SalaryScreenState extends ConsumerState<SalaryScreen>
                               'remote_salary': remoteCtrl.text.isEmpty
                                   ? '0'
                                   : remoteCtrl.text,
+                              'ssf': ssfCtrl.text.isEmpty ? '0' : ssfCtrl.text,
+                              'epf': epfCtrl.text.isEmpty ? '0' : epfCtrl.text,
+                              'citizen_investment_trust':
+                                  citCtrl.text.isEmpty ? '0' : citCtrl.text,
+                              'insurance': insuranceCtrl.text.isEmpty
+                                  ? '0'
+                                  : insuranceCtrl.text,
                             },
                           );
                           if (context.mounted) {
