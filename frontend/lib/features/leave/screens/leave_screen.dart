@@ -759,7 +759,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
     final approvedCount =
         _requests.where((r) => r['is_approved'] == true).length;
 
-    // Leave Balances for employee (sum of all paid leave types: Casual, Sick, Paid Leave)
+    // Leave Balances for employee (sum of monthly accrued available paid leave minus pending)
     final myBalances = (_balance?['leave_balances'] as List?) ?? [];
     double myPaidRemaining = 0;
     for (final lb in myBalances) {
@@ -768,10 +768,20 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
       if (!typeName.contains('unpaid')) {
         final quota = (lb['quota'] as num? ?? 0).toDouble();
         final taken = (lb['leaves_taken'] as num? ?? 0).toDouble();
-        myPaidRemaining += (quota - taken);
+        final availThisMonth =
+            (lb['available_this_month'] as num?)?.toDouble() ??
+                (quota - taken);
+        myPaidRemaining += availThisMonth;
       }
     }
-    if (myPaidRemaining < 0) myPaidRemaining = 0;
+    final pendingPaidDays = _requests
+        .where((r) =>
+            r['is_approved'] != true &&
+            r['is_reviewed'] != true &&
+            r['is_paid'] == true)
+        .fold<double>(
+            0.0, (sum, r) => sum + ((r['no_days'] as num?)?.toDouble() ?? 0.0));
+    myPaidRemaining = (myPaidRemaining - pendingPaidDays).clamp(0.0, 999.0);
 
     return Scaffold(
       backgroundColor: context.bg,
@@ -2632,6 +2642,17 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
 
   double _calculateRequestedDays() {
     if (_isHalfDay) {
+      if (_fromDate.isEmpty) {
+        _excludedSaturdays = 0;
+        return 0.0;
+      }
+      try {
+        final fromNd = NepaliDateTime.parse(_fromDate);
+        if (fromNd.toDateTime().weekday == DateTime.saturday) {
+          _excludedSaturdays = 1;
+          return 0.0;
+        }
+      } catch (_) {}
       _excludedSaturdays = 0;
       return 0.5;
     }
@@ -4360,8 +4381,9 @@ class _AdminEmployeeBalanceCard extends StatelessWidget {
 
   void _showEditQuotaDialog(BuildContext context, Map balanceData) {
     final typeName = balanceData['leave_type']?['name'] ?? 'Leave';
-    final ctrl =
-        TextEditingController(text: balanceData['quota']?.toString() ?? '0');
+    final ctrl = TextEditingController(
+        text: (balanceData['base_quota'] ?? balanceData['quota'] ?? 0)
+            .toString());
     bool isLoading = false;
 
     showDialog(

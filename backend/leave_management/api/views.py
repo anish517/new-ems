@@ -44,6 +44,23 @@ def resolve_org(user):
     return None
 
 
+def _is_leave_admin(user):
+    if not user or not user.is_authenticated:
+        return False
+    if (
+        user.is_superuser
+        or user.is_staff
+        or getattr(user, 'is_hr', False)
+        or getattr(user, 'role', '') in ('admin', 'org_admin', 'hr', 'super_admin')
+        or user.organization.exists()
+    ):
+        return True
+    emp = getattr(user, 'employee', None)
+    if emp and (getattr(emp, 'canManage', False) or emp.is_company_admin()):
+        return True
+    return False
+
+
 class LeaveSettingAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -69,6 +86,11 @@ class LeaveSettingAPIView(APIView):
 
     def patch(self, request):
         user = request.user
+        if not _is_leave_admin(user):
+            return Response(
+                {'error': 'Only administrators and HR can modify organization leave policies.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         org = None
         if user.organization.exists():
             org = user.organization.first()
@@ -236,7 +258,11 @@ class EmployeeLeaveCountDetailAPIView(APIView):
             employee=employee, is_approved=True, is_reviewed=True
         )
 
-        total_no_of_leaves = sum(lr.no_days for lr in all_approved_leave_requests if getattr(lr.created_at, 'year', None) == current_year)
+        total_no_of_leaves = sum(
+            lr.no_days
+            for lr in all_approved_leave_requests
+            if getattr(lr.from_date or lr.created_at, 'year', None) == current_year
+        )
 
         leave_types = LeaveType.objects.filter(organization=employee.organization)
         no_of_allowed_leaves = leave_types.aggregate(Sum('quota'))['quota__sum'] or 0
@@ -298,14 +324,32 @@ class LeaveBalanceUpdateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, pk):
+        if not _is_leave_admin(request.user):
+            return Response(
+                {'error': 'Only administrators and HR can adjust employee leave quotas.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         try:
-            lb = LeaveBalance.objects.get(pk=pk)
+            lb = LeaveBalance.objects.select_related('employee', 'organization').get(pk=pk)
         except LeaveBalance.DoesNotExist:
             return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        admin_org = resolve_org(request.user)
+        lb_org = lb.organization or (getattr(lb.employee, 'organization', None) if lb.employee else None)
+        if admin_org and lb_org and admin_org.id != lb_org.id and not request.user.is_superuser:
+            return Response({'error': 'This leave balance belongs to another organization.'}, status=status.HTTP_403_FORBIDDEN)
+
         quota = request.data.get('quota')
         if quota is None:
             return Response({'error': 'quota is required'}, status=status.HTTP_400_BAD_REQUEST)
-        lb.quota = int(quota)
+        try:
+            quota_int = int(float(quota))
+        except (ValueError, TypeError):
+            return Response({'error': 'quota must be a valid number'}, status=status.HTTP_400_BAD_REQUEST)
+        if quota_int < 0:
+            return Response({'error': 'quota cannot be negative'}, status=status.HTTP_400_BAD_REQUEST)
+
+        lb.quota = quota_int
         lb.save(update_fields=['quota'])
         return Response(LeaveBalanceSerializer(lb, context={'request': request}).data, status=status.HTTP_200_OK)
 
@@ -316,6 +360,11 @@ class AllEmployeeLeaveSummaryView(APIView):
 
     def get(self, request):
         user = request.user
+        if not _is_leave_admin(user):
+            return Response(
+                {'error': 'Only administrators and HR can view organization-wide leave summaries.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         org = resolve_org(user)
         if not org:
             return Response([], status=status.HTTP_200_OK)
@@ -343,7 +392,7 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = LeaveRequestSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser, JSONParser)
-    nepali_date_filter_field = 'from_date'
+    nepali_date_filter_field = False
 
     def get_queryset(self):
         user = self.request.user
@@ -418,24 +467,46 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
         till_date = to_nepali(serializer.validated_data.get('till_date'))
         is_paid = serializer.validated_data.get('is_paid', True)
         is_half_day = serializer.validated_data.get('is_half_day', False)
+        half_day_period = serializer.validated_data.get('half_day_period')
 
         if not from_date or not till_date:
             raise serializers.ValidationError({'detail': 'Both from date and till date are required.'})
 
         if is_half_day:
+            till_date = from_date
+        elif from_date > till_date:
+            raise serializers.ValidationError({'detail': 'From date cannot be after Till date.'})
+
+        org = employee.organization
+        from calendar_app.utilities import get_holiday_dates
+        holiday_keys = set()
+        if org:
+            curr_y, curr_m = from_date.year, from_date.month
+            end_y, end_m = till_date.year, till_date.month
+            while (curr_y, curr_m) <= (end_y, end_m):
+                holiday_keys |= get_holiday_dates(org, curr_y, curr_m)
+                if curr_m == 12:
+                    curr_y += 1
+                    curr_m = 1
+                else:
+                    curr_m += 1
+
+        if is_half_day:
+            is_sat = (from_date.weekday() == 6)
+            is_hol = (from_date.year, from_date.month, from_date.day) in holiday_keys
+            if is_sat or is_hol:
+                raise serializers.ValidationError({
+                    'detail': 'Cannot apply for half-day leave on a Saturday or public holiday.'
+                })
             requested_days = 0.5
         else:
-            if from_date > till_date:
-                raise serializers.ValidationError({'detail': 'From date cannot be after Till date.'})
-            # Count working days excluding Saturdays (isoweekday == 6)
+            # Count working days excluding Saturdays (weekday == 6) and organization public holidays
             days = 0.0
             curr = from_date
             while curr <= till_date:
-                try:
-                    py_date = curr.to_datetime_date()
-                    if py_date.isoweekday() != 6:
-                        days += 1.0
-                except Exception:
+                is_sat = (curr.weekday() == 6)
+                is_hol = (curr.year, curr.month, curr.day) in holiday_keys
+                if not is_sat and not is_hol:
                     days += 1.0
                 try:
                     curr = curr + dt.timedelta(days=1)
@@ -444,10 +515,29 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
             requested_days = days
 
         if requested_days <= 0:
-            raise serializers.ValidationError({'detail': 'The requested date range contains no working days (e.g. only Saturdays).'})
+            raise serializers.ValidationError({'detail': 'The requested date range contains no working days (only Saturdays or public holidays).'})
+
+        # Prevent duplicate or overlapping active (pending or approved) leave requests
+        overlapping_qs = LeaveRequest.objects.filter(
+            employee=employee,
+            from_date__lte=till_date,
+            till_date__gte=from_date,
+        ).exclude(is_reviewed=True, is_approved=False)
+
+        for existing in overlapping_qs:
+            if not is_half_day or not existing.is_half_day:
+                raise serializers.ValidationError({
+                    'detail': f'You already have an active leave request overlapping with {existing.from_date} to {existing.till_date}.'
+                })
+            # Both are half-day leaves on the same date: block if same half_day_period (or unspecified)
+            existing_period = (existing.half_day_period or '').strip().lower()
+            new_period = (half_day_period or '').strip().lower()
+            if not existing_period or not new_period or existing_period == new_period:
+                raise serializers.ValidationError({
+                    'detail': f'You already have an active half-day leave request ({existing.half_day_period or "Half Day"}) on {existing.from_date}.'
+                })
 
         # Organization Leave Settings Check
-        org = employee.organization
         setting, _ = LeaveSetting.objects.get_or_create(
             organization=org,
             defaults={'paid_leave_during_provision': False, 'allow_intern_leave': True}
@@ -490,7 +580,21 @@ class LeaveRequestListCreateAPIView(generics.ListCreateAPIView):
         # Policy Rule 3 & 4: Quota Validation
         # Unpaid leave is NOT restricted by quota.
         if is_paid and leave_type:
-            breakdown = get_employee_leave_breakdown(employee, year=from_date.year, month=from_date.month)
+            today_np = nepali_datetime.date.today()
+            if from_date.year > today_np.year:
+                raise serializers.ValidationError({
+                    'detail': f'Paid leave cannot be requested for a future fiscal year ({from_date.year}) before leave quota has accrued.'
+                })
+            # Cap accrual month at current Nepali month when applying in the current year so employees
+            # cannot borrow unearned future months' leave accrual.
+            effective_accrual_month = (
+                min(from_date.month, today_np.month)
+                if from_date.year == today_np.year
+                else from_date.month
+            )
+            breakdown = get_employee_leave_breakdown(
+                employee, year=from_date.year, month=effective_accrual_month
+            )
             target = next((item for item in breakdown if item['leave_type']['id'] == leave_type.id), None)
             if not target:
                 target = next((item for item in breakdown if leave_type.name.lower() in item['leave_type']['name'].lower()), None)

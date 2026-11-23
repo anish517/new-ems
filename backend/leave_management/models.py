@@ -91,31 +91,74 @@ class LeaveRequest(SoftDeleteModel):
     def __str__(self):
         return f'{self.subject}-{self.is_approved}'
 
+    def save(self, *args, **kwargs):
+        if not self.created_at:
+            self.created_at = nepali_datetime.date.today()
+        if self.is_half_day and self.from_date:
+            self.till_date = self.from_date
+        super().save(*args, **kwargs)
+
     @property
     def owner(self):
         return self.employee
 
+    def _get_org_holiday_keys(self) -> set:
+        org = self.organization or (getattr(self.employee, 'organization', None) if self.employee else None)
+        if not org or not self.from_date:
+            return set()
+        till = self.till_date if self.till_date and self.till_date >= self.from_date else self.from_date
+        try:
+            from calendar_app.utilities import get_holiday_dates
+            holiday_keys = set()
+            curr_y, curr_m = self.from_date.year, self.from_date.month
+            end_y, end_m = till.year, till.month
+            while (curr_y, curr_m) <= (end_y, end_m):
+                holiday_keys |= get_holiday_dates(org, curr_y, curr_m)
+                if curr_m == 12:
+                    curr_y += 1
+                    curr_m = 1
+                else:
+                    curr_m += 1
+            return holiday_keys
+        except Exception:
+            return set()
+
     @property
     def no_days(self):
+        if not self.from_date:
+            return 0.0
+        holiday_keys = self._get_org_holiday_keys()
         if self.is_half_day:
+            try:
+                if self.from_date.weekday() == 6:
+                    return 0.0
+            except Exception:
+                pass
+            if (self.from_date.year, self.from_date.month, self.from_date.day) in holiday_keys:
+                return 0.0
             return 0.5
-        if not self.from_date or not self.till_date:
+        if not self.till_date:
             return 0.0
         import datetime as py_dt
         days = 0.0
         curr = self.from_date
         while curr <= self.till_date:
+            is_sat = False
             try:
-                py_date = curr.to_datetime_date()
-                if py_date.isoweekday() != 6:  # 6 = Saturday in ISO
-                    days += 1.0
+                is_sat = (curr.weekday() == 6)
             except Exception:
+                try:
+                    is_sat = (curr.to_datetime_date().isoweekday() == 6)
+                except Exception:
+                    is_sat = False
+            is_hol = (curr.year, curr.month, curr.day) in holiday_keys
+            if not is_sat and not is_hol:
                 days += 1.0
             try:
                 curr = curr + py_dt.timedelta(days=1)
             except Exception:
                 break
-        return max(0.5, days) if self.is_half_day else days
+        return days
 
 
     @property

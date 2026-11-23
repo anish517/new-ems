@@ -311,5 +311,210 @@ class LeaveManagementTests(TestCase):
         self.assertEqual(casual_m5['accrued_to_date'], 1.0)
         self.assertEqual(casual_m5['available_this_month'], 1.0)
 
+    def test_dynamic_quota_edit_persists_and_recalculates_monthly_accrual(self):
+        """
+        Verify Finding #1 & #7 fix:
+        - Non-admin cannot edit employee leave quota or leave policy settings (403).
+        - Admin can update an employee's Casual Leave quota from 12 to 18 via
+          PATCH /api/leave-tracker/leave-balance/update/<id>/.
+        - Subsequent calls to get_employee_leave_breakdown, /leave-balance/, and
+          /leave-summary/ preserve quota=18 and dynamically accrue 1.5d/month.
+        """
+        admin_user = Account.objects.create_superuser(
+            email="leave.admin@test.com", first_name="Leave", last_name="Admin", password="password123"
+        )
+        self.org.admin_users.add(admin_user)
+
+        b_init = get_employee_leave_breakdown(self.emp, year=2083, month=4)
+        casual_init = next(b for b in b_init if b['is_casual_leave'])
+        lb_id = casual_init['id']
+        self.assertEqual(casual_init['quota'], 12)
+        self.assertEqual(casual_init['accrued_to_date'], 4.0)
+
+        # Non-admin employee is blocked from editing quota or policy settings
+        self.client.force_authenticate(user=self.user)
+        emp_quota_patch = self.client.patch(f'/api/leave-tracker/leave-balance/update/{lb_id}/', {'quota': 99})
+        self.assertEqual(emp_quota_patch.status_code, status.HTTP_403_FORBIDDEN)
+        emp_setting_patch = self.client.patch('/api/leave-tracker/settings/', {'paid_leave_during_provision': True})
+        self.assertEqual(emp_setting_patch.status_code, status.HTTP_403_FORBIDDEN)
+        emp_summary_get = self.client.get('/api/leave-tracker/leave-summary/')
+        self.assertEqual(emp_summary_get.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Admin updates Casual Leave quota to 18 (1.5d/month)
+        self.client.force_authenticate(user=admin_user)
+        admin_patch = self.client.patch(f'/api/leave-tracker/leave-balance/update/{lb_id}/', {'quota': 18})
+        self.assertEqual(admin_patch.status_code, status.HTTP_200_OK)
+
+        # Verify subsequent /leave-balance/ and /leave-summary/ preserve 18 and accrue 6.0d in Month 4
+        bal_res = self.client.get(f'/api/leave-tracker/leave-balance/{self.emp.id}/?nepali_year=2083&nepali_month=4')
+        self.assertEqual(bal_res.status_code, status.HTTP_200_OK)
+        casual_after = next(b for b in bal_res.data['leave_balances'] if b['is_casual_leave'])
+        self.assertEqual(casual_after['quota'], 18)
+        self.assertEqual(casual_after['annual_quota'], 18.0)
+        self.assertEqual(casual_after['accrued_to_date'], 6.0)
+        self.assertEqual(casual_after['available_this_month'], 6.0)
+
+        sum_res = self.client.get('/api/leave-tracker/leave-summary/?nepali_year=2083&nepali_month=8')
+        self.assertEqual(sum_res.status_code, status.HTTP_200_OK)
+        emp_row = next(r for r in sum_res.data if r['employee_id'] == self.emp.id)
+        casual_m8 = next(b for b in emp_row['balances'] if b['is_casual_leave'])
+        self.assertEqual(casual_m8['quota'], 18)
+        self.assertEqual(casual_m8['accrued_to_date'], 12.0)
+
+    def test_overlapping_leave_prevention_and_half_day_periods(self):
+        """
+        Verify Finding #3 fix:
+        - Duplicate or overlapping full-day leave requests are rejected (400).
+        - Two half-day leaves for the SAME period (First Half) on the same date are rejected (400).
+        - First Half and Second Half on the same date are allowed (201).
+        """
+        self.client.force_authenticate(user=self.user)
+
+        # Find two non-Saturday working days in 2083-05
+        work_days = [
+            nepali_date(2083, 5, d)
+            for d in range(1, 20)
+            if nepali_date(2083, 5, d).weekday() != 6
+        ]
+        d1, d2 = str(work_days[0]), str(work_days[1])
+
+        # 1. Submit full-day leave on d1
+        r1 = self.client.post('/api/leave-tracker/leave-requests/', {
+            'subject': 'Full Day 1',
+            'from_date': d1,
+            'till_date': d1,
+            'is_paid': 'true',
+            'type': str(self.casual_type.id),
+        })
+        self.assertEqual(r1.status_code, status.HTTP_201_CREATED)
+        self.assertIsNotNone(r1.data['created_at'])
+
+        # 2. Overlapping full-day leave on d1 must be blocked (400)
+        r_dup = self.client.post('/api/leave-tracker/leave-requests/', {
+            'subject': 'Duplicate Full Day 1',
+            'from_date': d1,
+            'till_date': d1,
+            'is_paid': 'false',
+            'type': str(self.casual_type.id),
+        })
+        self.assertEqual(r_dup.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('overlapping', str(r_dup.data).lower())
+
+        # 3. Half-day First Half on d2 succeeds
+        r_h1 = self.client.post('/api/leave-tracker/leave-requests/', {
+            'subject': 'Morning Half',
+            'from_date': d2,
+            'till_date': d2,
+            'is_paid': 'false',
+            'is_half_day': 'true',
+            'half_day_period': 'First Half',
+            'type': str(self.casual_type.id),
+        })
+        self.assertEqual(r_h1.status_code, status.HTTP_201_CREATED)
+
+        # 4. Duplicate First Half on d2 is blocked (400)
+        r_h1_dup = self.client.post('/api/leave-tracker/leave-requests/', {
+            'subject': 'Duplicate Morning Half',
+            'from_date': d2,
+            'till_date': d2,
+            'is_paid': 'false',
+            'is_half_day': 'true',
+            'half_day_period': 'First Half',
+            'type': str(self.casual_type.id),
+        })
+        self.assertEqual(r_h1_dup.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # 5. Second Half on d2 succeeds
+        r_h2 = self.client.post('/api/leave-tracker/leave-requests/', {
+            'subject': 'Afternoon Half',
+            'from_date': d2,
+            'till_date': d2,
+            'is_paid': 'false',
+            'is_half_day': 'true',
+            'half_day_period': 'Second Half',
+            'type': str(self.casual_type.id),
+        })
+        self.assertEqual(r_h2.status_code, status.HTTP_201_CREATED)
+
+    def test_saturday_and_public_holiday_exclusion_for_full_and_half_day_leaves(self):
+        """
+        Verify Finding #2 & #4 fix:
+        - Half-day leave on a Saturday or organization Public Holiday is rejected (400).
+        - Multi-day leave spanning a Public Holiday excludes the holiday from no_days.
+        - LeaveRequestListCreateAPIView returns requests across months even when ?nepali_month= is passed.
+        """
+        from calendar_app.models import Event
+
+        self.client.force_authenticate(user=self.user)
+
+        saturdays = [
+            nepali_date(2083, 8, d)
+            for d in range(1, 30)
+            if nepali_date(2083, 8, d).weekday() == 6
+        ]
+        work_days = [
+            nepali_date(2083, 8, d)
+            for d in range(1, 30)
+            if nepali_date(2083, 8, d).weekday() != 6
+        ]
+        sat_date = saturdays[0]
+        hol_date = work_days[1]
+
+        # Create an organization public holiday on work_days[1]
+        Event.objects.create(
+            organization=self.org,
+            title="Public Holiday",
+            start=hol_date,
+            end=hol_date,
+            is_holiday=True,
+        )
+
+        # 1. Half-day leave on a Saturday -> rejected (400)
+        res_sat_half = self.client.post('/api/leave-tracker/leave-requests/', {
+            'subject': 'Saturday Half Day',
+            'from_date': str(sat_date),
+            'till_date': str(sat_date),
+            'is_paid': 'false',
+            'is_half_day': 'true',
+            'half_day_period': 'First Half',
+            'type': str(self.casual_type.id),
+        })
+        self.assertEqual(res_sat_half.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # 2. Half-day leave on a Public Holiday -> rejected (400)
+        res_hol_half = self.client.post('/api/leave-tracker/leave-requests/', {
+            'subject': 'Holiday Half Day',
+            'from_date': str(hol_date),
+            'till_date': str(hol_date),
+            'is_paid': 'false',
+            'is_half_day': 'true',
+            'half_day_period': 'First Half',
+            'type': str(self.casual_type.id),
+        })
+        self.assertEqual(res_hol_half.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # 3. Full-day leave across work_days[0]..work_days[2] where work_days[1] is a Public Holiday
+        res_span = self.client.post('/api/leave-tracker/leave-requests/', {
+            'subject': 'Spanning Holiday',
+            'from_date': str(work_days[0]),
+            'till_date': str(work_days[2]),
+            'is_paid': 'true',
+            'type': str(self.casual_type.id),
+        })
+        self.assertEqual(res_span.status_code, status.HTTP_201_CREATED)
+        expected_non_sat_non_hol = sum(
+            1.0
+            for d in range(work_days[0].day, work_days[2].day + 1)
+            if nepali_date(2083, 8, d).weekday() != 6 and nepali_date(2083, 8, d) != hol_date
+        )
+        self.assertEqual(res_span.data['no_days'], expected_non_sat_non_hol)
+
+        # 4. Cross-month visibility: querying /leave-requests/?nepali_year=2083&nepali_month=1 still shows the Month 8 request
+        list_res = self.client.get('/api/leave-tracker/leave-requests/?nepali_year=2083&nepali_month=1')
+        self.assertEqual(list_res.status_code, status.HTTP_200_OK)
+        items = list_res.data if isinstance(list_res.data, list) else list_res.data.get('results', [])
+        ids = {item['id'] for item in items}
+        self.assertIn(res_span.data['id'], ids)
+
 
 

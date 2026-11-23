@@ -137,7 +137,8 @@ def get_employee_leave_days(employee: Employee, year: int = None, month: int = N
         employee=employee, is_approved=True)
 
     for request in leave_requests:
-        if request.created_at.year == year and request.created_at.month == month:
+        ref_date = request.from_date or request.created_at
+        if ref_date and ref_date.year == year and ref_date.month == month:
             no_of_days += request.no_days
 
     return no_of_days
@@ -145,8 +146,8 @@ def get_employee_leave_days(employee: Employee, year: int = None, month: int = N
 
 def ensure_default_leave_types_and_settings(organization):
     """
-    Ensures Casual Leave (12 days) and Sick Leave (8 days) exist for the organization,
-    and ensures LeaveSetting exists.
+    Ensures Casual Leave (default 12 days) and Sick Leave (default 8 days) exist for the organization,
+    and ensures LeaveSetting exists. Preserves any custom non-zero quota already configured.
     """
     from .models import LeaveType, LeaveSetting, LeaveBalance
     if not organization:
@@ -160,7 +161,7 @@ def ensure_default_leave_types_and_settings(organization):
         }
     )
     
-    # Casual Leave (12 days annually)
+    # Casual Leave (default 12 days annually)
     casual_type = LeaveType.objects.filter(
         organization=organization,
         is_casual_leave=True
@@ -178,12 +179,18 @@ def ensure_default_leave_types_and_settings(organization):
             is_casual_leave=True,
             is_sick_leave=False,
         )
-    elif casual_type.quota != 12 or not casual_type.is_casual_leave:
-        casual_type.quota = 12
-        casual_type.is_casual_leave = True
-        casual_type.save(update_fields=['quota', 'is_casual_leave'])
+    else:
+        update_fields = []
+        if not casual_type.quota or casual_type.quota <= 0:
+            casual_type.quota = 12
+            update_fields.append('quota')
+        if not casual_type.is_casual_leave:
+            casual_type.is_casual_leave = True
+            update_fields.append('is_casual_leave')
+        if update_fields:
+            casual_type.save(update_fields=update_fields)
 
-    # Sick Leave (8 days annually)
+    # Sick Leave (default 8 days annually)
     sick_type = LeaveType.objects.filter(
         organization=organization,
         is_sick_leave=True
@@ -201,10 +208,16 @@ def ensure_default_leave_types_and_settings(organization):
             is_sick_leave=True,
             is_casual_leave=False,
         )
-    elif sick_type.quota != 8 or not sick_type.is_sick_leave:
-        sick_type.quota = 8
-        sick_type.is_sick_leave = True
-        sick_type.save(update_fields=['quota', 'is_sick_leave'])
+    else:
+        update_fields = []
+        if not sick_type.quota or sick_type.quota <= 0:
+            sick_type.quota = 8
+            update_fields.append('quota')
+        if not sick_type.is_sick_leave:
+            sick_type.is_sick_leave = True
+            update_fields.append('is_sick_leave')
+        if update_fields:
+            sick_type.save(update_fields=update_fields)
 
     # Clean up legacy LeaveTypes (such as old 'Paid Leave' and 'Unpaid Leave' rows)
     legacy_types = LeaveType.objects.filter(
@@ -217,19 +230,19 @@ def ensure_default_leave_types_and_settings(organization):
         LeaveBalance.objects.filter(leave_type=lt).delete()
     legacy_types.delete()
 
-    # Ensure LeaveBalances exist for all employees in org
+    # Ensure LeaveBalances exist for all employees in org (without overwriting existing custom quotas)
     for emp in organization.employees:
         LeaveBalance.objects.get_or_create(
             organization=organization,
             employee=emp,
             leave_type=casual_type,
-            defaults={'quota': 12, 'leaves_taken': 0.0}
+            defaults={'quota': casual_type.quota or 12, 'leaves_taken': 0.0}
         )
         LeaveBalance.objects.get_or_create(
             organization=organization,
             employee=emp,
             leave_type=sick_type,
-            defaults={'quota': 8, 'leaves_taken': 0.0}
+            defaults={'quota': sick_type.quota or 8, 'leaves_taken': 0.0}
         )
 
 
@@ -325,7 +338,19 @@ def get_employee_leave_breakdown(employee: Employee, year: int = None, month: in
         is_casual = lt.is_casual_leave or (lt.name and 'casual' in lt.name.lower())
         is_sick = lt.is_sick_leave or (lt.name and 'sick' in lt.name.lower())
 
-        full_annual_quota = float(lt.quota or (12 if is_casual else (8 if is_sick else 0)))
+        default_type_quota = int(lt.quota or (12 if is_casual else (8 if is_sick else 0)))
+
+        # Get or create the employee's LeaveBalance first so any custom per-employee quota
+        # set by Admin via LeaveBalanceUpdateAPIView is preserved instead of overwritten!
+        lb, _ = LeaveBalance.objects.get_or_create(
+            employee=employee,
+            leave_type=lt,
+            defaults={'organization': organization, 'quota': default_type_quota, 'leaves_taken': 0.0}
+        )
+
+        # Use employee's custom lb.quota if set (fall back to default_type_quota only if None)
+        configured_quota = float(lb.quota if lb.quota is not None else default_type_quota)
+        full_annual_quota = configured_quota
         monthly_rate = full_annual_quota / 12.0
 
         # --- Tenure-based Pro-rata Calculation ---
@@ -375,30 +400,26 @@ def get_employee_leave_breakdown(employee: Employee, year: int = None, month: in
         available_this_month = max(0.0, round(accrued_to_date - paid_taken, 2))
         remaining_annual = max(0.0, round(annual_quota - paid_taken, 2))
 
-        # Get or update LeaveBalance
-        lb, _ = LeaveBalance.objects.get_or_create(
-            employee=employee,
-            leave_type=lt,
-            defaults={'organization': organization, 'quota': int(annual_quota), 'leaves_taken': paid_taken}
-        )
-        if lb.leaves_taken != paid_taken or lb.quota != int(annual_quota):
+        # Only sync leaves_taken on LeaveBalance — NEVER overwrite lb.quota!
+        if lb.leaves_taken != paid_taken:
             lb.leaves_taken = paid_taken
-            lb.quota = int(annual_quota)
-            lb.save(update_fields=['leaves_taken', 'quota'])
+            lb.save(update_fields=['leaves_taken'])
 
         breakdown.append({
             'id': lb.id,
             'leave_type': {
                 'id': lt.id,
                 'name': lt.name,
-                'quota': int(annual_quota),
+                'quota': int(round(annual_quota)),
+                'base_quota': int(round(configured_quota)),
                 'is_sick_leave': lt.is_sick_leave,
                 'is_casual_leave': lt.is_casual_leave,
             },
             'is_casual_leave': is_casual,
             'is_sick_leave': is_sick,
             'annual_quota': annual_quota,
-            'quota': int(annual_quota),
+            'base_quota': int(round(configured_quota)),
+            'quota': int(round(annual_quota)),
             'accrued_to_date': accrued_to_date,
             'available_this_month': available_this_month,
             'leaves_taken': paid_taken,
@@ -417,13 +438,13 @@ def get_employee_leave_request(employee: Employee, year: int = None, month: int 
     today = nepali_datetime.date.today()
     year = today.year if year is None else year
     month = today.month if month is None else month
-    no_of_days = 0
 
     leave_requests = LeaveRequest.objects.filter(
         employee=employee, is_approved=True)
     leave_request_ids = []
     for request in leave_requests:
-        if request.created_at.year == year and request.created_at.month == month:
+        ref_date = request.from_date or request.created_at
+        if ref_date and ref_date.year == year and ref_date.month == month:
             leave_request_ids.append(request.id)
     return LeaveRequest.objects.filter(id__in=leave_request_ids)
 
