@@ -214,14 +214,6 @@ class PerformanceReviewListCreateView(generics.ListCreateAPIView):
         _validate_review_permission(user, employee, category)
 
         review = serializer.save(reviewer=user)
-        # Notify the employee
-        if review.employee and review.employee.user:
-            Notification.objects.create(
-                user=review.employee.user,
-                title='New Performance Review',
-                message=f'You received a performance score of {review.score}/10. Tap to view.',
-                is_read=False,
-            )
 
 
 class PerformanceReviewRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):

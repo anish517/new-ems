@@ -65,37 +65,6 @@ def track_field_changes(sender, instance, **kwargs):
                     )
 
 
-@receiver(post_save, sender=Task)
-def update_timestamps(sender, instance, created, **kwargs):
-    if kwargs.get("raw", False):
-        return  # loading a fixture (loaddata): no side effects
-    if created:
-        creator_user = instance.created_by.user if (instance.created_by and instance.created_by.user) else None
-        assignee_user = instance.assigned_to.user if (instance.assigned_to and instance.assigned_to.user) else None
-
-        # Never notify an employee for creating/assigning their own card
-        if creator_user and assignee_user and creator_user == assignee_user:
-            return
-
-        creator_name = creator_user.full_name if creator_user else "Admin"
-
-        if assignee_user and assignee_user != creator_user:
-            Notification.objects.create(
-                user=assignee_user,
-                title=f'{creator_name} added new Task "{instance.title}"',
-                message=f'A new task was assigned to {assignee_user.full_name} by {creator_name}',
-                notification_type='task',
-                reference_id=instance.id,
-                is_read=False
-            )
-
-        if creator_user and creator_user != assignee_user:
-            assigned_name = assignee_user.full_name if assignee_user else "someone"
-            Notification.objects.create(
-                user=creator_user,
-                title=f'You added new Task "{instance.title}"',
-                message=f'You assigned a new task to {assigned_name}',
-                notification_type='task',
-                reference_id=instance.id,
-                is_read=False
-            )
+# Task creation & completion notifications are handled centrally in
+# notification/signals.py (_connect_task_signals) to send both in-app DB
+# notifications and FCM push notifications without creating duplicate records.

@@ -100,6 +100,7 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   String _selectedType = 'all';
   String _searchQuery = '';
+  final Set<int> _deletingIds = <int>{};
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -124,13 +125,25 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 
   Future<void> _deleteNotification(int id) async {
+    if (_deletingIds.contains(id)) {
+      return;
+    }
+    setState(() => _deletingIds.add(id));
     try {
       await ApiService().delete('${AppConstants.notificationsBase}/$id/');
       ref.invalidate(notificationsProvider);
     } catch (e) {
+      final msg = ApiService.getErrorMessage(e);
+      // If already deleted on the server (404), refresh silently
+      if (msg.toLowerCase().contains('no notification matches') ||
+          msg.toLowerCase().contains('not found')) {
+        ref.invalidate(notificationsProvider);
+        return;
+      }
       if (mounted) {
+        setState(() => _deletingIds.remove(id));
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Failed to delete: ${ApiService.getErrorMessage(e)}'),
+          content: Text('Failed to delete: $msg'),
           backgroundColor: AppColors.error,
         ));
       }
@@ -279,8 +292,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           data: (list) {
             final unreadCount = list.where((n) => n['is_read'] != true).length;
 
-            // Filter by type & search
+            // Filter by type & search (and exclude optimistically deleted items)
             final filtered = list.where((n) {
+              final nId = n['id'];
+              if (nId is int && _deletingIds.contains(nId)) {
+                return false;
+              }
               final rawType = (n['notification_type'] ?? 'general').toString().toLowerCase();
               final title = (n['title'] ?? '').toString().toLowerCase();
               final msg = (n['message'] ?? '').toString().toLowerCase();
@@ -564,6 +581,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                 ),
                               ),
                               ...items.map((n) => _NotificationTile(
+                                    key: ValueKey('notif_${n['id']}'),
                                     notification: n,
                                     onTap: () => _showNotificationDetail(n),
                                     onDelete: () => _deleteNotification(n['id'] as int),
@@ -636,6 +654,7 @@ class _NotificationTile extends StatelessWidget {
   final VoidCallback onDelete;
 
   const _NotificationTile({
+    super.key,
     required this.notification,
     required this.onTap,
     required this.onDelete,

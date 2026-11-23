@@ -16,6 +16,11 @@ final notificationsProvider = FutureProvider<List>((ref) async {
   });
   ref.onDispose(() => timer?.cancel());
 
+  final token = await ApiService().getAccessToken();
+  if (token == null || token.isEmpty) {
+    return [];
+  }
+
   final res = await ApiService().get('${AppConstants.notificationsBase}/list/');
 
   // Safely handle both plain List and paginated { results: [...] } responses

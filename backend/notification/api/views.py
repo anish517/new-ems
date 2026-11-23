@@ -9,9 +9,10 @@ from .serializers import NotificationSerializer
 
 
 class NotificationListApiView(generics.ListAPIView):
-    """Returns unread notifications for the current user (used for badge count)."""
+    """Returns notifications for the current user."""
     serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
+    nepali_date_filter_field = False
 
     def get_queryset(self):
         return self.request.user.notifications.all().order_by('-created_at')
@@ -58,6 +59,18 @@ class RegisterDeviceTokenView(APIView):
 class NotificationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
+    nepali_date_filter_field = False
 
     def get_queryset(self):
         return self.request.user.notifications.all()
+
+    def destroy(self, request, *args, **kwargs):
+        pk = kwargs.get('pk')
+        deleted_count, _ = request.user.notifications.filter(pk=pk).delete()
+        if deleted_count == 0 and Notification.objects.filter(pk=pk).exists():
+            return Response(
+                {'detail': 'You do not have permission to delete this notification.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        # Idempotent 204 even if already deleted on a rapid double-click
+        return Response(status=status.HTTP_204_NO_CONTENT)

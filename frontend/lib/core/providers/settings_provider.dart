@@ -53,6 +53,10 @@ class OrgSettingsNotifier extends StateNotifier<OrgSettings> {
 
   Future<void> loadSettings() async {
     try {
+      final token = await ApiService().getAccessToken();
+      if (token == null || token.isEmpty) {
+        return;
+      }
       final res = await ApiService().get('${AppConstants.organizationBase}/settings/');
       if (res.data != null && res.data is Map<String, dynamic>) {
         state = OrgSettings.fromJson(res.data);
