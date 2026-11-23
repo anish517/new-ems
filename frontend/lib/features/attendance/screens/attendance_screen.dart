@@ -72,6 +72,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   bool? _hasRemotePermission;
   double? _myRemoteLat;
   double? _myRemoteLng;
+  bool _hasPendingRemoteRequest = false;
+  double? _pendingRemoteLat;
+  double? _pendingRemoteLng;
   List _remoteEmployees = [];
   List _pendingRemoteRequests = [];
   bool _remoteLoading = false;
@@ -370,10 +373,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       final res = await ApiService()
           .get('${AppConstants.attendanceBase}/remote-work-permission/me/');
       if (mounted) {
+        final pending = res.data['pending_request'] as Map?;
         setState(() {
           _hasRemotePermission = res.data['has_remote_permission'] == true;
           _myRemoteLat = (res.data['remote_lat'] as num?)?.toDouble();
           _myRemoteLng = (res.data['remote_lng'] as num?)?.toDouble();
+          _hasPendingRemoteRequest = res.data['has_pending_request'] == true;
+          _pendingRemoteLat = (pending?['latitude'] as num?)?.toDouble();
+          _pendingRemoteLng = (pending?['longitude'] as num?)?.toDouble();
         });
       }
     } catch (_) {}
@@ -410,8 +417,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         },
       );
       _showSnack(
-          '✅ Remote work request submitted successfully!', AppColors.success);
-      _loadRemoteList();
+          '✅ Remote work request submitted! Awaiting admin approval.',
+          AppColors.success);
+      await _loadMyRemoteStatus();
     } catch (e) {
       _showSnack('❌ ${ApiService.getErrorMessage(e)}', AppColors.error);
     }
@@ -1477,8 +1485,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         _showSnack('⚠️ You are already checked in. Please check out first.',
             AppColors.warning);
         await _loadTodayStatus();
-      } else if (msg.toLowerCase().contains('not within the office radius') ||
-          msg.toLowerCase().contains('50m radius')) {
+      } else if (msg.toLowerCase().contains('50m radius') ||
+          msg.toLowerCase().contains('remote work location')) {
+        _showSnack(
+          '⚠️ You are outside the approved 50m radius of your remote work location. Move within range or tap "Update WFH" to request new coordinates.',
+          AppColors.warning,
+        );
+      } else if (msg.toLowerCase().contains('not within the office radius')) {
         _showSnack(
           '⚠️ You must be within the office GPS geofence. Request remote permission from your admin if working remotely.',
           AppColors.warning,
@@ -1547,7 +1560,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     } catch (e) {
       if (!mounted) return;
       final msg = ApiService.getErrorMessage(e);
-      if (msg.toLowerCase().contains('not within the office radius')) {
+      if (msg.toLowerCase().contains('50m radius') ||
+          msg.toLowerCase().contains('remote work location')) {
+        _showSnack(
+          '⚠️ You are outside the approved 50m radius of your remote work location to check out.',
+          AppColors.warning,
+        );
+      } else if (msg.toLowerCase().contains('not within the office radius')) {
         _showSnack(
           '⚠️ You need to be within office geofence to check out or have approved remote status.',
           AppColors.warning,
@@ -2214,7 +2233,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                     ? (_myRemoteLat != null
                                         ? 'Remote work approved at GPS: ${_myRemoteLat!.toStringAsFixed(4)}, ${_myRemoteLng?.toStringAsFixed(4)} (50m radius).'
                                         : 'Remote work permission active (50m radius).')
-                                    : 'Standard in-office geofencing active (50m radius).',
+                                    : (_hasPendingRemoteRequest
+                                        ? 'Pending WFH approval at GPS: ${_pendingRemoteLat?.toStringAsFixed(4) ?? '—'}, ${_pendingRemoteLng?.toStringAsFixed(4) ?? '—'}.'
+                                        : 'Standard in-office geofencing active (${ref.watch(orgSettingsProvider).allowedAttendanceRadius}m radius).'),
                                 style: TextStyle(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w700,
@@ -2322,7 +2343,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                       ? (_myRemoteLat != null
                                           ? 'Remote work approved at GPS: ${_myRemoteLat!.toStringAsFixed(4)}, ${_myRemoteLng?.toStringAsFixed(4)} (50m radius).'
                                           : 'Remote work permission active (50m radius).')
-                                      : 'Standard in-office geofencing active (50m radius).',
+                                      : (_hasPendingRemoteRequest
+                                          ? 'Pending WFH approval at GPS: ${_pendingRemoteLat?.toStringAsFixed(4) ?? '—'}, ${_pendingRemoteLng?.toStringAsFixed(4) ?? '—'}.'
+                                          : 'Standard in-office geofencing active (${ref.watch(orgSettingsProvider).allowedAttendanceRadius}m radius).'),
                                   style: TextStyle(
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w700,
@@ -3147,9 +3170,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                             ],
                           ),
                         ] else ...[
-                          const Text(
-                            'Standard in-office geofence (50m radius)',
-                            style: TextStyle(
+                          Text(
+                            'Standard in-office geofence (${_officeRadiusCtrl.text.trim().isEmpty ? '100' : _officeRadiusCtrl.text.trim()}m radius)',
+                            style: const TextStyle(
                                 fontSize: 11.5, color: AppColors.textSecondary),
                           ),
                         ],

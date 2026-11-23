@@ -74,6 +74,128 @@ class AttendanceTests(TestCase):
         remote_perm.save()
         self.assertFalse(remote_perm.has_perm(base_lat, base_lng))
 
+        # Uninitialized (0, 0) coordinates should return False even if is_allowed=True
+        remote_perm.is_allowed = True
+        remote_perm.remote_lat = 0.0
+        remote_perm.remote_lng = 0.0
+        remote_perm.save()
+        self.assertFalse(remote_perm.has_perm(0.0, 0.0))
+
+    def test_end_to_end_remote_checkin_checkout_strict_50m_radius_and_403_status(self):
+        """
+        Verify end-to-end remote work geofencing on CheckIn and CheckOut:
+        1. Outside office without remote permission -> HTTP 403 (not 401)
+        2. Employee requests WFH -> /remote-work-permission/me/ shows has_pending_request=True
+        3. Admin approves WFH -> RemoteWorkPermission active at (remote_lat, remote_lng)
+        4. CheckIn > 50m from approved remote spot -> HTTP 403
+        5. CheckIn <= 50m from approved remote spot -> HTTP 200 (is_remote=True)
+        6. CheckOut > 50m from approved remote spot -> HTTP 403
+        7. CheckOut <= 50m from approved remote spot -> HTTP 200 (is_remote=True)
+        8. Disabling OrganizationSettings.enable_remote_attendance blocks remote check-in with HTTP 403
+        """
+        from organization.models import OrganizationSettings
+
+        admin_user = Account.objects.create(
+            email="remote.admin@test.com", first_name="Remote", last_name="Admin", is_superuser=True
+        )
+        self.org.admin_users.add(admin_user)
+
+        # Configure office at Kathmandu Durbar Square (27.7042, 85.3067) with 100m radius
+        org_settings = OrganizationSettings.objects.create(
+            organization=self.org,
+            office_latitude=27.7042,
+            office_longitude=85.3067,
+            allowed_attendance_radius=100,
+            enable_in_office_attendance=True,
+            enable_remote_attendance=True,
+        )
+
+        # Employee's remote home spot at Lazimpat (27.7215, 85.3206) ~2.3km from office
+        home_lat, home_lng = 27.7215, 85.3206
+        cafe_lat, cafe_lng = 27.7300, 85.3300  # ~1.3km away from home (> 50m)
+
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+
+        # 1. Outside office without remote approval -> 403 Forbidden (not 401)
+        res_no_perm = client.post('/api/attendance/check-in/', {
+            'latitude': home_lat,
+            'longitude': home_lng,
+        })
+        self.assertEqual(res_no_perm.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('office radius', res_no_perm.data['error'].lower())
+
+        # 2. Employee submits WFH request at home coordinates
+        req_res = client.post('/api/attendance/remote-requests/', {
+            'latitude': home_lat,
+            'longitude': home_lng,
+            'reason': 'Working from home office',
+        })
+        self.assertEqual(req_res.status_code, status.HTTP_201_CREATED)
+        req_id = req_res.data['id']
+
+        me_pending = client.get('/api/attendance/remote-work-permission/me/')
+        self.assertEqual(me_pending.status_code, status.HTTP_200_OK)
+        self.assertFalse(me_pending.data['has_remote_permission'])
+        self.assertTrue(me_pending.data['has_pending_request'])
+        self.assertEqual(me_pending.data['pending_request']['id'], req_id)
+
+        # 3. Admin approves WFH request
+        client.force_authenticate(user=admin_user)
+        app_res = client.post(f'/api/attendance/remote-requests/{req_id}/action/', {
+            'status': 'approved',
+        })
+        self.assertEqual(app_res.status_code, status.HTTP_200_OK)
+
+        # Verify /me/ now shows active remote permission and no pending request
+        client.force_authenticate(user=self.user)
+        me_approved = client.get('/api/attendance/remote-work-permission/me/')
+        self.assertTrue(me_approved.data['has_remote_permission'])
+        self.assertFalse(me_approved.data['has_pending_request'])
+        self.assertAlmostEqual(me_approved.data['remote_lat'], home_lat, places=4)
+
+        # 4. Employee tries to check in from a cafe (> 50m from approved remote spot) -> 403 Forbidden
+        res_out_of_50m = client.post('/api/attendance/check-in/', {
+            'latitude': cafe_lat,
+            'longitude': cafe_lng,
+        })
+        self.assertEqual(res_out_of_50m.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('50m radius', res_out_of_50m.data['error'].lower())
+
+        # 5. Employee checks in within 50m (~10m) of approved remote home spot -> 200 OK, is_remote=True
+        res_valid_ci = client.post('/api/attendance/check-in/', {
+            'latitude': home_lat + 0.00005,
+            'longitude': home_lng + 0.00005,
+        })
+        self.assertEqual(res_valid_ci.status_code, status.HTTP_200_OK)
+        self.assertTrue(res_valid_ci.data['is_remote'])
+
+        # 6. Employee tries to check out from a cafe (> 50m from approved remote spot) -> 403 Forbidden
+        res_bad_co = client.post('/api/attendance/check-out/', {
+            'latitude': cafe_lat,
+            'longitude': cafe_lng,
+        })
+        self.assertEqual(res_bad_co.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('50m radius', res_bad_co.data['error'].lower())
+
+        # 7. Employee checks out within 50m of approved remote home spot -> 200 OK
+        res_valid_co = client.post('/api/attendance/check-out/', {
+            'latitude': home_lat + 0.00004,
+            'longitude': home_lng + 0.00004,
+        })
+        self.assertEqual(res_valid_co.status_code, status.HTTP_200_OK)
+        self.assertTrue(res_valid_co.data['is_remote'])
+
+        # 8. Disabling global remote attendance master switch blocks remote check-in even with permission
+        org_settings.enable_remote_attendance = False
+        org_settings.save()
+        res_master_off = client.post('/api/attendance/check-in/', {
+            'latitude': home_lat,
+            'longitude': home_lng,
+        })
+        self.assertEqual(res_master_off.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('disabled', res_master_off.data['error'].lower())
+
 
 class AttendanceAdminRestrictionTests(TestCase):
     def setUp(self):

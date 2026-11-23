@@ -53,6 +53,21 @@ class RemoteWorkRequestSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['employee', 'status', 'created_at']
 
+    def validate_latitude(self, value):
+        if value is None or not (-90.0 <= float(value) <= 90.0):
+            raise serializers.ValidationError('Latitude must be between -90 and 90.')
+        return float(value)
+
+    def validate_longitude(self, value):
+        if value is None or not (-180.0 <= float(value) <= 180.0):
+            raise serializers.ValidationError('Longitude must be between -180 and 180.')
+        return float(value)
+
+    def validate(self, attrs):
+        if attrs.get('latitude') == 0.0 and attrs.get('longitude') == 0.0:
+            raise serializers.ValidationError('Valid non-zero GPS coordinates are required.')
+        return attrs
+
     def get_employee_name(self, obj):
         if not obj.employee:
             return 'Employee'

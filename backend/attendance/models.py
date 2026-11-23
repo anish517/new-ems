@@ -9,7 +9,6 @@ from notification.models import Notification
 
 # Create your models here.
 
-from django.db import models
 from utils.models import SoftDeleteModel
 
 def format_timedelta(td):
@@ -25,31 +24,36 @@ class RemoteWorkPermission(models.Model):
     remote_lat = models.FloatField(default=0)
     remote_lng = models.FloatField(default=0)
 
-    def has_perm(self, current_lat: float, current_lng: float) -> bool:
+    def has_perm(self, current_lat: float, current_lng: float, radius_meters: float = 50) -> bool:
         """
-        Checks if the given coordinates are within a 50-meter radius of this
-        employee's approved remote work location.
+        Checks if the given coordinates are within a 50-meter radius (or custom radius_meters)
+        of this employee's approved remote work location.
 
         Args:
             current_lat (float): Current latitude of the employee.
             current_lng (float): Current longitude of the employee.
+            radius_meters (float): Allowed radius in meters around the remote spot (default 50m).
 
         Returns:
             bool: True if within the remote-work radius AND permission is granted.
         """
         if not self.is_allowed:
             return False
+        if self.remote_lat is None or self.remote_lng is None:
+            return False
+        if float(self.remote_lat) == 0.0 and float(self.remote_lng) == 0.0:
+            return False
 
         EARTH_RADIUS = 6371000
-        RADIUS_METERS = 50
+        RADIUS_METERS = float(radius_meters) if radius_meters and radius_meters > 0 else 50.0
 
-        delta_lat = radians(self.remote_lat - current_lat)
-        delta_lon = radians(self.remote_lng - current_lng)
+        delta_lat = radians(float(self.remote_lat) - float(current_lat))
+        delta_lon = radians(float(self.remote_lng) - float(current_lng))
 
         a = (
             sin(delta_lat / 2) ** 2
-            + cos(radians(current_lat)) *
-            cos(radians(self.remote_lat)) *
+            + cos(radians(float(current_lat))) *
+            cos(radians(float(self.remote_lat))) *
             sin(delta_lon / 2) ** 2
         )
         c = 2 * atan2(sqrt(a), sqrt(1 - a))
@@ -203,9 +207,15 @@ class Attendance(SoftDeleteModel):
 
         # Update check-in location details if the attendance record already exists
         if not created:
-            attendance.check_in_lat = lat
-            attendance.check_in_lng = lng
-            attendance.is_remote = not within_radius
+            has_prior_sessions = attendance.check_ins_outs.filter(check_in__isnull=False).exists()
+            if not has_prior_sessions:
+                attendance.check_in_lat = lat
+                attendance.check_in_lng = lng
+                attendance.is_remote = not within_radius
+            else:
+                # If any session today was on-site (within_radius=True), keep the day classified as on-site
+                if within_radius:
+                    attendance.is_remote = False
             if photo:
                 attendance.check_in_photo = photo
             attendance.save()

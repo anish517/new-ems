@@ -226,12 +226,9 @@ class CheckIn(APIView):
             office_lng = organization_address.longitude
 
         # ── Check remote work permission (individual) ─────────────────────────
-        try:
-            remote_work_permission = request.user.employee.remote_work_permission
-            if not remote_work_permission.is_allowed:
-                remote_work_permission = None
-        except Exception:
-            remote_work_permission = None
+        remote_work_permission = RemoteWorkPermission.objects.filter(
+            employee=request.user.employee, is_allowed=True
+        ).first()
 
         has_individual_remote = remote_work_permission is not None
 
@@ -260,11 +257,11 @@ class CheckIn(APIView):
             if not has_individual_remote:
                 return Response(
                     {'error': 'You are not within the office radius. Contact your admin to enable remote work.'},
-                    status=status.HTTP_401_UNAUTHORIZED)
+                    status=status.HTTP_403_FORBIDDEN)
             if not remote_work_permission.has_perm(user_lat, user_lng):
                 return Response(
                     {'error': 'You are not within the approved 50m radius of your remote work location.'},
-                    status=status.HTTP_401_UNAUTHORIZED)
+                    status=status.HTTP_403_FORBIDDEN)
 
         photo = request.FILES.get('photo')
 
@@ -328,12 +325,9 @@ class CheckOut(APIView):
             office_lng = organization_address.longitude
 
         # ── Check remote work permission (individual) ─────────────────────────
-        try:
-            remote_work_permission = request.user.employee.remote_work_permission
-            if not remote_work_permission.is_allowed:
-                remote_work_permission = None
-        except Exception:
-            remote_work_permission = None
+        remote_work_permission = RemoteWorkPermission.objects.filter(
+            employee=request.user.employee, is_allowed=True
+        ).first()
 
         has_individual_remote = remote_work_permission is not None
 
@@ -351,11 +345,11 @@ class CheckOut(APIView):
             if not has_individual_remote:
                 return Response(
                     {'error': 'You are not within the office radius. Contact your admin to enable remote work.'},
-                    status=status.HTTP_401_UNAUTHORIZED)
+                    status=status.HTTP_403_FORBIDDEN)
             if not remote_work_permission.has_perm(user_lat, user_lng):
                 return Response(
                     {'error': 'You are not within the approved 50m radius of your remote work location.'},
-                    status=status.HTTP_401_UNAUTHORIZED)
+                    status=status.HTTP_403_FORBIDDEN)
 
         photo = request.FILES.get('photo')
 
@@ -792,10 +786,22 @@ class AdminSetRemoteWorkPermissionAPIView(APIView):
         if lat is None or lng is None:
             return Response({'error': 'Latitude and longitude are required.'},
                             status=status.HTTP_400_BAD_REQUEST)
+        try:
+            lat_f = float(lat)
+            lng_f = float(lng)
+        except (ValueError, TypeError):
+            return Response({'error': 'Latitude and longitude must be valid numbers.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if not (-90.0 <= lat_f <= 90.0) or not (-180.0 <= lng_f <= 180.0):
+            return Response({'error': 'Latitude must be between -90 and 90 and longitude between -180 and 180.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if lat_f == 0.0 and lng_f == 0.0:
+            return Response({'error': 'Valid non-zero GPS coordinates are required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         perm, _ = RemoteWorkPermission.objects.get_or_create(employee=employee)
-        perm.remote_lat = lat
-        perm.remote_lng = lng
+        perm.remote_lat = lat_f
+        perm.remote_lng = lng_f
         perm.is_allowed = True
         perm.save()
         return Response(RemoteWorkPermissionSerializer(perm).data)
@@ -811,20 +817,40 @@ class AdminSetRemoteWorkPermissionAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class MyRemoteWorkPermissionAPIView(APIView):
-    """Employee: check their own remote-approval status (read-only)."""
+    """Employee: check their own remote-approval status and any pending request (read-only)."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        try:
-            perm = request.user.employee.remote_work_permission
-            has_perm = perm is not None and perm.is_allowed
-        except Exception:
-            perm = None
-            has_perm = False
+        employee = getattr(request.user, 'employee', None)
+        perm = RemoteWorkPermission.objects.filter(employee=employee).first() if employee else None
+        has_perm = bool(
+            perm is not None
+            and perm.is_allowed
+            and (perm.remote_lat or perm.remote_lng)
+        )
+
+        pending_req = None
+        if employee:
+            pending_obj = (
+                RemoteWorkRequest.objects.filter(employee=employee, status='pending')
+                .order_by('-created_at')
+                .first()
+            )
+            if pending_obj:
+                pending_req = {
+                    'id': pending_obj.id,
+                    'latitude': pending_obj.latitude,
+                    'longitude': pending_obj.longitude,
+                    'reason': pending_obj.reason,
+                    'created_at': pending_obj.created_at,
+                }
+
         return Response({
             'has_remote_permission': has_perm,
             'remote_lat': perm.remote_lat if has_perm else None,
             'remote_lng': perm.remote_lng if has_perm else None,
+            'has_pending_request': pending_req is not None,
+            'pending_request': pending_req,
         })
 
 
@@ -975,11 +1001,27 @@ class RemoteWorkRequestListCreateAPIView(APIView):
 class AdminApproveRejectRemoteWorkAPIView(APIView):
     permission_classes = [IsAuthenticated, IsOrgAdmin]
 
+    def _get_org(self, user):
+        org = getattr(user.employee, 'organization', None) if hasattr(user, 'employee') else None
+        if not org:
+            if user.organization.exists():
+                org = user.organization.first()
+            elif getattr(user, 'is_superuser', False) or getattr(user, 'is_hr', False):
+                from organization.models import Organization
+                org = Organization.objects.first()
+        return org
+
     def post(self, request, pk):
         try:
-            req_obj = RemoteWorkRequest.objects.get(id=pk)
+            req_obj = RemoteWorkRequest.objects.select_related('employee__user', 'employee__post__department').get(id=pk)
         except RemoteWorkRequest.DoesNotExist:
             return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        admin_org = self._get_org(request.user)
+        emp_org = getattr(req_obj.employee, 'organization', None) if req_obj.employee else None
+        if admin_org and emp_org and admin_org.id != emp_org.id:
+            return Response({"error": "You do not have permission to manage this remote request."},
+                            status=status.HTTP_403_FORBIDDEN)
             
         action = request.data.get('status')
         if action not in ['approved', 'rejected']:
