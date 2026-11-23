@@ -21,6 +21,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   late Map _task;
   List<dynamic> _reports = [];
   bool _loadingReports = true;
+  bool _updatingStatus = false;
 
   @override
   void initState() {
@@ -314,26 +315,50 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     }
   }
 
+  String _statusLabel(String value) {
+    switch (value) {
+      case 'in-progress':
+        return 'In Progress';
+      case 'done':
+        return 'Done';
+      default:
+        return 'To Do';
+    }
+  }
+
   Future<void> _updateTaskStatus(String newStatus) async {
+    final prevStatus = (_task['status'] ?? 'to-do').toString().toLowerCase();
+    if (newStatus == prevStatus || _updatingStatus) return;
+
+    setState(() => _updatingStatus = true);
     try {
       await ApiService().patch(
         "${AppConstants.taskBase}/tasks/${_task["id"]}/",
         data: {"status": newStatus},
       );
-      setState(() => _task = {..._task, "status": newStatus});
       if (mounted) {
+        setState(() => _task = {..._task, "status": newStatus});
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 const Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
                 const SizedBox(width: 10),
-                Text(
-                    'Task status updated to ${newStatus.replaceAll('-', ' ').toUpperCase()}'),
+                Expanded(
+                  child: Text(
+                      'Task status updated to ${_statusLabel(newStatus)}'),
+                ),
               ],
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Undo',
+              textColor: Colors.white,
+              onPressed: () => _updateTaskStatus(prevStatus),
+            ),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -347,6 +372,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           behavior: SnackBarBehavior.floating,
         ));
       }
+    } finally {
+      if (mounted) setState(() => _updatingStatus = false);
     }
   }
 
@@ -567,23 +594,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                                 ),
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _statusColor(taskStatus)
-                                    .withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                taskStatus.replaceAll("-", " ").toUpperCase(),
-                                style: TextStyle(
-                                  color: _statusColor(taskStatus),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
                           ],
                         ),
 
@@ -602,28 +612,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
                         const SizedBox(height: 16),
 
-                        // Status Segment Switcher
-                        Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            color: context.card,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: context.border),
-                          ),
-                          child: Row(
-                            children: [
-                              _buildStatusTab("To Do", "to-do",
-                                  taskStatus == "to-do", AppColors.primary),
-                              _buildStatusTab(
-                                  "In Progress",
-                                  "in-progress",
-                                  taskStatus == "in-progress",
-                                  AppColors.warning),
-                              _buildStatusTab("Completed", "done",
-                                  taskStatus == "done", AppColors.success),
-                            ],
-                          ),
-                        ),
+                        // Status Dropdown Pill
+                        _buildStatusDropdownRow(context, taskStatus),
 
                         const SizedBox(height: 18),
 
@@ -840,27 +830,126 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     );
   }
 
-  Widget _buildStatusTab(
-      String label, String value, bool isSelected, Color color) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => _updateTaskStatus(value),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? color : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
+  Widget _buildStatusDropdownRow(BuildContext context, String currentStatus) {
+    final activeColor = _statusColor(currentStatus);
+    final activeLabel = _statusLabel(currentStatus);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: context.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(Iconsax.status, size: 16, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          const Text(
+            'Status',
             style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: isSelected ? Colors.white : AppColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
             ),
           ),
-        ),
+          const Spacer(),
+          PopupMenuButton<String>(
+            tooltip: 'Change task status',
+            enabled: !_updatingStatus,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            onSelected: (newStatus) => _updateTaskStatus(newStatus),
+            itemBuilder: (_) => [
+              _buildStatusMenuItem(
+                  'To Do', 'to-do', AppColors.primary, currentStatus == 'to-do'),
+              _buildStatusMenuItem('In Progress', 'in-progress',
+                  AppColors.warning, currentStatus == 'in-progress'),
+              _buildStatusMenuItem(
+                  'Done', 'done', AppColors.success, currentStatus == 'done'),
+            ],
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: activeColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: activeColor.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_updatingStatus)
+                    SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: activeColor,
+                      ),
+                    )
+                  else
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: activeColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  const SizedBox(width: 7),
+                  Text(
+                    activeLabel,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: activeColor,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: activeColor,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _buildStatusMenuItem(
+    String label,
+    String value,
+    Color color,
+    bool isSelected,
+  ) {
+    return PopupMenuItem<String>(
+      value: value,
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? color : null,
+              ),
+            ),
+          ),
+          if (isSelected)
+            Icon(Iconsax.tick_circle, size: 16, color: color),
+        ],
       ),
     );
   }

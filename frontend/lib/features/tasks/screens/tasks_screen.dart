@@ -115,6 +115,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
         data: {'status': newStatus},
       );
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -123,13 +124,20 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                      'Moved to ${newStatus.replaceAll('-', ' ').toUpperCase()}'),
+                      'Moved to ${newStatus == 'done' ? 'Done' : (newStatus == 'in-progress' ? 'In Progress' : 'To Do')}'),
                 ),
               ],
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
+            duration: const Duration(seconds: 4),
+            action: (prevStatus != null && prevStatus != newStatus)
+                ? SnackBarAction(
+                    label: 'Undo',
+                    textColor: Colors.white,
+                    onPressed: () => _updateStatus(taskId, prevStatus),
+                  )
+                : null,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -1673,25 +1681,8 @@ class _TaskDetailSheet extends ConsumerWidget {
 
             const SizedBox(height: 16),
 
-            // Status Quick Changer Bar
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: context.card,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: context.border),
-              ),
-              child: Row(
-                children: [
-                  _buildStatusChoice(
-                      'To Do', 'to-do', status == 'to-do', AppColors.primary),
-                  _buildStatusChoice('In Progress', 'in-progress',
-                      status == 'in-progress', AppColors.warning),
-                  _buildStatusChoice(
-                      'Done', 'done', status == 'done', AppColors.success),
-                ],
-              ),
-            ),
+            // Status Dropdown Selector (Option A — prevents accidental 1-tap changes)
+            _buildStatusDropdownRow(context, status),
 
             const SizedBox(height: 16),
 
@@ -1816,29 +1807,141 @@ class _TaskDetailSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatusChoice(
-      String label, String value, bool isSelected, Color color) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => onStatusChange(value),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? color : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+  String _statusLabel(String value) {
+    switch (value) {
+      case 'in-progress':
+        return 'In Progress';
+      case 'done':
+        return 'Done';
+      default:
+        return 'To Do';
+    }
+  }
+
+  Color _statusColor(String value) {
+    switch (value) {
+      case 'in-progress':
+        return AppColors.warning;
+      case 'done':
+        return AppColors.success;
+      default:
+        return AppColors.primary;
+    }
+  }
+
+  Widget _buildStatusDropdownRow(BuildContext context, String currentStatus) {
+    final activeColor = _statusColor(currentStatus);
+    final activeLabel = _statusLabel(currentStatus);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: context.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(Iconsax.status, size: 16, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          const Text(
+            'Status',
             style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: isSelected ? Colors.white : AppColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
             ),
           ),
-        ),
+          const Spacer(),
+          PopupMenuButton<String>(
+            tooltip: 'Change task status',
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            onSelected: (newStatus) {
+              if (newStatus != currentStatus) {
+                onStatusChange(newStatus);
+              }
+            },
+            itemBuilder: (_) => [
+              _buildStatusMenuItem(
+                  'To Do', 'to-do', AppColors.primary, currentStatus == 'to-do'),
+              _buildStatusMenuItem('In Progress', 'in-progress',
+                  AppColors.warning, currentStatus == 'in-progress'),
+              _buildStatusMenuItem(
+                  'Done', 'done', AppColors.success, currentStatus == 'done'),
+            ],
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: activeColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: activeColor.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: activeColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Text(
+                    activeLabel,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: activeColor,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: activeColor,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _buildStatusMenuItem(
+    String label,
+    String value,
+    Color color,
+    bool isSelected,
+  ) {
+    return PopupMenuItem<String>(
+      value: value,
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? color : null,
+              ),
+            ),
+          ),
+          if (isSelected)
+            Icon(Iconsax.tick_circle, size: 16, color: color),
+        ],
       ),
     );
   }
