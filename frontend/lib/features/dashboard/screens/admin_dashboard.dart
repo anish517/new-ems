@@ -38,10 +38,26 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   int _pendingFeedbackCount = 0;
   bool _loading = true;
 
+  final ScrollController _leaveScrollController = ScrollController();
+  final ScrollController _remoteScrollController = ScrollController();
+  final ScrollController _profileScrollController = ScrollController();
+  final ScrollController _correctionScrollController = ScrollController();
+  final ScrollController _feedbackScrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     _loadStats();
+  }
+
+  @override
+  void dispose() {
+    _leaveScrollController.dispose();
+    _remoteScrollController.dispose();
+    _profileScrollController.dispose();
+    _correctionScrollController.dispose();
+    _feedbackScrollController.dispose();
+    super.dispose();
   }
 
   String _fmtDate(NepaliDateTime d) =>
@@ -345,6 +361,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       );
     } else {
       final listWidget = ListView.separated(
+        controller: count > 2 ? _leaveScrollController : null,
+        primary: false,
         shrinkWrap: count <= 2,
         physics: count <= 2
             ? const NeverScrollableScrollPhysics()
@@ -588,6 +606,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 440),
               child: Scrollbar(
+                controller: _leaveScrollController,
                 thumbVisibility: true,
                 child: listWidget,
               ),
@@ -651,6 +670,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       );
     } else {
       final listWidget = ListView.separated(
+        controller: count > 2 ? _remoteScrollController : null,
+        primary: false,
         shrinkWrap: count <= 2,
         physics: count <= 2
             ? const NeverScrollableScrollPhysics()
@@ -828,6 +849,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 440),
               child: Scrollbar(
+                controller: _remoteScrollController,
                 thumbVisibility: true,
                 child: listWidget,
               ),
@@ -891,6 +913,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       );
     } else {
       final listWidget = ListView.separated(
+        controller: count > 2 ? _profileScrollController : null,
+        primary: false,
         shrinkWrap: count <= 2,
         physics: count <= 2
             ? const NeverScrollableScrollPhysics()
@@ -1085,6 +1109,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 440),
               child: Scrollbar(
+                controller: _profileScrollController,
                 thumbVisibility: true,
                 child: listWidget,
               ),
@@ -1158,6 +1183,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       );
     } else {
       final listWidget = ListView.separated(
+        controller: count > 2 ? _correctionScrollController : null,
+        primary: false,
         shrinkWrap: count <= 2,
         physics: count <= 2
             ? const NeverScrollableScrollPhysics()
@@ -1374,6 +1401,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 440),
               child: Scrollbar(
+                controller: _correctionScrollController,
                 thumbVisibility: true,
                 child: listWidget,
               ),
@@ -1437,6 +1465,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       );
     } else {
       final listWidget = ListView.separated(
+        controller: count > 2 ? _feedbackScrollController : null,
+        primary: false,
         shrinkWrap: count <= 2,
         physics: count <= 2
             ? const NeverScrollableScrollPhysics()
@@ -1606,6 +1636,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 440),
               child: Scrollbar(
+                controller: _feedbackScrollController,
                 thumbVisibility: true,
                 child: listWidget,
               ),
