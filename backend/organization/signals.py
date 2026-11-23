@@ -4,7 +4,6 @@ from django.dispatch import receiver
 from django.core.files.storage import default_storage
 
 from attendance.models import RemoteWorkPermission
-from calendar_app.models import Category, Event
 from leave_management.models import LeaveBalance, LeaveType
 
 from .models import Department, Employee, OrganizationFile, Post
@@ -120,26 +119,6 @@ def create_leave_quota(sender, instance, created, **kwargs):
                 leave_type=leave_type,
                 quota=leave_type.quota,
                 leaves_taken=0
-            )
-
-
-@receiver(post_save, sender=Employee)
-def create_employee_birthday_event(sender, instance, created, **kwargs):
-    if kwargs.get("raw", False):
-        return  # loading a fixture (loaddata): no side effects
-    if created:
-        if instance.date_of_birth:
-            category, _ = Category.objects.get_or_create(
-                organization=instance.organization,
-                name='Birthday',
-            )
-            Event.objects.create(
-                organization=instance.organization,
-                title=f"{instance.user.first_name}'s birthday",
-                description=f"{instance.user.first_name}'s birthday",
-                category=category,
-                start=instance.date_of_birth,
-                end=instance.date_of_birth
             )
 
 

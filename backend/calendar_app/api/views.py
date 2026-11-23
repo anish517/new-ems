@@ -1,5 +1,6 @@
 import nepali_datetime
 import datetime
+from django.db.models import Q
 from django.http import HttpResponse
 from rest_framework import viewsets
 from rest_framework import status
@@ -91,6 +92,16 @@ class EventViewSet(viewsets.ViewSet):
             return Organization.objects.first()
         return None
 
+    def _company_events_queryset(self, org):
+        """
+        Returns company calendar events excluding legacy auto-generated static
+        birthday rows (which were saved on birth-years and orphaned on delete).
+        """
+        return Event.objects.filter(organization=org).exclude(
+            Q(category__name__iexact='Birthday')
+            | Q(title__iendswith="'s birthday", is_holiday=False, is_important=False)
+        )
+
     def list(self, request):
         now_np = nepali_datetime.datetime.now()
         # Treat params as Nepali year/month directly (not Gregorian)
@@ -104,12 +115,12 @@ class EventViewSet(viewsets.ViewSet):
 
         org = self._get_org(request.user)
         queryset = []
-        events = Event.objects.filter(organization=org).order_by('start')
+        events = self._company_events_queryset(org).order_by('start')
 
         holidays = 0
         other_events = 0
         for event in events:
-            if event.start.year == year_np and event.start.month == month_np:
+            if event.start and event.start.year == year_np and event.start.month == month_np:
                 queryset.append(event)
                 if event.is_holiday:
                     holidays += event.duration
@@ -233,7 +244,7 @@ class EventViewSet(viewsets.ViewSet):
             month_np = now_np.month
 
         scope = (request.query_params.get('scope') or 'month').strip().lower()
-        events = Event.objects.filter(organization=org).select_related('category').order_by('start', 'id')
+        events = self._company_events_queryset(org).select_related('category').order_by('start', 'id')
 
         filtered_events = []
         for ev in events:

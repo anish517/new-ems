@@ -6,7 +6,7 @@ from rest_framework.test import APIClient
 
 from authentication.models import Account
 from calendar_app.excel_utils import EXCEL_HEADERS, build_events_xlsx, parse_events_xlsx
-from calendar_app.models import Event
+from calendar_app.models import Category, Event
 from organization.models import Department, Employee, Organization, Post
 
 
@@ -150,3 +150,49 @@ class CalendarExcelExportImportTests(TestCase):
         self.assertEqual(res2.status_code, status.HTTP_200_OK)
         self.assertEqual(res2.data["created"], 0)
         self.assertEqual(res2.data["skipped"], 3)
+
+    def test_employee_creation_does_not_create_birthday_events_and_export_excludes_legacy_birthdays(self):
+        bday_user = Account.objects.create(
+            email="bday.active@omway.com",
+            first_name="Sita",
+            last_name="Sharma",
+        )
+        Employee.objects.create(
+            user=bday_user,
+            post=self.post,
+            gender="female",
+            date_of_birth=nepali_datetime.date(2055, 8, 12),
+            father_name="Ram",
+            phone_no="9800000001",
+            official_email="bday.active@omway.com",
+            personal_email="bday.active@gmail.com",
+        )
+
+        # Creating employee must NOT insert static birthday rows into Event table
+        self.assertFalse(Event.objects.filter(title__icontains="Sita").exists())
+
+        # Simulate legacy orphaned static Birthday row in Event table
+        legacy_cat = Category.objects.create(organization=self.org, name="Birthday", color="info")
+        Event.objects.create(
+            organization=self.org,
+            title="tt's birthday",
+            category=legacy_cat,
+            start=nepali_datetime.date(2083, 8, 1),
+            end=nepali_datetime.date(2083, 8, 1),
+        )
+
+        self.client.force_authenticate(user=self.admin_user)
+
+        # Calendar list excludes legacy Birthday rows and does not inject birthdays
+        res_2083 = self.client.get("/api/calendar/events/?year=2083&month=8")
+        self.assertEqual(res_2083.status_code, status.HTTP_200_OK)
+        titles_2083 = [e["title"] for e in res_2083.data["events"]]
+        self.assertEqual(titles_2083, ["Udhauli Parba"])
+
+        # Export All Events must exclude legacy static Birthday rows
+        exp_all = self.client.get("/api/calendar/events/export/?scope=all")
+        self.assertEqual(exp_all.status_code, status.HTTP_200_OK)
+        exp_rows = parse_events_xlsx(exp_all.content)
+        exported_titles = [r[0] for r in exp_rows[1:]]
+        self.assertEqual(exported_titles, ["New Year Celebration", "Udhauli Parba"])
+        self.assertNotIn("tt's birthday", exported_titles)
