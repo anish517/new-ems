@@ -220,12 +220,49 @@ class ApiService {
           }
         }
       }
-      if (e.message != null && e.message!.isNotEmpty) {
-        return e.message!;
+      switch (e.type) {
+        case DioExceptionType.connectionError:
+          return 'No internet connection. Please check your Wi-Fi or mobile data and try again.';
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+        case DioExceptionType.transformTimeout:
+          return 'Connection timed out. Please check your internet connection and try again.';
+        case DioExceptionType.badCertificate:
+          return 'Unable to establish a secure connection to the server.';
+        case DioExceptionType.cancel:
+          return 'Request was cancelled.';
+        case DioExceptionType.badResponse:
+          final code = e.response?.statusCode;
+          if (code == 401) return 'Your session has expired. Please sign in again.';
+          if (code == 403) return 'You do not have permission to perform this action.';
+          if (code == 404) return 'The requested resource was not found.';
+          if (code != null && code >= 500) {
+            return 'Server error. Please try again in a moment.';
+          }
+          return 'Request failed. Please try again.';
+        case DioExceptionType.unknown:
+          return 'Unable to connect to the server. Please check your internet connection and try again.';
       }
-      return 'Network error or server unavailable';
     }
-    return e.toString();
+
+    final raw = e.toString().replaceFirst('Exception: ', '').trim();
+    final lower = raw.toLowerCase();
+    if (lower.contains('socketexception') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('connection failed') ||
+        lower.contains('connection refused') ||
+        lower.contains('network is unreachable') ||
+        lower.contains('cannot be solved by the library') ||
+        lower.contains('clientexception') ||
+        lower.contains('xmlhttprequest') ||
+        lower.contains('handshakeexception')) {
+      return 'No internet connection. Please check your Wi-Fi or mobile data and try again.';
+    }
+    if (lower.contains('timeoutexception') || lower.contains('timed out')) {
+      return 'Connection timed out. Please check your internet connection and try again.';
+    }
+    return raw.isNotEmpty ? raw : 'Something went wrong. Please try again.';
   }
 }
 

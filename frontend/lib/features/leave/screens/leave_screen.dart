@@ -322,7 +322,8 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen>
         _loadLeaves();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update leave policy: $e'),
+            content: Text(
+                'Failed to update leave policy: ${ApiService.getErrorMessage(e)}'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -2558,6 +2559,8 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
   String _selectedCategoryName = 'Casual Leave';
   PlatformFile? _selectedFile;
   int _excludedSaturdays = 0;
+  Map<String, dynamic>? _liveBalance;
+  bool _reloadingBalance = false;
 
   bool get _isInternBlocked {
     final isIntern =
@@ -2576,10 +2579,38 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
   @override
   void initState() {
     super.initState();
+    _liveBalance = widget.balance;
     if (_isProvisionRestricted) {
       _isPaid = false;
     }
     _fetchLeaveTypes();
+    if (_liveBalance == null) {
+      _refreshBalance();
+    }
+  }
+
+  Future<void> _refreshBalance() async {
+    final empId = widget.currentUser?.employeeId;
+    if (empId == null || _reloadingBalance) return;
+    if (mounted) setState(() => _reloadingBalance = true);
+    try {
+      final now = NepaliDateTime.now();
+      final balRes = await ApiService().get(
+        '${AppConstants.leaveBase}/leave-balance/$empId/?nepali_year=${now.year}&nepali_month=${now.month}',
+      );
+      if (mounted && balRes.data is Map) {
+        setState(() {
+          _liveBalance = Map<String, dynamic>.from(balRes.data as Map);
+        });
+      }
+      if (_leaveTypes.isEmpty) {
+        await _fetchLeaveTypes();
+      }
+    } catch (_) {
+      // Remain in unavailable/offline state until user retries with connectivity
+    } finally {
+      if (mounted) setState(() => _reloadingBalance = false);
+    }
   }
 
   @override
@@ -2688,10 +2719,10 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
     }
   }
 
-  double _calculateAvailableQuota() {
-    if (!_isPaid) return 999.0; // Unpaid leave is unrestricted by quota
-    if (widget.balance == null) return 999.0;
-    final leaveBalances = (widget.balance!['leave_balances'] as List?) ?? [];
+  double? _calculateAvailableQuota() {
+    if (!_isPaid) return null; // Unpaid leave is unrestricted by quota
+    if (_liveBalance == null) return null;
+    final leaveBalances = (_liveBalance!['leave_balances'] as List?) ?? [];
 
     dynamic targetBalance;
     for (final lb in leaveBalances) {
@@ -2713,7 +2744,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
       targetBalance = leaveBalances.first;
     }
 
-    if (targetBalance == null) return 999.0;
+    if (targetBalance == null) return null;
 
     final availableThisMonth = (targetBalance['available_this_month'] as num?)
             ?.toDouble() ??
@@ -2733,7 +2764,7 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
         .fold<double>(
             0.0, (sum, r) => sum + ((r['no_days'] as num?)?.toDouble() ?? 0.0));
 
-    return (availableThisMonth - pendingOfThisType).clamp(0.0, 999.0);
+    return (availableThisMonth - pendingOfThisType).clamp(0.0, 366.0);
   }
 
   bool get _isSickLeaveSelected {
@@ -2777,12 +2808,28 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
       return;
     }
 
-    final available = _calculateAvailableQuota();
-    if (_isPaid && reqDays > available) {
+    var available = _calculateAvailableQuota();
+    if (_isPaid && available == null) {
+      await _refreshBalance();
+      if (!mounted) return;
+      available = _calculateAvailableQuota();
+      if (available == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Unable to verify your leave balance. Please check your internet connection and tap Retry.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
+    if (_isPaid && available != null && reqDays > available) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              'Monthly quota exceeded for $_selectedCategoryName. You requested $reqDays day(s), but only have $available day(s) available this month.'),
+              'Monthly quota exceeded for $_selectedCategoryName. You requested $reqDays day(s), but only have ${available.toStringAsFixed(1)} day(s) available this month.'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -2858,7 +2905,9 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
   Widget build(BuildContext context) {
     final requestedDays = _calculateRequestedDays();
     final availableQuota = _calculateAvailableQuota();
-    final isExceeded = _isPaid && (requestedDays > availableQuota);
+    final isBalanceUnavailable = _isPaid && availableQuota == null;
+    final isExceeded =
+        _isPaid && availableQuota != null && (requestedDays > availableQuota);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -2991,16 +3040,22 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                 decoration: BoxDecoration(
                   color: isExceeded
                       ? AppColors.error.withValues(alpha: 0.08)
-                      : (_isPaid
-                          ? AppColors.primary.withValues(alpha: 0.06)
-                          : const Color(0xFFF59E0B).withValues(alpha: 0.06)),
+                      : (isBalanceUnavailable
+                          ? const Color(0xFFF59E0B).withValues(alpha: 0.08)
+                          : (_isPaid
+                              ? AppColors.primary.withValues(alpha: 0.06)
+                              : const Color(0xFFF59E0B)
+                                  .withValues(alpha: 0.06))),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: isExceeded
                         ? AppColors.error
-                        : (_isPaid
-                            ? AppColors.primary.withValues(alpha: 0.3)
-                            : const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+                        : (isBalanceUnavailable
+                            ? const Color(0xFFF59E0B).withValues(alpha: 0.4)
+                            : (_isPaid
+                                ? AppColors.primary.withValues(alpha: 0.3)
+                                : const Color(0xFFF59E0B)
+                                    .withValues(alpha: 0.3))),
                   ),
                 ),
                 child: Row(
@@ -3008,12 +3063,18 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                     Icon(
                       isExceeded
                           ? Iconsax.warning_2
-                          : (_isPaid ? Iconsax.info_circle : Iconsax.wallet_3),
+                          : (isBalanceUnavailable
+                              ? Iconsax.wifi_square
+                              : (_isPaid
+                                  ? Iconsax.info_circle
+                                  : Iconsax.wallet_3)),
                       color: isExceeded
                           ? AppColors.error
-                          : (_isPaid
-                              ? AppColors.primary
-                              : const Color(0xFFF59E0B)),
+                          : (isBalanceUnavailable
+                              ? const Color(0xFFF59E0B)
+                              : (_isPaid
+                                  ? AppColors.primary
+                                  : const Color(0xFFF59E0B))),
                       size: 20,
                     ),
                     const SizedBox(width: 10),
@@ -3022,9 +3083,13 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _isPaid
-                                ? 'Available This Month ($_selectedCategoryName): ${availableQuota.toStringAsFixed(1)} Days'
-                                : 'Unpaid Leave (No Quota Limit • Deducted in Payroll)',
+                            !_isPaid
+                                ? 'Unpaid Leave (No Quota Limit • Deducted in Payroll)'
+                                : (availableQuota != null
+                                    ? 'Available This Month ($_selectedCategoryName): ${availableQuota.toStringAsFixed(1)} Days'
+                                    : (_reloadingBalance
+                                        ? 'Loading Leave Balance...'
+                                        : 'Leave Balance Unavailable')),
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w800,
@@ -3035,10 +3100,12 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            requestedDays > 0
-                                ? 'Duration: ${requestedDays.toStringAsFixed(1)} working day(s)'
-                                    '${_excludedSaturdays > 0 ? ' ($_excludedSaturdays Saturday(s) excluded)' : ''}'
-                                : 'Select dates to calculate working duration & verify monthly quota',
+                            isBalanceUnavailable
+                                ? 'Connect to the internet and tap Retry to load your live monthly quota.'
+                                : (requestedDays > 0
+                                    ? 'Duration: ${requestedDays.toStringAsFixed(1)} working day(s)'
+                                        '${_excludedSaturdays > 0 ? ' ($_excludedSaturdays Saturday(s) excluded)' : ''}'
+                                    : 'Select dates to calculate working duration & verify monthly quota'),
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -3050,6 +3117,35 @@ class _ApplyLeaveSheetState extends State<_ApplyLeaveSheet> {
                         ],
                       ),
                     ),
+                    if (isBalanceUnavailable) ...[
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: _reloadingBalance ? null : _refreshBalance,
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFFF59E0B),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: _reloadingBalance
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFF59E0B),
+                                ),
+                              )
+                            : const Text(
+                                'Retry',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                      ),
+                    ],
                   ],
                 ),
               ),
