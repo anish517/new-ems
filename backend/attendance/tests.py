@@ -623,3 +623,91 @@ class AttendanceCorrectionPerformancePolicyTests(TestCase):
         self.assertTrue(s_included.data['will_exceed_on_next'])
 
 
+class MultiSessionTodayStatusTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.org = Organization.objects.create(name="MultiSession Org")
+        self.dept = Department.objects.create(organization=self.org, department_name="Eng")
+        self.post = Post.objects.create(department=self.dept, title="Engineer")
+        self.emp_user = Account.objects.create(
+            email="multisession.emp@test.com", first_name="Multi", last_name="Session"
+        )
+        self.emp = Employee.objects.create(user=self.emp_user, post=self.post)
+
+    def test_today_status_returns_active_session_checkin_time_after_checkout_and_recheckin(self):
+        import datetime as py_dt
+        from attendance.models import CheckInOut
+
+        self.client.force_authenticate(user=self.emp_user)
+
+        # Before any check-in today
+        res0 = self.client.get('/api/attendance/today-status/')
+        self.assertEqual(res0.status_code, status.HTTP_200_OK)
+        self.assertFalse(res0.data['is_checked_in'])
+        self.assertIsNone(res0.data['check_in_time'])
+        self.assertIsNone(res0.data['first_check_in_time'])
+        self.assertFalse(res0.data['has_checked_out_today'])
+        self.assertEqual(res0.data['sessions_count'], 0)
+
+        today = nepali_date.today()
+        att = Attendance.objects.create(
+            organization=self.org,
+            employee=self.emp,
+            date=today,
+            check_in_lat=27.7172,
+            check_in_lng=85.3240,
+            is_remote=False,
+        )
+
+        # 1. Morning check-in at 10:00:00
+        ci1 = CheckInOut.objects.create(
+            attendance=att,
+            check_in=py_dt.time(10, 0, 0),
+        )
+        res1 = self.client.get('/api/attendance/today-status/')
+        self.assertEqual(res1.status_code, status.HTTP_200_OK)
+        self.assertTrue(res1.data['is_checked_in'])
+        self.assertEqual(res1.data['check_in_time'], '10:00:00')
+        self.assertEqual(res1.data['first_check_in_time'], '10:00:00')
+        self.assertFalse(res1.data['has_checked_out_today'])
+        self.assertEqual(res1.data['sessions_count'], 1)
+
+        # 2. Checkout at 17:00:00 (5:00 PM)
+        ci1.check_out = py_dt.time(17, 0, 0)
+        ci1.save()
+        res2 = self.client.get('/api/attendance/today-status/')
+        self.assertEqual(res2.status_code, status.HTTP_200_OK)
+        self.assertFalse(res2.data['is_checked_in'])
+        self.assertIsNone(res2.data['check_in_time'])
+        self.assertEqual(res2.data['first_check_in_time'], '10:00:00')
+        self.assertTrue(res2.data['has_checked_out_today'])
+        self.assertEqual(res2.data['sessions_count'], 1)
+
+        # 3. Evening re-check-in at 17:05:00 -> check_in_time MUST be 17:05:00, NOT 10:00:00!
+        CheckInOut.objects.create(
+            attendance=att,
+            check_in=py_dt.time(17, 5, 0),
+        )
+        res3 = self.client.get('/api/attendance/today-status/')
+        self.assertEqual(res3.status_code, status.HTTP_200_OK)
+        self.assertTrue(res3.data['is_checked_in'])
+        self.assertEqual(res3.data['check_in_time'], '17:05:00')
+        self.assertEqual(res3.data['first_check_in_time'], '10:00:00')
+        self.assertTrue(res3.data['has_checked_out_today'])
+        self.assertEqual(res3.data['sessions_count'], 2)
+
+        # 4. Attendance list history returns both sessions accurately
+        list_res = self.client.get(f'/api/attendance/list/?employee={self.emp.id}')
+        self.assertEqual(list_res.status_code, status.HTTP_200_OK)
+        records = list_res.data['results'] if isinstance(list_res.data, dict) else list_res.data
+        self.assertEqual(len(records), 1)
+        self.assertEqual(
+            records[0]['history'],
+            [
+                {'in': '10:00:00', 'out': '17:00:00'},
+                {'in': '17:05:00', 'out': None},
+            ],
+        )
+
+
+

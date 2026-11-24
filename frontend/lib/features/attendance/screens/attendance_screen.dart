@@ -58,6 +58,7 @@ class AttendanceScreen extends ConsumerStatefulWidget {
 class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   bool _isCheckedIn = false;
+  bool _hasCheckedOutToday = false;
   bool _isLoading = false;
   String? _checkInTime;
   String? _lastAction;
@@ -154,12 +155,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
     _autoInFlight = true;
     try {
-      if (!_isCheckedIn) {
+      if (!_isCheckedIn && !_hasCheckedOutToday) {
         await _scheduleAutoAction(
           message: 'Checking you in at the office…',
           onFire: _performAutoCheckIn,
         );
-      } else if (_hasBeenCheckedInLongEnough()) {
+      } else if (_isCheckedIn && _hasBeenCheckedInLongEnough()) {
         await _scheduleAutoAction(
           message: 'Checking you out…',
           onFire: _performAutoCheckOut,
@@ -275,11 +276,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       if (!mounted) return;
       setState(() {
         _isCheckedIn = false;
+        _hasCheckedOutToday = true;
         _checkInTime = null;
         _lastAction =
             'Auto checked out at ${res.data['check_out_time'] ?? res.data['check_in_time']}';
       });
       _showSnack('✅ Auto checked-out — see you next time!', AppColors.success);
+      await _loadTodayStatus();
       await _loadStats();
       await _loadDailyHistory();
     } catch (e) {
@@ -319,7 +322,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       if (mounted) {
         setState(() {
           _isCheckedIn = res.data['is_checked_in'] == true;
-          _checkInTime = res.data['check_in_time'];
+          _checkInTime = res.data['check_in_time']?.toString();
+          _hasCheckedOutToday = res.data['has_checked_out_today'] == true;
         });
       }
     } catch (_) {}
@@ -1473,6 +1477,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         _lastAction = 'Checked in at $_checkInTime';
       });
       _showSnack('✅ Checked in successfully!', AppColors.success);
+      await _loadTodayStatus();
       await _loadStats();
       await _loadDailyHistory();
     } catch (e) {
@@ -1551,10 +1556,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       if (!mounted) return;
       setState(() {
         _isCheckedIn = false;
+        _hasCheckedOutToday = true;
         _checkInTime = null;
         _lastAction = 'Checked out at ${res.data['check_out_time']}';
       });
       _showSnack('✅ Checked out successfully!', AppColors.success);
+      await _loadTodayStatus();
       await _loadStats();
       await _loadDailyHistory();
     } catch (e) {

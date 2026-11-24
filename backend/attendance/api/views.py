@@ -371,21 +371,40 @@ class TodayAttendanceStatusAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        empty_payload = {
+            'is_checked_in': False,
+            'check_in_time': None,
+            'first_check_in_time': None,
+            'has_checked_out_today': False,
+            'sessions_count': 0,
+        }
         try:
             employee = request.user.employee
         except Exception:
-            return Response({'is_checked_in': False, 'check_in_time': None})
+            return Response(empty_payload)
 
         today = nepali_datetime.date.today()
         attendance = Attendance.objects.filter(employee=employee, date=today).first()
         if not attendance:
-            return Response({'is_checked_in': False, 'check_in_time': None})
+            return Response(empty_payload)
 
-        open_checkin = attendance.check_ins_outs.filter(check_out__isnull=True).first()
-        first_checkin = attendance.check_ins_outs.order_by('id').first()
+        open_checkin = attendance.check_ins_outs.filter(
+            check_out__isnull=True
+        ).order_by('-id').first()
+        first_checkin = attendance.check_ins_outs.filter(
+            check_in__isnull=False
+        ).order_by('id').first()
+        has_checked_out_today = attendance.check_ins_outs.filter(
+            check_out__isnull=False
+        ).exists()
+        sessions_count = attendance.check_ins_outs.count()
+
         return Response({
             'is_checked_in': open_checkin is not None,
-            'check_in_time': str(first_checkin.check_in) if first_checkin and first_checkin.check_in else None,
+            'check_in_time': str(open_checkin.check_in) if open_checkin and open_checkin.check_in else None,
+            'first_check_in_time': str(first_checkin.check_in) if first_checkin and first_checkin.check_in else None,
+            'has_checked_out_today': has_checked_out_today,
+            'sessions_count': sessions_count,
         })
 
 

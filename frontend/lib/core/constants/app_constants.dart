@@ -5,7 +5,7 @@ class AppConstants {
   //   flutter run --dart-define=API_BASE_URL=http://192.168.1.5:8000
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.110.108:8000',
+    defaultValue: 'https://ems.omwaytechnologies.com',
   );
 
   // ─── Endpoints ─────────────────────────────────────────────────────────────
